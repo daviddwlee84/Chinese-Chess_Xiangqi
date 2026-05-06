@@ -31,7 +31,6 @@ Likely next batch — items you'd reach for if you sat down to work today.
 
 Worth doing, no rush.
 
-- [ ] **[M] chess-net: server-authoritative websocket protocol** — tokio + axum + ws. Server runs the authoritative GameState; clients only ever see PlayerView (the no-leak ABI is the whole point of view.rs). Lobby + reconnection out of scope for first cut. → [research](backlog/chess-net-protocol.md)
 - [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
 - [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
 - [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
@@ -54,6 +53,8 @@ Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
 - [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
 
 ## Done
+
+- ✅ [2026-05-06] [P2/M] chess-net MVP: single-room websocket server + chess-tui --connect + tmux launcher — `crates/chess-net` ships an axum-ws server (`chess-net-server`) hosting one game/room. Wire schema: tagged JSON enums `ServerMsg` (Hello/Update/Error) and `ClientMsg` (Move/Resign), `Move::Reveal` stays `revealed: None` end-to-end. First connection = Red, second = Black, third gets "room full". `chess-tui --connect ws://...` runs a sync `tungstenite` worker thread + `std::sync::mpsc` channels (no tokio in TUI). `make play-local` / `scripts/play-local.sh` opens a tmux session with two clients in window 0 and the server in window 1. 8 new tests (6 protocol round-trip + 2 end-to-end smoke). Lobby / reconnect / time controls / takeback still deferred (kept as separate TODO items).
 
 - ✅ [2026-05-06] [P2/M] chess-tui: ratatui frontend — interactive TUI for xiangqi + banqi. Vim cursor (hjkl) + arrows + mouse, Enter/Space select-or-commit, `u` undo, `f` flip (banqi). Two render styles: CJK glyphs (帥仕相俥傌炮兵 / 將士象車馬砲卒, default with color) and ASCII (--style ascii). Banqi displays in traditional 8×4 layout (transposed from 4×8 model). Variant picker on bare invocation; --as black flips xiangqi orientation for net-readiness. Engine stays presentation-free — orient.rs + glyph.rs live in the client.
 

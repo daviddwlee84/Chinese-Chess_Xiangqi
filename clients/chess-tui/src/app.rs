@@ -5,11 +5,13 @@ use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, RuleSet};
-use chess_core::state::GameState;
-use chess_core::view::PlayerView;
+use chess_core::state::{GameState, GameStatus};
+use chess_core::view::{PlayerView, VisibleCell};
+use chess_net::{ClientMsg, ServerMsg};
 
 use crate::glyph::Style;
 use crate::input::Action;
+use crate::net::{NetClient, NetEvent};
 use crate::orient;
 
 /// Variant + preset choices in the picker, in display order.
@@ -71,9 +73,24 @@ pub struct GameView {
     pub last_msg: Option<String>,
 }
 
+pub struct NetView {
+    pub client: NetClient,
+    pub url: String,
+    pub last_view: Option<PlayerView>,
+    pub rules: Option<RuleSet>,
+    /// Server-assigned side. `None` until `Hello` arrives.
+    pub observer: Option<Side>,
+    pub cursor: (u8, u8),
+    pub selected: Option<Square>,
+    pub last_msg: Option<String>,
+    /// True between Connected and Disconnected events. Used by the sidebar.
+    pub connected: bool,
+}
+
 pub enum Screen {
     Picker(PickerView),
     Game(Box<GameView>),
+    Net(Box<NetView>),
 }
 
 pub struct AppState {
@@ -149,6 +166,43 @@ impl AppState {
         }
     }
 
+    pub fn new_net(url: String, style: Style, use_color: bool) -> Self {
+        let client = NetClient::spawn(url.clone());
+        Self {
+            screen: Screen::Net(Box::new(NetView {
+                client,
+                url,
+                last_view: None,
+                rules: None,
+                observer: None,
+                cursor: (0, 0),
+                selected: None,
+                last_msg: Some("Connecting…".into()),
+                connected: false,
+            })),
+            style,
+            use_color,
+            // Pre-Hello, we render as Red until the server tells us our seat.
+            observer: Side::RED,
+            help_open: false,
+            rules_open: false,
+            quit_confirm_open: false,
+            board_rect: None,
+            should_quit: false,
+        }
+    }
+
+    /// Drain ws events from the worker thread and apply them to the
+    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+    pub fn tick_net(&mut self) {
+        let Screen::Net(n) = &mut self.screen else {
+            return;
+        };
+        while let Ok(evt) = n.client.evt_rx.try_recv() {
+            apply_net_event(n, evt);
+        }
+    }
+
     pub fn dispatch(&mut self, action: Action) {
         match action {
             Action::None => {}
@@ -175,16 +229,25 @@ impl AppState {
             Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
                 self.dispatch_picker(action);
             }
-            _ => self.dispatch_game(action),
+            _ => match &self.screen {
+                Screen::Net(_) => self.dispatch_net(action),
+                Screen::Game(_) => self.dispatch_game(action),
+                Screen::Picker(_) => {}
+            },
         }
     }
 
     fn is_game_in_progress(&self) -> bool {
-        let Screen::Game(g) = &self.screen else {
-            return false;
-        };
-        matches!(g.state.status, chess_core::state::GameStatus::Ongoing)
-            && !g.state.history.is_empty()
+        match &self.screen {
+            Screen::Game(g) => {
+                matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty()
+            }
+            Screen::Net(n) => match &n.last_view {
+                Some(view) => matches!(view.status, GameStatus::Ongoing) && n.connected,
+                None => false,
+            },
+            Screen::Picker(_) => false,
+        }
     }
 
     fn dispatch_picker(&mut self, action: Action) {
@@ -354,6 +417,203 @@ impl AppState {
                 g.selected = None;
             }
         }
+    }
+
+    fn dispatch_net(&mut self, action: Action) {
+        let Screen::Net(n) = &mut self.screen else {
+            return;
+        };
+        // Pre-Hello: no view yet, nothing to dispatch on.
+        let Some(view) = n.last_view.as_ref() else {
+            return;
+        };
+        let shape = view.shape;
+        let (rows, cols) = orient::display_dims(shape);
+        let observer = n.observer.unwrap_or(Side::RED);
+        match action {
+            Action::CursorUp => {
+                if n.cursor.0 > 0 {
+                    n.cursor.0 -= 1;
+                }
+            }
+            Action::CursorDown => {
+                if n.cursor.0 + 1 < rows {
+                    n.cursor.0 += 1;
+                }
+            }
+            Action::CursorLeft => {
+                if n.cursor.1 > 0 {
+                    n.cursor.1 -= 1;
+                }
+            }
+            Action::CursorRight => {
+                if n.cursor.1 + 1 < cols {
+                    n.cursor.1 += 1;
+                }
+            }
+            Action::Cancel => {
+                n.selected = None;
+                n.last_msg = None;
+            }
+            Action::SelectOrCommit => {
+                let outcome = compute_select_outcome(n, observer);
+                apply_select_outcome(n, outcome);
+            }
+            Action::Flip => {
+                if !matches!(view.status, GameStatus::Ongoing) {
+                    n.last_msg = Some("Game over.".into());
+                    return;
+                }
+                if view.side_to_move != observer {
+                    n.last_msg = Some("Not your turn.".into());
+                    return;
+                }
+                let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape)
+                else {
+                    n.last_msg = Some("Cursor not on a playable square.".into());
+                    return;
+                };
+                let _ = n
+                    .client
+                    .cmd_tx
+                    .send(ClientMsg::Move { mv: Move::Reveal { at: sq, revealed: None } });
+                n.last_msg = Some("Reveal sent.".into());
+            }
+            Action::Undo => {
+                n.last_msg = Some("Undo not supported in online mode yet.".into());
+            }
+            Action::Click { term_col, term_row } => {
+                if let Some(rect) = self.board_rect {
+                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+                        let n = match &mut self.screen {
+                            Screen::Net(b) => b,
+                            _ => return,
+                        };
+                        n.cursor = (row, col);
+                        let outcome = compute_select_outcome(n, observer);
+                        apply_select_outcome(n, outcome);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+enum SelectOutcome {
+    Ignore,
+    Msg(String),
+    ClearAndMsg(String),
+    Select(Square),
+    Deselect,
+    Commit(Move),
+}
+
+fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
+    let Some(view) = n.last_view.as_ref() else {
+        return SelectOutcome::Ignore;
+    };
+    if !matches!(view.status, GameStatus::Ongoing) {
+        return SelectOutcome::Msg("Game over.".into());
+    }
+    let shape = view.shape;
+    let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape) else {
+        return SelectOutcome::Msg("Cursor not on a playable square.".into());
+    };
+    if view.side_to_move != observer {
+        return SelectOutcome::Msg("Not your turn.".into());
+    }
+    match n.selected {
+        None => {
+            if view.legal_moves.iter().any(|m| m.origin_square() == sq) {
+                SelectOutcome::Select(sq)
+            } else if matches!(view.cells[sq.0 as usize], VisibleCell::Hidden) {
+                SelectOutcome::Msg("Hidden piece. Press 'f' to flip.".into())
+            } else {
+                SelectOutcome::Msg("No legal move from that square.".into())
+            }
+        }
+        Some(from) if from == sq => SelectOutcome::Deselect,
+        Some(from) => {
+            let candidate = view
+                .legal_moves
+                .iter()
+                .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+                .cloned();
+            match candidate {
+                Some(mv) => SelectOutcome::Commit(mv),
+                None => SelectOutcome::ClearAndMsg("Illegal move.".into()),
+            }
+        }
+    }
+}
+
+fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
+    match outcome {
+        SelectOutcome::Ignore => {}
+        SelectOutcome::Msg(m) => n.last_msg = Some(m),
+        SelectOutcome::ClearAndMsg(m) => {
+            n.selected = None;
+            n.last_msg = Some(m);
+        }
+        SelectOutcome::Select(sq) => {
+            n.selected = Some(sq);
+            n.last_msg = None;
+        }
+        SelectOutcome::Deselect => {
+            n.selected = None;
+            n.last_msg = None;
+        }
+        SelectOutcome::Commit(mv) => {
+            let _ = n.client.cmd_tx.send(ClientMsg::Move { mv });
+            n.selected = None;
+            n.last_msg = Some("Sent.".into());
+        }
+    }
+}
+
+fn apply_net_event(n: &mut NetView, evt: NetEvent) {
+    match evt {
+        NetEvent::Connected => {
+            n.connected = true;
+            n.last_msg = Some("Connected. Waiting for hello…".into());
+        }
+        NetEvent::Server(boxed) => match *boxed {
+            ServerMsg::Hello { observer, rules, view, .. } => {
+                n.observer = Some(observer);
+                n.rules = Some(rules);
+                let shape = view.shape;
+                let (rows, cols) = orient::display_dims(shape);
+                n.cursor = (rows / 2, cols / 2);
+                n.last_view = Some(view);
+                n.connected = true;
+                n.last_msg = Some(format!("Joined as {}.", side_label(observer)));
+            }
+            ServerMsg::Update { view } => {
+                n.last_view = Some(view);
+                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
+                if n.last_msg.as_deref() == Some("Sent.") {
+                    n.last_msg = None;
+                }
+            }
+            ServerMsg::Error { message } => {
+                n.last_msg = Some(message);
+            }
+        },
+        NetEvent::Disconnected(reason) => {
+            n.connected = false;
+            n.last_msg = Some(format!("Disconnected: {reason}"));
+        }
+    }
+}
+
+fn side_label(side: Side) -> &'static str {
+    if side == Side::RED {
+        "Red 紅"
+    } else if side == Side::BLACK {
+        "Black 黑"
+    } else {
+        "Green 綠"
     }
 }
 

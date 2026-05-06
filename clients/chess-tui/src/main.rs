@@ -11,6 +11,7 @@
 mod app;
 mod glyph;
 mod input;
+mod net;
 mod orient;
 mod ui;
 
@@ -44,9 +45,16 @@ struct Cli {
     #[arg(long)]
     no_color: bool,
 
-    /// Render from this side's perspective (debug; default RED).
+    /// Render from this side's perspective (debug; default RED). Ignored
+    /// when `--connect` is set — the server assigns a side on join.
     #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
     observer: SideArg,
+
+    /// Connect to a chess-net-server instead of starting a local game.
+    /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
+    /// automatically if missing).
+    #[arg(long)]
+    connect: Option<String>,
 
     #[command(subcommand)]
     cmd: Option<Cmd>,
@@ -109,19 +117,32 @@ fn main() -> Result<()> {
     };
     let use_color = !cli.no_color;
 
-    let app = match &cli.cmd {
-        None => AppState::new_picker(style, use_color, observer),
-        Some(Cmd::Xiangqi { strict }) => {
-            let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
-            AppState::new_game(rules, style, use_color, observer)
-        }
-        Some(Cmd::Banqi { preset, house, seed }) => {
-            let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
-            AppState::new_game(rules, style, use_color, observer)
+    let app = if let Some(url) = cli.connect.as_deref() {
+        let url = normalize_ws_url(url);
+        AppState::new_net(url, style, use_color)
+    } else {
+        match &cli.cmd {
+            None => AppState::new_picker(style, use_color, observer),
+            Some(Cmd::Xiangqi { strict }) => {
+                let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+                AppState::new_game(rules, style, use_color, observer)
+            }
+            Some(Cmd::Banqi { preset, house, seed }) => {
+                let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+                AppState::new_game(rules, style, use_color, observer)
+            }
         }
     };
 
     run(app)
+}
+
+fn normalize_ws_url(url: &str) -> String {
+    if url.contains("/ws") || url.ends_with('/') {
+        url.to_string()
+    } else {
+        format!("{url}/ws")
+    }
 }
 
 fn build_banqi_rules(
@@ -183,11 +204,20 @@ fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Resul
 
 fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppState) -> Result<()> {
     loop {
+        // Drain ws events first so the next draw shows server-pushed state.
+        // No-op outside Net mode.
+        app.tick_net();
+
         terminal.draw(|frame| ui::draw(frame, app))?;
         if app.should_quit {
             return Ok(());
         }
-        if event::poll(Duration::from_millis(200))? {
+
+        // Shorter poll in Net mode keeps server pushes feeling snappy
+        // (we redraw at most every poll interval). 200ms in single-process
+        // mode is fine — there's no async source to drain.
+        let poll_ms = if matches!(app.screen, app::Screen::Net(_)) { 60 } else { 200 };
+        if event::poll(Duration::from_millis(poll_ms))? {
             let in_picker = matches!(app.screen, app::Screen::Picker(_));
             let quit_confirm = app.quit_confirm_open;
             let action = match event::read()? {

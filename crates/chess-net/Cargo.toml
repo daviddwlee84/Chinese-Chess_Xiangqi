@@ -1,6 +1,6 @@
 [package]
 name        = "chess-net"
-description = "Wire protocol between server and clients. Stub — implemented in a follow-up PR."
+description = "Wire protocol + axum websocket server for chess-core. Hosts a single-room game; clients see only PlayerView."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -8,5 +8,23 @@ license.workspace      = true
 repository.workspace   = true
 authors.workspace      = true
 
+[lib]
+name = "chess_net"
+path = "src/lib.rs"
+
+[[bin]]
+name = "chess-net-server"
+path = "src/bin/server.rs"
+
 [dependencies]
-chess-core = { path = "../chess-core" }
+chess-core   = { path = "../chess-core" }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+anyhow       = { workspace = true }
+tokio        = { workspace = true }
+axum         = { workspace = true }
+futures-util = { workspace = true }
+clap         = { workspace = true }
+
+[dev-dependencies]
+tungstenite = { workspace = true }

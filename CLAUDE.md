@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project at a glance
 
-Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end and `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs). Networking (`chess-net`), AI (`chess-ai`), and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships an MVP single-room websocket server (`chess-net-server`) that two `chess-tui --connect` clients can play on. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
 
 For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 
@@ -47,6 +47,18 @@ cargo run -p chess-tui -- banqi --preset taiwan --seed 42
 cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
 cargo run -p chess-tui -- --as black xiangqi              # render as Black
+
+# Networked play (MVP: single room, no lobby / reconnect / time controls)
+cargo run -p chess-net -- --port 7878 xiangqi             # server
+cargo run -p chess-net -- --port 7878 xiangqi --strict    # ditto, strict self-check
+cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+cargo run -p chess-tui -- --connect ws://127.0.0.1:7878   # client (server picks variant + side)
+
+# One-shot local 2-client harness (tmux: window 0 = clients, window 1 = server)
+make play-local                                           # xiangqi casual on :7878
+make play-local VARIANT=banqi                             # banqi
+make play-local PORT=9000 VARIANT=xiangqi                 # custom port
+make stop-local                                           # tear down the tmux session
 ```
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
@@ -60,7 +72,7 @@ back the losing move.
 
 ## Architecture quick reference
 
-The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play. Everything else (`chess-engine`, `chess-net`, `chess-ai`, `chess-web`, `xtask`) is a stub for follow-up PRs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, `chess-web`, and `xtask` are still stubs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
 
 1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
 2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
@@ -95,6 +107,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
 
 - **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+
+- **`chess-net` MVP is single-room, single-game.** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds the authoritative `GameState` and broadcasts per-side `PlayerView` after every committed move. First connection = Red, second = Black, third+ gets `Error{"room full"}` and is dropped. `chess-tui` joins via `--connect` and runs a sync `tungstenite` worker thread (`clients/chess-tui/src/net.rs`) that talks to the TUI over `std::sync::mpsc` — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / lobby / time controls / takeback are deferred (see `TODO.md`).
 
 ## Where to put new work
 

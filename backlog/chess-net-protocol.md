@@ -1,8 +1,25 @@
 # chess-net: server-authoritative websocket protocol
 
-**Status**: P? / P1 / P2 / P3 / blocked / deferred / superseded / shipped
-**Effort**: S / M / L / XL
-**Related**: `TODO.md` · code paths · related docs
+**Status**: shipped (2026-05-06, MVP — single room, no lobby/reconnect/time controls)
+**Effort**: M (matched estimate)
+**Related**: `TODO.md` · `crates/chess-net/src/{protocol,server}.rs` · `crates/chess-net/src/bin/server.rs` · `clients/chess-tui/src/net.rs` · `Makefile` + `scripts/play-local.sh`
+
+## What shipped
+
+- `axum 0.7` + `tokio` server on `127.0.0.1:<port>`. Single room; first 2 ws clients seat as Red / Black, third gets `Error{"room full"}`. JSON over text frames, tagged enums (`{"type": ...}`).
+- `ServerMsg::{Hello{protocol, observer, rules, view}, Update{view}, Error{message}}` and `ClientMsg::{Move{mv}, Resign}`. `Move::Reveal { revealed: None }` stays None on the wire — server fills `Some(piece)` only inside its local `GameState`.
+- `chess-tui --connect ws://host:port` runs a sync `tungstenite` worker on a background OS thread; talks to the TUI via `std::sync::mpsc`. No tokio in the TUI binary. `--as` flag is overridden by the server's seat assignment.
+- `make play-local` / `scripts/play-local.sh` boots one server + two clients in a single tmux session for fast manual smoke.
+- 8 new tests: 6 protocol roundtrip (covers `Hello`/`Update`/`Error`/`Move(Step)`/`Move(Reveal None)`/`Resign`) + 2 end-to-end smoke (two clients exchange a real move; third connect gets "room full"). All pass under `cargo test -p chess-net`.
+
+## Out of scope (separate TODO items)
+
+- Lobby / matchmaking / multiple concurrent games.
+- Reconnect (transient disconnect today drops the player; opponent gets `Error{"opponent disconnected"}`).
+- Time controls (TODO entry retained; `WinReason::Timeout` already exists).
+- Takeback / 悔棋 (TODO entry retained; needs opponent-approval protocol).
+- TLS / wss / auth.
+- chess-web frontend (separate TODO).
 
 ## Context
 

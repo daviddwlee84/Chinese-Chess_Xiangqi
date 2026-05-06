@@ -12,7 +12,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
-use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
+use crate::app::{AppState, GameView, NetView, PickerEntry, PickerView, RectPx, Screen};
 use crate::glyph::{self, Style};
 use crate::orient;
 
@@ -25,6 +25,7 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
     match &app.screen {
         Screen::Picker(p) => draw_picker(frame, area, p),
         Screen::Game(_) => draw_game(frame, area, app),
+        Screen::Net(_) => draw_net(frame, area, app),
     }
 
     if app.rules_open {
@@ -71,32 +72,112 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let use_color = app.use_color;
     let help_open = app.help_open;
 
+    let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
     let mut rect = app.board_rect;
-    draw_board(frame, chunks[0], observer, style, use_color, g_ref, &mut rect);
+    draw_board(
+        frame,
+        chunks[0],
+        observer,
+        style,
+        use_color,
+        &view,
+        g_ref.cursor,
+        g_ref.selected,
+        &mut rect,
+    );
     app.board_rect = rect;
-    draw_sidebar(frame, chunks[1], g_ref, style, help_open);
+    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open);
 }
 
+fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(36)])
+        .split(area);
+
+    let Screen::Net(n) = &app.screen else {
+        return;
+    };
+    let n_ref: &NetView = n.as_ref();
+    let style = app.style;
+    let use_color = app.use_color;
+    let help_open = app.help_open;
+    let observer = n_ref.observer.unwrap_or(app.observer);
+
+    match n_ref.last_view.as_ref() {
+        Some(view) => {
+            let mut rect = app.board_rect;
+            draw_board(
+                frame,
+                chunks[0],
+                observer,
+                style,
+                use_color,
+                view,
+                n_ref.cursor,
+                n_ref.selected,
+                &mut rect,
+            );
+            app.board_rect = rect;
+            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open);
+        }
+        None => {
+            draw_connecting_placeholder(frame, chunks[0], n_ref);
+            draw_sidebar_net_idle(frame, chunks[1], n_ref);
+        }
+    }
+}
+
+fn draw_connecting_placeholder(frame: &mut Frame, area: Rect, n: &NetView) {
+    let block = Block::default().borders(Borders::ALL).title(" Net ");
+    let lines = vec![
+        Line::from(""),
+        Line::from(Span::styled("  Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled(format!("  → {}", n.url), TuiStyle::default().fg(Color::Gray))),
+        Line::from(""),
+        Line::from(Span::styled(
+            n.last_msg.clone().unwrap_or_else(|| "  (waiting for server hello)".into()),
+            TuiStyle::default().fg(Color::Yellow),
+        )),
+    ];
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
+    let block = Block::default().borders(Borders::ALL).title(" Status ");
+    let lines = vec![
+        Line::from(Span::styled("Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+        Line::from(format!("URL: {}", n.url)),
+        Line::from(""),
+        Line::from(Span::styled("Press q to give up.", TuiStyle::default().fg(Color::DarkGray))),
+    ];
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+#[allow(clippy::too_many_arguments)]
 fn draw_board(
     frame: &mut Frame,
     area: Rect,
     observer: Side,
     style: Style,
     use_color: bool,
-    g: &GameView,
+    view: &PlayerView,
+    cursor: (u8, u8),
+    selected: Option<Square>,
     board_rect: &mut Option<RectPx>,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Board ");
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let view = PlayerView::project(&g.state, g.state.side_to_move);
     let shape = view.shape;
     let (rows, cols) = orient::display_dims(shape);
     let model_w = shape.dimensions().0;
 
     // Build legal-target highlight set when a piece is selected.
-    let highlight: std::collections::HashSet<Square> = match g.selected {
+    let highlight: std::collections::HashSet<Square> = match selected {
         Some(from) => view
             .legal_moves
             .iter()
@@ -116,14 +197,15 @@ fn draw_board(
 
     for display_row in 0..rows {
         lines.push(rank_row(
-            &view,
+            view,
             observer,
             shape,
             display_row,
             cols,
             model_w,
             &highlight,
-            g,
+            cursor,
+            selected,
             style,
             use_color,
             border_style,
@@ -166,7 +248,8 @@ fn rank_row<'a>(
     cols: u8,
     model_w: u8,
     highlight: &std::collections::HashSet<Square>,
-    g: &'a GameView,
+    cursor: (u8, u8),
+    selected: Option<Square>,
     style: Style,
     use_color: bool,
     border_style: TuiStyle,
@@ -183,7 +266,8 @@ fn rank_row<'a>(
                 model_w,
                 shape,
                 highlight,
-                g,
+                cursor,
+                selected,
                 style,
                 use_color,
                 display_row,
@@ -219,15 +303,16 @@ fn intersection_or_piece(
     model_w: u8,
     shape: BoardShape,
     highlight: &std::collections::HashSet<Square>,
-    g: &GameView,
+    cursor: (u8, u8),
+    selected: Option<Square>,
     style: Style,
     use_color: bool,
     display_row: u8,
     display_col: u8,
 ) -> (String, TuiStyle, bool) {
     let cell = &view.cells[sq.0 as usize];
-    let is_cursor = (display_row, display_col) == g.cursor;
-    let is_selected = g.selected == Some(sq);
+    let is_cursor = (display_row, display_col) == cursor;
+    let is_selected = selected == Some(sq);
     let is_target = highlight.contains(&sq);
 
     let (text, is_glyph_w2) = match cell {
@@ -499,12 +584,18 @@ fn side_color(side: Side) -> Color {
     }
 }
 
-fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
+fn draw_sidebar(
+    frame: &mut Frame,
+    area: Rect,
+    g: &GameView,
+    view: &PlayerView,
+    style: Style,
+    help_open: bool,
+) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let view = PlayerView::project(&g.state, g.state.side_to_move);
     let mut lines: Vec<Line> = Vec::new();
 
     // Game-over banner (takes priority).
@@ -591,6 +682,122 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
     let para = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(para, inner);
 }
+
+fn draw_sidebar_net(
+    frame: &mut Frame,
+    area: Rect,
+    n: &NetView,
+    view: &PlayerView,
+    style: Style,
+    help_open: bool,
+) {
+    let block = Block::default().borders(Borders::ALL).title(" Status (net) ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    if let Some(banner) = game_over_banner(&view.status, style) {
+        for l in banner {
+            lines.push(l);
+        }
+        lines.push(Line::from(""));
+    }
+
+    let variant_label = match (view.shape, n.rules.as_ref()) {
+        (BoardShape::Xiangqi9x10, Some(r)) => {
+            if r.xiangqi_allow_self_check {
+                "Xiangqi (象棋)"
+            } else {
+                "Xiangqi (象棋, strict)"
+            }
+        }
+        (BoardShape::Xiangqi9x10, None) => "Xiangqi (象棋)",
+        (BoardShape::Banqi4x8, _) => "Banqi (暗棋)",
+        (BoardShape::ThreeKingdom, _) => "三國暗棋",
+        (BoardShape::Custom { .. }, _) => "Custom",
+    };
+    lines.push(line_label_value("Variant:", variant_label));
+
+    if let Some(side) = n.observer {
+        let c = side_color(side);
+        lines.push(Line::from(vec![
+            Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
+            Span::raw(" "),
+            Span::styled(
+                glyph::side_name(side, style),
+                TuiStyle::default().fg(c).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
+    if matches!(view.status, GameStatus::Ongoing) {
+        let stm_color = side_color(view.side_to_move);
+        let label = if Some(view.side_to_move) == n.observer { "Your turn:" } else { "Opponent:" };
+        lines.push(Line::from(vec![
+            Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+            Span::raw(" "),
+            Span::styled(
+                glyph::side_name(view.side_to_move, style),
+                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
+    let (status_text, status_color) = format_status_short(view.status, style);
+    lines.push(Line::from(vec![
+        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+    ]));
+    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+
+    let selected_label = match n.selected {
+        Some(sq) => format!("sq {}", sq.0),
+        None => "—".into(),
+    };
+    lines.push(line_label_value("Selected:", &selected_label));
+
+    lines.push(line_label_value("Server:", &n.url));
+    lines.push(line_label_value("Connection:", if n.connected { "live" } else { "disconnected" }));
+
+    lines.push(Line::from(""));
+    if let Some(msg) = &n.last_msg {
+        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+    }
+
+    if help_open {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Help",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )));
+        for ln in HELP_LINES_NET {
+            lines.push(Line::from(Span::raw(*ln)));
+        }
+    } else {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "?=help, r=rules, q=quit",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+
+    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(para, inner);
+}
+
+const HELP_LINES_NET: &[&str] = &[
+    "h j k l / ←↓↑→  move cursor",
+    "Enter / Space   select / commit (sends Move to server)",
+    "Esc             cancel selection",
+    "f               flip (banqi)",
+    "r               toggle rules overlay",
+    "?               toggle this help",
+    "Click           select / commit",
+    "q / Ctrl-C      quit",
+    "(undo / new game disabled in online mode)",
+];
 
 fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
     match status {

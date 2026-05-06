@@ -13,8 +13,11 @@ name = "chess-tui"
 path = "src/main.rs"
 
 [dependencies]
-chess-core = { path = "../../crates/chess-core" }
-ratatui    = "0.29"
-crossterm  = "0.28"
-clap       = { version = "4.5", features = ["derive"] }
-anyhow     = "1.0"
+chess-core  = { path = "../../crates/chess-core" }
+chess-net   = { path = "../../crates/chess-net" }
+ratatui     = "0.29"
+crossterm   = "0.28"
+clap        = { workspace = true }
+anyhow      = { workspace = true }
+serde_json  = { workspace = true }
+tungstenite = { workspace = true }
