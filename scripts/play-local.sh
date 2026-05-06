@@ -70,4 +70,18 @@ tmux send-keys    -t "${SESSION}:clients" "$CLIENT_CMD" C-m
 tmux split-window -h -t "${SESSION}:clients" "$CLIENT_CMD"
 tmux select-layout -t "${SESSION}:clients" even-horizontal
 tmux select-window -t "${SESSION}:clients"
-tmux attach -t "$SESSION"
+
+# If we're already inside tmux, plain `attach` would error with
+# "sessions should be nested with care" (and won't help anyway —
+# you can't view two tmux sessions at once from one client). Switch
+# the current client to the new session instead; press the prefix
+# + L (last-window) or prefix + s (session picker) to switch back.
+if [[ -n "${TMUX:-}" ]]; then
+  echo
+  echo "Already inside tmux — switching this client to '$SESSION'."
+  echo "  - prefix + d  detach back to your shell"
+  echo "  - prefix + s  pick another session (your previous one is still alive)"
+  exec tmux switch-client -t "$SESSION"
+else
+  exec tmux attach -t "$SESSION"
+fi

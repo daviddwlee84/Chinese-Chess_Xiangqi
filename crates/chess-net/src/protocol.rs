@@ -39,4 +39,9 @@ pub enum ClientMsg {
     Move { mv: Move },
     /// Resign — ends the game with `WinReason::Resignation` for the opponent.
     Resign,
+    /// Request a rematch. Only valid after the current game has ended
+    /// (Won / Drawn). Server resets the game when both sides have requested
+    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+    /// fresh `GameState`.
+    Rematch,
 }

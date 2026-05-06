@@ -86,6 +86,13 @@ fn client_resign_roundtrips() {
 }
 
 #[test]
+fn client_rematch_roundtrips() {
+    let json = serde_json::to_string(&ClientMsg::Rematch).unwrap();
+    assert!(json.contains("Rematch"), "got: {json}");
+    assert!(matches!(roundtrip_client(&ClientMsg::Rematch), ClientMsg::Rematch));
+}
+
+#[test]
 fn protocol_uses_type_tag() {
     // Sanity check: the schema uses `"type"` as the tag, matching our docs
     // (so `wscat` users can switch on it directly).

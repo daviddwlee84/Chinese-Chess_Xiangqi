@@ -27,11 +27,18 @@ struct RoomState {
     state: GameState,
     /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
     seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    /// Sides that have requested a rematch since the last reset. Cleared
+    /// every time the game resets; mutual consent triggers reset.
+    rematch: Vec<Side>,
 }
 
 impl RoomState {
     fn new(rules: RuleSet) -> Self {
-        Self { state: GameState::new(rules), seats: Vec::with_capacity(2) }
+        Self {
+            state: GameState::new(rules),
+            seats: Vec::with_capacity(2),
+            rematch: Vec::with_capacity(2),
+        }
     }
 
     fn next_seat(&self) -> Option<Side> {
@@ -169,16 +176,81 @@ async fn handle_socket(socket: WebSocket, room: Room) {
 }
 
 fn process_client_msg(g: &mut RoomState, seat: Side, msg: ClientMsg) {
-    if !matches!(g.state.status, GameStatus::Ongoing) {
-        send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
-        return;
-    }
     match msg {
-        ClientMsg::Move { mv } => process_move(g, seat, mv),
+        ClientMsg::Rematch => process_rematch(g, seat),
+        ClientMsg::Move { mv } => {
+            if !matches!(g.state.status, GameStatus::Ongoing) {
+                send_to(
+                    g,
+                    seat,
+                    ServerMsg::Error {
+                        message: "game is over — press 'n' to request a rematch".into(),
+                    },
+                );
+                return;
+            }
+            process_move(g, seat, mv);
+        }
         ClientMsg::Resign => {
+            if !matches!(g.state.status, GameStatus::Ongoing) {
+                send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
+                return;
+            }
             let winner = if seat == Side::RED { Side::BLACK } else { Side::RED };
             g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
             broadcast_update(g);
+        }
+    }
+}
+
+fn process_rematch(g: &mut RoomState, seat: Side) {
+    if matches!(g.state.status, GameStatus::Ongoing) {
+        send_to(
+            g,
+            seat,
+            ServerMsg::Error {
+                message: "Game still in progress — finish or resign first.".into()
+            },
+        );
+        return;
+    }
+    if g.seats.len() < 2 {
+        send_to(
+            g,
+            seat,
+            ServerMsg::Error { message: "No opponent connected — can't start a rematch.".into() },
+        );
+        return;
+    }
+    if !g.rematch.contains(&seat) {
+        g.rematch.push(seat);
+    }
+    let want_seats: Vec<Side> = g.seats.iter().map(|(s, _)| *s).collect();
+    let all_ready = want_seats.iter().all(|s| g.rematch.contains(s));
+    if all_ready {
+        let rules = g.state.rules.clone();
+        g.state = GameState::new(rules);
+        g.rematch.clear();
+        eprintln!("[server] rematch — fresh game");
+        for (side, tx) in &g.seats {
+            let view = PlayerView::project(&g.state, *side);
+            let _ = tx.send(ServerMsg::Hello {
+                protocol: PROTOCOL_VERSION,
+                observer: *side,
+                rules: g.state.rules.clone(),
+                view,
+            });
+        }
+    } else {
+        for (s, tx) in &g.seats {
+            let msg = if *s == seat {
+                ServerMsg::Error { message: "Rematch requested. Waiting for opponent…".into() }
+            } else {
+                ServerMsg::Error {
+                    message: "Opponent wants a rematch. Press 'n' to accept.".into(),
+                }
+            };
+            let _ = tx.send(msg);
         }
     }
 }

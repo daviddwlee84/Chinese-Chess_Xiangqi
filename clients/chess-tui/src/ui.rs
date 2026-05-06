@@ -792,11 +792,12 @@ const HELP_LINES_NET: &[&str] = &[
     "Enter / Space   select / commit (sends Move to server)",
     "Esc             cancel selection",
     "f               flip (banqi)",
+    "n               request rematch (after game over; needs both sides)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",
-    "q / Ctrl-C      quit",
-    "(undo / new game disabled in online mode)",
+    "q / Ctrl-C      quit (closes the connection)",
+    "(undo not supported online yet)",
 ];
 
 fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {

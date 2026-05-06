@@ -221,10 +221,33 @@ impl AppState {
             Action::HelpToggle => self.help_open = !self.help_open,
             Action::RulesToggle => self.rules_open = !self.rules_open,
             Action::NewGame => {
-                let style = self.style;
-                let use_color = self.use_color;
-                let observer = self.observer;
-                *self = AppState::new_picker(style, use_color, observer);
+                if matches!(self.screen, Screen::Net(_)) {
+                    // In Net mode, 'n' requests a rematch via the server
+                    // instead of dropping the connection. Game must be over.
+                    if let Screen::Net(n) = &mut self.screen {
+                        let status = n.last_view.as_ref().map(|v| v.status);
+                        match status {
+                            Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
+                                let _ = n.client.cmd_tx.send(ClientMsg::Rematch);
+                                n.last_msg =
+                                    Some("Rematch requested. Waiting for opponent…".into());
+                            }
+                            Some(GameStatus::Ongoing) => {
+                                n.last_msg = Some(
+                                    "'n' requests a rematch only after the game is over.".into(),
+                                );
+                            }
+                            None => {
+                                n.last_msg = Some("Not connected yet.".into());
+                            }
+                        }
+                    }
+                } else {
+                    let style = self.style;
+                    let use_color = self.use_color;
+                    let observer = self.observer;
+                    *self = AppState::new_picker(style, use_color, observer);
+                }
             }
             Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
                 self.dispatch_picker(action);
@@ -580,14 +603,21 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
         }
         NetEvent::Server(boxed) => match *boxed {
             ServerMsg::Hello { observer, rules, view, .. } => {
+                let was_seated = n.observer.is_some();
                 n.observer = Some(observer);
                 n.rules = Some(rules);
                 let shape = view.shape;
                 let (rows, cols) = orient::display_dims(shape);
                 n.cursor = (rows / 2, cols / 2);
+                n.selected = None;
                 n.last_view = Some(view);
                 n.connected = true;
-                n.last_msg = Some(format!("Joined as {}.", side_label(observer)));
+                // First Hello = "Joined as X". Subsequent Hello = rematch reset.
+                n.last_msg = Some(if was_seated {
+                    "Rematch — new game.".into()
+                } else {
+                    format!("Joined as {}.", side_label(observer))
+                });
             }
             ServerMsg::Update { view } => {
                 n.last_view = Some(view);
