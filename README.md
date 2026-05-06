@@ -21,7 +21,7 @@ crates/chess-engine  — search/eval (planned)
 crates/chess-net     — websocket protocol (planned)
 crates/chess-ai      — heuristic + ISMCTS for banqi (planned)
 clients/chess-cli    — REPL test harness for chess-core
-clients/chess-tui    — ratatui frontend (planned)
+clients/chess-tui    — ratatui frontend (xiangqi + banqi, vim+mouse, CJK glyphs)
 clients/chess-web    — Leptos + WASM frontend (planned)
 ```
 
@@ -32,8 +32,12 @@ See [`docs/architecture.md`](docs/architecture.md) for the full design.
 ```bash
 cargo check --workspace
 cargo test -p chess-core
-cargo run -p chess-cli
+cargo run -p chess-cli       # line-oriented REPL
+cargo run -p chess-tui       # interactive TUI (CJK glyphs, vim + mouse)
 ```
+
+Useful TUI flags: `--style ascii` (letter glyphs), `--no-color`, `--as black`
+(render from Black's perspective for testing the orientation flip).
 
 WASM cleanliness check (proves `chess-core` has no platform deps):
 

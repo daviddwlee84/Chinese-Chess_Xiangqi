@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project at a glance
 
-Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end and `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs). Networking (`chess-net`), AI (`chess-ai`), and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
 
 For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 
@@ -38,13 +38,25 @@ cargo run -p chess-cli
 > banqi --preset taiwan --seed 42
 > view 0
 > quit
+
+# Interactive TUI (default render: CJK glyphs + color)
+cargo run -p chess-tui                                    # variant picker
+cargo run -p chess-tui -- xiangqi                         # skip picker
+cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+cargo run -p chess-tui -- --as black xiangqi              # render as Black
 ```
+
+TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
+`Esc` cancel, `u` undo, `f` flip (banqi), `?` toggles help, `q` / `Ctrl-C` quit.
+Mouse left-click selects or commits.
 
 `rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
 
 ## Architecture quick reference
 
-The engine lives entirely in `crates/chess-core`. Everything else (`chess-engine`, `chess-net`, `chess-ai`, `chess-tui`, `chess-web`, `xtask`) is a stub for follow-up PRs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play. Everything else (`chess-engine`, `chess-net`, `chess-ai`, `chess-web`, `xtask`) is a stub for follow-up PRs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
 
 1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
 2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
@@ -73,6 +85,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
 
 - **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+
+- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
 
 ## Where to put new work
 
