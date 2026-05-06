@@ -28413,3 +28413,1381 @@ f276962 feat(tui): box-drawing board, game-over banner, rules overlay, new-game 
 6ffe523 feat: human-readable side, CHECK indicator, casual xiangqi mode
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Bundle transcript
+
+```bash
+git add .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md && git commit -m "$(cat <<'EOF'
+chore: bundle SpecStory transcript for intersection-board PR
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main a00ae98] chore: bundle SpecStory transcript for intersection-board PR
+ 1 file changed, 1072 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:50Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #39 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:32:10Z)**_
+
+Shipped. Two commits:
+
+```
+a00ae98 chore: bundle SpecStory transcript for intersection-board PR
+515bc6c feat(tui): intersection-based board (pieces on grid crossings)
+```
+
+## What changed
+
+**Pieces now sit ON grid intersections**, not inside boxes — matching the wikipedia-style reference you sent.
+
+```
+   a   b   c   d   e   f   g   h   i
+ 9 車──馬──象──士──將──士──象──馬──車
+   │   │   │   │ ╲ │ ╱ │   │   │
+ 8 ┼───┼───┼───┼───╳───┼───┼───┼───┼
+   │   │   │   │ ╱ │ ╲ │   │   │
+ 7 ┼───砲──┼───┼───┼───┼───┼───砲──┼
+   │   │   │   │   │   │   │   │
+ 6 卒──┼───卒──┼───卒──┼───卒──┼───卒
+ 5 ┼───┼───┼───┼───┼───┼───┼───┼───┼
+       〇 楚 河 ── 漢 界 〇
+ 4 ┼───┼───┼───┼───┼───┼───┼───┼───┼
+   │   │   │   │   │   │   │   │
+ 3 兵──┼───兵──┼───兵──┼───兵──┼───兵
+ 0 俥──傌──相──仕──帥──仕──相──傌──俥
+```
+
+Key implementation bits:
+
+- **Rank row**: 2-col piece glyph + 2-col `──` connector for piece cells; 1-col `┼` (or `╳` at palace centers) + 3-col `───` for empty cells. Both cell types end up 4 cols wide, so rows stay aligned regardless of which intersections are occupied.
+- **Between-rows**: `│` verticals at every piece column with 3-space gaps. Inside the palace, `palace_diagonals()` substitutes `╲ ╱` chars. The function detects whether the row is *converging* toward the palace center (back rank → center: `╲` left, `╱` right) or *diverging* (center → back rank: `╱` left, `╲` right) using the model rank distance — works the same for both observers.
+- **Palace center** (e1 / e8) renders as `╳` when empty and gets a yellow accent so it stands out as the diagonal-cross point.
+- **River replaces the between-row at index 4** with a clean band: `〇 楚 河 ── 漢 界 〇`. No verticals pass through it, but its row position is unchanged so the rest of the geometry stays intact (no special offset in mouse hit-test).
+- **ASCII fallback** (`--style ascii`): the same layout swaps `┼ ╳ ─ │ ╲ ╱` for `+ X - | \ /`, and pieces use the existing letter set (`R/N/B/A/K/C/P` uppercase=Red, lowercase=Black). Works in `TERM=dumb`.
+
+## Verification
+
+`cargo fmt` ✓ · `cargo clippy --workspace --all-targets -- -D warnings` ✓ · `cargo test --workspace` ✓ (all tests still pass) · `cargo build --target wasm32-unknown-unknown -p chess-core` ✓.
+
+The `RectPx.river_after_display_row` field was removed since the river no longer adds an extra terminal row — it just replaces a between-row, so cell row math is uniform `row_off / 2`.
+
+Try it: `cargo run -p chess-tui xiangqi` (or `--style ascii` for the fallback).
+
+---
+
+_**User (2026-05-06 07:35:56Z)**_
+
+[Image #9] 不錯 (我想把casual當做 default mode [Image #10])
+然後現在q很容易一點到就退出 如果已經進行中 應該多一個確認y/N的環節 避免誤觸
+
+_**User (2026-05-06 07:35:56Z)**_
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/9.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/10.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:17Z)**_
+
+Two changes coming up: casual as default + quit confirmation.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:20Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Picker: "Xiangqi (象棋)" now uses casual rules; add "Xiangqi (strict)" as alternative. CLI: `chess-tui xiangqi` defaults to casual, replace --allow-self-check with --strict. Engine default (RuleSet::xiangqi) stays standard — only TUI defaults shift, so existing tests stay intact.
+
+```text
+Task #40 created successfully: Make casual the default xiangqi mode in TUI
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+When 'q' or Ctrl-C pressed during an Ongoing game with history.len() > 0, open a centered modal "Quit? (y/N)". 'y'/'Y' confirms, anything else cancels. Picker and game-over states quit immediately (no confirm).
+
+```text
+Task #41 created successfully: Quit confirmation when game in progress
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Final gate + commit.
+
+```text
+Task #42 created successfully: Verify, format, clippy, commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:37:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #40 status
+```
+</details></tool-use>
+
+---
+
+_**User (2026-05-06 07:37:41Z)**_
+
+[Request interrupted by user]
+
+_**User (2026-05-06 07:37:57Z)**_
+
+[Image #11] 然後目前暗棋的坐標怪怪的 方便的話也一起fix
+
+_**User (2026-05-06 07:37:57Z)**_
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/11.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 07:38:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:38:55Z)**_
+
+I'll switch to plan mode since the user added another concern. Let me read the existing plan first and then write a fresh one for this batch.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:38:56Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `/Users/daviddwlee84/.claude/plans/magical-honking-book.md`
+
+```text
+1	# Wire chess-tui — first playable GUI surface
+2	
+3	## Context
+4	
+5	Today the only way to play is `chess-cli` (line-oriented REPL — type `play h2e2`, the board reprints). The user wants a real interactive surface so they can actually sit down and play, and they want to evaluate render styles before committing to one.
+6	
+7	`chess-tui` is currently a one-line stub (`clients/chess-tui/src/main.rs` prints "stub"). All the engine work is done — `PlayerView::project(state, observer)` already returns everything a renderer needs (cells, side-to-move, status, legal_moves), and orientation flipping happens entirely client-side.
+8	
+9	User constraints from the latest message:
+10	
+11	- **Render styles** — explore ASCII English vs CJK glyphs vs colored, `args` toggleable.
+12	- **Single-player orientation** — board fixed (Red-up, like cli today is fine).
+13	- **Future networked play** — each player sees own pieces at the bottom (i.e., for Black observer the rank order flips). We won't ship multiplayer in this PR (no `chess-net` yet), but the orientation function takes the observer Side from day one so when `chess-net` lands the renderer Just Works.
+14	
+15	Goal: ship a usable single-player TUI in one PR. ~93 chess-core tests must still pass; clippy/wasm/format gates stay green. No engine changes.
+16	
+17	## Scope
+18	
+19	**In:**
+20	- `chess-tui` binary that boots into a runtime variant picker (or skips it via CLI args, mirroring chess-cli).
+21	- Xiangqi + banqi (with house-rule presets and seed). 三國暗棋 still gated by core PR-2.
+22	- Two render styles via `--style {cjk,ascii}` (default CJK), plus `--no-color` modifier.
+23	- Vim cursor (hjkl), arrow keys, mouse click select, Enter/Space to commit, `u` undo, `q` quit.
+24	- Side panel: variant + side-to-move + status + last-error message + legal-move count.
+25	- Selection highlights legal-destination squares.
+26	- Orientation function `(Square, observer: Side) → (display_row, display_col)` so the network case is a one-line change later.
+27	
+28	**Out:**
+29	- `chess-net` integration (no chess-net yet).
+30	- Reveal-flip animation, move-history scroll panel, piece-move tweening — all P2 follow-ups.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:39:09Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:39:12Z)**_
+
+Now to write the new plan. Four targeted polish fixes — small enough that I can plan from in-conversation knowledge without launching Explore agents.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:02Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# chess-tui polish — casual default, quit confirm, status text, banqi labels
+
+## Context
+
+Four UX paper-cuts surfaced in playtesting:
+
+1. **Casual mode should be the default** in the TUI. The user just learned the casual variant exists and prefers it as the everyday mode; strict self-check enforcement should be the alternative entry, not the default.
+2. **`q` is too easy to hit accidentally** mid-game. Asking `(y/N)` when there's an in-progress game (status `Ongoing` AND at least one move played) prevents losing a 30-move position to a stray keypress. Picker / game-over `q` still quits immediately.
+3. **Status line in the sidebar still shows engine debug formatting** (`Status: Won { winner: Side(0), reason: GeneralCaptured }`). The big game-over banner reads "Winner: Red 紅" correctly, but the redundant Debug-format Status: line undermines the polish.
+4. **Banqi rank / file labels are wrong**: every row label shows `0`, every column shows `a`. The orient layer transposes banqi (4×8 model → 8×4 display), so display-cols correspond to model **ranks** and display-rows correspond to model **files** — but `rank_label` / `file_label_for_col` in `ui.rs` weren't updated for the transpose.
+
+No engine change. All changes are in `chess-tui/`.
+
+## Scope
+
+**In:**
+- TUI default xiangqi mode = casual; new `--strict` flag and "Xiangqi (strict)" picker entry as the alternative. Remove the now-redundant `--allow-self-check` flag.
+- Quit-confirmation modal when game is in-progress (`status == Ongoing && history.len() > 0`); 'y'/'Y' confirms, anything else cancels.
+- Human-readable Status line in the sidebar (`"Red 紅 wins — Checkmate (將死)"` instead of the Debug repr). Side-to-move row hidden when game is over (the banner conveys it).
+- Banqi label fix: rank-label callsite returns the file letter (`a`–`d`) for banqi; file-header callsite returns rank digits (`0`–`7`). Xiangqi behaviour unchanged.
+
+**Out:**
+- Engine-level default change. `RuleSet::xiangqi()` stays as standard rules; the TUI just calls `RuleSet::xiangqi_casual()` for its default. Existing `tests/casual_xiangqi.rs` continues to validate the strict default at the engine layer.
+- `n` (new game) confirmation. Only `q` gets a confirm; the user can ask later if `n` mis-clicks too.
+- Other polish (move history panel, captured tray, etc.) — those are P2 in `TODO.md`.
+
+## Critical files
+
+- `clients/chess-tui/src/main.rs` — `Cli` arg struct: replace `--allow-self-check` with `--strict`; flip the `RuleSet::xiangqi()` vs `RuleSet::xiangqi_casual()` selection.
+- `clients/chess-tui/src/app.rs` — `PickerEntry`: rename `Xiangqi` to map to `xiangqi_casual()`, rename `XiangqiCasual` → `XiangqiStrict` mapping to `xiangqi()`. New field `AppState::quit_confirm_open: bool`. New action `Action::ConfirmYes` / `Action::ConfirmNo` (or pass a flag to `from_key`). Dispatch: when `Action::Quit` fires and the game is in-progress, set `quit_confirm_open = true` instead of `should_quit = true`.
+- `clients/chess-tui/src/input.rs` — Add `quit_confirm: bool` parameter to `from_key`. When true, route 'y'/'Y' → `ConfirmYes`, anything else → `ConfirmNo`. Skip the regular keymap.
+- `clients/chess-tui/src/ui.rs`:
+  - Banqi labels: `rank_label` returns file letter for banqi; `file_label_for_col` returns rank digit for banqi.
+  - Status line: new `format_status_short(&GameStatus, style)` helper replaces the `{:?}` debug. Side-to-move row gated on `Ongoing`.
+  - Variant label: `Xiangqi (象棋)` for casual (default); `Xiangqi (象棋, strict)` when `xiangqi_allow_self_check == false`.
+  - New `draw_quit_confirm_overlay` similar to `draw_rules_overlay`; shown when `app.quit_confirm_open`.
+- `CLAUDE.md` — small update on TUI defaults.
+
+## Implementation notes
+
+### Casual default
+
+In `app.rs`:
+\```rust
+PickerEntry::Xiangqi          => Some(RuleSet::xiangqi_casual()),  // was xiangqi()
+PickerEntry::XiangqiStrict    => Some(RuleSet::xiangqi()),         // renamed from XiangqiCasual
+\```
+Picker label order: casual entry first ("Xiangqi (象棋)"), strict second ("Xiangqi (象棋, strict — standard self-check rules)").
+
+In `main.rs`:
+\```rust
+Banqi { ... },
+Xiangqi { #[arg(long)] strict: bool },   // was allow_self_check
+\```
+Construction:
+\```rust
+let rules = if strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+\```
+
+### Quit confirm
+
+Plumb a `quit_confirm: bool` into `from_key`. The dialog hijacks input:
+- `KeyCode::Char('y') | KeyCode::Char('Y')` → `Action::ConfirmYes`
+- Anything else → `Action::ConfirmNo`
+
+`AppState::dispatch`:
+\```rust
+Action::ConfirmYes => self.should_quit = true,
+Action::ConfirmNo  => self.quit_confirm_open = false,
+Action::Quit => {
+    if let Screen::Game(g) = &self.screen {
+        if matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty() {
+            self.quit_confirm_open = true;
+            return;
+        }
+    }
+    self.should_quit = true;
+}
+\```
+
+In `main.rs::run_loop`, pass `app.quit_confirm_open` into `from_key`.
+
+UI: small modal, ~40 cols × 5 rows centered, similar shape to `draw_rules_overlay` but tighter:
+\```
+┌ Quit? ────────────────────────┐
+│                               │
+│  End the in-progress game?    │
+│  Press y to quit, n/Esc       │
+│  to keep playing.             │
+│                               │
+└───────────────────────────────┘
+\```
+
+### Status humanization
+
+\```rust
+fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+    match status {
+        GameStatus::Ongoing => ("Ongoing".into(), Color::Gray),
+        GameStatus::Won { winner, reason } => (
+            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+            side_color(winner),
+        ),
+        GameStatus::Drawn { reason } => (format!("Draw — {:?}", reason), Color::Gray),
+    }
+}
+\```
+Reuse the existing `win_reason_label` and `side_color`.
+
+Sidebar: change the `Status:` line to read from this helper. Also gate the "Side to move:" line on `matches!(status, GameStatus::Ongoing)`.
+
+### Banqi labels
+
+\```rust
+fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+    let sq = orient::square_at_display(display_row, 0, observer, shape);
+    let model_w = shape.dimensions().0;
+    match (shape, sq) {
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            let f = (sq.0 % model_w as u16) as u8;
+            format!(" {} ", (b'a' + f) as char)
+        }
+        (_, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            format!(" {} ", r)
+        }
+        _ => "   ".to_string(),
+    }
+}
+
+fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+    let sq = orient::square_at_display(0, col, observer, shape);
+    match (shape, sq) {
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            (b'0' + r) as char
+        }
+        (_, Some(sq)) => {
+            let f = (sq.0 % model_w as u16) as u8;
+            (b'a' + f) as char
+        }
+        _ => '?',
+    }
+}
+\```
+Xiangqi path is unchanged. Banqi displays as `a..d` rows × `0..7` cols.
+
+## Verification
+
+1. `cargo run -p chess-tui` → picker shows "Xiangqi (象棋)" first (casual). Selecting it goes straight into casual mode. Variant header reads `Xiangqi (象棋)` (no `, casual` suffix).
+2. `cargo run -p chess-tui xiangqi` → casual by default.
+3. `cargo run -p chess-tui xiangqi --strict` → strict; sidebar reads `Xiangqi (象棋, strict)`.
+4. Make a couple of moves, press `q` → quit confirm pops up, `n` cancels, `y` exits.
+5. From the variant picker (no game yet), `q` quits immediately (no confirm).
+6. After a game ends (`Won`/`Drawn`), `q` quits immediately.
+7. Sidebar `Status:` after checkmate reads `Red 紅 wins — Checkmate (將死)` (or similar), not Debug repr. Side-to-move row absent post-game.
+8. `cargo run -p chess-tui banqi --preset taiwan --seed 42` → label rows on the left read `a b c d`, file headers read `0 1 2 3 4 5 6 7`. Selected: still encodes as `a3`/`d7` etc. (no engine change).
+9. `cargo fmt --check` ✓ · `cargo clippy --workspace --all-targets -- -D warnings` ✓ · `cargo test --workspace` ✓ (existing 73 lib + 4 casual + 16 integration + 9 chess-tui tests intact). No new tests required — the changes are pure presentation/dispatch.
+10. `cargo build --target wasm32-unknown-unknown -p chess-core` ✓ (no engine touch).
+
+```
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:26Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/daviddwlee84/.claude/plans/magical-honking-book.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# chess-tui polish — casual default, quit confirm, status text, banqi labels
+
+## Context
+
+Four UX paper-cuts surfaced in playtesting:
+
+1. **Casual mode should be the default** in the TUI. The user just learned the casual variant exists and prefers it as the everyday mode; strict self-check enforcement should be the alternative entry, not the default.
+2. **`q` is too easy to hit accidentally** mid-game. Asking `(y/N)` when there's an in-progress game (status `Ongoing` AND at least one move played) prevents losing a 30-move position to a stray keypress. Picker / game-over `q` still quits immediately.
+3. **Status line in the sidebar still shows engine debug formatting** (`Status: Won { winner: Side(0), reason: GeneralCaptured }`). The big game-over banner reads "Winner: Red 紅" correctly, but the redundant Debug-format Status: line undermines the polish.
+4. **Banqi rank / file labels are wrong**: every row label shows `0`, every column shows `a`. The orient layer transposes banqi (4×8 model → 8×4 display), so display-cols correspond to model **ranks** and display-rows correspond to model **files** — but `rank_label` / `file_label_for_col` in `ui.rs` weren't updated for the transpose.
+
+No engine change. All changes are in `chess-tui/`.
+
+## Scope
+
+**In:**
+- TUI default xiangqi mode = casual; new `--strict` flag and "Xiangqi (strict)" picker entry as the alternative. Remove the now-redundant `--allow-self-check` flag.
+- Quit-confirmation modal when game is in-progress (`status == Ongoing && history.len() > 0`); 'y'/'Y' confirms, anything else cancels.
+- Human-readable Status line in the sidebar (`"Red 紅 wins — Checkmate (將死)"` instead of the Debug repr). Side-to-move row hidden when game is over (the banner conveys it).
+- Banqi label fix: rank-label callsite returns the file letter (`a`–`d`) for banqi; file-header callsite returns rank digits (`0`–`7`). Xiangqi behaviour unchanged.
+
+**Out:**
+- Engine-level default change. `RuleSet::xiangqi()` stays as standard rules; the TUI just calls `RuleSet::xiangqi_casual()` for its default. Existing `tests/casual_xiangqi.rs` continues to validate the strict default at the engine layer.
+- `n` (new game) confirmation. Only `q` gets a confirm; the user can ask later if `n` mis-clicks too.
+- Other polish (move history panel, captured tray, etc.) — those are P2 in `TODO.md`.
+
+## Critical files
+
+- `clients/chess-tui/src/main.rs` — `Cli` arg struct: replace `--allow-self-check` with `--strict`; flip the `RuleSet::xiangqi()` vs `RuleSet::xiangqi_casual()` selection.
+- `clients/chess-tui/src/app.rs` — `PickerEntry`: rename `Xiangqi` to map to `xiangqi_casual()`, rename `XiangqiCasual` → `XiangqiStrict` mapping to `xiangqi()`. New field `AppState::quit_confirm_open: bool`. New action `Action::ConfirmYes` / `Action::ConfirmNo` (or pass a flag to `from_key`). Dispatch: when `Action::Quit` fires and the game is in-progress, set `quit_confirm_open = true` instead of `should_quit = true`.
+- `clients/chess-tui/src/input.rs` — Add `quit_confirm: bool` parameter to `from_key`. When true, route 'y'/'Y' → `ConfirmYes`, anything else → `ConfirmNo`. Skip the regular keymap.
+- `clients/chess-tui/src/ui.rs`:
+  - Banqi labels: `rank_label` returns file letter for banqi; `file_label_for_col` returns rank digit for banqi.
+  - Status line: new `format_status_short(&GameStatus, style)` helper replaces the `{:?}` debug. Side-to-move row gated on `Ongoing`.
+  - Variant label: `Xiangqi (象棋)` for casual (default); `Xiangqi (象棋, strict)` when `xiangqi_allow_self_check == false`.
+  - New `draw_quit_confirm_overlay` similar to `draw_rules_overlay`; shown when `app.quit_confirm_open`.
+- `CLAUDE.md` — small update on TUI defaults.
+
+## Implementation notes
+
+### Casual default
+
+In `app.rs`:
+```rust
+PickerEntry::Xiangqi          => Some(RuleSet::xiangqi_casual()),  // was xiangqi()
+PickerEntry::XiangqiStrict    => Some(RuleSet::xiangqi()),         // renamed from XiangqiCasual
+```
+Picker label order: casual entry first ("Xiangqi (象棋)"), strict second ("Xiangqi (象棋, strict — standard self-check rules)").
+
+In `main.rs`:
+```rust
+Banqi { ... },
+Xiangqi { #[arg(long)] strict: bool },   // was allow_self_check
+```
+Construction:
+```rust
+let rules = if strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+```
+
+### Quit confirm
+
+Plumb a `quit_confirm: bool` into `from_key`. The dialog hijacks input:
+- `KeyCode::Char('y') | KeyCode::Char('Y')` → `Action::ConfirmYes`
+- Anything else → `Action::ConfirmNo`
+
+`AppState::dispatch`:
+```rust
+Action::ConfirmYes => self.should_quit = true,
+Action::ConfirmNo  => self.quit_confirm_open = false,
+Action::Quit => {
+    if let Screen::Game(g) = &self.screen {
+        if matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty() {
+            self.quit_confirm_open = true;
+            return;
+        }
+    }
+    self.should_quit = true;
+}
+```
+
+In `main.rs::run_loop`, pass `app.quit_confirm_open` into `from_key`.
+
+UI: small modal, ~40 cols × 5 rows centered, similar shape to `draw_rules_overlay` but tighter:
+```
+┌ Quit? ────────────────────────┐
+│                               │
+│  End the in-progress game?    │
+│  Press y to quit, n/Esc       │
+│  to keep playing.             │
+│                               │
+└───────────────────────────────┘
+```
+
+### Status humanization
+
+```rust
+fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+    match status {
+        GameStatus::Ongoing => ("Ongoing".into(), Color::Gray),
+        GameStatus::Won { winner, reason } => (
+            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+            side_color(winner),
+        ),
+        GameStatus::Drawn { reason } => (format!("Draw — {:?}", reason), Color::Gray),
+    }
+}
+```
+Reuse the existing `win_reason_label` and `side_color`.
+
+Sidebar: change the `Status:` line to read from this helper. Also gate the "Side to move:" line on `matches!(status, GameStatus::Ongoing)`.
+
+### Banqi labels
+
+```rust
+fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+    let sq = orient::square_at_display(display_row, 0, observer, shape);
+    let model_w = shape.dimensions().0;
+    match (shape, sq) {
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            let f = (sq.0 % model_w as u16) as u8;
+            format!(" {} ", (b'a' + f) as char)
+        }
+        (_, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            format!(" {} ", r)
+        }
+        _ => "   ".to_string(),
+    }
+}
+
+fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+    let sq = orient::square_at_display(0, col, observer, shape);
+    match (shape, sq) {
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            (b'0' + r) as char
+        }
+        (_, Some(sq)) => {
+            let f = (sq.0 % model_w as u16) as u8;
+            (b'a' + f) as char
+        }
+        _ => '?',
+    }
+}
+```
+Xiangqi path is unchanged. Banqi displays as `a..d` rows × `0..7` cols.
+
+## Verification
+
+1. `cargo run -p chess-tui` → picker shows "Xiangqi (象棋)" first (casual). Selecting it goes straight into casual mode. Variant header reads `Xiangqi (象棋)` (no `, casual` suffix).
+2. `cargo run -p chess-tui xiangqi` → casual by default.
+3. `cargo run -p chess-tui xiangqi --strict` → strict; sidebar reads `Xiangqi (象棋, strict)`.
+4. Make a couple of moves, press `q` → quit confirm pops up, `n` cancels, `y` exits.
+5. From the variant picker (no game yet), `q` quits immediately (no confirm).
+6. After a game ends (`Won`/`Drawn`), `q` quits immediately.
+7. Sidebar `Status:` after checkmate reads `Red 紅 wins — Checkmate (將死)` (or similar), not Debug repr. Side-to-move row absent post-game.
+8. `cargo run -p chess-tui banqi --preset taiwan --seed 42` → label rows on the left read `a b c d`, file headers read `0 1 2 3 4 5 6 7`. Selected: still encodes as `a3`/`d7` etc. (no engine change).
+9. `cargo fmt --check` ✓ · `cargo clippy --workspace --all-targets -- -D warnings` ✓ · `cargo test --workspace` ✓ (existing 73 lib + 4 casual + 16 integration + 9 chess-tui tests intact). No new tests required — the changes are pure presentation/dispatch.
+10. `cargo build --target wasm32-unknown-unknown -p chess-core` ✓ (no engine touch).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:32Z)**_
+
+Plan approved. Already have task tracking set up — let me clean up and add the missing banqi-labels + status-humanize tasks.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:35Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Replace `format!("{:?}", view.status)` with format_status_short() returning a colored human-readable string. Hide the Side-to-move row when status != Ongoing.
+
+```text
+Task #43 created successfully: Humanize sidebar Status line + hide side-to-move post-game
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:36Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+rank_label returns file letters (a-d) for banqi rows; file_label_for_col returns rank digits (0-7) for banqi cols. Xiangqi unchanged.
+
+```text
+Task #44 created successfully: Fix banqi rank/file label transpose
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:41Z)**_
+
+Starting with the casual default — touches main.rs + app.rs + ui.rs variant label.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:46Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:40:58Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:03Z)**_
+
+Now picker entries in app.rs:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:23Z)**_
+
+Now the variant label in ui.rs sidebar — flip it so casual is unmarked, strict is suffixed:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:28Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:36Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #40 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:36Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #41 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:44Z)**_
+
+Now the quit confirmation. Update Action enum + from_key + AppState + dispatch + render overlay.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:41:59Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:04Z)**_
+
+Now AppState field + dispatch logic:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:27Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:33Z)**_
+
+Now dispatch logic — quit confirm gating:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:40Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:48Z)**_
+
+Now update main.rs to thread `quit_confirm_open` into `from_key`:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:57Z)**_
+
+Now ui.rs — add the quit confirm overlay, status humanization, banqi labels.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:42:59Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:05Z)**_
+
+Now banqi label fix — replace `rank_label` and `file_label_for_col`:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:25Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #44 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:25Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #43 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:31Z)**_
+
+Now status humanization. Replace the Debug-format Status line and gate Side-to-move on Ongoing:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:32Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+449	        let label = file_label_for_col(display_col, w, shape, observer);
+450	        s.push(label);
+451	        if display_col + 1 < cols {
+452	            s.push_str("   ");
+453	        } else {
+454	            s.push(' '); // trailing pad
+455	        }
+456	    }
+457	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+458	}
+459	
+460	fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+461	    let sq = orient::square_at_display(0, col, observer, shape);
+462	    match (shape, sq) {
+463	        // Banqi displays transposed (8 cols × 4 rows). Display columns
+464	        // therefore correspond to model RANKS (0–7), and rows to files (a–d).
+465	        (BoardShape::Banqi4x8, Some(sq)) => {
+466	            let r = (sq.0 / model_w as u16) as u8;
+467	            (b'0' + r) as char
+468	        }
+469	        (_, Some(sq)) => {
+470	            let f = (sq.0 % model_w as u16) as u8;
+471	            (b'a' + f) as char
+472	        }
+473	        _ => '?',
+474	    }
+475	}
+476	
+477	fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+478	    let sq = orient::square_at_display(display_row, 0, observer, shape);
+479	    let model_w = shape.dimensions().0;
+480	    match (shape, sq) {
+481	        (BoardShape::Banqi4x8, Some(sq)) => {
+482	            // Banqi rows = model files; show as a–d.
+483	            let f = (sq.0 % model_w as u16) as u8;
+484	            format!(" {} ", (b'a' + f) as char)
+485	        }
+486	        (_, Some(sq)) => {
+487	            let r = (sq.0 / model_w as u16) as u8;
+488	            format!(" {} ", r)
+489	        }
+490	        _ => "   ".to_string(),
+491	    }
+492	}
+493	
+494	fn side_color(side: Side) -> Color {
+495	    match side {
+496	        Side::RED => Color::Red,
+497	        Side::BLACK => Color::White,
+498	        _ => Color::Green,
+499	    }
+500	}
+501	
+502	fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
+503	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+504	    let inner = block.inner(area);
+505	    frame.render_widget(block, area);
+506	
+507	    let view = PlayerView::project(&g.state, g.state.side_to_move);
+508	    let mut lines: Vec<Line> = Vec::new();
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:40Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+510	    // Game-over banner (takes priority).
+511	    if let Some(banner) = game_over_banner(&view.status, style) {
+512	        for l in banner {
+513	            lines.push(l);
+514	        }
+515	        lines.push(Line::from(""));
+516	    }
+517	
+518	    let variant_label = match view.shape {
+519	        BoardShape::Xiangqi9x10 => {
+520	            // Casual is the TUI default; strict is the alternative.
+521	            if g.state.rules.xiangqi_allow_self_check {
+522	                "Xiangqi (象棋)"
+523	            } else {
+524	                "Xiangqi (象棋, strict)"
+525	            }
+526	        }
+527	        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+528	        BoardShape::ThreeKingdom => "三國暗棋",
+529	        BoardShape::Custom { .. } => "Custom",
+530	    };
+531	    lines.push(line_label_value("Variant:", variant_label));
+532	
+533	    let stm_color = side_color(view.side_to_move);
+534	    lines.push(Line::from(vec![
+535	        Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+536	        Span::raw(" "),
+537	        Span::styled(
+538	            glyph::side_name(view.side_to_move, style),
+539	            TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+540	        ),
+541	    ]));
+542	
+543	    if matches!(view.shape, BoardShape::Xiangqi9x10)
+544	        && g.state.is_in_check(view.side_to_move)
+545	        && matches!(view.status, GameStatus::Ongoing)
+546	    {
+547	        lines.push(Line::from(Span::styled(
+548	            "  ⚠ CHECK 將軍 — your general is under attack",
+549	            TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+550	        )));
+551	    }
+552	
+553	    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+554	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+555	    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+556	
+557	    let selected_label = match g.selected {
+558	        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+559	        None => "—".into(),
+560	    };
+561	    lines.push(line_label_value("Selected:", &selected_label));
+562	
+563	    lines.push(Line::from(""));
+564	    if let Some(msg) = &g.last_msg {
+565	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+566	    }
+567	
+568	    if help_open {
+569	        lines.push(Line::from(""));
+570	        lines.push(Line::from(Span::styled(
+571	            "Help",
+572	            TuiStyle::default().add_modifier(Modifier::BOLD),
+573	        )));
+574	        for ln in HELP_LINES {
+575	            lines.push(Line::from(Span::raw(*ln)));
+576	        }
+577	    } else {
+578	        lines.push(Line::from(""));
+579	        lines.push(Line::from(Span::styled(
+580	            "?=help, r=rules, n=new, q=quit",
+581	            TuiStyle::default().fg(Color::DarkGray),
+582	        )));
+583	    }
+584	
+585	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+586	    frame.render_widget(para, inner);
+587	}
+588	
+589	fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+590	    match status {
+591	        GameStatus::Ongoing => None,
+592	        GameStatus::Won { winner, reason } => {
+593	            let header = Line::from(Span::styled(
+594	                "★  GAME OVER  ★",
+595	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+596	            ));
+597	            let winner_line = Line::from(vec![
+598	                Span::raw("Winner: "),
+599	                Span::styled(
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:43:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:00Z)**_
+
+Now add `format_status_short` helper and the `draw_quit_confirm_overlay`. Let me find a good place:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find insertion points
+
+`grep -n "^fn win_reason_label\|^fn draw_rules_overlay" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs`
+
+```text
+646:fn win_reason_label(reason: WinReason) -> &'static str {
+665:fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:08Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+645	
+646	fn win_reason_label(reason: WinReason) -> &'static str {
+647	    match reason {
+648	        WinReason::Checkmate => "Checkmate (將死)",
+649	        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+650	        WinReason::Resignation => "Resignation",
+651	        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+652	        WinReason::Timeout => "Time forfeit",
+653	        WinReason::GeneralCaptured => "General captured (將被吃)",
+654	    }
+655	}
+656	
+657	fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+658	    Line::from(vec![
+659	        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+660	        Span::raw(" "),
+661	        Span::raw(value.to_string()),
+662	    ])
+663	}
+664	
+665	fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+666	    // Center an overlay roughly 70 cols × 24 rows over the screen.
+667	    let pad_x = area.width.saturating_sub(72) / 2;
+668	    let pad_y = area.height.saturating_sub(26) / 2;
+669	    let overlay = Rect {
+670	        x: area.x + pad_x,
+671	        y: area.y + pad_y,
+672	        width: area.width.min(72),
+673	        height: area.height.min(26),
+674	    };
+675	    frame.render_widget(Clear, overlay);
+676	    let block =
+677	        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+678	    let lines: Vec<Line> = RULES_LINES
+679	        .iter()
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:25Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:30Z)**_
+
+Now add the quit-confirm overlay near `draw_rules_overlay`:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:31Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+680	    // Center an overlay roughly 70 cols × 24 rows over the screen.
+681	    let pad_x = area.width.saturating_sub(72) / 2;
+682	    let pad_y = area.height.saturating_sub(26) / 2;
+683	    let overlay = Rect {
+684	        x: area.x + pad_x,
+685	        y: area.y + pad_y,
+686	        width: area.width.min(72),
+687	        height: area.height.min(26),
+688	    };
+689	    frame.render_widget(Clear, overlay);
+690	    let block =
+691	        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+692	    let lines: Vec<Line> = RULES_LINES
+693	        .iter()
+694	        .map(|(s, accent)| {
+695	            let style = if *accent {
+696	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+697	            } else {
+698	                TuiStyle::default()
+699	            };
+700	            Line::from(Span::styled(*s, style))
+701	        })
+702	        .collect();
+703	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+704	    frame.render_widget(para, overlay);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:42Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+704	    frame.render_widget(para, overlay);
+705	}
+706	
+707	const HELP_LINES: &[&str] = &[
+708	    "h j k l / ←↓↑→  move cursor",
+709	    "Enter / Space   select / commit",
+710	    "Esc             cancel selection",
+711	    "u               undo last move",
+712	    "f               flip (banqi)",
+713	    "n               new game (back to picker)",
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:44:53Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Compile check
+
+`cargo check -p chess-tui 2>&1 | tail -25`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.68s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace clippy
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.54s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format + tests
+
+`cargo fmt --all && cargo fmt --check 2>&1 | tail -3 && echo "===TESTS===" && cargo test --workspace 2>&1 | grep "test result" | head -25`
+
+```text
+===TESTS===
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[This command modified 1 file you've previously read: clients/chess-tui/src/ui.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:32Z)**_
+
+Update CLAUDE.md briefly:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:45:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:04Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:09Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #41 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:10Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #43 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:10Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #42 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify --strict flag visible
+
+`cargo build -p chess-tui 2>&1 | tail -3 && ./target/debug/chess-tui xiangqi --help 2>&1`
+
+```text
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.41s
+Xiangqi (9×10). Casual rules by default — moves that leave your own general capturable are allowed; the game ends when the general is actually captured. Pass `--strict` for the standard self-check filter
+
+Usage: chess-tui xiangqi [OPTIONS]
+
+Options:
+      --strict  Strict mode: standard rules. Moves that would leave your own general in check are rejected
+  -h, --help    Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM gate
+
+`cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Pre-commit overview
+
+`git status && echo "===" && git diff --stat`
+
+```text
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+	modified:   CLAUDE.md
+	modified:   clients/chess-tui/src/app.rs
+	modified:   clients/chess-tui/src/input.rs
+	modified:   clients/chess-tui/src/main.rs
+	modified:   clients/chess-tui/src/ui.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+===
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 1288 ++++++++++++++++++++
+ CLAUDE.md                                          |    6 +-
+ clients/chess-tui/src/app.rs                       |   39 +-
+ clients/chess-tui/src/input.rs                     |   13 +-
+ clients/chess-tui/src/main.rs                      |   20 +-
+ clients/chess-tui/src/ui.rs                        |  132 +-
+ 6 files changed, 1450 insertions(+), 48 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:46:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit polish batch
+
+```bash
+git add CLAUDE.md clients/chess-tui/src/app.rs clients/chess-tui/src/input.rs clients/chess-tui/src/main.rs clients/chess-tui/src/ui.rs && git commit -m "$(cat <<'EOF'
+feat(tui): casual default + quit confirm + status humanize + banqi labels
+
+Four UX paper-cuts from the latest playtest round.
+
+1. Casual is now the default xiangqi mode in the TUI.
+   - Picker entry "Xiangqi (象棋)" maps to RuleSet::xiangqi_casual();
+     "Xiangqi (象棋, strict — must defend check)" is the alternative.
+   - CLI: `chess-tui xiangqi` defaults to casual; `--strict` flips to
+     standard rules. `--allow-self-check` removed (now redundant).
+   - Sidebar variant header: "Xiangqi (象棋)" for casual (no suffix),
+     "Xiangqi (象棋, strict)" for strict.
+   - Engine RuleSet::xiangqi() unchanged — still strict by default at
+     the engine layer, so existing tests + snapshots stay correct. Only
+     TUI selection logic changed.
+
+2. Quit confirmation when game in progress.
+   - New AppState::quit_confirm_open + Action::ConfirmYes/No.
+   - When 'q' or Ctrl-C fires during an Ongoing game with at least one
+     move played, opens a small centered modal "End the in-progress
+     game? Press y to quit, anything else to keep playing."
+   - 'y'/'Y' confirms; any other key cancels.
+   - Picker / game-over states: 'q' quits immediately (no prompt).
+
+3. Sidebar Status humanization.
+   - format_status_short() replaces format!("{:?}", view.status). Reads
+     "Red 紅 wins — Checkmate (將死)" instead of leaking Side(0) /
+     enum-variant noise.
+   - Side-to-move row hidden once status != Ongoing (the game-over
+     banner already names the winner).
+
+4. Banqi rank/file labels fixed.
+   - Banqi displays transposed (4×8 model → 8×4 display), so the row
+     labels need to show file letters a–d and the column header rank
+     digits 0–7 — not the other way around. rank_label and
+     file_label_for_col are now shape-aware. Xiangqi unchanged.
+
+Verification: cargo fmt / clippy / test --workspace / wasm32 chess-core
+all green; --strict help text visible; existing 102 tests pass.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline -5
+```
+
+```text
+[main b5cc829] feat(tui): casual default + quit confirm + status humanize + banqi labels
+ 5 files changed, 162 insertions(+), 48 deletions(-)
+b5cc829 feat(tui): casual default + quit confirm + status humanize + banqi labels
+a00ae98 chore: bundle SpecStory transcript for intersection-board PR
+515bc6c feat(tui): intersection-based board (pieces on grid crossings)
+cf731dc chore: bundle SpecStory transcript for board/UX polish PR
+f276962 feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+```
+</details></tool-use>
