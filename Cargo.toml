@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/chess-core",
+    "crates/chess-engine",
+    "crates/chess-net",
+    "crates/chess-ai",
+    "clients/chess-cli",
+    "clients/chess-tui",
+    "clients/chess-web",
+    "xtask",
+]
+default-members = ["crates/chess-core", "clients/chess-cli"]
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2021"
+rust-version = "1.84"
+license      = "MIT OR Apache-2.0"
+authors      = ["Da-Wei Lee <trader3206@gmail.com>"]
+repository   = "https://github.com/daviddwlee84/chinese-chess"
+
+[workspace.dependencies]
+serde       = { version = "1.0.217", features = ["derive"] }
+serde_json  = "1.0.135"
+thiserror   = "2.0.11"
+smallvec    = { version = "1.13", features = ["serde", "union", "const_generics"] }
+bitflags    = { version = "2.6", features = ["serde"] }
+rand        = "0.8.5"
+rand_chacha = "0.3.1"
+tracing     = "0.1.41"
+arrayvec    = "0.7.6"
+
+# Dev/test
+proptest          = "1.6"
+insta             = { version = "1.41", features = ["yaml", "json"] }
+pretty_assertions = "1.4"
+
+[profile.release]
+lto           = "thin"
+codegen-units = 1
+panic         = "abort"
+
+[profile.test]
+opt-level = 1

@@ -1,0 +1,31 @@
+[package]
+name              = "chess-core"
+description       = "Pure game logic for xiangqi, banqi, and variants. Native + WASM."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[dependencies]
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+smallvec    = { workspace = true }
+bitflags    = { workspace = true }
+rand        = { workspace = true }
+rand_chacha = { workspace = true }
+tracing     = { workspace = true }
+arrayvec    = { workspace = true }
+
+# Browser-WASM bridge for OS randomness. Native builds don't need this;
+# pure WASI builds would also skip it. Required only for wasm32 + browser
+# (Leptos / Yew clients), which is our intended web target.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+serde_json        = { workspace = true }
+proptest          = { workspace = true }
+insta             = { workspace = true }
+pretty_assertions = { workspace = true }

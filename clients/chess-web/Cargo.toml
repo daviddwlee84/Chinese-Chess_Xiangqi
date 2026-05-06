@@ -1,0 +1,15 @@
+[package]
+name        = "chess-web"
+description = "Leptos + WASM frontend. Stub for a follow-up PR."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }

@@ -1,0 +1,16 @@
+[package]
+name        = "chess-cli"
+description = "REPL test harness for chess-core."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[[bin]]
+name = "chess-cli"
+path = "src/main.rs"
+
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }

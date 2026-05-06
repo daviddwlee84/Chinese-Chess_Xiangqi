@@ -1,0 +1,16 @@
+[package]
+name        = "chess-tui"
+description = "ratatui frontend. Stub for a follow-up PR."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[[bin]]
+name = "chess-tui"
+path = "src/main.rs"
+
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }
