@@ -41,8 +41,8 @@ cargo run -p chess-cli
 
 # Interactive TUI (default render: CJK glyphs + color)
 cargo run -p chess-tui                                    # variant picker
-cargo run -p chess-tui -- xiangqi                         # skip picker
-cargo run -p chess-tui -- xiangqi --allow-self-check      # casual mode
+cargo run -p chess-tui -- xiangqi                         # casual mode (default)
+cargo run -p chess-tui -- xiangqi --strict                # standard self-check rules
 cargo run -p chess-tui -- banqi --preset taiwan --seed 42
 cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
@@ -94,7 +94,7 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
 
-- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize.
+- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
 
 ## Where to put new work
 

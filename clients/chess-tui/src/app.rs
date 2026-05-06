@@ -16,7 +16,7 @@ use crate::orient;
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum PickerEntry {
     Xiangqi,
-    XiangqiCasual,
+    XiangqiStrict,
     BanqiPurist,
     BanqiTaiwan,
     BanqiAggressive,
@@ -26,7 +26,7 @@ pub enum PickerEntry {
 impl PickerEntry {
     pub const ALL: [PickerEntry; 6] = [
         PickerEntry::Xiangqi,
-        PickerEntry::XiangqiCasual,
+        PickerEntry::XiangqiStrict,
         PickerEntry::BanqiPurist,
         PickerEntry::BanqiTaiwan,
         PickerEntry::BanqiAggressive,
@@ -36,7 +36,7 @@ impl PickerEntry {
     pub fn label(self) -> &'static str {
         match self {
             PickerEntry::Xiangqi => "Xiangqi (象棋)",
-            PickerEntry::XiangqiCasual => "Xiangqi (casual — allow self-check, lose by capture)",
+            PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
             PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
             PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
             PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
@@ -46,8 +46,10 @@ impl PickerEntry {
 
     pub fn rules(self) -> Option<RuleSet> {
         match self {
-            PickerEntry::Xiangqi => Some(RuleSet::xiangqi()),
-            PickerEntry::XiangqiCasual => Some(RuleSet::xiangqi_casual()),
+            // Default xiangqi is casual: more permissive, you lose by general
+            // capture. Strict (standard rules) is one row down.
+            PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
+            PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
             PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
             PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
             PickerEntry::BanqiAggressive => {
@@ -81,6 +83,10 @@ pub struct AppState {
     pub observer: Side,
     pub help_open: bool,
     pub rules_open: bool,
+    /// True while the y/N quit-confirm dialog is shown. Set when the user
+    /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
+    /// at least one move played). Picker / game-over `q` skip the prompt.
+    pub quit_confirm_open: bool,
     /// Rect of the board widget last drawn (terminal coords). Used for
     /// mouse-click hit-testing. ui.rs writes this each frame.
     pub board_rect: Option<RectPx>,
@@ -111,6 +117,7 @@ impl AppState {
             observer,
             help_open: false,
             rules_open: false,
+            quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
         }
@@ -136,6 +143,7 @@ impl AppState {
             observer,
             help_open: false,
             rules_open: false,
+            quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
         }
@@ -144,7 +152,18 @@ impl AppState {
     pub fn dispatch(&mut self, action: Action) {
         match action {
             Action::None => {}
-            Action::Quit => self.should_quit = true,
+            Action::ConfirmYes => {
+                self.quit_confirm_open = false;
+                self.should_quit = true;
+            }
+            Action::ConfirmNo => self.quit_confirm_open = false,
+            Action::Quit => {
+                if self.is_game_in_progress() {
+                    self.quit_confirm_open = true;
+                } else {
+                    self.should_quit = true;
+                }
+            }
             Action::HelpToggle => self.help_open = !self.help_open,
             Action::RulesToggle => self.rules_open = !self.rules_open,
             Action::NewGame => {
@@ -158,6 +177,14 @@ impl AppState {
             }
             _ => self.dispatch_game(action),
         }
+    }
+
+    fn is_game_in_progress(&self) -> bool {
+        let Screen::Game(g) = &self.screen else {
+            return false;
+        };
+        matches!(g.state.status, chess_core::state::GameStatus::Ongoing)
+            && !g.state.history.is_empty()
     }
 
     fn dispatch_picker(&mut self, action: Action) {

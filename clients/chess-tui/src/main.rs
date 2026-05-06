@@ -54,12 +54,14 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
-    /// Standard xiangqi (9×10).
+    /// Xiangqi (9×10). Casual rules by default — moves that leave your own
+    /// general capturable are allowed; the game ends when the general is
+    /// actually captured. Pass `--strict` for the standard self-check filter.
     Xiangqi {
-        /// Casual mode: allow moves that leave your own general capturable.
-        /// You lose only when the general is physically captured.
+        /// Strict mode: standard rules. Moves that would leave your own
+        /// general in check are rejected.
         #[arg(long)]
-        allow_self_check: bool,
+        strict: bool,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -109,9 +111,8 @@ fn main() -> Result<()> {
 
     let app = match &cli.cmd {
         None => AppState::new_picker(style, use_color, observer),
-        Some(Cmd::Xiangqi { allow_self_check }) => {
-            let rules =
-                if *allow_self_check { RuleSet::xiangqi_casual() } else { RuleSet::xiangqi() };
+        Some(Cmd::Xiangqi { strict }) => {
+            let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
             AppState::new_game(rules, style, use_color, observer)
         }
         Some(Cmd::Banqi { preset, house, seed }) => {
@@ -188,8 +189,11 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppStat
         }
         if event::poll(Duration::from_millis(200))? {
             let in_picker = matches!(app.screen, app::Screen::Picker(_));
+            let quit_confirm = app.quit_confirm_open;
             let action = match event::read()? {
-                Event::Key(k) if k.kind == event::KeyEventKind::Press => from_key(k, in_picker),
+                Event::Key(k) if k.kind == event::KeyEventKind::Press => {
+                    from_key(k, in_picker, quit_confirm)
+                }
                 Event::Mouse(m) => from_mouse(m),
                 Event::Resize(_, _) => Action::None,
                 _ => Action::None,

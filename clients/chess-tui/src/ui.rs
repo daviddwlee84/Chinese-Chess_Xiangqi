@@ -30,6 +30,9 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
     if app.rules_open {
         draw_rules_overlay(frame, area, app.style);
     }
+    if app.quit_confirm_open {
+        draw_quit_confirm_overlay(frame, area);
+    }
 }
 
 fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
@@ -456,20 +459,36 @@ fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
 
 fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
     let sq = orient::square_at_display(0, col, observer, shape);
-    let f = match sq {
-        Some(sq) => (sq.0 % model_w as u16) as u8,
-        None => col,
-    };
-    (b'a' + f) as char
+    match (shape, sq) {
+        // Banqi displays transposed (8 cols × 4 rows). Display columns
+        // therefore correspond to model RANKS (0–7), and rows to files (a–d).
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            (b'0' + r) as char
+        }
+        (_, Some(sq)) => {
+            let f = (sq.0 % model_w as u16) as u8;
+            (b'a' + f) as char
+        }
+        _ => '?',
+    }
 }
 
 fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
     let sq = orient::square_at_display(display_row, 0, observer, shape);
-    let r = match sq {
-        Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
-        None => display_row,
-    };
-    format!(" {} ", r)
+    let model_w = shape.dimensions().0;
+    match (shape, sq) {
+        (BoardShape::Banqi4x8, Some(sq)) => {
+            // Banqi rows = model files; show as a–d.
+            let f = (sq.0 % model_w as u16) as u8;
+            format!(" {} ", (b'a' + f) as char)
+        }
+        (_, Some(sq)) => {
+            let r = (sq.0 / model_w as u16) as u8;
+            format!(" {} ", r)
+        }
+        _ => "   ".to_string(),
+    }
 }
 
 fn side_color(side: Side) -> Color {
@@ -498,10 +517,11 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
 
     let variant_label = match view.shape {
         BoardShape::Xiangqi9x10 => {
+            // Casual is the TUI default; strict is the alternative.
             if g.state.rules.xiangqi_allow_self_check {
-                "Xiangqi (象棋, casual)"
-            } else {
                 "Xiangqi (象棋)"
+            } else {
+                "Xiangqi (象棋, strict)"
             }
         }
         BoardShape::Banqi4x8 => "Banqi (暗棋)",
@@ -510,27 +530,33 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
     };
     lines.push(line_label_value("Variant:", variant_label));
 
-    let stm_color = side_color(view.side_to_move);
-    lines.push(Line::from(vec![
-        Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
-        Span::raw(" "),
-        Span::styled(
-            glyph::side_name(view.side_to_move, style),
-            TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
-        ),
-    ]));
+    // Side-to-move only makes sense while the game is ongoing; once it's
+    // Won/Drawn the banner above already shows the winner.
+    if matches!(view.status, GameStatus::Ongoing) {
+        let stm_color = side_color(view.side_to_move);
+        lines.push(Line::from(vec![
+            Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+            Span::raw(" "),
+            Span::styled(
+                glyph::side_name(view.side_to_move, style),
+                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+            ),
+        ]));
 
-    if matches!(view.shape, BoardShape::Xiangqi9x10)
-        && g.state.is_in_check(view.side_to_move)
-        && matches!(view.status, GameStatus::Ongoing)
-    {
-        lines.push(Line::from(Span::styled(
-            "  ⚠ CHECK 將軍 — your general is under attack",
-            TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        )));
+        if matches!(view.shape, BoardShape::Xiangqi9x10) && g.state.is_in_check(view.side_to_move) {
+            lines.push(Line::from(Span::styled(
+                "  ⚠ CHECK 將軍 — your general is under attack",
+                TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )));
+        }
     }
 
-    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+    let (status_text, status_color) = format_status_short(view.status, style);
+    lines.push(Line::from(vec![
+        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+    ]));
     lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
     lines.push(line_label_value("History:", &g.state.history.len().to_string()));
 
@@ -626,6 +652,20 @@ fn win_reason_label(reason: WinReason) -> &'static str {
     }
 }
 
+/// Compact, human-readable rendering of `GameStatus` for the sidebar's
+/// `Status:` line. Returns `(text, color)`. Engine `Debug` repr leaks
+/// `Side(0)` etc. and reads as noise to a player.
+fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+    match status {
+        GameStatus::Ongoing => ("Ongoing".to_string(), Color::Gray),
+        GameStatus::Won { winner, reason } => (
+            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+            side_color(winner),
+        ),
+        GameStatus::Drawn { reason } => (format!("Draw — {:?}", reason), Color::Gray),
+    }
+}
+
 fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
     Line::from(vec![
         Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
@@ -658,6 +698,38 @@ fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
             Line::from(Span::styled(*s, style))
         })
         .collect();
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, overlay);
+}
+
+fn draw_quit_confirm_overlay(frame: &mut Frame, area: Rect) {
+    // Small modal centered over the screen.
+    let w = 48u16;
+    let h = 7u16;
+    let pad_x = area.width.saturating_sub(w) / 2;
+    let pad_y = area.height.saturating_sub(h) / 2;
+    let overlay = Rect {
+        x: area.x + pad_x,
+        y: area.y + pad_y,
+        width: area.width.min(w),
+        height: area.height.min(h),
+    };
+    frame.render_widget(Clear, overlay);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Quit? ")
+        .border_style(TuiStyle::default().fg(Color::Yellow));
+    let lines = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "  End the in-progress game?",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "  Press y to quit, anything else to keep playing.",
+            TuiStyle::default().fg(Color::Gray),
+        )),
+    ];
     let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
     frame.render_widget(para, overlay);
 }

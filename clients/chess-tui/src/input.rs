@@ -6,6 +6,10 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
 pub enum Action {
     None,
     Quit,
+    /// Confirm an open quit-confirm dialog (user pressed y/Y).
+    ConfirmYes,
+    /// Cancel an open quit-confirm dialog (user pressed anything else).
+    ConfirmNo,
     HelpToggle,
     RulesToggle,
     NewGame,
@@ -30,7 +34,14 @@ pub enum Action {
     },
 }
 
-pub fn from_key(ev: KeyEvent, in_picker: bool) -> Action {
+pub fn from_key(ev: KeyEvent, in_picker: bool, quit_confirm_open: bool) -> Action {
+    // Quit-confirm dialog hijacks input: y/Y confirms, anything else cancels.
+    if quit_confirm_open {
+        return match ev.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => Action::ConfirmYes,
+            _ => Action::ConfirmNo,
+        };
+    }
     if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
         return Action::Quit;
     }
