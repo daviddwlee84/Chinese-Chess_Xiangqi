@@ -93,8 +93,10 @@ pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
     if parts.len() == 2 {
         // Step / Capture / CannonJump — find unique match by (from, to).
         let to = parts[1];
-        let candidates: Vec<&Move> =
-            legal.iter().filter(|m| m.origin_square() == from && m.to_square() == Some(to)).collect();
+        let candidates: Vec<&Move> = legal
+            .iter()
+            .filter(|m| m.origin_square() == from && m.to_square() == Some(to))
+            .collect();
         match candidates.as_slice() {
             [one] => Ok((*one).clone()),
             [] => Err(CoreError::Illegal("no legal move matches notation")),

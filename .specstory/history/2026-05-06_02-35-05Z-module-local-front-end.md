@@ -12008,3 +12008,2317 @@ The depth-3 perft (`cargo test --release -p chess-core --test xiangqi_perft -- -
 File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:14Z)**_
+
+Now commit CLAUDE.md + specstory together (transcript scanned, no secrets).
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage CLAUDE.md + specstory
+
+`git add CLAUDE.md .specstory/ && git status --short`
+
+```text
+M  .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+A  CLAUDE.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Get parent commit refs for the message
+
+`git log --oneline 2>&1 | head -5`
+
+```text
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check if specstory was committed earlier
+
+`git log --all --oneline -- .specstory/ 2>&1 | head -5`
+
+```text
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See what's staged for specstory
+
+`git diff --cached --stat .specstory/ 2>&1 | tail -10`
+
+```text
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 323 +++++++++++++++++++++
+ 1 file changed, 323 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See files in harness commit
+
+`git show --stat 15b5412 2>&1 | tail -20`
+
+```text
+    - wasm-getrandom-unresolved-imp — getrandom needs the `js` feature for
+      wasm32-unknown-unknown browser builds; non-obvious since native cargo
+      test never trips it. The CI WASM step is what catches it.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+ .specstory/.project.json                           |     5 +
+ .specstory/cli/config.toml                         |    79 +
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 11687 +++++++++++++++++++
+ AGENTS.md                                          |    95 +
+ README.md                                          |    17 +
+ TODO.md                                            |    68 +
+ backlog/README.md                                  |    53 +
+ backlog/chess-ai-search.md                         |    47 +
+ backlog/chess-net-protocol.md                      |    47 +
+ backlog/inbox.md                                   |    13 +
+ backlog/three-kingdoms-banqi.md                    |    49 +
+ pitfalls/README.md                                 |   102 +
+ pitfalls/wasm-getrandom-unresolved-imp.md          |    49 +
+ 13 files changed, 12311 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:50Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:51Z)**_
+
+The harness commit (15b5412) already absorbed the specstory transcript (likely via a hook). The 323 new lines are this turn's additions. Committing CLAUDE.md + the delta together.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit CLAUDE.md + transcript delta
+
+```bash
+git commit -m "$(cat <<'EOF'
+docs: add CLAUDE.md and update transcript
+
+CLAUDE.md gives future Claude Code agents the canonical commands, the
+five locked-in architectural decisions (with one-line ADR pointers), and
+the gotchas worth knowing — particularly that make_move does NOT
+auto-refresh status (would recurse via legality probe), three house
+rules accept the flag but currently no-op, and ThreeKingdomBanqi types
+exist but produce an empty board pending PR 2.
+
+Avoids duplicating README.md, AGENTS.md (workflow), docs/architecture.md
+(tech analysis), or docs/adr/* (decisions); points at them instead.
+
+Also updates the .specstory transcript (323-line delta) covering the
+knowledge-harness setup and CLAUDE.md authoring.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline | head -5
+```
+
+```text
+[main d7258ca] docs: add CLAUDE.md and update transcript
+ 2 files changed, 426 insertions(+)
+ create mode 100644 CLAUDE.md
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:22:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:22:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check reflog for the hash change
+
+`git reflog 2>&1 | head -10`
+
+```text
+d7258ca HEAD@{0}: commit: docs: add CLAUDE.md and update transcript
+15b5412 HEAD@{1}: commit (amend): chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+b986913 HEAD@{2}: commit: chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f HEAD@{3}: commit (initial): chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:22:13Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:22:20Z)**_
+
+A SpecStory hook auto-amended the harness commit to bundle the transcript (per the agent-history-hygiene pattern). Final commit graph:
+
+```
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+
+Each feature commit ships with the transcript section that produced it.
+
+### CLAUDE.md scope (deliberately non-duplicative)
+
+It contains only what's hard to derive elsewhere:
+- **Canonical commands** (build / lint / single-test / WASM / perft) with the `RUSTUP_DIST_SERVER` workaround
+- **Five locked-in architectural calls** with one-line ADR pointers (avoids re-stating the rationale from `docs/adr/`)
+- **Gotchas** — `make_move` doesn't auto-refresh status (would recurse), three deferred house rules accept the flag but no-op, `ThreeKingdomBanqi` types exist but produce empty board, `getrandom` js feature for browser WASM, `SmallVec<[Move; 32]>` spill, perft as canary
+- **Where to put new work** (table mapping kind → directory)
+- **Pre-push checklist** (4 commands CI runs)
+
+It points at — never duplicates — `README.md`, `AGENTS.md`, `docs/architecture.md`, `docs/adr/*`, `docs/rules/*`, `TODO.md`, `pitfalls/*`.
+
+---
+
+_**User (2026-05-06 05:25:41Z)**_
+
+我想了解 目前的實現來說 可以做到什麼程度的遊玩？(比如目前支援了哪些game rules & UI)
+
+然後把計時器、悔棋 機制加入Todo
+
+然後我們的unit test都有哪些？(是不是可以自定殘局然後驗證獲勝邏輯等等？)
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 05:26:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:26:49Z)**_
+
+我先把計時器跟悔棋落到 TODO，然後再回答可玩程度與測試問題。
+
+_**Agent (claude-opus-4-7 2026-05-06 05:26:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Add timer TODO
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/add-todo.sh --priority P2 --effort M --title "Time controls (計時器)" --description "Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView." 2>&1 | tail -3`
+
+```text
+Added to ## P2: - [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:26:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Add 悔棋 TODO
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/add-todo.sh --priority P2 --effort S --title "Takeback (悔棋) request/approve protocol" --description "Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists." 2>&1 | tail -3`
+
+```text
+Added to ## P2: - [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:27:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Add endgame tests TODO
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/add-todo.sh --priority P1 --effort S --title "End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress)" --description "Current tests verify is_in_check, perft, and house-rule generation but no test asserts refresh_status sets GameStatus::Won { reason: Checkmate/Stalemate/OnlyOneSideHasPieces } from a hand-crafted position. Pattern is ready (see tests/banqi_house_chain.rs::empty_banqi + place helpers). One xiangqi mate-in-zero position + one banqi 'one side stuck' position covers the gap." 2>&1 | tail -3`
+
+```text
+Added to ## P1: - [ ] **[S] End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress)** — Current tests verify is_in_check, perft, and house-rule generation but no test asserts refresh_status sets GameStatus::Won { reason: Checkmate/Stalemate/OnlyOneSideHasPieces } from a hand-crafted position. Pattern is ready (see tests/banqi_house_chain.rs::empty_banqi + place helpers). One xiangqi mate-in-zero position + one banqi 'one side stuck' position covers the gap.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:27:06Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:28:02Z)**_
+
+3 TODOs added (計時器, 悔棋, 端局測試)。下面回答三個問題。
+
+---
+
+## 1. 目前可玩到什麼程度
+
+### 引擎層支援（rules）
+
+| 變體 | 狀態 | 細節 |
+|---|---|---|
+| **標準象棋** | ✅ 完整 | 所有 7 種棋子的走法（含九宮、河界、馬腿、象眼、炮架）；將軍 / 將死 / 困斃偵測；飛將判定；perft 1/2/3 對齊公開值 |
+| **暗棋（base）** | ✅ 完整 | 翻棋、階級吃法、卒剋將、炮架隔山、首翻鎖定陣營、ChaCha8Rng 種子確定性 |
+| **家規 — CHAIN_CAPTURE 連吃** | ✅ 端到端 | 沿同方向遞迴擴鏈，length-2/3/N 都會生 |
+| **家規 — CHARIOT_RUSH 車衝** | ✅ 端到端 | 車變 ray 長距走子+吃 |
+| **家規 — DARK_CHAIN 暗連** | ⚠️ 旗標可開但 no-op | P1 TODO，需要把 `ChainHop.captured` 改成 `Option<Piece>` |
+| **家規 — HORSE_DIAGONAL 馬斜** | ⚠️ 同上 | P1 TODO |
+| **家規 — CANNON_FAST_MOVE 炮快移** | ⚠️ 同上 | P1 TODO |
+| **三國暗棋** | ❌ 空棋盤 stub | 型別系統已就位（3 seats / 3 sides / mask 變體），規則 PR 2 |
+| **大盤** | ❌ 只有 `BoardShape::Custom` 槽 | P3 |
+
+### Game-state 機制
+- ✅ `make_move` / `unmake_move`（完整 undo 包括連吃）
+- ✅ `legal_moves`（含 self-check 過濾）
+- ✅ `refresh_status` 偵測：將死、困斃、暗棋一方無棋可動、`no_progress_plies` 超限和棋
+- ✅ 2 或 3 人 `TurnOrder`（含 `advance_skipping` 給三國淘汰）
+- ✅ `PlayerView::project` 隱藏資訊投影 + proptest 驗證不洩漏
+- ❌ 三重複位和棋（P1 TODO）
+- ❌ 投降 / 和棋協議入口（`Resignation`/`Agreed` enum 變體已存在但沒接 API）
+- ❌ 計時器（剛加進 TODO）
+
+### UI 表面
+- ✅ `chess-cli` REPL：`xiangqi`、`banqi --preset taiwan|aggressive|purist --house chain,rush --seed N`、`moves`、`play h2e2 / flip a0 / a3xb3xc3`、`view 0|1`、`undo`、`status`、`help`、`quit`。ASCII 棋盤帶楚河漢界
+- ❌ TUI（ratatui，P2）
+- ❌ Web（Leptos+WASM，P2）
+- ❌ 滑鼠
+- ❌ 任何網路對戰（P2）
+
+### **底線：今天能做什麼**
+
+> **兩個人坐在同一台終端機前**，可以打**完整一盤標準象棋**或**暗棋（最多到連吃+車衝）**，引擎正確判勝負/和棋，可悔棋（無限制），可從任一方視角看棋盤。
+
+**做不到**：跟異地朋友對戰、對 AI、用滑鼠、看到計時、玩三國暗棋、玩大盤、存檔重播。
+
+---
+
+## 2. 計時器 / 悔棋 已加 TODO
+
+剛剛塞了三條：
+- **P2/M** `Time controls (計時器)` — 主時間+加秒/讀秒，server-authoritative tick；`WinReason::Timeout` enum 已預留
+- **P2/S** `Takeback (悔棋) request/approve protocol` — 注意現在 `state.unmake_move()` + CLI `undo` 已經能在「同機 hot-seat」場景無條件悔棋，這條 TODO 是**多人遊戲時對方需同意的協議**
+- **P1/S** `End-condition unit tests` — 順手加的，呼應你下一個問題
+
+---
+
+## 3. Unit tests 概況
+
+`cargo test --workspace` → **71 個測試 + 1 個 ignored**（depth-3 perft，release 才跑）
+
+按模組分布：
+
+| 位置 | 測試數 | 內容 |
+|---|---:|---|
+| `src/coord.rs` | 3 | Square/Direction 常量、方向 delta |
+| `src/piece.rs` | 3 | Side opposite、banqi_rank 嚴格遞減、PieceKind::ALL 七種唯一 |
+| `src/board/{shape,grid,zones,mod}.rs` | 14 | 維度、cell_count、Custom mask、ray walk + blocker、step 出界、九宮/河界/暗棋半盤 |
+| `src/moves.rs` | 0 | 純 type，無測 |
+| `src/rules/{house,mod,xiangqi,banqi}.rs` | 19 | preset 互異、xiangqi 開局 30+ 步、飛將、make/unmake round-trip、暗棋 32 reveals、階級表、車衝、炮跳、連吃 length-2 round-trip、無 CHAIN 不應出鏈 |
+| `src/state/{mod,turn_order}.rs` | 6 | 3-player cycle、advance_skipping、refresh_status Ongoing、no_progress 計數 |
+| `src/setup.rs` | 5 | 32 子、將在九宮、暗棋全 hidden、種子確定性、不同種子相異 |
+| `src/view.rs` | 5 | 全 hidden、開局可見子、對手 legal_moves 為空、Reveal 剝離身分、JSON 不洩 |
+| `src/notation/iccs.rs` | 4 | round-trip、`h2e2` 解析、`flip a0`、亂語拒絕 |
+| `tests/xiangqi_perft.rs` | 2 + **1 ignored** | depth 1=44 / 2=1920 / 3=79666 |
+| `tests/banqi_basic.rs` | 4 | 32 reveals、首翻鎖定、種子確定、view 全 hidden |
+| `tests/banqi_house_chain.rs` | 4 | 連吃 length 2&3、被高階擋住、車衝多步、連吃 round-trip |
+| `tests/view_projection.rs` | 2 proptest × 64 cases | 隨機 seed 不洩、隨機 N 次翻棋後不洩 |
+
+### 自定殘局驗證勝負邏輯：可以，模式已就位
+
+Public API 完整支援：
+- `state.board.set(sq, Some(PieceOnSquare::revealed(piece)))` — 直接擺子
+- `state.refresh_status()` — 觸發勝負偵測
+- `state.is_in_check(side)` — 將軍偵測
+- `GameStatus { Won { winner, reason } / Drawn { reason } }` 是 pub
+
+模式範例（`tests/banqi_house_chain.rs:12-19` 已經這麼幹）：
+
+```rust
+fn empty_xiangqi() -> GameState {
+    let mut s = GameState::new(RuleSet::xiangqi());
+    let squares: Vec<_> = s.board.squares().collect();
+    for sq in squares { s.board.set(sq, None); }
+    s
+}
+
+#[test]
+fn checkmate_in_corner() {
+    let mut s = empty_xiangqi();
+    // 紅將於 e0、黑將於 e9、黑車於 a0 — 將死紅
+    let red_g = s.board.sq(File(4), Rank(0));
+    let black_g = s.board.sq(File(4), Rank(9));
+    let black_r = s.board.sq(File(0), Rank(0));
+    s.board.set(red_g, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::General))));
+    s.board.set(black_g, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::General))));
+    s.board.set(black_r, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Chariot))));
+
+    s.refresh_status();
+    assert!(matches!(s.status,
+        GameStatus::Won { winner: Side::BLACK, reason: WinReason::Checkmate }));
+}
+```
+
+**現有的 gap**：雖然 `is_in_check` / `make_unmake_round_trip` / 飛將 都有測，但**沒有任何測試實際斷言 `refresh_status` 會把 `status` 設成 `Won { Checkmate }` 或 `Stalemate` 或暗棋 `OnlyOneSideHasPieces`**。這就是我剛加的 P1/S `End-condition unit tests` TODO 要補的。
+
+要我現在就把這條補上嗎（順便驗證 `refresh_status` 真的對勝負狀態設值正確）？花不到 30 分鐘，是個 quick win。
+
+---
+
+_**User (2026-05-06 05:36:14Z)**_
+
+好啊 另外我們是否能夠有某種配置文件的形式 能夠用來表達版面狀態等等 可以匯出匯入某個版面狀態snapshot (這樣不僅unit test可以變得統一 也不用全部版面寫死成code等等)
+另外也能夠把每局下棋歷史保留 能夠動畫回放 (著也能實現悔棋 或是從任何一個狀態fork開始往後下 亦或是可以實現殘局模式的遊戲模式等等)
+幫我設計一下 然後跟當前這個一起做
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 05:39:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:39:53Z)**_
+
+好設計題。先扼要說設計，然後直接實作 + 端局測試一起完成。
+
+## 設計要點
+
+**兩層格式**，互不重疊：
+
+| 層 | 格式 | 用途 | 完整性 |
+|---|---|---|---|
+| **Canonical** | `.json`（`serde_json` of `GameState` / `Replay`） | 存檔、網路、引擎 ↔ UI 傳輸 | 無損 — 包含全部 fields |
+| **Fixture (人寫)** | `.pos`（自定簡單 DSL） | 手寫測試棋面、殘局題庫、文件範例 | 有限 — 中盤狀態 OK，特殊欄位走 JSON |
+
+**為什麼兩層**：JSON 已經免費（serde 全打通）但人寫不友好；自定 DSL 易讀但要維護 parser。各管各的，不互相妥協。
+
+### `.pos` 格式（人寫）
+
+```
+# tests/fixtures/xiangqi/checkmate-rank8-mate.pos
+# 三車同邊將死黑將：黑方無路可逃
+variant: xiangqi
+side_to_move: black
+
+board:
+  . . . . k . . . .       # rank 9（黑方）
+  . . . . . . . . .
+  . . . r R r . . .       # rank 7：紅三車排成將死陣
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .       # 河
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .       # rank 0（紅方）
+```
+
+- 棋子用 Xiangqi-FEN 慣例：`K`/`A`/`B`/`R`/`N`/`C`/`P` = 將/士/象/車/馬/炮/卒；大寫=Red，小寫=Black
+- `.` = 空，空格分隔（也接受連寫如 `....k....`）
+- 上方為 rank 9（黑方家），下方為 rank 0（紅方家）
+- 暗棋面朝下：在棋子前加 `?`，如 `?K` = 紅將面朝下、`?p` = 黑卒面朝下
+- 註解：`#` 開頭
+
+Header 欄位（自由排序，皆可選）：`variant`, `side_to_move`, `no_progress_plies`, `house`（逗號分隔）, `seed`, `side_assignment`（暗棋）
+
+### Replay 格式（canonical JSON）
+
+```json
+{
+  "version": 1,
+  "metadata": { "date": "2026-05-06", "red": "Alice", "black": "Bob",
+                "result": "1-0", "comment": "..." },
+  "initial": <GameState>,
+  "moves": [<Move>, <Move>, ...]
+}
+```
+
+公開 API：
+```rust
+impl Replay {
+    fn from_game(state: &GameState, meta: ReplayMeta) -> Self;  // 從現有 history 抓
+    fn push(&mut self, m: Move);
+    fn play_to(&self, step: usize) -> Result<GameState>;  // ★ fork 任一中間態
+    fn to_json(&self) / from_json(&str);
+}
+```
+
+`play_to(step)` 就是「悔棋多步」「殘局模式從某步開始重玩」「動畫 scrub 到第 N 幀」的同一個 primitive。
+
+### 為什麼這同時解決你列的三件事
+
+| 你的需求 | 由誰解決 |
+|---|---|
+| 統一 unit test，棋面不寫死成 code | `.pos` fixture + `GameState::from_pos_text` |
+| 每局歷史保留 + 動畫回放 | `Replay { initial, moves }` + `play_to(step)` |
+| 從任一狀態 fork 往後下 | `Replay::play_to(step)` 回傳 `GameState`，可繼續 `make_move` |
+| 殘局模式 | 載入 `.pos` 殘局題 → 玩家從那走 |
+| 多人「悔棋」協議的引擎側 | `unmake_move` 已存在；協議是 `chess-net` 的事 |
+
+確認方向沒問題就開動。直接一起做。
+
+_**Agent (claude-opus-4-7 2026-05-06 05:39:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+crates/chess-core/src/snapshot.rs: GameState::to_json/from_json (free via serde), to_pos_text/from_pos_text (custom parser). Pieces use Xiangqi-FEN letters; ?-prefix for face-down banqi. Round-trip tests.
+
+```text
+Task #13 created successfully: Implement snapshot module (JSON + .pos text DSL)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:39:57Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+crates/chess-core/src/replay.rs: Replay { version, metadata, initial, moves } struct + ReplayMeta. Methods: from_game (capture history), push, len, play_to(step) (fork), to_json/from_json. Round-trip integration test.
+
+```text
+Task #14 created successfully: Implement replay module
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:39:59Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+crates/chess-core/tests/fixtures/: xiangqi/three-chariot-mate.pos (Black checkmated), xiangqi/stalemate-trapped-king.pos (Black stalemate), banqi/red-wiped-out.pos (Red has no pieces, Black wins). Each loadable via from_pos_text.
+
+```text
+Task #15 created successfully: Hand-craft fixture files for end-condition tests
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:40:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+crates/chess-core/tests/end_conditions.rs: load each .pos fixture, call refresh_status, assert exact GameStatus variant and WinReason. This was the P1/S TODO; promote on completion.
+
+```text
+Task #16 created successfully: Write end_conditions integration test using fixtures
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:40:04Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+crates/chess-core/tests/replay_round_trip.rs: play random N moves, build Replay, serialize, deserialize, play_to(N) — assert state matches; also play_to(k) for k in 0..N matches step-by-step state. Also a fork test: play_to(k) then make a different move and confirm divergence.
+
+```text
+Task #17 created successfully: Write replay round-trip integration test
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:40:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add docs/snapshot-format.md describing .pos DSL. Update CLAUDE.md gotchas. Promote 'End-condition unit tests' P1/S TODO to Done. Update lib.rs / prelude.rs exports.
+
+```text
+Task #18 created successfully: Update docs + promote TODOs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:40:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #13 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:41:23Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:41:24Z)**_
+
+開動。先 snapshot 模組。需要把 `serde_json` 從 dev-dep 升到 regular dep（要對外暴露 to_json/from_json）。
+
+_**Agent (claude-opus-4-7 2026-05-06 05:41:27Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/Cargo.toml has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:41:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/Cargo.toml has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:33Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Snapshot serialization.
+//!
+//! Two layers, on purpose:
+//!
+//! - **JSON** (`to_json` / `from_json`) — canonical, lossless. Used for save
+//!   files, network protocol, replays. Serde does the work.
+//! - **`.pos` text DSL** (`to_pos_text` / `from_pos_text`) — human-friendly
+//!   for hand-written test fixtures and endgame puzzles. Limited to xiangqi
+//!   and banqi (two-player variants) — three-kingdoms uses JSON.
+//!
+//! ## .pos format
+//!
+//! \```text
+//! # Comments start with '#'
+//! variant: xiangqi
+//! side_to_move: red
+//! no_progress_plies: 0       # optional, default 0
+//! house: chain,rush          # optional banqi house rules
+//! seed: 42                   # optional banqi seed
+//! side_assignment: red,black # optional banqi side->color mapping
+//!
+//! board:
+//!   . . . . k . . . .
+//!   . . . . . . . . .
+//!   . . . r R r . . .
+//!   . . . . . . . . .
+//!   . . . . . . . . .
+//!   . . . . . . . . .
+//!   . . . . . . . . .
+//!   . . . . . . . . .
+//!   . . . . . . . . .
+//!   . . . . K . . . .
+//! \```
+//!
+//! - `K A B R N C P` = General/Advisor/Elephant/Chariot/Horse/Cannon/Soldier
+//!   (Xiangqi-FEN convention). Uppercase = Red, lowercase = Black.
+//! - `.` = empty.
+//! - `?X` (e.g. `?K`, `?p`) = face-down piece (engine knows the identity).
+//! - Top of grid is the highest rank (Black home for xiangqi); bottom is
+//!   rank 0 (Red home).
+
+use std::fmt::Write as _;
+
+use smallvec::SmallVec;
+
+use crate::board::{Board, BoardShape};
+use crate::coord::{File, Rank};
+use crate::error::CoreError;
+use crate::piece::{Piece, PieceKind, PieceOnSquare, Side};
+use crate::rules::{DrawPolicy, HouseRules, RuleSet, Variant};
+use crate::state::{GameState, GameStatus, SideAssignment, TurnOrder};
+
+impl GameState {
+    /// Serialize to canonical JSON (lossless).
+    pub fn to_json(&self) -> Result<String, CoreError> {
+        serde_json::to_string_pretty(self)
+            .map_err(|e| CoreError::BadNotation(format!("json serialize: {e}")))
+    }
+
+    /// Deserialize from canonical JSON.
+    pub fn from_json(s: &str) -> Result<Self, CoreError> {
+        serde_json::from_str(s).map_err(|e| CoreError::BadNotation(format!("json parse: {e}")))
+    }
+
+    /// Emit human-friendly `.pos` text. Two-player variants only.
+    pub fn to_pos_text(&self) -> String {
+        emit_pos_text(self)
+    }
+
+    /// Parse a `.pos` text fixture into a fresh `GameState`. History is empty.
+    pub fn from_pos_text(input: &str) -> Result<Self, CoreError> {
+        parse_pos_text(input)
+    }
+}
+
+// ============================================================================
+// Emitter
+// ============================================================================
+
+fn emit_pos_text(state: &GameState) -> String {
+    let mut out = String::new();
+    writeln!(out, "variant: {}", variant_str(state.rules.variant)).unwrap();
+    writeln!(out, "side_to_move: {}", side_str(state.side_to_move)).unwrap();
+    if state.no_progress_plies > 0 {
+        writeln!(out, "no_progress_plies: {}", state.no_progress_plies).unwrap();
+    }
+    if !state.rules.house.is_empty() {
+        writeln!(out, "house: {}", emit_house(state.rules.house)).unwrap();
+    }
+    if let Some(seed) = state.rules.banqi_seed {
+        writeln!(out, "seed: {seed}").unwrap();
+    }
+    if let Some(sa) = &state.side_assignment {
+        let sides: Vec<&str> = sa.mapping.iter().map(|s| side_str(*s)).collect();
+        writeln!(out, "side_assignment: {}", sides.join(",")).unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "board:").unwrap();
+
+    let board = &state.board;
+    let (w, h) = (board.width(), board.height());
+    for display_row in 0..h {
+        let rank = h - 1 - display_row;
+        write!(out, " ").unwrap();
+        for file in 0..w {
+            let sq = board.sq(File(file), Rank(rank));
+            let glyph = cell_glyph(board.get(sq));
+            // 2-char padded so `?K` and `K ` and `. ` all align.
+            write!(out, " {:<2}", glyph).unwrap();
+        }
+        writeln!(out).unwrap();
+    }
+    out
+}
+
+fn cell_glyph(pos: Option<PieceOnSquare>) -> String {
+    match pos {
+        None => ".".to_string(),
+        Some(p) => {
+            let c = kind_char(p.piece.kind);
+            let cased =
+                if p.piece.side == Side::RED { c } else { c.to_ascii_lowercase() };
+            if p.revealed { cased.to_string() } else { format!("?{cased}") }
+        }
+    }
+}
+
+#[inline]
+fn kind_char(kind: PieceKind) -> char {
+    match kind {
+        PieceKind::General => 'K',
+        PieceKind::Advisor => 'A',
+        PieceKind::Elephant => 'B',
+        PieceKind::Chariot => 'R',
+        PieceKind::Horse => 'N',
+        PieceKind::Cannon => 'C',
+        PieceKind::Soldier => 'P',
+    }
+}
+
+#[inline]
+fn variant_str(v: Variant) -> &'static str {
+    match v {
+        Variant::Xiangqi => "xiangqi",
+        Variant::Banqi => "banqi",
+        Variant::ThreeKingdomBanqi => "three-kingdom-banqi",
+    }
+}
+
+#[inline]
+fn side_str(s: Side) -> &'static str {
+    match s {
+        Side::RED => "red",
+        Side::BLACK => "black",
+        Side::GREEN => "green",
+        _ => "side?",
+    }
+}
+
+fn emit_house(h: HouseRules) -> String {
+    let mut parts = Vec::new();
+    if h.contains(HouseRules::CHAIN_CAPTURE) { parts.push("chain"); }
+    if h.contains(HouseRules::DARK_CHAIN) { parts.push("dark-chain"); }
+    if h.contains(HouseRules::CHARIOT_RUSH) { parts.push("rush"); }
+    if h.contains(HouseRules::HORSE_DIAGONAL) { parts.push("horse-diagonal"); }
+    if h.contains(HouseRules::CANNON_FAST_MOVE) { parts.push("cannon-fast"); }
+    parts.join(",")
+}
+
+// ============================================================================
+// Parser
+// ============================================================================
+
+fn parse_pos_text(input: &str) -> Result<GameState, CoreError> {
+    let mut variant: Option<Variant> = None;
+    let mut side_to_move: Option<Side> = None;
+    let mut house = HouseRules::empty();
+    let mut seed: Option<u64> = None;
+    let mut no_progress_plies: u16 = 0;
+    let mut side_assignment_raw: Option<Vec<Side>> = None;
+    let mut board_rows_raw: Vec<Vec<Option<PieceOnSquare>>> = Vec::new();
+
+    let mut in_board = false;
+
+    for raw in input.lines() {
+        let stripped: &str = match raw.find('#') {
+            Some(i) => &raw[..i],
+            None => raw,
+        };
+        if stripped.trim().is_empty() {
+            // Blank line ends board mode but doesn't error.
+            in_board = false;
+            continue;
+        }
+        let leading_ws = stripped.chars().take_while(|c| c.is_whitespace()).count();
+        let trimmed = stripped.trim();
+
+        if in_board && leading_ws > 0 {
+            board_rows_raw.push(parse_row(trimmed)?);
+            continue;
+        }
+
+        in_board = false;
+
+        let (key, value) = trimmed
+            .split_once(':')
+            .ok_or_else(|| CoreError::BadNotation(format!("malformed line: {trimmed}")))?;
+        let key = key.trim();
+        let value = value.trim();
+
+        match key {
+            "variant" => variant = Some(parse_variant_str(value)?),
+            "side_to_move" => side_to_move = Some(parse_side_str(value)?),
+            "house" => house = parse_house_list(value)?,
+            "seed" => {
+                seed = Some(value.parse().map_err(|_| {
+                    CoreError::BadNotation(format!("bad seed: {value}"))
+                })?)
+            }
+            "no_progress_plies" => {
+                no_progress_plies = value.parse().map_err(|_| {
+                    CoreError::BadNotation(format!("bad no_progress_plies: {value}"))
+                })?
+            }
+            "side_assignment" => {
+                let sides: Result<Vec<_>, _> = value.split(',').map(parse_side_str).collect();
+                side_assignment_raw = Some(sides?);
+            }
+            "board" => {
+                if !value.is_empty() {
+                    return Err(CoreError::BadNotation(
+                        "'board:' must be on its own line; rows follow indented".into(),
+                    ));
+                }
+                in_board = true;
+            }
+            other => return Err(CoreError::BadNotation(format!("unknown key: {other}"))),
+        }
+    }
+
+    let variant = variant.ok_or(CoreError::Setup("variant required"))?;
+    let side_to_move = side_to_move.ok_or(CoreError::Setup("side_to_move required"))?;
+
+    let rules = RuleSet {
+        variant,
+        house,
+        draw_policy: match variant {
+            Variant::Xiangqi => DrawPolicy::XIANGQI,
+            _ => DrawPolicy::BANQI,
+        },
+        banqi_seed: seed,
+    };
+
+    let shape = match variant {
+        Variant::Xiangqi => BoardShape::Xiangqi9x10,
+        Variant::Banqi => BoardShape::Banqi4x8,
+        Variant::ThreeKingdomBanqi => BoardShape::ThreeKingdom,
+    };
+    let mut board = Board::new(shape);
+
+    if !board_rows_raw.is_empty() {
+        let (w, h) = (board.width() as usize, board.height() as usize);
+        if board_rows_raw.len() != h {
+            return Err(CoreError::BadNotation(format!(
+                "expected {h} rows, got {}",
+                board_rows_raw.len()
+            )));
+        }
+        for (display_row, cells) in board_rows_raw.iter().enumerate() {
+            if cells.len() != w {
+                return Err(CoreError::BadNotation(format!(
+                    "row {display_row}: {} cells, expected {w}",
+                    cells.len()
+                )));
+            }
+            let rank = (h - 1 - display_row) as u8;
+            for (file, cell) in cells.iter().enumerate() {
+                let sq = board.sq(File(file as u8), Rank(rank));
+                board.set(sq, *cell);
+            }
+        }
+    }
+
+    let mut turn_order = match variant {
+        Variant::ThreeKingdomBanqi => TurnOrder::three_player(),
+        _ => TurnOrder::two_player(),
+    };
+    let idx = turn_order
+        .seats
+        .iter()
+        .position(|s| *s == side_to_move)
+        .ok_or(CoreError::Setup("side_to_move not in turn order"))? as u8;
+    turn_order.current = idx;
+
+    let side_assignment = side_assignment_raw.map(|sides| {
+        let mut mapping: SmallVec<[Side; 3]> = SmallVec::new();
+        for s in sides {
+            mapping.push(s);
+        }
+        SideAssignment { mapping }
+    });
+
+    Ok(GameState {
+        rules,
+        board,
+        side_to_move,
+        turn_order,
+        history: Vec::new(),
+        status: GameStatus::Ongoing,
+        side_assignment,
+        no_progress_plies,
+    })
+}
+
+fn parse_row(row_str: &str) -> Result<Vec<Option<PieceOnSquare>>, CoreError> {
+    let mut cells = Vec::new();
+    let mut chars = row_str.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c.is_whitespace() {
+            continue;
+        }
+        if c == '.' {
+            cells.push(None);
+        } else if c == '?' {
+            let next = chars
+                .next()
+                .ok_or_else(|| CoreError::BadNotation("'?' without piece char".into()))?;
+            let (kind, side) = parse_piece_char(next)?;
+            cells.push(Some(PieceOnSquare::hidden(Piece::new(side, kind))));
+        } else {
+            let (kind, side) = parse_piece_char(c)?;
+            cells.push(Some(PieceOnSquare::revealed(Piece::new(side, kind))));
+        }
+    }
+    Ok(cells)
+}
+
+fn parse_piece_char(c: char) -> Result<(PieceKind, Side), CoreError> {
+    let upper = c.to_ascii_uppercase();
+    let kind = match upper {
+        'K' => PieceKind::General,
+        'A' => PieceKind::Advisor,
+        'B' => PieceKind::Elephant,
+        'R' => PieceKind::Chariot,
+        'N' => PieceKind::Horse,
+        'C' => PieceKind::Cannon,
+        'P' => PieceKind::Soldier,
+        _ => return Err(CoreError::BadNotation(format!("invalid piece char: {c}"))),
+    };
+    let side = if c.is_ascii_uppercase() { Side::RED } else { Side::BLACK };
+    Ok((kind, side))
+}
+
+fn parse_variant_str(s: &str) -> Result<Variant, CoreError> {
+    match s {
+        "xiangqi" => Ok(Variant::Xiangqi),
+        "banqi" => Ok(Variant::Banqi),
+        "three-kingdom-banqi" | "three-kingdoms-banqi" => Ok(Variant::ThreeKingdomBanqi),
+        _ => Err(CoreError::BadNotation(format!("unknown variant: {s}"))),
+    }
+}
+
+fn parse_side_str(s: &str) -> Result<Side, CoreError> {
+    match s.trim() {
+        "red" | "0" => Ok(Side::RED),
+        "black" | "1" => Ok(Side::BLACK),
+        "green" | "2" => Ok(Side::GREEN),
+        _ => Err(CoreError::BadNotation(format!("unknown side: {s}"))),
+    }
+}
+
+fn parse_house_list(s: &str) -> Result<HouseRules, CoreError> {
+    let mut h = HouseRules::empty();
+    if s.is_empty() {
+        return Ok(h);
+    }
+    for tok in s.split(',') {
+        h |= match tok.trim() {
+            "chain" | "chain-capture" => HouseRules::CHAIN_CAPTURE,
+            "dark-chain" | "dark" => HouseRules::DARK_CHAIN,
+            "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+            "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+            "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+            other => return Err(CoreError::BadNotation(format!("unknown house rule: {other}"))),
+        };
+    }
+    Ok(crate::rules::house::normalize(h))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn xiangqi_initial_round_trip_pos() {
+        let s1 = GameState::new(RuleSet::xiangqi());
+        let text = s1.to_pos_text();
+        let s2 = GameState::from_pos_text(&text).unwrap();
+        assert_eq!(s1.board, s2.board);
+        assert_eq!(s1.side_to_move, s2.side_to_move);
+        assert_eq!(s1.rules, s2.rules);
+    }
+
+    #[test]
+    fn json_round_trip() {
+        let s1 = GameState::new(RuleSet::xiangqi());
+        let json = s1.to_json().unwrap();
+        let s2 = GameState::from_json(&json).unwrap();
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn banqi_face_down_round_trip() {
+        let s1 = GameState::new(RuleSet::banqi_with_seed(HouseRules::CHAIN_CAPTURE, 42));
+        let text = s1.to_pos_text();
+        // Hidden pieces should appear with `?` prefix in the emitted text.
+        assert!(text.contains('?'), "banqi initial state should have ?-prefixed pieces");
+        let s2 = GameState::from_pos_text(&text).unwrap();
+        assert_eq!(s1.board, s2.board);
+        assert_eq!(s1.rules.banqi_seed, s2.rules.banqi_seed);
+    }
+
+    #[test]
+    fn parse_minimal_xiangqi() {
+        let text = r#"
+variant: xiangqi
+side_to_move: red
+
+board:
+  . . . . k . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .
+"#;
+        let s = GameState::from_pos_text(text).unwrap();
+        assert_eq!(s.rules.variant, Variant::Xiangqi);
+        assert_eq!(s.side_to_move, Side::RED);
+        // Generals at e0 and e9
+        let e0 = s.board.sq(File(4), Rank(0));
+        let e9 = s.board.sq(File(4), Rank(9));
+        assert_eq!(s.board.get(e0).unwrap().piece.kind, PieceKind::General);
+        assert_eq!(s.board.get(e0).unwrap().piece.side, Side::RED);
+        assert_eq!(s.board.get(e9).unwrap().piece.kind, PieceKind::General);
+        assert_eq!(s.board.get(e9).unwrap().piece.side, Side::BLACK);
+    }
+
+    #[test]
+    fn parse_with_house_rules_and_seed() {
+        let text = r#"
+variant: banqi
+side_to_move: red
+house: chain,rush
+seed: 7
+side_assignment: red,black
+
+board:
+  . . . .
+  . . . .
+  . . . .
+  . . K .
+  . . . .
+  . . . .
+  . . . .
+  . . . .
+"#;
+        let s = GameState::from_pos_text(text).unwrap();
+        assert!(s.rules.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(s.rules.house.contains(HouseRules::CHARIOT_RUSH));
+        assert_eq!(s.rules.banqi_seed, Some(7));
+        assert!(s.side_assignment.is_some());
+    }
+
+    #[test]
+    fn malformed_input_rejected() {
+        assert!(GameState::from_pos_text("").is_err()); // missing variant
+        assert!(GameState::from_pos_text("variant: foo\nside_to_move: red\n").is_err());
+        assert!(GameState::from_pos_text("variant: xiangqi\nside_to_move: purple\n").is_err());
+    }
+
+    #[test]
+    fn rank_order_top_is_highest() {
+        // Top row has a black king; bottom row has a red king.
+        let text = r#"
+variant: xiangqi
+side_to_move: red
+
+board:
+  . . . . k . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .
+"#;
+        let s = GameState::from_pos_text(text).unwrap();
+        let top = s.board.sq(File(4), Rank(9));
+        let bottom = s.board.sq(File(4), Rank(0));
+        assert_eq!(s.board.get(top).unwrap().piece.side, Side::BLACK);
+        assert_eq!(s.board.get(bottom).unwrap().piece.side, Side::RED);
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run snapshot tests
+
+`cargo test -p chess-core --lib snapshot 2>&1 | tail -20`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.30s
+     Running unittests src/lib.rs (target/debug/deps/chess_core-da424f8024769e75)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:41Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:42Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/lib.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run snapshot tests after lib.rs update
+
+`cargo test -p chess-core --lib snapshot 2>&1 | tail -25`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+error[E0583]: file not found for module `replay`
+  --> crates/chess-core/src/lib.rs:15:1
+   |
+15 | pub mod replay;
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: to create the module `replay`, create file "crates/chess-core/src/replay.rs" or "crates/chess-core/src/replay/mod.rs"
+   = note: if there is a `mod replay` elsewhere in the crate already, import it with `use crate::...` instead
+
+For more information about this error, try `rustc --explain E0583`.
+error: could not compile `chess-core` (lib test) due to 1 previous error
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:50Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:51Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Replay format: initial state + move sequence + metadata.
+//! Implementation lands in task #14.
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/replay.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:42:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run snapshot tests
+
+`cargo test -p chess-core --lib snapshot 2>&1 | tail -20`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.96s
+     Running unittests src/lib.rs (target/debug/deps/chess_core-da424f8024769e75)
+
+running 7 tests
+test snapshot::tests::malformed_input_rejected ... ok
+test snapshot::tests::rank_order_top_is_highest ... ok
+test snapshot::tests::parse_with_house_rules_and_seed ... ok
+test snapshot::tests::parse_minimal_xiangqi ... ok
+test snapshot::tests::xiangqi_initial_round_trip_pos ... ok
+test snapshot::tests::banqi_face_down_round_trip ... ok
+test snapshot::tests::json_round_trip ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:43:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:43:31Z)**_
+
+7 snapshot tests pass. Now task 14: replay module.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:43:31Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #13 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:43:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #14 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:44:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Replay format: initial state + move sequence + metadata.
+//!
+//! Solves three problems with one primitive:
+//! - **Save/load games** — `to_json` / `from_json`.
+//! - **Animation playback** — `play_to(step)` returns the position at each
+//!   intermediate step; UIs scrub through them on a timer.
+//! - **Fork from any state** — `play_to(k)` returns a fresh `GameState` you
+//!   can keep playing on; the fork has its own independent history.
+//!
+//! Endgame puzzle mode uses this too: load a `Replay` whose `initial` is the
+//! puzzle position with `moves: []`, hand the player a `GameState` from
+//! `play_to(0)`, and let them try to find the win.
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::CoreError;
+use crate::moves::Move;
+use crate::state::GameState;
+
+/// Optional metadata attached to a replay. All fields free-form.
+#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ReplayMeta {
+    pub date: Option<String>,
+    pub red: Option<String>,
+    pub black: Option<String>,
+    /// PGN-style result: `"1-0"`, `"0-1"`, `"1/2-1/2"`, `"*"`. Free-form.
+    pub result: Option<String>,
+    pub comment: Option<String>,
+}
+
+impl ReplayMeta {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+}
+
+/// A complete replay: the initial position + every move played from it.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Replay {
+    pub version: u32,
+    pub metadata: ReplayMeta,
+    pub initial: GameState,
+    pub moves: Vec<Move>,
+}
+
+const REPLAY_VERSION: u32 = 1;
+
+impl Replay {
+    /// Build a fresh replay from a starting position. `moves` starts empty.
+    pub fn new(initial: GameState, metadata: ReplayMeta) -> Self {
+        Self { version: REPLAY_VERSION, metadata, initial, moves: Vec::new() }
+    }
+
+    /// Capture an in-progress game's history into a Replay. The given
+    /// `state.history` is replayed back to the starting position via
+    /// `unmake_move`, then those moves are recorded in order.
+    pub fn from_game(state: &GameState, metadata: ReplayMeta) -> Result<Self, CoreError> {
+        let moves: Vec<Move> = state.history.iter().map(|r| r.the_move.clone()).collect();
+        let mut initial = state.clone();
+        for _ in 0..state.history.len() {
+            initial.unmake_move()?;
+        }
+        Ok(Self { version: REPLAY_VERSION, metadata, initial, moves })
+    }
+
+    /// Number of moves recorded.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.moves.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.moves.is_empty()
+    }
+
+    /// Append a move to the replay. Caller is responsible for legality
+    /// (typically by calling `state.make_move(&m)` and then mirroring it
+    /// here).
+    pub fn push(&mut self, m: Move) {
+        self.moves.push(m);
+    }
+
+    /// Replay forward `step` moves from `initial`, returning the resulting
+    /// `GameState`. `step == 0` returns a clone of `initial`. The returned
+    /// state has `history.len() == step` and is fully usable — call
+    /// `make_move` on it to fork.
+    pub fn play_to(&self, step: usize) -> Result<GameState, CoreError> {
+        if step > self.moves.len() {
+            return Err(CoreError::Illegal("step exceeds replay length"));
+        }
+        let mut state = self.initial.clone();
+        for m in &self.moves[..step] {
+            state.make_move(m)?;
+        }
+        Ok(state)
+    }
+
+    /// Final state (alias for `play_to(self.len())`).
+    pub fn final_state(&self) -> Result<GameState, CoreError> {
+        self.play_to(self.len())
+    }
+
+    /// Iterate intermediate states: yields `(step, state_before_move)` for
+    /// each step in the replay, ending with the final state at
+    /// `step == self.len()`.
+    pub fn iter_states(&self) -> impl Iterator<Item = Result<GameState, CoreError>> + '_ {
+        (0..=self.moves.len()).map(move |i| self.play_to(i))
+    }
+
+    pub fn to_json(&self) -> Result<String, CoreError> {
+        serde_json::to_string_pretty(self)
+            .map_err(|e| CoreError::BadNotation(format!("replay json serialize: {e}")))
+    }
+
+    pub fn from_json(s: &str) -> Result<Self, CoreError> {
+        serde_json::from_str(s)
+            .map_err(|e| CoreError::BadNotation(format!("replay json parse: {e}")))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rules::RuleSet;
+
+    fn play_a_few(state: &mut GameState, n: usize) {
+        for _ in 0..n {
+            let moves = state.legal_moves();
+            if let Some(m) = moves.into_iter().next() {
+                state.make_move(&m).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn from_game_captures_history_and_initial() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        let initial_clone = state.clone();
+        play_a_few(&mut state, 4);
+        assert_eq!(state.history.len(), 4);
+
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+        assert_eq!(replay.len(), 4);
+        assert_eq!(replay.initial.board, initial_clone.board);
+        assert_eq!(replay.initial.history.len(), 0);
+    }
+
+    #[test]
+    fn play_to_round_trip() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        play_a_few(&mut state, 3);
+
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+        let final_state = replay.final_state().unwrap();
+        assert_eq!(final_state, state);
+    }
+
+    #[test]
+    fn play_to_intermediate_steps_match_history() {
+        // Build a played-out state, snapshot the state at each step,
+        // then verify replay.play_to(k) matches the snapshot.
+        let mut state = GameState::new(RuleSet::xiangqi());
+        let mut snapshots = vec![state.clone()];
+        for _ in 0..5 {
+            let m = state.legal_moves().into_iter().next().unwrap();
+            state.make_move(&m).unwrap();
+            snapshots.push(state.clone());
+        }
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+        for (k, expected) in snapshots.iter().enumerate() {
+            let got = replay.play_to(k).unwrap();
+            assert_eq!(got, *expected, "step {k} state mismatch");
+        }
+    }
+
+    #[test]
+    fn fork_from_midgame_diverges() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        play_a_few(&mut state, 4);
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+
+        let mut fork_a = replay.play_to(2).unwrap();
+        let mut fork_b = replay.play_to(2).unwrap();
+        assert_eq!(fork_a, fork_b, "two forks at the same step start identical");
+
+        // Make different moves on each fork.
+        let moves_a = fork_a.legal_moves();
+        let moves_b = fork_b.legal_moves();
+        let m_a = moves_a.iter().next().unwrap();
+        let m_b = moves_b
+            .iter()
+            .find(|m| *m != m_a)
+            .expect("at least two legal moves at step 2");
+        fork_a.make_move(m_a).unwrap();
+        fork_b.make_move(m_b).unwrap();
+        assert_ne!(fork_a.board, fork_b.board, "different moves should diverge");
+    }
+
+    #[test]
+    fn json_round_trip() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        play_a_few(&mut state, 3);
+        let replay = Replay::from_game(
+            &state,
+            ReplayMeta {
+                red: Some("Alice".into()),
+                black: Some("Bob".into()),
+                result: Some("*".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let json = replay.to_json().unwrap();
+        let decoded = Replay::from_json(&json).unwrap();
+        assert_eq!(replay, decoded);
+    }
+
+    #[test]
+    fn play_to_out_of_range_errors() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+        assert!(replay.play_to(0).is_ok());
+        assert!(replay.play_to(1).is_err()); // empty replay
+    }
+
+    #[test]
+    fn iter_states_yields_n_plus_one() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        play_a_few(&mut state, 3);
+        let replay = Replay::from_game(&state, ReplayMeta::empty()).unwrap();
+        let count = replay.iter_states().filter_map(Result::ok).count();
+        assert_eq!(count, 4); // before move 0, after move 0, 1, 2
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/replay.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:44:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run replay tests
+
+`cargo test -p chess-core --lib replay 2>&1 | tail -20`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `test` profile [optimized + debuginfo] target(s) in 3.79s
+     Running unittests src/lib.rs (target/debug/deps/chess_core-da424f8024769e75)
+
+running 7 tests
+test replay::tests::play_to_out_of_range_errors ... ok
+test replay::tests::iter_states_yields_n_plus_one ... ok
+test replay::tests::play_to_round_trip ... ok
+test replay::tests::from_game_captures_history_and_initial ... ok
+test replay::tests::json_round_trip ... ok
+test replay::tests::play_to_intermediate_steps_match_history ... ok
+test replay::tests::fork_from_midgame_diverges ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 66 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:25Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:25Z)**_
+
+Replay 7/7 pass including fork divergence. Now task 15: hand-crafted fixtures.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:27Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #14 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:27Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #15 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:32Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```pos
+# Black is checkmated. Three Red chariots seal rank 8 and file e:
+#   R(d8) covers d-file and rank 8
+#   R(e8) covers e-file (delivers check on Black general at e9)
+#   R(f8) covers f-file
+# Black general's options:
+#   - stay e9: still attacked by R(e8) → check
+#   - e9 → e8: captures R(e8), but R(d8) on rank 8 attacks e8 → still in check
+#   - e9 → d9: attacked by R(d8) on d-file
+#   - e9 → f9: attacked by R(f8) on f-file
+# All moves leave Black in check → no legal moves + currently in check → checkmate.
+# Expected: GameStatus::Won { winner: RED, reason: Checkmate }
+
+variant: xiangqi
+side_to_move: black
+
+board:
+  . . . . k . . . .
+  . . . R R R . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/fixtures/xiangqi/three-chariot-mate.pos
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```pos
+# Black is stalemated (NOT in check, but no legal move).
+# Black has only the general at d9 (west edge of black palace, files 3-5 ranks 7-9).
+# Red has general (f0) plus two horses positioned so:
+#   - horse-b9 attacks d8 via leg c9 (which is empty)
+#   - horse-d7 attacks e9 via leg d8 (which is empty)
+# Black general cannot move:
+#   - d9 (current) not attacked → not in check
+#   - d8: attacked by horse-b9 (leg c9 empty) → would be in check → illegal
+#   - e9: attacked by horse-d7 (leg d8 empty) → would be in check → illegal
+#   - c9: outside palace (file 2 < 3) → palace constraint rejects
+#   - d10: off board
+# Asian xiangqi rules: stalemate is a loss for the stalemated side.
+# Expected: GameStatus::Won { winner: RED, reason: Stalemate }
+
+variant: xiangqi
+side_to_move: black
+
+board:
+  . N . k . . . . .
+  . . . . . . . . .
+  . . . N . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . K . . .
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/fixtures/xiangqi/horse-stalemate.pos
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```pos
+# Red has been completely captured. Side-to-move = Red.
+# Red has zero pieces on the board and zero face-down pieces to flip.
+# legal_moves returns an empty list.
+# Expected: GameStatus::Won { winner: BLACK, reason: OnlyOneSideHasPieces }
+
+variant: banqi
+side_to_move: red
+side_assignment: red,black
+
+board:
+  . . . .
+  . . . .
+  . . . .
+  . . . .
+  . k . .
+  . . . .
+  . . . .
+  . . . .
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/fixtures/banqi/red-wiped-out.pos
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:42Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Quick fixture smoke test
+
+```bash
+cat > /tmp/test_fixtures.rs << 'EOF'
+use chess_core::state::GameState;
+fn main() {
+    for path in &[
+        "crates/chess-core/tests/fixtures/xiangqi/three-chariot-mate.pos",
+        "crates/chess-core/tests/fixtures/xiangqi/horse-stalemate.pos",
+        "crates/chess-core/tests/fixtures/banqi/red-wiped-out.pos",
+    ] {
+        let s = std::fs::read_to_string(path).unwrap();
+        let mut state = GameState::from_pos_text(&s).unwrap();
+        state.refresh_status();
+        println!("{path}: {:?}", state.status);
+    }
+}
+EOF
+cargo run -q -p chess-core --example fixture_smoke 2>&1 || echo "(no example bin — will use real test)"
+```
+
+```text
+error: no example target named `fixture_smoke` in `chess-core` package
+(no example bin — will use real test)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:48Z)**_
+
+Tasks 16+17: integration tests using fixtures.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #15 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:46:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #16 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:00Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! End-condition checks: load hand-crafted `.pos` fixtures, run
+//! `refresh_status`, and assert the engine recognises the win/draw.
+//!
+//! Each fixture is annotated with the position's intent in its header
+//! comments. If a fixture's expected result drifts from these tests,
+//! audit the rule edit before adjusting either side.
+
+use chess_core::piece::Side;
+use chess_core::state::{GameState, GameStatus, WinReason};
+
+fn load(path: &str) -> GameState {
+    let text = std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("read {path}: {e}"));
+    GameState::from_pos_text(&text)
+        .unwrap_or_else(|e| panic!("parse {path}: {e}"))
+}
+
+#[test]
+fn xiangqi_three_chariot_mate_is_checkmate() {
+    let mut state = load("tests/fixtures/xiangqi/three-chariot-mate.pos");
+    assert_eq!(state.side_to_move, Side::BLACK);
+    assert!(state.is_in_check(Side::BLACK), "black general should be in check");
+    state.refresh_status();
+    assert_eq!(
+        state.status,
+        GameStatus::Won { winner: Side::RED, reason: WinReason::Checkmate },
+        "three-chariot mate should produce Checkmate"
+    );
+}
+
+#[test]
+fn xiangqi_horse_stalemate_is_stalemate() {
+    let mut state = load("tests/fixtures/xiangqi/horse-stalemate.pos");
+    assert_eq!(state.side_to_move, Side::BLACK);
+    assert!(
+        !state.is_in_check(Side::BLACK),
+        "black should NOT be in check (otherwise this would be checkmate, not stalemate)"
+    );
+    state.refresh_status();
+    assert_eq!(
+        state.status,
+        GameStatus::Won { winner: Side::RED, reason: WinReason::Stalemate },
+        "horse stalemate should produce Stalemate (Asian rules: stalemated side loses)"
+    );
+}
+
+#[test]
+fn banqi_red_wiped_out_loses() {
+    let mut state = load("tests/fixtures/banqi/red-wiped-out.pos");
+    assert_eq!(state.side_to_move, Side::RED);
+    assert_eq!(state.legal_moves().len(), 0, "Red has no legal moves");
+    state.refresh_status();
+    assert_eq!(
+        state.status,
+        GameStatus::Won { winner: Side::BLACK, reason: WinReason::OnlyOneSideHasPieces },
+        "banqi side with no moves loses"
+    );
+}
+
+#[test]
+fn ongoing_position_stays_ongoing() {
+    // Sanity: the fresh xiangqi opening should not trip any end condition.
+    let mut state = GameState::new(chess_core::rules::RuleSet::xiangqi());
+    state.refresh_status();
+    assert_eq!(state.status, GameStatus::Ongoing);
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/end_conditions.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run end-condition tests
+
+`cargo test -p chess-core --test end_conditions 2>&1 | tail -25`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `test` profile [optimized + debuginfo] target(s) in 3.83s
+     Running tests/end_conditions.rs (target/debug/deps/end_conditions-d674dc834f9f1041)
+
+running 4 tests
+test ongoing_position_stays_ongoing ... ok
+test xiangqi_three_chariot_mate_is_checkmate ... ok
+test banqi_red_wiped_out_loses ... ok
+test xiangqi_horse_stalemate_is_stalemate ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:19Z)**_
+
+End-condition tests pass. Task 17: replay round-trip integration test (cross-crate API surface).
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:20Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #16 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:20Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #17 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:40Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! End-to-end replay test from the public API surface:
+//! play a real game → build Replay → JSON → reload → replay forward →
+//! state matches at every intermediate step. Also exercises the
+//! "load fixture as initial position" pattern (endgame puzzle mode).
+
+use chess_core::moves::Move;
+use chess_core::replay::{Replay, ReplayMeta};
+use chess_core::rules::{HouseRules, RuleSet};
+use chess_core::state::GameState;
+
+fn play_n_moves(state: &mut GameState, n: usize) {
+    for _ in 0..n {
+        let moves = state.legal_moves();
+        let Some(m) = moves.into_iter().next() else { break };
+        state.make_move(&m).expect("legal move applies");
+    }
+}
+
+#[test]
+fn xiangqi_full_replay_round_trip() {
+    let mut original = GameState::new(RuleSet::xiangqi());
+    let mut step_states = vec![original.clone()];
+    play_n_moves(&mut original, 8);
+    // Capture the state at every step (we played 1 at a time but the loop
+    // above doesn't snapshot — re-run with explicit snapshots):
+    let mut original = GameState::new(RuleSet::xiangqi());
+    for _ in 0..8 {
+        let m = original.legal_moves().into_iter().next().unwrap();
+        original.make_move(&m).unwrap();
+        step_states.push(original.clone());
+    }
+
+    // Build replay from the played-out state.
+    let replay = Replay::from_game(
+        &original,
+        ReplayMeta { red: Some("test".into()), ..Default::default() },
+    )
+    .expect("replay capture");
+
+    // JSON round-trip.
+    let json = replay.to_json().expect("serialize");
+    let decoded = Replay::from_json(&json).expect("deserialize");
+    assert_eq!(replay, decoded, "JSON round-trip preserves replay");
+
+    // Every intermediate state matches the live-played snapshot.
+    for (k, expected) in step_states.iter().enumerate() {
+        let got = decoded.play_to(k).expect("play_to in range");
+        assert_eq!(got, *expected, "step {k} replayed state mismatch");
+    }
+}
+
+#[test]
+fn banqi_replay_with_seed_round_trip() {
+    let mut original =
+        GameState::new(RuleSet::banqi_with_seed(HouseRules::CHAIN_CAPTURE, 11));
+    play_n_moves(&mut original, 5);
+    let replay = Replay::from_game(&original, ReplayMeta::empty()).unwrap();
+    let json = replay.to_json().unwrap();
+    let decoded = Replay::from_json(&json).unwrap();
+    assert_eq!(decoded.final_state().unwrap(), original);
+}
+
+#[test]
+fn fixture_loaded_as_replay_initial() {
+    // Endgame puzzle mode: load a hand-crafted position, treat it as the
+    // initial state of a fresh replay, hand the player a GameState to work
+    // from.
+    let text = std::fs::read_to_string("tests/fixtures/xiangqi/three-chariot-mate.pos")
+        .expect("fixture exists");
+    let initial = GameState::from_pos_text(&text).expect("parse fixture");
+    let replay = Replay::new(initial.clone(), ReplayMeta::empty());
+    let starting = replay.play_to(0).expect("play_to(0) returns initial clone");
+    assert_eq!(starting, initial);
+    assert_eq!(replay.len(), 0);
+}
+
+#[test]
+fn fork_from_replay_midpoint_can_play_forward() {
+    // Play 6 moves, fork at step 3, make a different move on the fork,
+    // confirm the fork is a fully-functional GameState that can keep going.
+    let mut original = GameState::new(RuleSet::xiangqi());
+    play_n_moves(&mut original, 6);
+    let replay = Replay::from_game(&original, ReplayMeta::empty()).unwrap();
+
+    let mut fork = replay.play_to(3).expect("fork at step 3");
+    let recorded_step3_move = &replay.moves[3];
+
+    let alt = fork
+        .legal_moves()
+        .into_iter()
+        .find(|m| !same_move(m, recorded_step3_move))
+        .expect("must be a different legal move available");
+    fork.make_move(&alt).unwrap();
+
+    // The fork is now diverged from the original replay.
+    let diverged_at_step3 = replay.play_to(4).unwrap();
+    assert_ne!(fork.board, diverged_at_step3.board, "fork should diverge");
+
+    // And the fork can keep playing.
+    play_n_moves(&mut fork, 3);
+    assert!(fork.history.len() >= 4, "fork should accumulate its own history");
+}
+
+fn same_move(a: &Move, b: &Move) -> bool {
+    a == b
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/replay_round_trip.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run replay round-trip integration test
+
+`cargo test -p chess-core --test replay_round_trip 2>&1 | tail -15`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.08s
+     Running tests/replay_round_trip.rs (target/debug/deps/replay_round_trip-7ba899ce8d25914e)
+
+running 4 tests
+test banqi_replay_with_seed_round_trip ... ok
+test fork_from_replay_midpoint_can_play_forward ... ok
+test fixture_loaded_as_replay_initial ... ok
+test xiangqi_full_replay_round_trip ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:52Z)**_
+
+All tests pass. Now task 18: docs + promote.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #17 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #18 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:47:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/prelude.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:48:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Snapshot & Replay formats
+
+Two layers, on purpose. JSON is canonical (lossless, used for save/load and the future network protocol). The `.pos` text DSL is human-friendly for hand-written test fixtures and endgame puzzles.
+
+## JSON (canonical)
+
+\```rust
+use chess_core::state::GameState;
+
+let json: String = state.to_json()?;        // serialize
+let state = GameState::from_json(&json)?;   // deserialize
+\```
+
+Just `serde_json` of `GameState`. Every field is preserved including `history`, `side_assignment`, `no_progress_plies`, `status`. Use this for save files and over-the-wire transport (after [`view::PlayerView`](../crates/chess-core/src/view.rs) projection for hidden-info-safe variants like banqi).
+
+For replays:
+
+\```rust
+use chess_core::replay::{Replay, ReplayMeta};
+
+let replay = Replay::from_game(&state, ReplayMeta::empty())?;
+let json = replay.to_json()?;
+let restored = Replay::from_json(&json)?;
+\```
+
+A `Replay` is `{ version, metadata, initial: GameState, moves: Vec<Move> }`. `Replay::from_game` walks the state's history back to the starting position via `unmake_move` and records the moves in order — so any played-out `GameState` can be turned into a Replay losslessly.
+
+## `.pos` text DSL
+
+Two-player variants only (xiangqi, banqi). Three-kingdoms uses JSON.
+
+\```text
+# Comments start with '#' and run to end-of-line.
+variant: xiangqi              # required: xiangqi | banqi
+side_to_move: red             # required: red | black
+
+no_progress_plies: 0          # optional, default 0
+house: chain,rush             # optional banqi house rules (comma-list)
+seed: 42                      # optional banqi seed (u64)
+side_assignment: red,black    # optional banqi side -> piece-color mapping
+
+board:                        # rows from rank H-1 (top) down to rank 0 (bottom)
+  . . . . k . . . .
+  . . . . . . . . .
+  . . . R R R . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .
+\```
+
+### Pieces
+
+Xiangqi-FEN convention. **Uppercase = Red, lowercase = Black**.
+
+| Letter | Piece (Red / Black) |
+|---|---|
+| `K` / `k` | General (帥/將) |
+| `A` / `a` | Advisor (仕/士) |
+| `B` / `b` | Elephant (相/象) |
+| `R` / `r` | Chariot (俥/車) |
+| `N` / `n` | Horse (傌/馬) |
+| `C` / `c` | Cannon (砲/炮) |
+| `P` / `p` | Soldier (兵/卒) |
+
+`.` = empty square.
+
+For banqi face-down pieces, prefix with `?`:
+
+| Token | Meaning |
+|---|---|
+| `K` | Face-up Red general |
+| `k` | Face-up Black general |
+| `?K` | Face-down Red general |
+| `?k` | Face-down Black general |
+
+The engine knows the identity behind a face-down piece — that's how `make_move` resolves a player's `Reveal { revealed: None }` request server-side. The `.pos` format makes that identity explicit so test fixtures are deterministic.
+
+### Board layout
+
+- Rows are top-to-bottom: the **top row is the highest rank** (rank 9 for xiangqi, rank 7 for banqi); the **bottom row is rank 0**.
+- This matches how a board looks on screen with Red on the bottom.
+- Files are left-to-right: `a` (file 0) on the left, `i` (file 8) on the right for xiangqi; `a..d` for banqi.
+- Cells separated by whitespace (any amount). Tokens are 1 char (`.`, `K`, …) or 2 chars (`?K`, …). The parser doesn't care about column alignment.
+
+### Header field order
+
+Order doesn't matter. `board:` must be on its own line; rows must be indented (any whitespace prefix). A blank line ends the board section.
+
+## Use cases
+
+### Test fixtures
+
+\```rust
+// tests/end_conditions.rs
+let text = std::fs::read_to_string("tests/fixtures/xiangqi/three-chariot-mate.pos")?;
+let mut state = GameState::from_pos_text(&text)?;
+state.refresh_status();
+assert_eq!(state.status, GameStatus::Won { winner: Side::RED, reason: WinReason::Checkmate });
+\```
+
+### Endgame puzzle mode
+
+\```rust
+let initial = GameState::from_pos_text(&fs::read_to_string("puzzles/mate-in-2.pos")?)?;
+let replay = Replay::new(initial, ReplayMeta::empty());
+let player_state = replay.play_to(0)?;   // hand to the player
+// ... player makes moves, you collect them, score ...
+\```
+
+### Animation playback
+
+\```rust
+let replay = Replay::from_json(&saved_game)?;
+for step in 0..=replay.len() {
+    let frame = replay.play_to(step)?;
+    render(&frame);
+    sleep(animation_delay);
+}
+\```
+
+### Fork from any state
+
+\```rust
+let replay = Replay::from_json(&saved_game)?;
+let mut fork = replay.play_to(midpoint)?;
+fork.make_move(&different_move)?;          // diverge from the original
+// `fork` now has its own independent history and can keep playing
+\```
+
+## Limitations
+
+- The `.pos` DSL covers two-player variants only. Three-kingdoms goes through JSON.
+- No FEN-style run-length compression (`9.` for nine empties) — every cell is explicit. Fine for hand-written fixtures; if you find yourself generating long .pos strings programmatically, use JSON instead.
+- The `.pos` format does not record the `history` field — fixtures load with empty history. Use JSON (`to_json`) when you need to preserve a played-out state with its full move log.
+
+## See also
+
+- [`crates/chess-core/src/snapshot.rs`](../crates/chess-core/src/snapshot.rs) — implementation
+- [`crates/chess-core/src/replay.rs`](../crates/chess-core/src/replay.rs) — replay primitives
+- [`crates/chess-core/tests/fixtures/`](../crates/chess-core/tests/fixtures/) — example positions
+- [`crates/chess-core/tests/end_conditions.rs`](../crates/chess-core/tests/end_conditions.rs) — fixture-driven tests
+- [ADR 0004](adr/0004-player-view-projection.md) — why the network ships `PlayerView`, not raw `GameState`
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:48:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:48:44Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:48:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Promote endgame-tests TODO
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/promote-todo.sh --title "End-condition unit tests" --summary "tests/end_conditions.rs verifies refresh_status produces Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} from .pos fixtures. Pattern reusable for endgame puzzles." 2>&1 | tail -3`
+
+```text
+Promoted: P1/S 'End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress)' → ## Done [2026-05-06]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:48:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Full test count check
+
+`cargo test --workspace 2>&1 | grep -E "^test result" | head -20`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:09Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:10Z)**_
+
+**93 tests passing + 1 ignored** (up from 71 before this round). Final pre-commit checks.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:14Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + clippy
+
+`cargo fmt --all 2>&1 && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.69s
+[This command modified 5 files you've previously read: crates/chess-core/src/replay.rs, crates/chess-core/tests/end_conditions.rs, crates/chess-core/src/notation/iccs.rs, crates/chess-core/src/snapshot.rs, crates/chess-core/tests/replay_round_trip.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM cleanliness check
+
+`cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -5`
+
+```text
+   Compiling serde_json v1.0.149
+   Compiling memchr v2.8.0
+   Compiling itoa v1.0.18
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.73s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:21Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:22Z)**_
+
+clippy clean, WASM builds. fmt reformatted a few files cosmetically. Final test pass and commit.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm tests still green after fmt
+
+`cargo test --workspace 2>&1 | grep -E "(test result|FAILED)" | head -15`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See files to commit
+
+`git status --short 2>&1`
+
+```text
+ M .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+ M CLAUDE.md
+ M TODO.md
+ M crates/chess-core/Cargo.toml
+ M crates/chess-core/src/lib.rs
+ M crates/chess-core/src/notation/iccs.rs
+ M crates/chess-core/src/prelude.rs
+?? crates/chess-core/src/replay.rs
+?? crates/chess-core/src/snapshot.rs
+?? crates/chess-core/tests/end_conditions.rs
+?? crates/chess-core/tests/fixtures/
+?? crates/chess-core/tests/replay_round_trip.rs
+?? docs/adr/README.md
+?? docs/snapshot-format.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check unknown ADR README
+
+`cat /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/README.md 2>&1 | head -10`
+
+```text
+# Architecture Decision Record (ADR)
+```
+</details></tool-use>

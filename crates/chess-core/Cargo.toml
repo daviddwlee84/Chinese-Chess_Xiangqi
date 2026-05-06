@@ -10,6 +10,7 @@ authors.workspace      = true
 
 [dependencies]
 serde       = { workspace = true }
+serde_json  = { workspace = true }
 thiserror   = { workspace = true }
 smallvec    = { workspace = true }
 bitflags    = { workspace = true }
@@ -25,7 +26,6 @@ arrayvec    = { workspace = true }
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
-serde_json        = { workspace = true }
 proptest          = { workspace = true }
 insta             = { workspace = true }
 pretty_assertions = { workspace = true }

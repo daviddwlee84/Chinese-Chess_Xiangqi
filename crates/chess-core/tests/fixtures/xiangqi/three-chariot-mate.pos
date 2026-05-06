@@ -1,0 +1,26 @@
+# Black is checkmated. Three Red chariots seal rank 8 and file e:
+#   R(d8) covers d-file and rank 8
+#   R(e8) covers e-file (delivers check on Black general at e9)
+#   R(f8) covers f-file
+# Black general's options:
+#   - stay e9: still attacked by R(e8) → check
+#   - e9 → e8: captures R(e8), but R(d8) on rank 8 attacks e8 → still in check
+#   - e9 → d9: attacked by R(d8) on d-file
+#   - e9 → f9: attacked by R(f8) on f-file
+# All moves leave Black in check → no legal moves + currently in check → checkmate.
+# Expected: GameStatus::Won { winner: RED, reason: Checkmate }
+
+variant: xiangqi
+side_to_move: black
+
+board:
+  . . . . k . . . .
+  . . . R R R . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . K . . . .

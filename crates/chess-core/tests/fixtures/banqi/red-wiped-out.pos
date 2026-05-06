@@ -1,0 +1,18 @@
+# Red has been completely captured. Side-to-move = Red.
+# Red has zero pieces on the board and zero face-down pieces to flip.
+# legal_moves returns an empty list.
+# Expected: GameStatus::Won { winner: BLACK, reason: OnlyOneSideHasPieces }
+
+variant: banqi
+side_to_move: red
+side_assignment: red,black
+
+board:
+  . . . .
+  . . . .
+  . . . .
+  . . . .
+  . k . .
+  . . . .
+  . . . .
+  . . . .

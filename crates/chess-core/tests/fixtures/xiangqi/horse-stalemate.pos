@@ -1,0 +1,28 @@
+# Black is stalemated (NOT in check, but no legal move).
+# Black has only the general at d9 (west edge of black palace, files 3-5 ranks 7-9).
+# Red has general (f0) plus two horses positioned so:
+#   - horse-b9 attacks d8 via leg c9 (which is empty)
+#   - horse-d7 attacks e9 via leg d8 (which is empty)
+# Black general cannot move:
+#   - d9 (current) not attacked → not in check
+#   - d8: attacked by horse-b9 (leg c9 empty) → would be in check → illegal
+#   - e9: attacked by horse-d7 (leg d8 empty) → would be in check → illegal
+#   - c9: outside palace (file 2 < 3) → palace constraint rejects
+#   - d10: off board
+# Asian xiangqi rules: stalemate is a loss for the stalemated side.
+# Expected: GameStatus::Won { winner: RED, reason: Stalemate }
+
+variant: xiangqi
+side_to_move: black
+
+board:
+  . N . k . . . . .
+  . . . . . . . . .
+  . . . N . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . . . . .
+  . . . . . K . . .
