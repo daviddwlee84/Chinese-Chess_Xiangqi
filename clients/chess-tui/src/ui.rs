@@ -16,7 +16,7 @@ use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
 use crate::glyph::{self, Style};
 use crate::orient;
 
-const CELL_COLS: u16 = 3;
+const CELL_COLS: u16 = 4;
 const CELL_ROWS: u16 = 2;
 const RANK_LABEL_COLS: u16 = 3;
 
@@ -90,6 +90,7 @@ fn draw_board(
     let view = PlayerView::project(&g.state, g.state.side_to_move);
     let shape = view.shape;
     let (rows, cols) = orient::display_dims(shape);
+    let model_w = shape.dimensions().0;
 
     // Build legal-target highlight set when a piece is selected.
     let highlight: std::collections::HashSet<Square> = match g.selected {
@@ -102,48 +103,36 @@ fn draw_board(
         None => std::collections::HashSet::new(),
     };
 
-    let border = TuiStyle::default().fg(Color::DarkGray);
-    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 4);
+    let border_style = TuiStyle::default().fg(Color::DarkGray);
+    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 2);
 
     // File header (top)
     lines.push(file_header_line(observer, shape));
-    // Top border of grid
-    lines.push(Line::from(Span::styled(border_row(BorderKind::Top, cols), border)));
 
     let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
 
     for display_row in 0..rows {
-        // Rank-content row: │piece│piece│...│
-        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 2);
-        spans.push(Span::raw(rank_label(observer, shape, display_row)));
-        spans.push(Span::styled("│", border));
-        for display_col in 0..cols {
-            let sq = orient::square_at_display(display_row, display_col, observer, shape);
-            let (text, st) = match sq {
-                Some(sq) => render_cell(
-                    &view,
-                    sq,
-                    &highlight,
-                    g,
-                    style,
-                    use_color,
-                    display_row,
-                    display_col,
-                ),
-                None => (glyph::empty(style).to_string(), TuiStyle::default()),
-            };
-            spans.push(Span::styled(text, st));
-            spans.push(Span::styled("│", border));
-        }
-        lines.push(Line::from(spans));
+        lines.push(rank_row(
+            &view,
+            observer,
+            shape,
+            display_row,
+            cols,
+            model_w,
+            &highlight,
+            g,
+            style,
+            use_color,
+            border_style,
+        ));
 
-        // Mid border or river break or bottom border
+        // Between row (skip after last rank)
         if display_row + 1 == rows {
-            lines.push(Line::from(Span::styled(border_row(BorderKind::Bottom, cols), border)));
+            // no between row after the final rank
         } else if river_after == Some(display_row) {
             lines.push(river_line(cols, style));
         } else {
-            lines.push(Line::from(Span::styled(border_row(BorderKind::Mid, cols), border)));
+            lines.push(between_row(observer, shape, display_row, cols, style, border_style));
         }
     }
 
@@ -158,58 +147,257 @@ fn draw_board(
         y: inner.y,
         cell_cols: CELL_COLS,
         cell_rows: CELL_ROWS,
-        // file header (1) + top border (1)
-        top_pad: 2,
-        // rank label (3) + leading │ (1)
-        left_pad: RANK_LABEL_COLS + 1,
-        river_after_display_row: river_after,
+        // file header (1)
+        top_pad: 1,
+        // rank label (3)
+        left_pad: RANK_LABEL_COLS,
     });
 }
 
-#[derive(Copy, Clone)]
-enum BorderKind {
-    Top,
-    Mid,
-    Bottom,
-}
+#[allow(clippy::too_many_arguments)]
+fn rank_row<'a>(
+    view: &'a PlayerView,
+    observer: Side,
+    shape: BoardShape,
+    display_row: u8,
+    cols: u8,
+    model_w: u8,
+    highlight: &std::collections::HashSet<Square>,
+    g: &'a GameView,
+    style: Style,
+    use_color: bool,
+    border_style: TuiStyle,
+) -> Line<'a> {
+    let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+    spans.push(Span::raw(rank_label(observer, shape, display_row)));
 
-fn border_row(kind: BorderKind, cols: u8) -> String {
-    let (left, sep, right) = match kind {
-        BorderKind::Top => ('┌', '┬', '┐'),
-        BorderKind::Mid => ('├', '┼', '┤'),
-        BorderKind::Bottom => ('└', '┴', '┘'),
-    };
-    let mut s = String::from("   "); // align with rank label
-    s.push(left);
-    for i in 0..cols {
-        s.push_str("──");
-        if i + 1 < cols {
-            s.push(sep);
-        } else {
-            s.push(right);
+    for display_col in 0..cols {
+        let sq = orient::square_at_display(display_row, display_col, observer, shape);
+        let (content, st, is_piece_or_glyph) = match sq {
+            Some(sq) => intersection_or_piece(
+                view,
+                sq,
+                model_w,
+                shape,
+                highlight,
+                g,
+                style,
+                use_color,
+                display_row,
+                display_col,
+            ),
+            None => (intersection_glyph(false, style).to_string(), TuiStyle::default(), false),
+        };
+
+        spans.push(Span::styled(content, st));
+
+        // Connector to next cell or trailing pad on last cell
+        if display_col + 1 < cols {
+            let connector = horizontal_connector(is_piece_or_glyph, style);
+            spans.push(Span::styled(connector, border_style));
+        } else if !is_piece_or_glyph {
+            // Last cell with 1-col content: pad to 2 cols so all rows have
+            // a consistent total width.
+            spans.push(Span::raw(" "));
         }
     }
-    s
+
+    Line::from(spans)
+}
+
+/// Per-cell content for a rank row.
+/// Returns `(content_str, content_style, content_is_glyph_width_2)`.
+/// `content_is_glyph_width_2` is true for revealed pieces and hidden banqi
+/// pieces (which use a 2-col glyph); false for empty intersections (1 col).
+#[allow(clippy::too_many_arguments)]
+fn intersection_or_piece(
+    view: &PlayerView,
+    sq: Square,
+    model_w: u8,
+    shape: BoardShape,
+    highlight: &std::collections::HashSet<Square>,
+    g: &GameView,
+    style: Style,
+    use_color: bool,
+    display_row: u8,
+    display_col: u8,
+) -> (String, TuiStyle, bool) {
+    let cell = &view.cells[sq.0 as usize];
+    let is_cursor = (display_row, display_col) == g.cursor;
+    let is_selected = g.selected == Some(sq);
+    let is_target = highlight.contains(&sq);
+
+    let (text, is_glyph_w2) = match cell {
+        VisibleCell::Empty => {
+            let palace_center = is_palace_center(sq, model_w, shape);
+            (intersection_glyph(palace_center, style).to_string(), false)
+        }
+        VisibleCell::Hidden => (glyph::hidden(style).to_string(), true),
+        VisibleCell::Revealed(pos) => {
+            (glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string(), true)
+        }
+    };
+
+    let mut s = TuiStyle::default();
+    if use_color {
+        if let VisibleCell::Revealed(pos) = cell {
+            s = s.fg(side_color(pos.piece.side));
+            if !pos.revealed {
+                s = s.add_modifier(Modifier::DIM);
+            }
+            if pos.piece.kind == PieceKind::General {
+                s = s.add_modifier(Modifier::BOLD);
+            }
+        } else if matches!(cell, VisibleCell::Hidden) {
+            s = s.fg(Color::DarkGray);
+        } else if is_palace_center(sq, model_w, shape) {
+            s = s.fg(Color::Yellow);
+        } else {
+            s = s.fg(Color::DarkGray);
+        }
+    }
+    if is_target {
+        s = s.bg(Color::Rgb(40, 80, 40));
+    }
+    if is_selected {
+        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+    }
+    if is_cursor {
+        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+    }
+    (text, s, is_glyph_w2)
+}
+
+fn is_palace_center(sq: Square, model_w: u8, shape: BoardShape) -> bool {
+    if !matches!(shape, BoardShape::Xiangqi9x10) {
+        return false;
+    }
+    let f = (sq.0 % model_w as u16) as u8;
+    let r = (sq.0 / model_w as u16) as u8;
+    f == 4 && (r == 1 || r == 8)
+}
+
+fn intersection_glyph(palace_center: bool, style: Style) -> &'static str {
+    match (palace_center, style) {
+        (true, Style::Cjk) => "╳",
+        (true, Style::Ascii) => "X",
+        (false, Style::Cjk) => "┼",
+        (false, Style::Ascii) => "+",
+    }
+}
+
+fn horizontal_connector(content_is_w2: bool, style: Style) -> &'static str {
+    let dash: char = match style {
+        Style::Cjk => '─',
+        Style::Ascii => '-',
+    };
+    if content_is_w2 {
+        // 2-col content (piece) leaves 2 cols for connector.
+        match dash {
+            '─' => "──",
+            _ => "--",
+        }
+    } else {
+        // 1-col content (intersection) leaves 3 cols for connector.
+        match dash {
+            '─' => "───",
+            _ => "---",
+        }
+    }
+}
+
+fn between_row(
+    observer: Side,
+    shape: BoardShape,
+    display_row_above: u8,
+    cols: u8,
+    style: Style,
+    border_style: TuiStyle,
+) -> Line<'static> {
+    let vbar: char = match style {
+        Style::Cjk => '│',
+        Style::Ascii => '|',
+    };
+    let diagonals = palace_diagonals(display_row_above, observer, shape, style);
+
+    let mut s = String::from("   "); // rank label
+    for cell_idx in 0..cols {
+        s.push(vbar);
+        if cell_idx + 1 < cols {
+            // 3-space gap, possibly with a diagonal char in the middle
+            // for palace between-rows. cell_idx is the index of the LEFT
+            // cell of the gap. Diagonals appear between cells (3, 4) and (4, 5).
+            let diag_char = match (diagonals, cell_idx) {
+                (Some((left_diag, _)), 3) => Some(left_diag),
+                (Some((_, right_diag)), 4) => Some(right_diag),
+                _ => None,
+            };
+            match diag_char {
+                Some(c) => {
+                    s.push(' ');
+                    s.push(c);
+                    s.push(' ');
+                }
+                None => s.push_str("   "),
+            }
+        }
+    }
+    // Trailing space so the row width matches rank rows (34 cols of content
+    // + 3 of rank label).
+    s.push(' ');
+    Line::from(Span::styled(s, border_style))
+}
+
+/// For a between-row sitting between display rows N and N+1, returns the
+/// (left, right) diagonal characters if this between-row crosses a palace.
+/// Otherwise None.
+fn palace_diagonals(
+    display_row_above: u8,
+    observer: Side,
+    shape: BoardShape,
+    style: Style,
+) -> Option<(char, char)> {
+    if !matches!(shape, BoardShape::Xiangqi9x10) {
+        return None;
+    }
+    let top_sq = orient::square_at_display(display_row_above, 4, observer, shape)?;
+    let bot_sq = orient::square_at_display(display_row_above + 1, 4, observer, shape)?;
+    let top_rank = (top_sq.0 / 9) as u8;
+    let bot_rank = (bot_sq.0 / 9) as u8;
+    let (low, high) = if top_rank < bot_rank { (top_rank, bot_rank) } else { (bot_rank, top_rank) };
+
+    let center_rank = match (low, high) {
+        (0, 1) | (1, 2) => 1u8,
+        (7, 8) | (8, 9) => 8u8,
+        _ => return None,
+    };
+
+    let top_dist = (top_rank as i32 - center_rank as i32).abs();
+    let bot_dist = (bot_rank as i32 - center_rank as i32).abs();
+    let converging = bot_dist < top_dist;
+
+    let (left_cjk, right_cjk) = if converging { ('╲', '╱') } else { ('╱', '╲') };
+    let (left, right) = match style {
+        Style::Cjk => (left_cjk, right_cjk),
+        Style::Ascii => (if converging { '\\' } else { '/' }, if converging { '/' } else { '\\' }),
+    };
+    Some((left, right))
 }
 
 fn river_line(cols: u8, style: Style) -> Line<'static> {
-    // Inner content fits between │ markers at the column boundaries.
-    // Total line width = 1 (left │) + 3*cols (cells) + (cols - 1) wait, no
-    // we keep the column-boundary │'s and put text between. To keep mouse
-    // hit-test simple, we render the river as a single continuous decorated
-    // band and rely on `river_after_display_row` to skip over it.
-    let total_cols_inner = (cols as usize) * 3 - 1; // 3 chars per cell minus the trailing │
+    // The river replaces the between-row entirely; there are no vertical
+    // bars connecting through it. Total width must match a rank row:
+    //   rank label (3) + grid (cols * 4 - 2) + trailing pad to align.
+    let target_width = (cols as usize) * 4 - 2;
     let banner = match style {
-        Style::Cjk => "  楚 河 ── 漢 界  ",
-        Style::Ascii => "  ----- river ----- ",
+        Style::Cjk => "〇 楚 河 ── 漢 界 〇",
+        Style::Ascii => "~ river -- river ~",
     };
-    // pad/truncate to total_cols_inner display width; CJK is 2 cols/glyph,
-    // so a literal char count is approximate. Use a generous overall row.
-    let mut s = String::from("   "); // rank label space
-    s.push('│');
-    let banner_pad = total_cols_inner.saturating_sub(visual_width(banner));
-    let left_pad = banner_pad / 2;
-    let right_pad = banner_pad - left_pad;
+    let mut s = String::from("   "); // rank label
+    let banner_w = visual_width(banner);
+    let pad = target_width.saturating_sub(banner_w);
+    let left_pad = pad / 2;
+    let right_pad = pad - left_pad;
     for _ in 0..left_pad {
         s.push(' ');
     }
@@ -217,7 +405,6 @@ fn river_line(cols: u8, style: Style) -> Line<'static> {
     for _ in 0..right_pad {
         s.push(' ');
     }
-    s.push('│');
     Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
 }
 
@@ -252,13 +439,17 @@ fn visual_width(s: &str) -> usize {
 fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
     let (w, _) = shape.dimensions();
     let (_, cols) = orient::display_dims(shape);
-    // Each cell is 3 cols: " label "  with the label centered.
-    let mut s = String::new();
-    s.push_str("    "); // 3 cols rank label + 1 col left │
+    // Each cell takes 4 cols (label at col 0, then 3 spaces). Last cell
+    // has just the label + 1 trailing space to match rank-row width.
+    let mut s = String::from("   "); // rank label
     for display_col in 0..cols {
         let label = file_label_for_col(display_col, w, shape, observer);
         s.push(label);
-        s.push_str("  "); // pad to 3 cols
+        if display_col + 1 < cols {
+            s.push_str("   ");
+        } else {
+            s.push(' '); // trailing pad
+        }
     }
     Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
 }
@@ -279,56 +470,6 @@ fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
         None => display_row,
     };
     format!(" {} ", r)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn render_cell(
-    view: &PlayerView,
-    sq: Square,
-    highlight: &std::collections::HashSet<Square>,
-    g: &GameView,
-    style: Style,
-    use_color: bool,
-    display_row: u8,
-    display_col: u8,
-) -> (String, TuiStyle) {
-    let cell = &view.cells[sq.0 as usize];
-    let is_cursor = (display_row, display_col) == g.cursor;
-    let is_selected = g.selected == Some(sq);
-    let is_target = highlight.contains(&sq);
-
-    let text = match cell {
-        VisibleCell::Empty => glyph::empty(style).to_string(),
-        VisibleCell::Hidden => glyph::hidden(style).to_string(),
-        VisibleCell::Revealed(pos) => {
-            glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
-        }
-    };
-
-    let mut s = TuiStyle::default();
-    if use_color {
-        if let VisibleCell::Revealed(pos) = cell {
-            s = s.fg(side_color(pos.piece.side));
-            if !pos.revealed {
-                s = s.add_modifier(Modifier::DIM);
-            }
-            if pos.piece.kind == PieceKind::General {
-                s = s.add_modifier(Modifier::BOLD);
-            }
-        } else if matches!(cell, VisibleCell::Hidden) {
-            s = s.fg(Color::DarkGray);
-        }
-    }
-    if is_target {
-        s = s.bg(Color::Rgb(40, 80, 40));
-    }
-    if is_selected {
-        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
-    }
-    if is_cursor {
-        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
-    }
-    (text, s)
 }
 
 fn side_color(side: Side) -> Color {

@@ -92,6 +92,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
 
+- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+
 - **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize.
 
 ## Where to put new work

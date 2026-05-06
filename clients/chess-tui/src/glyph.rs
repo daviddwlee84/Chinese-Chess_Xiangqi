@@ -82,15 +82,6 @@ pub fn hidden(style: Style) -> &'static str {
     }
 }
 
-/// Empty cell. The xiangqi grid uses `·` (centred dot, double-width compatible)
-/// for visual structure; ASCII falls back to a literal period.
-pub fn empty(style: Style) -> &'static str {
-    match style {
-        Style::Cjk => "・",
-        Style::Ascii => ". ",
-    }
-}
-
 /// Human-readable side label for the sidebar. `Side(0)` (engine debug) is
 /// useless to a player; this returns "Red (紅)" / "Black (黑)" / "Green (綠)"
 /// in CJK style and "Red" / "Black" / "Green" in ASCII style.
@@ -134,10 +125,8 @@ mod tests {
     }
 
     #[test]
-    fn hidden_and_empty_render() {
+    fn hidden_renders() {
         assert_eq!(hidden(Style::Ascii), "? ");
-        assert_eq!(empty(Style::Ascii), ". ");
         assert!(!hidden(Style::Cjk).is_empty());
-        assert!(!empty(Style::Cjk).is_empty());
     }
 }

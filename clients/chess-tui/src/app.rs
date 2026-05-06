@@ -94,16 +94,12 @@ pub struct RectPx {
     pub y: u16,
     /// Width in terminal cols of one cell (glyph + padding).
     pub cell_cols: u16,
-    /// Height in terminal rows of one cell (glyph + grid border).
+    /// Height in terminal rows of one cell (rank row + between row).
     pub cell_rows: u16,
     /// Offset (cols) of the first cell's start from rect.x.
     pub left_pad: u16,
     /// Offset (rows) of the first row from rect.y.
     pub top_pad: u16,
-    /// If set, after this display row the next visual row is the river break
-    /// (an extra terminal row that doesn't correspond to any cell). Used by
-    /// hit-testing to subtract one for clicks below the river.
-    pub river_after_display_row: Option<u8>,
 }
 
 impl AppState {
@@ -336,32 +332,21 @@ impl AppState {
 
 /// Convert terminal click coords to (display_row, display_col) within board.
 ///
-/// Cells are `cell_rows × cell_cols` terminal cells. Boxed layouts have grid
-/// borders interleaved with rank rows; with `cell_rows = 2` (rank row + bottom
-/// border), clicks on either row resolve to the same display cell. The
-/// `left_pad` skips the rank label column and the leading │; `top_pad` skips
-/// the file header and top border.
+/// Cells are `cell_rows × cell_cols` terminal cells. With the intersection
+/// layout, `cell_rows = 2` (rank row + between row) so clicks on either of
+/// those rows resolve to the same display cell — including the river row,
+/// which simply replaces the between-row at index 4 without changing the
+/// row layout.
 fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
     if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
         return None;
     }
     let col_off = term_col - rect.x - rect.left_pad;
-    let mut row_off = term_row - rect.y - rect.top_pad;
+    let row_off = term_row - rect.y - rect.top_pad;
     if rect.cell_cols == 0 || rect.cell_rows == 0 {
         return None;
     }
     let cell_col = col_off / rect.cell_cols;
-    // River break (xiangqi) inserts an extra terminal row between display
-    // rows N and N+1; clicks below it need to subtract that row.
-    if let Some(after_row) = rect.river_after_display_row {
-        let river_term_row = (after_row as u16 + 1) * rect.cell_rows;
-        if row_off >= river_term_row {
-            if row_off == river_term_row {
-                return None; // click landed on the river itself
-            }
-            row_off -= 1;
-        }
-    }
     let cell_row = row_off / rect.cell_rows;
     if cell_row >= rows as u16 || cell_col >= cols as u16 {
         return None;
