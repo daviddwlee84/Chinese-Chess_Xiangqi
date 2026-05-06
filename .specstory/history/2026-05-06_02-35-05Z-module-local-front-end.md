@@ -9980,6 +9980,12 @@ When you're ready, describe the 三國暗棋 capture rules + the home-zone layou
 
 _**User (2026-05-06 05:09:26Z)**_
 
+<command-message>project-knowledge-harness</command-message>
+<command-name>/project-knowledge-harness</command-name>
+<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
+
+_**User (2026-05-06 05:09:26Z)**_
+
 Base directory for this skill: /Users/daviddwlee84/.claude/skills/project-knowledge-harness
 
 # project-knowledge-harness
@@ -10179,12 +10185,6 @@ A live example of this harness is at
 
 
 ARGUMENTS: git commit 然後 把還沒做的feature羅列起來
-
-_**User (2026-05-06 05:09:26Z)**_
-
-<command-message>project-knowledge-harness</command-message>
-<command-name>/project-knowledge-harness</command-name>
-<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
 
 ---
 
@@ -24055,5 +24055,1729 @@ Inspect hooks + specstory dir
 drwxr-xr-x@   - daviddwlee84  6 May 10:28  **cli
 drwxr-xr-x@   - daviddwlee84  6 May 10:35  **history
 .rw-r--r--@ 134 daviddwlee84  6 May 10:28  .project.json
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit specstory transcript
+
+```bash
+git add .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md && git commit -m "$(cat <<'EOF'
+chore: bundle SpecStory transcript for chess-tui PR
+
+Conversation log captured by the SpecStory extension while wiring up the
+TUI frontend. Kept as a separate commit per the git-safety convention
+of preferring new commits over amends.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main d5f40ea] chore: bundle SpecStory transcript for chess-tui PR
+ 1 file changed, 8622 insertions(+), 6 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:37:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #26 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:37:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final state
+
+`git log --oneline -5 && echo "===" && git status`
+
+```text
+d5f40ea chore: bundle SpecStory transcript for chess-tui PR
+ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
+d7258ca docs: add CLAUDE.md and update transcript
+===
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:37:07Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:37:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Tidy background find processes
+
+`kill be2j8yqc8 bkmr0c4ga 2>/dev/null; echo done`
+
+```text
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:37:34Z)**_
+
+Shipped. Two commits on `main`:
+
+```
+d5f40ea chore: bundle SpecStory transcript for chess-tui PR
+ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+```
+
+## What works now
+
+```bash
+cargo run -p chess-tui                                    # variant picker
+cargo run -p chess-tui -- xiangqi
+cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+cargo run -p chess-tui -- --as black xiangqi              # render as Black
+```
+
+Input map: `hjkl`/arrows move cursor, `Enter`/`Space` select-or-commit, `Esc` cancel, `u` undo, `f` flip (banqi), `?` help, `q`/`Ctrl-C` quit. Mouse left-click selects/commits.
+
+## Architecture decisions worth flagging
+
+- **Engine stayed presentation-free.** `orient.rs` (display ↔ Square) and `glyph.rs` (CJK + ASCII tables) live in `clients/chess-tui/`, not in `chess-core`. When `chess-net` lands, the renderer switches from a local `GameState` to a `PlayerView` over ws with no engine touches — observer Side already threads through.
+- **Banqi transposes for display only.** Model coords stay 4×8; the renderer flips so you see the traditional 8-wide × 4-tall layout. ICCS notation unchanged.
+- **River broken-out below the board.** Inline river decoration would have desync'd the mouse hit-test row math (one extra row in the middle). For first cut the `楚河 ─ 漢界` line sits below the cells; cleaner mouse handling now, prettier inline river later via row-aware hit-test.
+
+## Verification
+
+- `cargo fmt --check` ✓
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ — chess-core tests unchanged (73 lib + 16 integration), chess-tui adds 9 (glyph table totality + Square↔display round-trip for both observers + banqi transpose).
+- `cargo build --target wasm32-unknown-unknown -p chess-core` ✓ — coupling-free.
+
+## TODO board updated
+
+```
+P1 (5)  | 三國暗棋, 3 deferred house rules, threefold repetition
+P2 (6)  | chess-net, chess-web, WXF, time controls, takeback proto, 讓棋
+P3 (3)  | AI, replay format, insta snapshots
+P? (2)  | SSH, Unity
+Done (3)| chess-core scaffolding + end-condition tests + chess-tui
+```
+
+Next natural candidates from P2 if you want to keep going: `chess-net` (so you can play with friends remotely from the TUI you just shipped), or one of the P1 quick wins like wiring `DARK_CHAIN` / `HORSE_DIAGONAL` / `CANNON_FAST_MOVE` house rules.
+
+---
+
+_**User (2026-05-06 06:39:10Z)**_
+
+[Image #1] [Image #2] 
+1. 目前Side(0)這種狀態user很難懂 得清楚知道是黑還是紅方回合(human readable)
+2. 目前馬的移動似乎有問題 明顯有leagal move但是卻不讓移動 (這部分得詳細知道什麼是拐馬腳 https://zh.wikipedia.org/zh-hant/%E6%8B%90%E8%85%B3 [Image #3] ) 把這部分功能以及test實現一下 不過我發現可能不是移動的問題 而是被將軍之後 沒有明確提示(這部分不知道是否需要明顯一點) 然後是不是可以故意不防守
+3. [Image #4] 還有像炮這邊 明明可以直接跳進去自殺 卻不讓走 也許應該把這種能故意輸的自由度打開 (做爲可調的開關) 要不然感覺提示太明確 可能沒看到會輸 因爲不能動所以被提示了就知道了
+
+_**User (2026-05-06 06:39:10Z)**_
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/1.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/2.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/3.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/4.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:44Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:44Z)**_
+
+Three concerns; let me tackle them. First, set up tasks and verify the horse `拐馬腳` logic since you flagged it.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Side(0)/Side(1) is engine internal. Sidebar should show "Red (紅)" / "Black (黑)" with side color.
+
+```text
+Task #27 created successfully: Replace `Side(0)` with human-readable name in TUI sidebar
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+User suspected horse move generation was wrong but realized it was likely a check-blocking issue. Confirm gen_horse implements the standard 馬腿 leg-block correctly.
+
+```text
+Task #28 created successfully: Verify horse 馬腿/拐馬腳 logic in rules/xiangqi.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:50Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+When the side-to-move's general is in check, sidebar shows "CHECK! 將軍" in red/bold. Optionally highlight the general's square. Uses existing GameState::is_in_check.
+
+```text
+Task #29 created successfully: Add CHECK indicator (將軍) to TUI sidebar
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:53Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add RuleSet::xiangqi_allow_self_check flag (default false). When true, legality filter in rules/xiangqi.rs::generate skips the self-check check. Add WinReason::GeneralCaptured. refresh_status detects missing general → opposite side wins. Tests: default rejects self-check, casual permits, follow-up capture triggers GeneralCaptured.
+
+```text
+Task #30 created successfully: Engine: ALLOW_SELF_CHECK casual mode
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:40:55Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Pass-through CLI flag for xiangqi mode. Optional: add "Xiangqi (casual)" picker entry that turns it on.
+
+```text
+Task #31 created successfully: Expose --allow-self-check in TUI + picker entry
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Final gate + commit.
+
+```text
+Task #32 created successfully: Verify, format, clippy, commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:05Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #28 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find horse move generator
+
+`grep -n "fn gen_horse\|gen_horse\|horse\|馬\|leg_block\|hobble" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/xiangqi.rs | head -30`
+
+```text
+53:        PieceKind::Horse => gen_horse(board, from, piece.side, out),
+130:fn gen_horse(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+134:            continue; // 馬腿 blocked
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:13Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/xiangqi.rs`
+
+```text
+125	    (2, -1, 1, 0),
+126	    (-2, 1, -1, 0),
+127	    (-2, -1, -1, 0),
+128	];
+129	
+130	fn gen_horse(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+131	    for &(dx, dy, lx, ly) in &HORSE_MOVES {
+132	        let Some(leg) = step_delta(board, from, lx, ly) else { continue };
+133	        if board.get(leg).is_some() {
+134	            continue; // 馬腿 blocked
+135	        }
+136	        let Some(to) = step_delta(board, from, dx, dy) else { continue };
+137	        push_step_or_capture(board, from, to, side, out);
+138	    }
+139	}
+140	
+141	// ---- Cannon ------------------------------------------------------------------
+142	
+143	fn gen_cannon(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+144	    for &dir in &Direction::ORTHOGONAL {
+145	        // Phase 1: empties (non-capturing slide).
+146	        let (walked, screen) = board.ray(from, dir);
+147	        for sq in walked {
+148	            out.push(Move::Step { from, to: sq });
+149	        }
+150	        // Phase 2: jump over exactly one piece (the screen) to capture.
+151	        let Some(screen_sq) = screen else { continue };
+152	        let mut cursor = screen_sq;
+153	        while let Some(next) = board.step(cursor, dir) {
+154	            if let Some(pos) = board.get(next) {
+155	                if pos.piece.side != side {
+156	                    out.push(Move::CannonJump {
+157	                        from,
+158	                        to: next,
+159	                        screen: screen_sq,
+160	                        captured: pos.piece,
+161	                    });
+162	                }
+163	                break;
+164	            }
+165	            cursor = next;
+166	        }
+167	    }
+168	}
+169	
+170	// ---- Soldier -----------------------------------------------------------------
+171	
+172	fn gen_soldier(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+173	    let forward = soldier_forward(side);
+174	    if let Some(to) = board.step(from, forward) {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/xiangqi.rs`
+
+```text
+115	}
+116	
+117	// ---- Horse -------------------------------------------------------------------
+118	
+119	const HORSE_MOVES: [(i8, i8, i8, i8); 8] = [
+120	    (1, 2, 0, 1),
+121	    (-1, 2, 0, 1),
+122	    (1, -2, 0, -1),
+123	    (-1, -2, 0, -1),
+124	    (2, 1, 1, 0),
+125	    (2, -1, 1, 0),
+126	    (-2, 1, -1, 0),
+127	    (-2, -1, -1, 0),
+128	];
+129
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find check filter logic
+
+`grep -n "is_in_check\|self_check\|is_legal_check\|fn generate\|filter_self_check\|legality" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/xiangqi.rs | head -20`
+
+```text
+15:pub fn generate(state: &GameState, out: &mut MoveList) {
+19:    // Clone-and-apply approach for legality. Cheap enough for 9×10
+29:        if !is_in_check(&probe, mover) {
+245:pub fn is_in_check(state: &GameState, side: Side) -> bool {
+318:        assert!(!state.is_in_check(Side::RED));
+319:        assert!(!state.is_in_check(Side::BLACK));
+368:        assert!(state.is_in_check(Side::RED), "flying general should put red in check");
+369:        assert!(state.is_in_check(Side::BLACK), "flying general should put black in check");
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/xiangqi.rs`
+
+```text
+10	use crate::moves::{Move, MoveList};
+11	use crate::piece::{Piece, PieceKind, Side};
+12	use crate::state::GameState;
+13	
+14	/// Top-level: legal moves only.
+15	pub fn generate(state: &GameState, out: &mut MoveList) {
+16	    let mut pseudo: MoveList = MoveList::new();
+17	    pseudo_legal_moves(state, &mut pseudo);
+18	
+19	    // Clone-and-apply approach for legality. Cheap enough for 9×10
+20	    // and trivially correct; AI hot path can switch to make/unmake later.
+21	    for m in pseudo.into_iter() {
+22	        let mut probe = state.clone();
+23	        if probe.make_move(&m).is_err() {
+24	            continue;
+25	        }
+26	        // After the move, side_to_move has flipped; the side that just
+27	        // moved is the one whose general must not be in check.
+28	        let mover = state.side_to_move;
+29	        if !is_in_check(&probe, mover) {
+30	            out.push(m);
+31	        }
+32	    }
+33	}
+34	
+35	pub fn pseudo_legal_moves(state: &GameState, out: &mut MoveList) {
+36	    let board = &state.board;
+37	    let me = state.side_to_move;
+38	    for sq in board.squares() {
+39	        let Some(pos) = board.get(sq) else { continue };
+40	        if pos.piece.side != me {
+41	            continue;
+42	        }
+43	        gen_for_piece(board, sq, pos.piece, out);
+44	    }
+45	}
+46	
+47	fn gen_for_piece(board: &Board, from: Square, piece: Piece, out: &mut MoveList) {
+48	    match piece.kind {
+49	        PieceKind::General => gen_general(board, from, piece.side, out),
+50	        PieceKind::Advisor => gen_advisor(board, from, piece.side, out),
+51	        PieceKind::Elephant => gen_elephant(board, from, piece.side, out),
+52	        PieceKind::Chariot => gen_chariot(board, from, piece.side, out),
+53	        PieceKind::Horse => gen_horse(board, from, piece.side, out),
+54	        PieceKind::Cannon => gen_cannon(board, from, piece.side, out),
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:39Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/xiangqi.rs`
+
+```text
+240	    moves.iter().any(|m| m.to_square() == Some(target))
+241	}
+242	
+243	/// `side`'s general is in check iff it is attacked OR the two generals
+244	/// face each other on a clear file.
+245	pub fn is_in_check(state: &GameState, side: Side) -> bool {
+246	    let board = &state.board;
+247	    let Some(my_general) =
+248	        crate::state::find_piece(board, |p| p.kind == PieceKind::General && p.side == side)
+249	    else {
+250	        return false;
+251	    };
+252	
+253	    if is_attacked(board, my_general, side.opposite()) {
+254	        return true;
+255	    }
+256	    generals_face(board, my_general)
+257	}
+258	
+259	fn generals_face(board: &Board, my_general: Square) -> bool {
+260	    let (my_file, _) = board.file_rank(my_general);
+261	    // Find the opposing general
+262	    let Some(their_general) = crate::state::find_piece(board, |p| {
+263	        p.kind == PieceKind::General
+264	            && (board.get(my_general).map(|x| x.piece.side != p.side).unwrap_or(false))
+265	    }) else {
+266	        return false;
+267	    };
+268	    let (their_file, _) = board.file_rank(their_general);
+269	    if my_file != their_file {
+270	        return false;
+271	    }
+272	    // Walk between them: any piece blocks the face-off.
+273	    let dir = {
+274	        let (_, r1) = board.file_rank(my_general);
+275	        let (_, r2) = board.file_rank(their_general);
+276	        if r2.0 > r1.0 {
+277	            Direction::N
+278	        } else {
+279	            Direction::S
+280	        }
+281	    };
+282	    let mut cursor = my_general;
+283	    loop {
+284	        let Some(next) = board.step(cursor, dir) else { return false };
+285	        if next == their_general {
+286	            return true;
+287	        }
+288	        if board.get(next).is_some() {
+289	            return false;
+290	        }
+291	        cursor = next;
+292	    }
+293	}
+294	
+295	#[cfg(test)]
+296	mod tests {
+297	    use super::*;
+298	    use crate::rules::RuleSet;
+299
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:52Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/mod.rs`
+
+```text
+1	//! Rules.
+2	//!
+3	//! `RuleSet` is plain data; move generation is free functions dispatching
+4	//! on `Variant` and consulting `HouseRules` bitflags. See ADR-0003.
+5	
+6	pub mod banqi;
+7	pub mod house;
+8	pub mod three_kingdom;
+9	pub mod xiangqi;
+10	
+11	pub use house::{HouseRules, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+12	
+13	use serde::{Deserialize, Serialize};
+14	
+15	use crate::moves::MoveList;
+16	use crate::state::GameState;
+17	
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+19	pub enum Variant {
+20	    Xiangqi,
+21	    Banqi,
+22	    /// 三國暗棋. Move-gen lands in PR 2; type exists from PR 1.
+23	    ThreeKingdomBanqi,
+24	}
+25	
+26	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+27	pub struct DrawPolicy {
+28	    /// Plies without progress (capture/reveal) before a draw is forced.
+29	    pub no_progress_plies: u16,
+30	    /// How many position repetitions trigger a draw.
+31	    pub repetition_threshold: u8,
+32	}
+33	
+34	impl DrawPolicy {
+35	    pub const XIANGQI: DrawPolicy = DrawPolicy { no_progress_plies: 60, repetition_threshold: 3 };
+36	    pub const BANQI: DrawPolicy = DrawPolicy { no_progress_plies: 40, repetition_threshold: 3 };
+37	}
+38	
+39	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+40	pub struct RuleSet {
+41	    pub variant: Variant,
+42	    pub house: HouseRules,
+43	    pub draw_policy: DrawPolicy,
+44	    /// Seed for banqi shuffling. `None` = nondeterministic.
+45	    pub banqi_seed: Option<u64>,
+46	}
+47	
+48	impl RuleSet {
+49	    pub fn xiangqi() -> Self {
+50	        Self {
+51	            variant: Variant::Xiangqi,
+52	            house: HouseRules::empty(),
+53	            draw_policy: DrawPolicy::XIANGQI,
+54	            banqi_seed: None,
+55	        }
+56	    }
+57	
+58	    pub fn banqi(house: HouseRules) -> Self {
+59	        Self { variant: Variant::Banqi, house, draw_policy: DrawPolicy::BANQI, banqi_seed: None }
+60	    }
+61	
+62	    pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
+63	        Self {
+64	            variant: Variant::Banqi,
+65	            house,
+66	            draw_policy: DrawPolicy::BANQI,
+67	            banqi_seed: Some(seed),
+68	        }
+69	    }
+70	
+71	    pub fn three_kingdom() -> Self {
+72	        Self {
+73	            variant: Variant::ThreeKingdomBanqi,
+74	            house: HouseRules::empty(),
+75	            draw_policy: DrawPolicy::BANQI,
+76	            banqi_seed: None,
+77	        }
+78	    }
+79	}
+80	
+81	/// Single dispatch point for move generation. Each variant's `generate`
+82	/// fills `out` with all legal moves for the side to move.
+83	pub fn generate_moves(state: &GameState, out: &mut MoveList) {
+84	    match state.rules.variant {
+85	        Variant::Xiangqi => xiangqi::generate(state, out),
+86	        Variant::Banqi => banqi::generate(state, out),
+87	        Variant::ThreeKingdomBanqi => three_kingdom::generate(state, out),
+88	    }
+89	}
+90	
+91	#[cfg(test)]
+92	mod tests {
+93	    use super::*;
+94	
+95	    #[test]
+96	    fn xiangqi_ruleset_defaults() {
+97	        let r = RuleSet::xiangqi();
+98	        assert_eq!(r.variant, Variant::Xiangqi);
+99	        assert!(r.house.is_empty());
+100	        assert_eq!(r.draw_policy.no_progress_plies, 60);
+101	    }
+102	
+103	    #[test]
+104	    fn banqi_ruleset_carries_house_rules() {
+105	        let r = RuleSet::banqi(HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH);
+106	        assert!(r.house.contains(HouseRules::CHAIN_CAPTURE));
+107	        assert!(r.house.contains(HouseRules::CHARIOT_RUSH));
+108	        assert!(!r.house.contains(HouseRules::DARK_CHAIN));
+109	    }
+110	
+111	    #[test]
+112	    fn banqi_ruleset_with_seed() {
+113	        let r = RuleSet::banqi_with_seed(HouseRules::empty(), 42);
+114	        assert_eq!(r.banqi_seed, Some(42));
+115	    }
+116	}
+117
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:58Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:41:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find inline RuleSet constructions
+
+`grep -rn "RuleSet {" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src --include="*.rs" | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:259:    let rules = RuleSet {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:40:pub struct RuleSet {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:48:impl RuleSet {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:04Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/snapshot.rs`
+
+```text
+255	
+256	    let variant = variant.ok_or(CoreError::Setup("variant required"))?;
+257	    let side_to_move = side_to_move.ok_or(CoreError::Setup("side_to_move required"))?;
+258	
+259	    let rules = RuleSet {
+260	        variant,
+261	        house,
+262	        draw_policy: match variant {
+263	            Variant::Xiangqi => DrawPolicy::XIANGQI,
+264	            _ => DrawPolicy::BANQI,
+265	        },
+266	        banqi_seed: seed,
+267	    };
+268	
+269	    let shape = match variant {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:09Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #28 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:09Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #30 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:16Z)**_
+
+Now the engine changes. Add `xiangqi_allow_self_check`, `WinReason::GeneralCaptured`, gate the legality filter, and detect missing-general in `refresh_status`.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:38Z)**_
+
+Now gate the self-check filter:
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:49Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/xiangqi.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:53Z)**_
+
+Add `WinReason::GeneralCaptured` and missing-general detection in `refresh_status`:
+
+_**Agent (claude-opus-4-7 2026-05-06 06:42:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:20Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/state/turn_order.rs`
+
+```text
+1	//! Turn order: round-robin over 2 or 3 seats.
+2	
+3	use serde::{Deserialize, Serialize};
+4	use smallvec::SmallVec;
+5	
+6	use crate::piece::Side;
+7	
+8	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+9	pub struct TurnOrder {
+10	    pub seats: SmallVec<[Side; 3]>,
+11	    /// Index into `seats`.
+12	    pub current: u8,
+13	}
+14	
+15	impl TurnOrder {
+16	    pub fn two_player() -> Self {
+17	        let mut seats = SmallVec::new();
+18	        seats.push(Side::RED);
+19	        seats.push(Side::BLACK);
+20	        Self { seats, current: 0 }
+21	    }
+22	
+23	    pub fn three_player() -> Self {
+24	        let mut seats = SmallVec::new();
+25	        seats.push(Side(0));
+26	        seats.push(Side(1));
+27	        seats.push(Side(2));
+28	        Self { seats, current: 0 }
+29	    }
+30	
+31	    #[inline]
+32	    pub fn current_side(&self) -> Side {
+33	        self.seats[self.current as usize]
+34	    }
+35	
+36	    pub fn advance(&mut self) {
+37	        self.current = (self.current + 1) % self.seats.len() as u8;
+38	    }
+39	
+40	    /// Advance to the next non-eliminated seat. Used when a faction is wiped
+41	    /// out in 三國暗棋. If all opponents are eliminated this is a no-op.
+42	    pub fn advance_skipping(&mut self, eliminated: &[Side]) {
+43	        for _ in 0..self.seats.len() {
+44	            self.advance();
+45	            if !eliminated.contains(&self.current_side()) {
+46	                return;
+47	            }
+48	        }
+49	    }
+50	}
+51	
+52	#[cfg(test)]
+53	mod tests {
+54	    use super::*;
+55	
+56	    #[test]
+57	    fn two_player_alternates() {
+58	        let mut t = TurnOrder::two_player();
+59	        assert_eq!(t.current_side(), Side::RED);
+60	        t.advance();
+61	        assert_eq!(t.current_side(), Side::BLACK);
+62	        t.advance();
+63	        assert_eq!(t.current_side(), Side::RED);
+64	    }
+65	
+66	    #[test]
+67	    fn three_player_cycles() {
+68	        let mut t = TurnOrder::three_player();
+69	        let order: Vec<_> = (0..6)
+70	            .map(|_| {
+71	                let s = t.current_side();
+72	                t.advance();
+73	                s
+74	            })
+75	            .collect();
+76	        assert_eq!(order, vec![Side(0), Side(1), Side(2), Side(0), Side(1), Side(2)]);
+77	    }
+78	
+79	    #[test]
+80	    fn advance_skipping_skips_eliminated() {
+81	        let mut t = TurnOrder::three_player();
+82	        // Side 0 just moved; eliminated = [Side(1)] means skip to Side(2)
+83	        t.advance_skipping(&[Side(1)]);
+84	        assert_eq!(t.current_side(), Side(2));
+85	        // Continue: skip Side(1) again
+86	        t.advance_skipping(&[Side(1)]);
+87	        assert_eq!(t.current_side(), Side(0));
+88	    }
+89	}
+90
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:26Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify build
+
+`cargo check --workspace 2>&1 | tail -20`
+
+```text
+    Checking chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Checking chess-engine v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-engine)
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.30s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:42Z)**_
+
+Now write tests for the casual mode + missing-general detection.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List integration tests
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/`
+
+```text
+ **fixtures
+ **banqi_basic.rs
+ **banqi_house_chain.rs
+ **end_conditions.rs
+ **replay_round_trip.rs
+ **view_projection.rs
+ **xiangqi_perft.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:43:48Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/tests/end_conditions.rs`
+
+```text
+1	//! End-condition checks: load hand-crafted `.pos` fixtures, run
+2	//! `refresh_status`, and assert the engine recognises the win/draw.
+3	//!
+4	//! Each fixture is annotated with the position's intent in its header
+5	//! comments. If a fixture's expected result drifts from these tests,
+6	//! audit the rule edit before adjusting either side.
+7	
+8	use chess_core::piece::Side;
+9	use chess_core::state::{GameState, GameStatus, WinReason};
+10	
+11	fn load(path: &str) -> GameState {
+12	    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path}: {e}"));
+13	    GameState::from_pos_text(&text).unwrap_or_else(|e| panic!("parse {path}: {e}"))
+14	}
+15	
+16	#[test]
+17	fn xiangqi_three_chariot_mate_is_checkmate() {
+18	    let mut state = load("tests/fixtures/xiangqi/three-chariot-mate.pos");
+19	    assert_eq!(state.side_to_move, Side::BLACK);
+20	    assert!(state.is_in_check(Side::BLACK), "black general should be in check");
+21	    state.refresh_status();
+22	    assert_eq!(
+23	        state.status,
+24	        GameStatus::Won { winner: Side::RED, reason: WinReason::Checkmate },
+25	        "three-chariot mate should produce Checkmate"
+26	    );
+27	}
+28	
+29	#[test]
+30	fn xiangqi_horse_stalemate_is_stalemate() {
+31	    let mut state = load("tests/fixtures/xiangqi/horse-stalemate.pos");
+32	    assert_eq!(state.side_to_move, Side::BLACK);
+33	    assert!(
+34	        !state.is_in_check(Side::BLACK),
+35	        "black should NOT be in check (otherwise this would be checkmate, not stalemate)"
+36	    );
+37	    state.refresh_status();
+38	    assert_eq!(
+39	        state.status,
+40	        GameStatus::Won { winner: Side::RED, reason: WinReason::Stalemate },
+41	        "horse stalemate should produce Stalemate (Asian rules: stalemated side loses)"
+42	    );
+43	}
+44	
+45	#[test]
+46	fn banqi_red_wiped_out_loses() {
+47	    let mut state = load("tests/fixtures/banqi/red-wiped-out.pos");
+48	    assert_eq!(state.side_to_move, Side::RED);
+49	    assert_eq!(state.legal_moves().len(), 0, "Red has no legal moves");
+50	    state.refresh_status();
+51	    assert_eq!(
+52	        state.status,
+53	        GameStatus::Won { winner: Side::BLACK, reason: WinReason::OnlyOneSideHasPieces },
+54	        "banqi side with no moves loses"
+55	    );
+56	}
+57	
+58	#[test]
+59	fn ongoing_position_stays_ongoing() {
+60	    // Sanity: the fresh xiangqi opening should not trip any end condition.
+61	    let mut state = GameState::new(chess_core::rules::RuleSet::xiangqi());
+62	    state.refresh_status();
+63	    assert_eq!(state.status, GameStatus::Ongoing);
+64	}
+65
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:45:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:45:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Casual xiangqi mode (`xiangqi_allow_self_check`): the legality filter
+//! does NOT reject moves that leave your own general capturable; the game
+//! ends when the general is physically captured.
+
+use chess_core::board::{Board, BoardShape};
+use chess_core::coord::{File, Rank};
+use chess_core::piece::{Piece, PieceKind, PieceOnSquare, Side};
+use chess_core::rules::RuleSet;
+use chess_core::state::{GameState, GameStatus, TurnOrder, WinReason};
+use smallvec::smallvec;
+
+#[test]
+fn casual_mode_default_is_off() {
+    let r = RuleSet::xiangqi();
+    assert!(!r.xiangqi_allow_self_check);
+    let r = RuleSet::xiangqi_casual();
+    assert!(r.xiangqi_allow_self_check);
+}
+
+#[test]
+fn casual_mode_exposes_moves_in_a_standard_checkmate_position() {
+    let text = std::fs::read_to_string("tests/fixtures/xiangqi/three-chariot-mate.pos")
+        .expect("read fixture");
+    let mut state = GameState::from_pos_text(&text).expect("parse fixture");
+
+    // Standard rules: checkmate → 0 legal moves.
+    assert_eq!(state.legal_moves().len(), 0, "standard rules: checkmate");
+
+    // Switch to casual: pseudo-legal moves become legal.
+    state.rules.xiangqi_allow_self_check = true;
+    let casual_moves = state.legal_moves();
+    assert!(
+        !casual_moves.is_empty(),
+        "casual mode should expose pseudo-legal moves even when standard says checkmate"
+    );
+}
+
+#[test]
+fn general_captured_triggers_won_by_general_captured() {
+    // Build a contrived end-state:
+    //   Red has only a general at e0.
+    //   Black has a general at e9 and a chariot at e3.
+    //   Black to move; the chariot captures Red's general.
+    //
+    // refresh_status should report Won { winner: BLACK, reason: GeneralCaptured }.
+    let mut board = Board::new(BoardShape::Xiangqi9x10);
+    let red_gen = board.sq(File(4), Rank(0));
+    let blk_gen = board.sq(File(4), Rank(9));
+    let blk_chariot = board.sq(File(4), Rank(3));
+
+    board.set(
+        red_gen,
+        Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::General))),
+    );
+    board.set(
+        blk_gen,
+        Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::General))),
+    );
+    board.set(
+        blk_chariot,
+        Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Chariot))),
+    );
+
+    let mut state = GameState {
+        rules: RuleSet::xiangqi_casual(),
+        board,
+        side_to_move: Side::BLACK,
+        turn_order: TurnOrder { seats: smallvec![Side::RED, Side::BLACK], current: 1 },
+        history: Vec::new(),
+        status: GameStatus::Ongoing,
+        side_assignment: None,
+        no_progress_plies: 0,
+    };
+
+    let capture = state
+        .legal_moves()
+        .into_iter()
+        .find(|m| m.origin_square() == blk_chariot && m.to_square() == Some(red_gen))
+        .expect("Black chariot should be able to capture the Red general");
+
+    state.make_move(&capture).expect("apply capture");
+    state.refresh_status();
+
+    assert_eq!(
+        state.status,
+        GameStatus::Won { winner: Side::BLACK, reason: WinReason::GeneralCaptured },
+        "expected GeneralCaptured win, got {:?}",
+        state.status
+    );
+}
+
+#[test]
+fn standard_mode_still_rejects_self_check() {
+    // Sanity: in a real opening, exposing the general should still be blocked.
+    let mut state = GameState::new(RuleSet::xiangqi());
+    let opening_count = state.legal_moves().len();
+    state.refresh_status();
+    assert_eq!(state.status, GameStatus::Ongoing);
+    assert_eq!(opening_count, 44, "xiangqi opening has 44 legal moves under standard rules");
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/casual_xiangqi.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:45:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run casual xiangqi tests
+
+`cargo test -p chess-core --test casual_xiangqi 2>&1 | tail -30`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `test` profile [optimized + debuginfo] target(s) in 4.01s
+     Running tests/casual_xiangqi.rs (target/debug/deps/casual_xiangqi-f7e4ccfe9043b364)
+
+running 4 tests
+test casual_mode_default_is_off ... ok
+test general_captured_triggers_won_by_general_captured ... ok
+test standard_mode_still_rejects_self_check ... ok
+test casual_mode_exposes_moves_in_a_standard_checkmate_position ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:45:55Z)**_
+
+All 4 casual-mode tests pass. Run the full workspace tests to ensure nothing else broke:
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace test run
+
+`cargo test --workspace 2>&1 | grep "test result\|FAILED" | head -25`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:19Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #30 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:19Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #27 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/glyph.rs`
+
+```text
+1	//! Piece glyph tables. Two render styles: traditional CJK (帥/將 etc.) and
+2	//! ASCII single-letter (uppercase = Red, lowercase = Black). The engine has
+3	//! no concept of glyphs — presentation lives entirely in the client.
+4	
+5	use chess_core::piece::{PieceKind, Side};
+6	
+7	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+8	pub enum Style {
+9	    Cjk,
+10	    Ascii,
+11	}
+12	
+13	/// Two-column-wide string for a piece. CJK characters are double-width in a
+14	/// monospace terminal; ASCII glyphs are padded with a trailing space so cells
+15	/// align in either mode.
+16	pub fn glyph(kind: PieceKind, side: Side, style: Style) -> &'static str {
+17	    match style {
+18	        Style::Cjk => cjk(kind, side),
+19	        Style::Ascii => ascii(kind, side),
+20	    }
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/glyph.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:34Z)**_
+
+Now wire it into the sidebar, with the side colored to match its piece color, plus the CHECK indicator.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+230	        }
+231	    }
+232	    if is_target {
+233	        s = s.bg(Color::Rgb(40, 80, 40));
+234	    }
+235	    if is_selected {
+236	        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+237	    }
+238	    if is_cursor {
+239	        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+240	    }
+241	    (text, s)
+242	}
+243	
+244	fn side_color(side: Side) -> Color {
+245	    match side {
+246	        Side::RED => Color::Red,
+247	        Side::BLACK => Color::White,
+248	        _ => Color::Green,
+249	    }
+250	}
+251	
+252	fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, help_open: bool) {
+253	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+254	    let inner = block.inner(area);
+255	    frame.render_widget(block, area);
+256	
+257	    let view = PlayerView::project(&g.state, g.state.side_to_move);
+258	    let mut lines: Vec<Line> = Vec::new();
+259	
+260	    let variant_label = match view.shape {
+261	        BoardShape::Xiangqi9x10 => "Xiangqi (象棋)",
+262	        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+263	        BoardShape::ThreeKingdom => "三國暗棋",
+264	        BoardShape::Custom { .. } => "Custom",
+265	    };
+266	    lines.push(line_label_value("Variant:", variant_label));
+267	    lines.push(line_label_value("Side to move:", &format!("{:?}", view.side_to_move)));
+268	    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+269	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+270	    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+271	
+272	    let selected_label = match g.selected {
+273	        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+274	        None => "—".into(),
+275	    };
+276	    lines.push(line_label_value("Selected:", &selected_label));
+277	
+278	    lines.push(Line::from(""));
+279	    if let Some(msg) = &g.last_msg {
+280	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+281	    }
+282	
+283	    if help_open {
+284	        lines.push(Line::from(""));
+285	        lines.push(Line::from(Span::styled(
+286	            "Help",
+287	            TuiStyle::default().add_modifier(Modifier::BOLD),
+288	        )));
+289	        for ln in HELP_LINES {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:39Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+52	    let chunks = Layout::default()
+53	        .direction(Direction::Horizontal)
+54	        .constraints([Constraint::Min(36), Constraint::Length(34)])
+55	        .split(area);
+56	
+57	    let Screen::Game(g) = &app.screen else {
+58	        return;
+59	    };
+60	    let g_ref: &GameView = g.as_ref();
+61	    let observer = app.observer;
+62	    let style = app.style;
+63	    let use_color = app.use_color;
+64	    let help_open = app.help_open;
+65	
+66	    let mut rect = app.board_rect;
+67	    draw_board(frame, chunks[0], observer, style, use_color, g_ref, &mut rect);
+68	    app.board_rect = rect;
+69	    draw_sidebar(frame, chunks[1], g_ref, help_open);
+70	}
+71	
+72	fn draw_board(
+73	    frame: &mut Frame,
+74	    area: Rect,
+75	    observer: Side,
+76	    style: Style,
+77	    use_color: bool,
+78	    g: &GameView,
+79	    board_rect: &mut Option<RectPx>,
+80	) {
+81	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:45Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:46:58Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:02Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check ui.rs imports
+
+`head -20 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs`
+
+```text
+//! ratatui draw layer. Stateless — reads `AppState` and draws.
+
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::piece::{PieceKind, Side};
+use chess_core::view::{PlayerView, VisibleCell};
+
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Modifier, Style as TuiStyle};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::Frame;
+
+use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
+use crate::glyph::{self, Style};
+use crate::orient;
+
+const CELL_COLS: u16 = 3;
+const RANK_LABEL_COLS: u16 = 3;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:08Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check sidebar compiles
+
+`cargo check -p chess-tui 2>&1 | tail -15`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.34s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:17Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #27 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:18Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #29 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:18Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #31 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:22Z)**_
+
+Now wire up `--allow-self-check` in the CLI and add a casual picker entry.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:25Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:38Z)**_
+
+Now add the casual entry to the variant picker:
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:47:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format + clippy
+
+`cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10`
+
+```text
+    Checking chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Checking chess-engine v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-engine)
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.08s
+[This command modified 1 file you've previously read: crates/chess-core/tests/casual_xiangqi.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run all tests
+
+`cargo test --workspace 2>&1 | grep "test result\|FAIL" | head -25`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM build
+
+`cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -5`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.10s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify CLI
+
+`./target/debug/chess-tui xiangqi --help 2>&1; echo "==="; ./target/debug/chess-tui --help 2>&1 | head -15`
+
+```text
+Standard xiangqi (9×10)
+
+Usage: chess-tui xiangqi
+
+Options:
+  -h, --help  Print help
+===
+ratatui frontend for chess-core
+
+Usage: chess-tui [OPTIONS] [COMMAND]
+
+Commands:
+  xiangqi  Standard xiangqi (9×10)
+  banqi    Banqi (4×8 face-down)
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --style <STYLE>  Render style [default: cjk] [possible values: cjk, ascii]
+      --no-color       Disable ANSI color (keeps the chosen glyph set)
+      --as <OBSERVER>  Render from this side's perspective (debug; default RED) [default: red] [possible values: red, black]
+  -h, --help           Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Rebuild and verify --allow-self-check flag
+
+`cargo build -p chess-tui 2>&1 | tail -3 && ./target/debug/chess-tui xiangqi --help 2>&1`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.63s
+Standard xiangqi (9×10)
+
+Usage: chess-tui xiangqi [OPTIONS]
+
+Options:
+      --allow-self-check  Casual mode: allow moves that leave your own general capturable. You lose only when the general is physically captured
+  -h, --help              Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #31 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #32 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:30Z)**_
+
+Update CLAUDE.md with the new casual mode + WinReason addition.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:48Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final pre-commit gate
+
+`cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.50s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:48:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Status before commit
+
+`git status`
+
+```text
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+	modified:   CLAUDE.md
+	modified:   clients/chess-tui/src/app.rs
+	modified:   clients/chess-tui/src/glyph.rs
+	modified:   clients/chess-tui/src/main.rs
+	modified:   clients/chess-tui/src/ui.rs
+	modified:   crates/chess-core/src/rules/mod.rs
+	modified:   crates/chess-core/src/rules/xiangqi.rs
+	modified:   crates/chess-core/src/snapshot.rs
+	modified:   crates/chess-core/src/state/mod.rs
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	crates/chess-core/tests/casual_xiangqi.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:49:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit feature batch
+
+```bash
+git add CLAUDE.md clients/chess-tui/src/app.rs clients/chess-tui/src/glyph.rs clients/chess-tui/src/main.rs clients/chess-tui/src/ui.rs crates/chess-core/src/rules/mod.rs crates/chess-core/src/rules/xiangqi.rs crates/chess-core/src/snapshot.rs crates/chess-core/src/state/mod.rs crates/chess-core/tests/casual_xiangqi.rs && git commit -m "$(cat <<'EOF'
+feat: human-readable side, CHECK indicator, casual xiangqi mode
+
+Three fixes from playtest feedback.
+
+UX:
+- Sidebar shows "Red 紅" / "Black 黑" instead of "Side(0)" / "Side(1)",
+  colored to match the side. Variant string also reflects casual mode
+  ("Xiangqi (象棋, casual)").
+- "⚠ CHECK 將軍" line in the sidebar (red, bold) when the side-to-move's
+  general is in check. Surfaces the constraint that was making horse
+  moves "look broken" — the moves were correctly filtered as self-check,
+  but the player had no visible reason why.
+
+Engine:
+- New RuleSet::xiangqi_allow_self_check (default false). When enabled,
+  the legality filter in rules/xiangqi.rs::generate skips the self-check
+  check; pseudo-legal moves all pass. Marked #[serde(default)] so older
+  snapshots still load.
+- New WinReason::GeneralCaptured. refresh_status iterates seats and
+  detects a missing general before the no-legal-moves path; the opposite
+  side wins. Standard rules still reach this only via contrived states
+  (legality filter forbids it via legal play); casual rules reach it
+  naturally.
+- RuleSet::xiangqi_casual() helper mirrors xiangqi() with the flag on.
+- 4 new integration tests in tests/casual_xiangqi.rs: default-off,
+  pseudo-legal moves exposed in a checkmate position when casual is on,
+  GeneralCaptured triggered after a chariot captures the general,
+  standard mode opening still has 44 legal moves.
+
+CLI:
+- chess-tui xiangqi --allow-self-check.
+- New "Xiangqi (casual)" picker entry.
+
+Verified the horse 馬腿/拐馬腳 logic in rules/xiangqi.rs:130 is correct
+(8 L-moves × correct leg-block square); the user's "horse can't move"
+report was the missing CHECK indicator above.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline -5
+```
+
+```text
+[main 6ffe523] feat: human-readable side, CHECK indicator, casual xiangqi mode
+ 10 files changed, 224 insertions(+), 10 deletions(-)
+ create mode 100644 crates/chess-core/tests/casual_xiangqi.rs
+6ffe523 feat: human-readable side, CHECK indicator, casual xiangqi mode
+d5f40ea chore: bundle SpecStory transcript for chess-tui PR
+ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
 ```
 </details></tool-use>
