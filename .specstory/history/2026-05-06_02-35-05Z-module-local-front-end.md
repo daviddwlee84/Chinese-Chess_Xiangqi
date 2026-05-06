@@ -27341,3 +27341,1075 @@ d5f40ea chore: bundle SpecStory transcript for chess-tui PR
 ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:09:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Bundle transcript
+
+```bash
+git add .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md && git commit -m "$(cat <<'EOF'
+chore: bundle SpecStory transcript for board/UX polish PR
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main cf731dc] chore: bundle SpecStory transcript for board/UX polish PR
+ 1 file changed, 1560 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:09:10Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #36 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:09:37Z)**_
+
+Shipped. Two commits:
+
+```
+cf731dc chore: bundle SpecStory transcript for board/UX polish PR
+f276962 feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+```
+
+## Per concern
+
+### 1. Game-over detection / "what now"
+
+The screenshot you showed was actually still mid-game — `Status: Ongoing`, `Legal moves: 1`. Black was in check with exactly one escape move available, which is a forced-move position, not yet checkmate. Once that single move is played (or the only escape is captured next turn) status flips.
+
+What I fixed: the dead-end UX. When status becomes `Won/Drawn`:
+
+- **Banner at the top of the sidebar** — colored winner badge, readable reason (`Checkmate (將死)`, `Stalemate (困死) — no legal moves`, `General captured (將被吃)`, etc.).
+- **`n` key returns to the variant picker** — fresh game without re-launching the binary.
+- **Move/flip attempts are gated** when game over (helpful flash: "Press 'n' for new game, 'u' to take back, 'q' to quit").
+- **`u` (undo) still works post-game** — you can take back the losing move and explore alternatives.
+
+### 2. Casual mode — verified, working as designed
+
+Default mode (`xiangqi`) blocks self-check moves. That's standard rules and the engine integration tests in `tests/casual_xiangqi.rs` confirm it. To allow suicide moves use either:
+
+```bash
+chess-tui xiangqi --allow-self-check
+# or pick "Xiangqi (casual — allow self-check, lose by capture)" in the menu
+```
+
+In casual mode `legal_moves()` skips the self-check filter entirely; you can move into check or expose your general, and the game ends with `WinReason::GeneralCaptured` when the general is actually taken. The sidebar variant header reads `Xiangqi (象棋, casual)` so you know which mode you're in.
+
+### 3. Rules tutorial
+
+Press `r` from any in-game screen → centered modal overlay with concise xiangqi + banqi rules:
+
+- Palace, river, 馬腿 leg-block, cannon-jump screen, soldier crossing.
+- Flying-generals 飛將 rule.
+- Standard vs casual self-check semantics.
+- Banqi rank-capture order, cannon jump, house-rule presets.
+
+`r` or `Esc` closes it.
+
+### 4. Prettier board
+
+Replaced the flat-row layout with proper box-drawing chars. Each cell is 3 cols × 2 rows; the river replaces the mid-border between ranks 4 and 5:
+
+```
+     a  b  c  d  e  f  g  h  i
+   ┌──┬──┬──┬──┬──┬──┬──┬──┬──┐
+ 9 │車│馬│象│士│將│士│象│馬│車│
+   ├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+ 8 │  │  │  │  │  │  │  │  │  │
+   ...
+   ├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+ 5 │  │  │  │  │  │  │  │  │  │
+   │      楚 河 ── 漢 界      │
+ 4 │  │  │  │  │  │  │  │  │  │
+   ├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+   ...
+   └──┴──┴──┴──┴──┴──┴──┴──┴──┘
+     a  b  c  d  e  f  g  h  i
+```
+
+Mouse hit-test math also updated — `RectPx` now carries `cell_rows` and `river_after_display_row` so clicks on the river itself return `None` and clicks below it adjust by 1. Banqi (4×8 transposed → 8 wide × 4 tall) uses the same boxed layout without a river.
+
+## Verification
+
+`cargo fmt` ✓ · `cargo clippy --workspace --all-targets -- -D warnings` ✓ · `cargo test --workspace` ✓ (all tests still pass) · `cargo build --target wasm32-unknown-unknown -p chess-core` ✓ · CLI smoke test ✓.
+
+---
+
+_**User (2026-05-06 07:14:17Z)**_
+
+我預期的 Prettier board 應該長這樣
+[Image #7]
+https://github.com/windshadow233/python-chinese-chess
+
+[Image #8]
+https://www.reddit.com/r/typescript/comments/16nmb5i/chess_but_in_ascii_art_but_in_typescripts_type/
+
+```
+    1   2   3   4   5   6   7   8   9
+  +---+---+---+---+---+---+---+---+
+A |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+B |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+C |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+D |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+E |           楚  河  漢  界      |
+  +---+---+---+---+---+---+---+---+
+F |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+G |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+H |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+I |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+
+```
+
+> 製作提示對齊：使用等寬字體（Monospace Font）才能確保線條對齊。十字線：炮和兵卒所在的十字位置，可用 ╋ 或 + 表示。邊界：九宮格可用對角線字元 ╲ ╱ 模擬。
+
+這部分請特別設計一下 然後給我方案選擇
+
+_**User (2026-05-06 07:14:17Z)**_
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/7.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/8.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 07:17:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:17:01Z)**_
+
+Got it — the current "boxed cells" rendering puts pieces *inside* boxes, but authentic xiangqi has pieces *on the intersections* of grid lines. Let me design three options and let you pick.
+
+Let me first prototype the three layouts so the previews are accurate, then ask you to choose.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:17:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:AskUserQuestion`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:22:28Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:22:28Z)**_
+
+Let me present three layout options. The current implementation is "boxed cells" (rejected); the new design puts pieces *on intersections* matching traditional xiangqi.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:23:08Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="AskUserQuestion"><details>
+<summary>Tool use: **AskUserQuestion**</summary>
+**Which intersection-based board style should we implement?**
+
+Options:
+- **Unicode intersections + palace X (Recommended)** - Pieces sit on the grid line crossings. Empty intersections are ┌┬┐├┼┤└┴┘; horizontal lines ──, vertical │; palace diagonals ╲ ╱ with ╳ at the palace center. River replaces the middle band with stylised 〇 楚河  漢界 〇 text. Closest to the wikipedia-style xiangqi rendering you sent.
+- **ASCII intersections (max portability)** - Same intersection style but using only ASCII: + for empty, - and | for lines, X at palace center, \ / for diagonals. Pieces use the existing --style ascii letter set (R/N/B/A/K/C/P uppercase=Red, lowercase=Black). Falls back gracefully on TERM=dumb or fonts without box-drawing. Could ride the existing --style ascii flag.
+- **Both: Unicode default, ASCII fallback** - Implement both. Default — Unicode intersections (option 1). Falls back to ASCII intersections (option 2) when --style ascii is set. Same shape, two character sets. Slight increase in render-layer code but covers terminals across the board.
+
+
+**Answer:** Unicode intersections + palace X (Recommended)" selected preview:
+   a   b   c   d   e   f   g   h   i
+ 9 車──馬──象──士──將──士──象──馬──車
+   │   │   │   │ ╲ │ ╱ │   │   │
+ 8 ┼───┼───┼───┼───╳───┼───┼───┼───┼
+   │   │   │   │ ╱ │ ╲ │   │   │
+ 7 ┼───砲──┼───┼───┼───┼───砲──┼
+   │   │   │   │   │   │   │   │
+ 6 卒──┼───卒──┼───卒──┼───卒──┼───卒
+ 5 ┼───┼───┼───┼───┼───┼───┼───┼───┼
+        〇  楚 河  ──  漢 界  〇
+ 4 ┼───┼───┼───┼───┼───┼───┼───┼───┼
+   │   │   │   │   │   │   │   │
+ 3 兵──┼───兵──┼───兵──┼───兵──┼───兵
+ 0 俥──傌──相──仕──帥──仕──相──傌──俥
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:43Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:43Z)**_
+
+Implementing Option 1. Let me rewrite the board rendering with intersection layout, palace diagonals, and the river text band.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:46Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Replace boxed-cell layout with intersection layout: pieces on grid crossings, empty intersections render as ┼ (or ╳ at palace center), palace diagonals ╲╱ in between-rows, river replaces middle between-row with stylised text. Update RectPx + hit_test for the new geometry.
+
+```text
+Task #37 created successfully: Implement intersection-based board rendering
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+When --style ascii, render the same intersection layout but with + - | \\ / X chars and ASCII-letter pieces. Keeps the existing --style flag honest.
+
+```text
+Task #38 created successfully: Add ASCII fallback path for intersection board
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Final gate + commit.
+
+```text
+Task #39 created successfully: Verify, format, clippy, commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #37 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:24:55Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+75	}
+76	
+77	fn draw_board(
+78	    frame: &mut Frame,
+79	    area: Rect,
+80	    observer: Side,
+81	    style: Style,
+82	    use_color: bool,
+83	    g: &GameView,
+84	    board_rect: &mut Option<RectPx>,
+85	) {
+86	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+87	    let inner = block.inner(area);
+88	    frame.render_widget(block, area);
+89	
+90	    let view = PlayerView::project(&g.state, g.state.side_to_move);
+91	    let shape = view.shape;
+92	    let (rows, cols) = orient::display_dims(shape);
+93	
+94	    // Build legal-target highlight set when a piece is selected.
+95	    let highlight: std::collections::HashSet<Square> = match g.selected {
+96	        Some(from) => view
+97	            .legal_moves
+98	            .iter()
+99	            .filter(|m| m.origin_square() == from)
+100	            .filter_map(|m| m.to_square())
+101	            .collect(),
+102	        None => std::collections::HashSet::new(),
+103	    };
+104	
+105	    let border = TuiStyle::default().fg(Color::DarkGray);
+106	    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 4);
+107	
+108	    // File header (top)
+109	    lines.push(file_header_line(observer, shape));
+110	    // Top border of grid
+111	    lines.push(Line::from(Span::styled(border_row(BorderKind::Top, cols), border)));
+112	
+113	    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
+114	
+115	    for display_row in 0..rows {
+116	        // Rank-content row: │piece│piece│...│
+117	        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 2);
+118	        spans.push(Span::raw(rank_label(observer, shape, display_row)));
+119	        spans.push(Span::styled("│", border));
+120	        for display_col in 0..cols {
+121	            let sq = orient::square_at_display(display_row, display_col, observer, shape);
+122	            let (text, st) = match sq {
+123	                Some(sq) => render_cell(
+124	                    &view,
+125	                    sq,
+126	                    &highlight,
+127	                    g,
+128	                    style,
+129	                    use_color,
+130	                    display_row,
+131	                    display_col,
+132	                ),
+133	                None => (glyph::empty(style).to_string(), TuiStyle::default()),
+134	            };
+135	            spans.push(Span::styled(text, st));
+136	            spans.push(Span::styled("│", border));
+137	        }
+138	        lines.push(Line::from(spans));
+139	
+140	        // Mid border or river break or bottom border
+141	        if display_row + 1 == rows {
+142	            lines.push(Line::from(Span::styled(border_row(BorderKind::Bottom, cols), border)));
+143	        } else if river_after == Some(display_row) {
+144	            lines.push(river_line(cols, style));
+145	        } else {
+146	            lines.push(Line::from(Span::styled(border_row(BorderKind::Mid, cols), border)));
+147	        }
+148	    }
+149	
+150	    // File header (bottom)
+151	    lines.push(file_header_line(observer, shape));
+152	
+153	    let para = Paragraph::new(lines);
+154	    frame.render_widget(para, inner);
+155	
+156	    *board_rect = Some(RectPx {
+157	        x: inner.x,
+158	        y: inner.y,
+159	        cell_cols: CELL_COLS,
+160	        cell_rows: CELL_ROWS,
+161	        // file header (1) + top border (1)
+162	        top_pad: 2,
+163	        // rank label (3) + leading │ (1)
+164	        left_pad: RANK_LABEL_COLS + 1,
+165	        river_after_display_row: river_after,
+166	    });
+167	}
+168	
+169	#[derive(Copy, Clone)]
+170	enum BorderKind {
+171	    Top,
+172	    Mid,
+173	    Bottom,
+174	}
+175	
+176	fn border_row(kind: BorderKind, cols: u8) -> String {
+177	    let (left, sep, right) = match kind {
+178	        BorderKind::Top => ('┌', '┬', '┐'),
+179	        BorderKind::Mid => ('├', '┼', '┤'),
+180	        BorderKind::Bottom => ('└', '┴', '┘'),
+181	    };
+182	    let mut s = String::from("   "); // align with rank label
+183	    s.push(left);
+184	    for i in 0..cols {
+185	        s.push_str("──");
+186	        if i + 1 < cols {
+187	            s.push(sep);
+188	        } else {
+189	            s.push(right);
+190	        }
+191	    }
+192	    s
+193	}
+194	
+195	fn river_line(cols: u8, style: Style) -> Line<'static> {
+196	    // Inner content fits between │ markers at the column boundaries.
+197	    // Total line width = 1 (left │) + 3*cols (cells) + (cols - 1) wait, no
+198	    // we keep the column-boundary │'s and put text between. To keep mouse
+199	    // hit-test simple, we render the river as a single continuous decorated
+200	    // band and rely on `river_after_display_row` to skip over it.
+201	    let total_cols_inner = (cols as usize) * 3 - 1; // 3 chars per cell minus the trailing │
+202	    let banner = match style {
+203	        Style::Cjk => "  楚 河 ── 漢 界  ",
+204	        Style::Ascii => "  ----- river ----- ",
+205	    };
+206	    // pad/truncate to total_cols_inner display width; CJK is 2 cols/glyph,
+207	    // so a literal char count is approximate. Use a generous overall row.
+208	    let mut s = String::from("   "); // rank label space
+209	    s.push('│');
+210	    let banner_pad = total_cols_inner.saturating_sub(visual_width(banner));
+211	    let left_pad = banner_pad / 2;
+212	    let right_pad = banner_pad - left_pad;
+213	    for _ in 0..left_pad {
+214	        s.push(' ');
+215	    }
+216	    s.push_str(banner);
+217	    for _ in 0..right_pad {
+218	        s.push(' ');
+219	    }
+220	    s.push('│');
+221	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+222	}
+223	
+224	/// Approximate display width: CJK chars count as 2 cols, others as 1.
+225	fn visual_width(s: &str) -> usize {
+226	    s.chars()
+227	        .map(|c| {
+228	            let cp = c as u32;
+229	            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+230	            // box-drawing isn't wide. This is "good enough" — a real fix
+231	            // would pull in unicode-width.
+232	            if (0x1100..=0x115F).contains(&cp)
+233	                || (0x2E80..=0x303E).contains(&cp)
+234	                || (0x3041..=0x33FF).contains(&cp)
+235	                || (0x3400..=0x4DBF).contains(&cp)
+236	                || (0x4E00..=0x9FFF).contains(&cp)
+237	                || (0xA000..=0xA4CF).contains(&cp)
+238	                || (0xAC00..=0xD7A3).contains(&cp)
+239	                || (0xF900..=0xFAFF).contains(&cp)
+240	                || (0xFE30..=0xFE4F).contains(&cp)
+241	                || (0xFF00..=0xFF60).contains(&cp)
+242	                || (0xFFE0..=0xFFE6).contains(&cp)
+243	            {
+244	                2
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:26:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:26:49Z)**_
+
+Now to write the full new layout. Let me replace the relevant section of ui.rs:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:26:52Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:27:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:02Z)**_
+
+Now update the river_line for the new layout (no vertical bars at the river's ends — the river is a clean band) and remove the now-stale `render_cell` and `BorderKind`:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+335	        }
+336	    }
+337	    // Trailing space so the row width matches rank rows (34 cols of content
+338	    // + 3 of rank label).
+339	    s.push(' ');
+340	    Line::from(Span::styled(s, border_style))
+341	}
+342	
+343	/// For a between-row sitting between display rows N and N+1, returns the
+344	/// (left, right) diagonal characters if this between-row crosses a palace.
+345	/// Otherwise None.
+346	fn palace_diagonals(
+347	    display_row_above: u8,
+348	    observer: Side,
+349	    shape: BoardShape,
+350	    style: Style,
+351	) -> Option<(char, char)> {
+352	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+353	        return None;
+354	    }
+355	    let top_sq = orient::square_at_display(display_row_above, 4, observer, shape)?;
+356	    let bot_sq = orient::square_at_display(display_row_above + 1, 4, observer, shape)?;
+357	    let top_rank = (top_sq.0 / 9) as u8;
+358	    let bot_rank = (bot_sq.0 / 9) as u8;
+359	    let (low, high) =
+360	        if top_rank < bot_rank { (top_rank, bot_rank) } else { (bot_rank, top_rank) };
+361	
+362	    let center_rank = match (low, high) {
+363	        (0, 1) | (1, 2) => 1u8,
+364	        (7, 8) | (8, 9) => 8u8,
+365	        _ => return None,
+366	    };
+367	
+368	    let top_dist = (top_rank as i32 - center_rank as i32).abs();
+369	    let bot_dist = (bot_rank as i32 - center_rank as i32).abs();
+370	    let converging = bot_dist < top_dist;
+371	
+372	    let (left_cjk, right_cjk) = if converging { ('╲', '╱') } else { ('╱', '╲') };
+373	    let (left, right) = match style {
+374	        Style::Cjk => (left_cjk, right_cjk),
+375	        Style::Ascii => (if converging { '\\' } else { '/' }, if converging { '/' } else { '\\' }),
+376	    };
+377	    Some((left, right))
+378	}
+379	
+380	fn river_line(cols: u8, style: Style) -> Line<'static> {
+381	    // Inner content fits between │ markers at the column boundaries.
+382	    // Total line width = 1 (left │) + 3*cols (cells) + (cols - 1) wait, no
+383	    // we keep the column-boundary │'s and put text between. To keep mouse
+384	    // hit-test simple, we render the river as a single continuous decorated
+385	    // band and rely on `river_after_display_row` to skip over it.
+386	    let total_cols_inner = (cols as usize) * 3 - 1; // 3 chars per cell minus the trailing │
+387	    let banner = match style {
+388	        Style::Cjk => "  楚 河 ── 漢 界  ",
+389	        Style::Ascii => "  ----- river ----- ",
+390	    };
+391	    // pad/truncate to total_cols_inner display width; CJK is 2 cols/glyph,
+392	    // so a literal char count is approximate. Use a generous overall row.
+393	    let mut s = String::from("   "); // rank label space
+394	    s.push('│');
+395	    let banner_pad = total_cols_inner.saturating_sub(visual_width(banner));
+396	    let left_pad = banner_pad / 2;
+397	    let right_pad = banner_pad - left_pad;
+398	    for _ in 0..left_pad {
+399	        s.push(' ');
+400	    }
+401	    s.push_str(banner);
+402	    for _ in 0..right_pad {
+403	        s.push(' ');
+404	    }
+405	    s.push('│');
+406	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+407	}
+408	
+409	/// Approximate display width: CJK chars count as 2 cols, others as 1.
+410	fn visual_width(s: &str) -> usize {
+411	    s.chars()
+412	        .map(|c| {
+413	            let cp = c as u32;
+414	            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+415	            // box-drawing isn't wide. This is "good enough" — a real fix
+416	            // would pull in unicode-width.
+417	            if (0x1100..=0x115F).contains(&cp)
+418	                || (0x2E80..=0x303E).contains(&cp)
+419	                || (0x3041..=0x33FF).contains(&cp)
+420	                || (0x3400..=0x4DBF).contains(&cp)
+421	                || (0x4E00..=0x9FFF).contains(&cp)
+422	                || (0xA000..=0xA4CF).contains(&cp)
+423	                || (0xAC00..=0xD7A3).contains(&cp)
+424	                || (0xF900..=0xFAFF).contains(&cp)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:22Z)**_
+
+Now look at the rest to remove the stale `render_cell`:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:24Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find function locations in ui.rs
+
+`grep -n "fn render_cell\|^fn \|^#\[allow" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs`
+
+```text
+35:fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+56:fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+77:fn draw_board(
+158:#[allow(clippy::too_many_arguments)]
+159:fn rank_row<'a>(
+204:#[allow(clippy::too_many_arguments)]
+205:fn intersection_or_piece(
+263:fn is_palace_center(sq: Square, model_w: u8, shape: BoardShape) -> bool {
+272:fn intersection_glyph(palace_center: bool, style: Style) -> &'static str {
+281:fn horizontal_connector(content_is_w2: bool, style: Style) -> &'static str {
+301:fn between_row(
+346:fn palace_diagonals(
+380:fn river_line(cols: u8, style: Style) -> Line<'static> {
+405:fn visual_width(s: &str) -> usize {
+432:fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+446:fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+455:fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+464:#[allow(clippy::too_many_arguments)]
+465:fn render_cell(
+514:fn side_color(side: Side) -> Color {
+522:fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
+608:fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+657:fn win_reason_label(reason: WinReason) -> &'static str {
+668:fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+676:fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:29Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+464	#[allow(clippy::too_many_arguments)]
+465	fn render_cell(
+466	    view: &PlayerView,
+467	    sq: Square,
+468	    highlight: &std::collections::HashSet<Square>,
+469	    g: &GameView,
+470	    style: Style,
+471	    use_color: bool,
+472	    display_row: u8,
+473	    display_col: u8,
+474	) -> (String, TuiStyle) {
+475	    let cell = &view.cells[sq.0 as usize];
+476	    let is_cursor = (display_row, display_col) == g.cursor;
+477	    let is_selected = g.selected == Some(sq);
+478	    let is_target = highlight.contains(&sq);
+479	
+480	    let text = match cell {
+481	        VisibleCell::Empty => glyph::empty(style).to_string(),
+482	        VisibleCell::Hidden => glyph::hidden(style).to_string(),
+483	        VisibleCell::Revealed(pos) => {
+484	            glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
+485	        }
+486	    };
+487	
+488	    let mut s = TuiStyle::default();
+489	    if use_color {
+490	        if let VisibleCell::Revealed(pos) = cell {
+491	            s = s.fg(side_color(pos.piece.side));
+492	            if !pos.revealed {
+493	                s = s.add_modifier(Modifier::DIM);
+494	            }
+495	            if pos.piece.kind == PieceKind::General {
+496	                s = s.add_modifier(Modifier::BOLD);
+497	            }
+498	        } else if matches!(cell, VisibleCell::Hidden) {
+499	            s = s.fg(Color::DarkGray);
+500	        }
+501	    }
+502	    if is_target {
+503	        s = s.bg(Color::Rgb(40, 80, 40));
+504	    }
+505	    if is_selected {
+506	        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+507	    }
+508	    if is_cursor {
+509	        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+510	    }
+511	    (text, s)
+512	}
+513	
+514	fn side_color(side: Side) -> Color {
+515	    match side {
+516	        Side::RED => Color::Red,
+517	        Side::BLACK => Color::White,
+518	        _ => Color::Green,
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:40Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:49Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+432	fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+433	    let (w, _) = shape.dimensions();
+434	    let (_, cols) = orient::display_dims(shape);
+435	    // Each cell is 3 cols: " label "  with the label centered.
+436	    let mut s = String::new();
+437	    s.push_str("    "); // 3 cols rank label + 1 col left │
+438	    for display_col in 0..cols {
+439	        let label = file_label_for_col(display_col, w, shape, observer);
+440	        s.push(label);
+441	        s.push_str("  "); // pad to 3 cols
+442	    }
+443	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+444	}
+445	
+446	fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+447	    let sq = orient::square_at_display(0, col, observer, shape);
+448	    let f = match sq {
+449	        Some(sq) => (sq.0 % model_w as u16) as u8,
+450	        None => col,
+451	    };
+452	    (b'a' + f) as char
+453	}
+454	
+455	fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+456	    let sq = orient::square_at_display(display_row, 0, observer, shape);
+457	    let r = match sq {
+458	        Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
+459	        None => display_row,
+460	    };
+461	    format!(" {} ", r)
+462	}
+463	
+464	fn side_color(side: Side) -> Color {
+465	    match side {
+466	        Side::RED => Color::Red,
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:28:58Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:03Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check compile
+
+`cargo check -p chess-tui 2>&1 | tail -25`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+warning: function `empty` is never used
+  --> clients/chess-tui/src/glyph.rs:87:8
+   |
+87 | pub fn empty(style: Style) -> &'static str {
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `chess-tui` (bin "chess-tui") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.51s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/glyph.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:28Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/glyph.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace clippy
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -15`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.68s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:42Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #37 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:42Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #38 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:42Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #39 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format + tests
+
+`cargo fmt --all && cargo test --workspace 2>&1 | grep "test result\|FAIL" | head -20`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[This command modified 1 file you've previously read: clients/chess-tui/src/ui.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:53Z)**_
+
+All tests pass. Now let me build and inspect the binary actually works:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:29:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Build + smoke test + wasm gate
+
+`cargo build -p chess-tui 2>&1 | tail -5 && ./target/debug/chess-tui --help 2>&1 | head -15 && echo "===" && cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3`
+
+```text
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.40s
+ratatui frontend for chess-core
+
+Usage: chess-tui [OPTIONS] [COMMAND]
+
+Commands:
+  xiangqi  Standard xiangqi (9×10)
+  banqi    Banqi (4×8 face-down)
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --style <STYLE>  Render style [default: cjk] [possible values: cjk, ascii]
+      --no-color       Disable ANSI color (keeps the chosen glyph set)
+      --as <OBSERVER>  Render from this side's perspective (debug; default RED) [default: red] [possible values: red, black]
+  -h, --help           Print help
+===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:06Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check river_after_display_row usage
+
+`grep -n "river_after_display_row" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs:154:        river_after_display_row: None,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs:106:    pub river_after_display_row: Option<u8>,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs:356:    if let Some(after_row) = rect.river_after_display_row {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:24Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:42Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:30:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:00Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final gate
+
+`cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10 && echo "===TESTS===" && cargo test --workspace 2>&1 | grep "test result" | head -25`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.57s
+===TESTS===
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:05Z)**_
+
+All green. Update CLAUDE.md and commit:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:31:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit board redesign
+
+```bash
+git status && echo "===" && git add CLAUDE.md clients/chess-tui/src/app.rs clients/chess-tui/src/glyph.rs clients/chess-tui/src/ui.rs && git commit -m "$(cat <<'EOF'
+feat(tui): intersection-based board (pieces on grid crossings)
+
+Replaces the boxed-cell layout with a traditional xiangqi rendering where
+pieces sit ON grid line crossings instead of inside boxes. Matches the
+wikipedia-style reference and feels much more like a real board.
+
+Layout:
+- Rank row = piece glyphs (2 cols, CJK or ASCII letter) at intersection
+  positions, connected by ── (or ── if intersection is empty: 1-col ┼
+  followed by 3-col ───, total still 4 cols per cell). Last cell padded
+  to 2 cols so all rows align at 34 cols of grid + 3 of rank label.
+- Between row = │ verticals at piece columns with 3-space gaps.
+- Palace diagonals: in palace between-rows the gaps around the center
+  carry ╲ ╱ chars (computed by palace_diagonals — converging or diverging
+  based on whether the bottom of the row is closer to the palace center).
+- Palace center (e1, e8) renders as ╳ when empty (vs ┼ elsewhere) and is
+  highlighted yellow.
+- River replaces the between-row at index 4 with a centered stylised band
+  ("〇 楚 河 ── 漢 界 〇") — no verticals pass through. Width matches the
+  rank rows so column alignment stays intact.
+
+Mouse hit-test simplifies — the river just replaces a between-row, so
+clicks at any terminal row map to the cell via row_off / cell_rows
+(cell_rows = 2). Removed the now-unused river_after_display_row offset
+field from RectPx.
+
+ASCII fallback (--style ascii) renders the same layout with + - | \\ /
+X chars and existing letter pieces. Implemented as part of the same path
+rather than a separate code path.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline -5
+```
+
+```text
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+	modified:   CLAUDE.md
+	modified:   clients/chess-tui/src/app.rs
+	modified:   clients/chess-tui/src/glyph.rs
+	modified:   clients/chess-tui/src/ui.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+===
+[main 515bc6c] feat(tui): intersection-based board (pieces on grid crossings)
+ 4 files changed, 276 insertions(+), 159 deletions(-)
+515bc6c feat(tui): intersection-based board (pieces on grid crossings)
+cf731dc chore: bundle SpecStory transcript for board/UX polish PR
+f276962 feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+9af7522 chore: bundle SpecStory transcript for casual-mode + UX fixes
+6ffe523 feat: human-readable side, CHECK indicator, casual xiangqi mode
+```
+</details></tool-use>
