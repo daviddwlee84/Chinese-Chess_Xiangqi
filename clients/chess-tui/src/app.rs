@@ -80,6 +80,7 @@ pub struct AppState {
     pub use_color: bool,
     pub observer: Side,
     pub help_open: bool,
+    pub rules_open: bool,
     /// Rect of the board widget last drawn (terminal coords). Used for
     /// mouse-click hit-testing. ui.rs writes this each frame.
     pub board_rect: Option<RectPx>,
@@ -93,10 +94,16 @@ pub struct RectPx {
     pub y: u16,
     /// Width in terminal cols of one cell (glyph + padding).
     pub cell_cols: u16,
+    /// Height in terminal rows of one cell (glyph + grid border).
+    pub cell_rows: u16,
     /// Offset (cols) of the first cell's start from rect.x.
     pub left_pad: u16,
     /// Offset (rows) of the first row from rect.y.
     pub top_pad: u16,
+    /// If set, after this display row the next visual row is the river break
+    /// (an extra terminal row that doesn't correspond to any cell). Used by
+    /// hit-testing to subtract one for clicks below the river.
+    pub river_after_display_row: Option<u8>,
 }
 
 impl AppState {
@@ -107,6 +114,7 @@ impl AppState {
             use_color,
             observer,
             help_open: false,
+            rules_open: false,
             board_rect: None,
             should_quit: false,
         }
@@ -123,13 +131,15 @@ impl AppState {
                 cursor,
                 selected: None,
                 last_msg: Some(
-                    "Welcome. Cursor: arrows or hjkl. Enter to select/move. ? for help.".into(),
+                    "Welcome. Arrows/hjkl move cursor. Enter selects. r=rules, ?=help, n=new, q=quit."
+                        .into(),
                 ),
             })),
             style,
             use_color,
             observer,
             help_open: false,
+            rules_open: false,
             board_rect: None,
             should_quit: false,
         }
@@ -140,6 +150,13 @@ impl AppState {
             Action::None => {}
             Action::Quit => self.should_quit = true,
             Action::HelpToggle => self.help_open = !self.help_open,
+            Action::RulesToggle => self.rules_open = !self.rules_open,
+            Action::NewGame => {
+                let style = self.style;
+                let use_color = self.use_color;
+                let observer = self.observer;
+                *self = AppState::new_picker(style, use_color, observer);
+            }
             Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
                 self.dispatch_picker(action);
             }
@@ -217,6 +234,12 @@ impl AppState {
                 }
             },
             Action::Flip => {
+                if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+                    g.last_msg = Some(
+                        "Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into(),
+                    );
+                    return;
+                }
                 let observer = self.observer;
                 let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape)
                 else {
@@ -240,6 +263,11 @@ impl AppState {
     }
 
     fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+        if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+            g.last_msg =
+                Some("Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into());
+            return;
+        }
         let shape = g.state.board.shape();
         let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape) else {
             g.last_msg = Some("Cursor not on a playable square.".into());
@@ -307,17 +335,34 @@ impl AppState {
 }
 
 /// Convert terminal click coords to (display_row, display_col) within board.
+///
+/// Cells are `cell_rows × cell_cols` terminal cells. Boxed layouts have grid
+/// borders interleaved with rank rows; with `cell_rows = 2` (rank row + bottom
+/// border), clicks on either row resolve to the same display cell. The
+/// `left_pad` skips the rank label column and the leading │; `top_pad` skips
+/// the file header and top border.
 fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
     if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
         return None;
     }
     let col_off = term_col - rect.x - rect.left_pad;
-    let row_off = term_row - rect.y - rect.top_pad;
-    if rect.cell_cols == 0 {
+    let mut row_off = term_row - rect.y - rect.top_pad;
+    if rect.cell_cols == 0 || rect.cell_rows == 0 {
         return None;
     }
     let cell_col = col_off / rect.cell_cols;
-    let cell_row = row_off;
+    // River break (xiangqi) inserts an extra terminal row between display
+    // rows N and N+1; clicks below it need to subtract that row.
+    if let Some(after_row) = rect.river_after_display_row {
+        let river_term_row = (after_row as u16 + 1) * rect.cell_rows;
+        if row_off >= river_term_row {
+            if row_off == river_term_row {
+                return None; // click landed on the river itself
+            }
+            row_off -= 1;
+        }
+    }
+    let cell_row = row_off / rect.cell_rows;
     if cell_row >= rows as u16 || cell_col >= cols as u16 {
         return None;
     }

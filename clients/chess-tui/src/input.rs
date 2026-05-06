@@ -7,6 +7,8 @@ pub enum Action {
     None,
     Quit,
     HelpToggle,
+    RulesToggle,
+    NewGame,
     // Picker
     PickerUp,
     PickerDown,
@@ -35,6 +37,7 @@ pub fn from_key(ev: KeyEvent, in_picker: bool) -> Action {
     match ev.code {
         KeyCode::Char('q') => Action::Quit,
         KeyCode::Char('?') => Action::HelpToggle,
+        KeyCode::Char('r') if !in_picker => Action::RulesToggle,
         _ if in_picker => match ev.code {
             KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
             KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
@@ -51,6 +54,7 @@ pub fn from_key(ev: KeyEvent, in_picker: bool) -> Action {
             KeyCode::Esc => Action::Cancel,
             KeyCode::Char('u') => Action::Undo,
             KeyCode::Char('f') => Action::Flip,
+            KeyCode::Char('n') => Action::NewGame,
             _ => Action::None,
         },
     }

@@ -3,13 +3,13 @@
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::piece::{PieceKind, Side};
-use chess_core::state::GameStatus;
+use chess_core::state::{GameStatus, WinReason};
 use chess_core::view::{PlayerView, VisibleCell};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style as TuiStyle};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
 use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
@@ -17,14 +17,18 @@ use crate::glyph::{self, Style};
 use crate::orient;
 
 const CELL_COLS: u16 = 3;
+const CELL_ROWS: u16 = 2;
 const RANK_LABEL_COLS: u16 = 3;
 
 pub fn draw(frame: &mut Frame, app: &mut AppState) {
     let area = frame.area();
-    // Borrow split: take screen out into a local view kind, then re-borrow app.
     match &app.screen {
         Screen::Picker(p) => draw_picker(frame, area, p),
         Screen::Game(_) => draw_game(frame, area, app),
+    }
+
+    if app.rules_open {
+        draw_rules_overlay(frame, area, app.style);
     }
 }
 
@@ -52,7 +56,7 @@ fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
 fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(36), Constraint::Length(34)])
+        .constraints([Constraint::Min(40), Constraint::Length(36)])
         .split(area);
 
     let Screen::Game(g) = &app.screen else {
@@ -86,7 +90,6 @@ fn draw_board(
     let view = PlayerView::project(&g.state, g.state.side_to_move);
     let shape = view.shape;
     let (rows, cols) = orient::display_dims(shape);
-    let (model_w, _) = shape.dimensions();
 
     // Build legal-target highlight set when a piece is selected.
     let highlight: std::collections::HashSet<Square> = match g.selected {
@@ -99,21 +102,27 @@ fn draw_board(
         None => std::collections::HashSet::new(),
     };
 
-    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize + 2);
+    let border = TuiStyle::default().fg(Color::DarkGray);
+    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 4);
 
-    // Top header: file labels.
+    // File header (top)
     lines.push(file_header_line(observer, shape));
+    // Top border of grid
+    lines.push(Line::from(Span::styled(border_row(BorderKind::Top, cols), border)));
+
+    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
 
     for display_row in 0..rows {
-        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+        // Rank-content row: │piece│piece│...│
+        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 2);
         spans.push(Span::raw(rank_label(observer, shape, display_row)));
+        spans.push(Span::styled("│", border));
         for display_col in 0..cols {
             let sq = orient::square_at_display(display_row, display_col, observer, shape);
-            let (glyph_text, st) = match sq {
+            let (text, st) = match sq {
                 Some(sq) => render_cell(
                     &view,
                     sq,
-                    model_w,
                     &highlight,
                     g,
                     style,
@@ -121,24 +130,25 @@ fn draw_board(
                     display_row,
                     display_col,
                 ),
-                None => (format!("{:>3}", "·"), TuiStyle::default()),
+                None => (glyph::empty(style).to_string(), TuiStyle::default()),
             };
-            spans.push(Span::styled(glyph_text, st));
+            spans.push(Span::styled(text, st));
+            spans.push(Span::styled("│", border));
         }
         lines.push(Line::from(spans));
+
+        // Mid border or river break or bottom border
+        if display_row + 1 == rows {
+            lines.push(Line::from(Span::styled(border_row(BorderKind::Bottom, cols), border)));
+        } else if river_after == Some(display_row) {
+            lines.push(river_line(cols, style));
+        } else {
+            lines.push(Line::from(Span::styled(border_row(BorderKind::Mid, cols), border)));
+        }
     }
 
-    // Footer: file labels again.
+    // File header (bottom)
     lines.push(file_header_line(observer, shape));
-    // River reminder for xiangqi — rendered as a separate line below the
-    // board so it doesn't disturb the cell-row layout used by mouse hit-test.
-    if matches!(shape, BoardShape::Xiangqi9x10) {
-        let banner = match style {
-            Style::Cjk => "   楚河 ─ 漢界  (between ranks 4–5)",
-            Style::Ascii => "   river (between ranks 4-5)",
-        };
-        lines.push(Line::from(Span::styled(banner, TuiStyle::default().fg(Color::DarkGray))));
-    }
 
     let para = Paragraph::new(lines);
     frame.render_widget(para, inner);
@@ -147,39 +157,122 @@ fn draw_board(
         x: inner.x,
         y: inner.y,
         cell_cols: CELL_COLS,
-        left_pad: RANK_LABEL_COLS,
-        top_pad: 1, // header row
+        cell_rows: CELL_ROWS,
+        // file header (1) + top border (1)
+        top_pad: 2,
+        // rank label (3) + leading │ (1)
+        left_pad: RANK_LABEL_COLS + 1,
+        river_after_display_row: river_after,
     });
+}
+
+#[derive(Copy, Clone)]
+enum BorderKind {
+    Top,
+    Mid,
+    Bottom,
+}
+
+fn border_row(kind: BorderKind, cols: u8) -> String {
+    let (left, sep, right) = match kind {
+        BorderKind::Top => ('┌', '┬', '┐'),
+        BorderKind::Mid => ('├', '┼', '┤'),
+        BorderKind::Bottom => ('└', '┴', '┘'),
+    };
+    let mut s = String::from("   "); // align with rank label
+    s.push(left);
+    for i in 0..cols {
+        s.push_str("──");
+        if i + 1 < cols {
+            s.push(sep);
+        } else {
+            s.push(right);
+        }
+    }
+    s
+}
+
+fn river_line(cols: u8, style: Style) -> Line<'static> {
+    // Inner content fits between │ markers at the column boundaries.
+    // Total line width = 1 (left │) + 3*cols (cells) + (cols - 1) wait, no
+    // we keep the column-boundary │'s and put text between. To keep mouse
+    // hit-test simple, we render the river as a single continuous decorated
+    // band and rely on `river_after_display_row` to skip over it.
+    let total_cols_inner = (cols as usize) * 3 - 1; // 3 chars per cell minus the trailing │
+    let banner = match style {
+        Style::Cjk => "  楚 河 ── 漢 界  ",
+        Style::Ascii => "  ----- river ----- ",
+    };
+    // pad/truncate to total_cols_inner display width; CJK is 2 cols/glyph,
+    // so a literal char count is approximate. Use a generous overall row.
+    let mut s = String::from("   "); // rank label space
+    s.push('│');
+    let banner_pad = total_cols_inner.saturating_sub(visual_width(banner));
+    let left_pad = banner_pad / 2;
+    let right_pad = banner_pad - left_pad;
+    for _ in 0..left_pad {
+        s.push(' ');
+    }
+    s.push_str(banner);
+    for _ in 0..right_pad {
+        s.push(' ');
+    }
+    s.push('│');
+    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+}
+
+/// Approximate display width: CJK chars count as 2 cols, others as 1.
+fn visual_width(s: &str) -> usize {
+    s.chars()
+        .map(|c| {
+            let cp = c as u32;
+            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+            // box-drawing isn't wide. This is "good enough" — a real fix
+            // would pull in unicode-width.
+            if (0x1100..=0x115F).contains(&cp)
+                || (0x2E80..=0x303E).contains(&cp)
+                || (0x3041..=0x33FF).contains(&cp)
+                || (0x3400..=0x4DBF).contains(&cp)
+                || (0x4E00..=0x9FFF).contains(&cp)
+                || (0xA000..=0xA4CF).contains(&cp)
+                || (0xAC00..=0xD7A3).contains(&cp)
+                || (0xF900..=0xFAFF).contains(&cp)
+                || (0xFE30..=0xFE4F).contains(&cp)
+                || (0xFF00..=0xFF60).contains(&cp)
+                || (0xFFE0..=0xFFE6).contains(&cp)
+            {
+                2
+            } else {
+                1
+            }
+        })
+        .sum()
 }
 
 fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
     let (w, _) = shape.dimensions();
     let (_, cols) = orient::display_dims(shape);
+    // Each cell is 3 cols: " label "  with the label centered.
     let mut s = String::new();
-    s.push_str("   "); // align with rank labels (3 cols)
+    s.push_str("    "); // 3 cols rank label + 1 col left │
     for display_col in 0..cols {
-        // What model file corresponds to this display column? Ask the inverse
-        // for any row (use 0); banqi transposes so use a model-file resolver.
         let label = file_label_for_col(display_col, w, shape, observer);
         s.push(label);
-        s.push_str("  "); // 1-char glyph + 2 spaces ≈ CELL_COLS for ASCII labels
+        s.push_str("  "); // pad to 3 cols
     }
     Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
 }
 
 fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
-    // Resolve via the inverse: pick row 0 (xiangqi) or row 0 (banqi); compute
-    // model file from the resulting Square.
     let sq = orient::square_at_display(0, col, observer, shape);
     let f = match sq {
         Some(sq) => (sq.0 % model_w as u16) as u8,
-        None => col, // best-effort fallback
+        None => col,
     };
     (b'a' + f) as char
 }
 
 fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
-    // Same trick: resolve inverse to find model rank for this display row.
     let sq = orient::square_at_display(display_row, 0, observer, shape);
     let r = match sq {
         Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
@@ -192,7 +285,6 @@ fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
 fn render_cell(
     view: &PlayerView,
     sq: Square,
-    _model_w: u8,
     highlight: &std::collections::HashSet<Square>,
     g: &GameView,
     style: Style,
@@ -205,16 +297,13 @@ fn render_cell(
     let is_selected = g.selected == Some(sq);
     let is_target = highlight.contains(&sq);
 
-    let mut text = match cell {
+    let text = match cell {
         VisibleCell::Empty => glyph::empty(style).to_string(),
         VisibleCell::Hidden => glyph::hidden(style).to_string(),
         VisibleCell::Revealed(pos) => {
             glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
         }
     };
-    // Pad to CELL_COLS terminal columns. CJK glyphs render as 2 cols already;
-    // append a space. ASCII glyphs are 2 chars; append a space.
-    text.push(' ');
 
     let mut s = TuiStyle::default();
     if use_color {
@@ -258,6 +347,14 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
     let view = PlayerView::project(&g.state, g.state.side_to_move);
     let mut lines: Vec<Line> = Vec::new();
 
+    // Game-over banner (takes priority).
+    if let Some(banner) = game_over_banner(&view.status, style) {
+        for l in banner {
+            lines.push(l);
+        }
+        lines.push(Line::from(""));
+    }
+
     let variant_label = match view.shape {
         BoardShape::Xiangqi9x10 => {
             if g.state.rules.xiangqi_allow_self_check {
@@ -272,7 +369,6 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
     };
     lines.push(line_label_value("Variant:", variant_label));
 
-    // Side to move — colored to match the side, human-readable.
     let stm_color = side_color(view.side_to_move);
     lines.push(Line::from(vec![
         Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
@@ -283,10 +379,9 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
         ),
     ]));
 
-    // CHECK indicator (xiangqi only — banqi has no general-in-check concept).
     if matches!(view.shape, BoardShape::Xiangqi9x10)
         && g.state.is_in_check(view.side_to_move)
-        && !matches!(view.status, GameStatus::Won { .. })
+        && matches!(view.status, GameStatus::Ongoing)
     {
         lines.push(Line::from(Span::styled(
             "  ⚠ CHECK 將軍 — your general is under attack",
@@ -321,13 +416,73 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_
     } else {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
-            "? for help, q to quit",
+            "?=help, r=rules, n=new, q=quit",
             TuiStyle::default().fg(Color::DarkGray),
         )));
     }
 
     let para = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(para, inner);
+}
+
+fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+    match status {
+        GameStatus::Ongoing => None,
+        GameStatus::Won { winner, reason } => {
+            let header = Line::from(Span::styled(
+                "★  GAME OVER  ★",
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ));
+            let winner_line = Line::from(vec![
+                Span::raw("Winner: "),
+                Span::styled(
+                    glyph::side_name(*winner, style),
+                    TuiStyle::default().fg(side_color(*winner)).add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let reason_line = Line::from(vec![
+                Span::raw("Reason: "),
+                Span::styled(
+                    win_reason_label(*reason),
+                    TuiStyle::default().add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let footer = Line::from(Span::styled(
+                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+                TuiStyle::default().fg(Color::Cyan),
+            ));
+            Some(vec![header, winner_line, reason_line, footer])
+        }
+        GameStatus::Drawn { reason } => {
+            let header = Line::from(Span::styled(
+                "—  DRAW  —",
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ));
+            let reason_line = Line::from(vec![
+                Span::raw("Reason: "),
+                Span::styled(
+                    format!("{:?}", reason),
+                    TuiStyle::default().add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let footer = Line::from(Span::styled(
+                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+                TuiStyle::default().fg(Color::Cyan),
+            ));
+            Some(vec![header, reason_line, footer])
+        }
+    }
+}
+
+fn win_reason_label(reason: WinReason) -> &'static str {
+    match reason {
+        WinReason::Checkmate => "Checkmate (將死)",
+        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+        WinReason::Resignation => "Resignation",
+        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+        WinReason::Timeout => "Time forfeit",
+        WinReason::GeneralCaptured => "General captured (將被吃)",
+    }
 }
 
 fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
@@ -338,13 +493,72 @@ fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
     ])
 }
 
+fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+    // Center an overlay roughly 70 cols × 24 rows over the screen.
+    let pad_x = area.width.saturating_sub(72) / 2;
+    let pad_y = area.height.saturating_sub(26) / 2;
+    let overlay = Rect {
+        x: area.x + pad_x,
+        y: area.y + pad_y,
+        width: area.width.min(72),
+        height: area.height.min(26),
+    };
+    frame.render_widget(Clear, overlay);
+    let block =
+        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+    let lines: Vec<Line> = RULES_LINES
+        .iter()
+        .map(|(s, accent)| {
+            let style = if *accent {
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                TuiStyle::default()
+            };
+            Line::from(Span::styled(*s, style))
+        })
+        .collect();
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, overlay);
+}
+
 const HELP_LINES: &[&str] = &[
     "h j k l / ←↓↑→  move cursor",
     "Enter / Space   select / commit",
     "Esc             cancel selection",
     "u               undo last move",
     "f               flip (banqi)",
-    "Click           select / commit",
+    "n               new game (back to picker)",
+    "r               toggle rules overlay",
     "?               toggle this help",
+    "Click           select / commit",
     "q / Ctrl-C      quit",
+];
+
+const RULES_LINES: &[(&str, bool)] = &[
+    ("Xiangqi 象棋", true),
+    ("", false),
+    ("• Red (帥仕相俥傌炮兵) moves first; Black (將士象車馬砲卒) replies.", false),
+    ("• General/Advisor stay inside the 3×3 palace (files d–f).", false),
+    ("• Elephants stay on their own side of the river (ranks 0–4 / 5–9).", false),
+    ("• Horses are blocked by 馬腿 — the orthogonal step in the move's direction.", false),
+    ("• Cannon non-capturing slide is like a chariot; capture requires jumping", false),
+    ("  exactly one piece (the screen 砲架) in a straight line.", false),
+    ("• Soldiers move forward one square; after crossing the river they can also", false),
+    ("  move sideways (but never backward).", false),
+    ("• Generals cannot face each other on a clear file (飛將 rule).", false),
+    ("• Standard: any move that leaves your general capturable is illegal.", false),
+    ("  Casual mode (--allow-self-check / picker entry) lifts that filter;", false),
+    ("  the game ends when the general is physically captured.", false),
+    ("", false),
+    ("Banqi 暗棋", true),
+    ("", false),
+    ("• 4×8 half-board, 32 pieces face-down. Pick a hidden piece to flip;", false),
+    ("  the FIRST flip locks the colors (flipper plays the revealed color).", false),
+    ("• Capture by piece rank: General > Advisor > Elephant > Chariot >", false),
+    ("  Horse > Cannon > Soldier. Soldier captures General (民推翻王).", false),
+    ("• Cannon captures by jumping over exactly one piece (any rank).", false),
+    ("• House rules (toggleable presets): chain-capture (連吃), chariot-rush", false),
+    ("  (車衝). Other house rules are P1 TODO.", false),
+    ("", false),
+    ("Press r or Esc to close. Default keys: hjkl/arrows · Enter · u · f · n · q", true),
 ];

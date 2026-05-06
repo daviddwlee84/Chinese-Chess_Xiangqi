@@ -50,8 +50,11 @@ cargo run -p chess-tui -- --as black xiangqi              # render as Black
 ```
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
-`Esc` cancel, `u` undo, `f` flip (banqi), `?` toggles help, `q` / `Ctrl-C` quit.
-Mouse left-click selects or commits.
+`Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
+`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit.
+Mouse left-click selects or commits. When the game ends, a banner appears in
+the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
+back the losing move.
 
 `rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
 
