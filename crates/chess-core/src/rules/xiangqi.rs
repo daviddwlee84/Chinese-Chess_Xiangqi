@@ -16,8 +16,20 @@ pub fn generate(state: &GameState, out: &mut MoveList) {
     let mut pseudo: MoveList = MoveList::new();
     pseudo_legal_moves(state, &mut pseudo);
 
-    // Clone-and-apply approach for legality. Cheap enough for 9×10
-    // and trivially correct; AI hot path can switch to make/unmake later.
+    // Casual mode: skip the self-check legality filter. All pseudo-legal
+    // moves are accepted; the player can move into check or expose their
+    // general, and the game ends only when the general is actually captured
+    // (handled by GameState::refresh_status).
+    if state.rules.xiangqi_allow_self_check {
+        for m in pseudo.into_iter() {
+            out.push(m);
+        }
+        return;
+    }
+
+    // Standard rules: clone-and-apply approach for legality. Cheap enough
+    // for 9×10 and trivially correct; AI hot path can switch to make/unmake
+    // later.
     for m in pseudo.into_iter() {
         let mut probe = state.clone();
         if probe.make_move(&m).is_err() {

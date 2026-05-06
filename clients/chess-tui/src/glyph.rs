@@ -91,6 +91,20 @@ pub fn empty(style: Style) -> &'static str {
     }
 }
 
+/// Human-readable side label for the sidebar. `Side(0)` (engine debug) is
+/// useless to a player; this returns "Red (紅)" / "Black (黑)" / "Green (綠)"
+/// in CJK style and "Red" / "Black" / "Green" in ASCII style.
+pub fn side_name(side: Side, style: Style) -> &'static str {
+    match (side, style) {
+        (Side::RED, Style::Cjk) => "Red 紅",
+        (Side::BLACK, Style::Cjk) => "Black 黑",
+        (Side::RED, Style::Ascii) => "Red",
+        (Side::BLACK, Style::Ascii) => "Black",
+        (_, Style::Cjk) => "Green 綠",
+        (_, Style::Ascii) => "Green",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

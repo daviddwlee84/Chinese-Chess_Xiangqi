@@ -30,6 +30,11 @@ pub enum WinReason {
     Resignation,
     OnlyOneSideHasPieces,
     Timeout,
+    /// Casual xiangqi (`xiangqi_allow_self_check`): the loser's general was
+    /// physically captured rather than ending in checkmate. In standard
+    /// rules this state is unreachable because the legality filter rejects
+    /// any move that would leave the general capturable.
+    GeneralCaptured,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -237,6 +242,26 @@ impl GameState {
     pub fn refresh_status(&mut self) {
         if matches!(self.status, GameStatus::Won { .. } | GameStatus::Drawn { .. }) {
             return;
+        }
+        // Casual xiangqi: a missing general means the opposite side won.
+        // Standard rules can't reach this branch (the legality filter
+        // forbids leaving the general capturable), but checking unconditionally
+        // is cheap and keeps the invariant for any future variant that allows
+        // physical king capture.
+        if self.rules.variant == Variant::Xiangqi {
+            for &seat in self.turn_order.seats.iter() {
+                let has_general = find_piece(&self.board, |p| {
+                    p.kind == crate::piece::PieceKind::General && p.side == seat
+                })
+                .is_some();
+                if !has_general {
+                    self.status = GameStatus::Won {
+                        winner: seat.opposite(),
+                        reason: WinReason::GeneralCaptured,
+                    };
+                    return;
+                }
+            }
         }
         if self.no_progress_plies >= self.rules.draw_policy.no_progress_plies {
             self.status = GameStatus::Drawn { reason: DrawReason::NoProgress };

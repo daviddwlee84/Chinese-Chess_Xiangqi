@@ -43,6 +43,13 @@ pub struct RuleSet {
     pub draw_policy: DrawPolicy,
     /// Seed for banqi shuffling. `None` = nondeterministic.
     pub banqi_seed: Option<u64>,
+    /// Casual / training mode for xiangqi: when true, the legality filter
+    /// no longer rejects moves that leave the mover's own general in check.
+    /// The game ends only when a general is actually captured
+    /// (`WinReason::GeneralCaptured`). Default `false` (standard rules).
+    /// `#[serde(default)]` keeps older snapshots loadable.
+    #[serde(default)]
+    pub xiangqi_allow_self_check: bool,
 }
 
 impl RuleSet {
@@ -52,11 +59,25 @@ impl RuleSet {
             house: HouseRules::empty(),
             draw_policy: DrawPolicy::XIANGQI,
             banqi_seed: None,
+            xiangqi_allow_self_check: false,
         }
     }
 
+    /// Xiangqi without the self-check legality filter — moves that expose
+    /// your own general are permitted; you lose when the general is actually
+    /// captured. Useful for casual / "let me lose if I want" play.
+    pub fn xiangqi_casual() -> Self {
+        Self { xiangqi_allow_self_check: true, ..Self::xiangqi() }
+    }
+
     pub fn banqi(house: HouseRules) -> Self {
-        Self { variant: Variant::Banqi, house, draw_policy: DrawPolicy::BANQI, banqi_seed: None }
+        Self {
+            variant: Variant::Banqi,
+            house,
+            draw_policy: DrawPolicy::BANQI,
+            banqi_seed: None,
+            xiangqi_allow_self_check: false,
+        }
     }
 
     pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
@@ -65,6 +86,7 @@ impl RuleSet {
             house,
             draw_policy: DrawPolicy::BANQI,
             banqi_seed: Some(seed),
+            xiangqi_allow_self_check: false,
         }
     }
 
@@ -74,6 +96,7 @@ impl RuleSet {
             house: HouseRules::empty(),
             draw_policy: DrawPolicy::BANQI,
             banqi_seed: None,
+            xiangqi_allow_self_check: false,
         }
     }
 }

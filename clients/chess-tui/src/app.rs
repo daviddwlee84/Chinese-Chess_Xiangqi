@@ -16,6 +16,7 @@ use crate::orient;
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum PickerEntry {
     Xiangqi,
+    XiangqiCasual,
     BanqiPurist,
     BanqiTaiwan,
     BanqiAggressive,
@@ -23,8 +24,9 @@ pub enum PickerEntry {
 }
 
 impl PickerEntry {
-    pub const ALL: [PickerEntry; 5] = [
+    pub const ALL: [PickerEntry; 6] = [
         PickerEntry::Xiangqi,
+        PickerEntry::XiangqiCasual,
         PickerEntry::BanqiPurist,
         PickerEntry::BanqiTaiwan,
         PickerEntry::BanqiAggressive,
@@ -34,6 +36,7 @@ impl PickerEntry {
     pub fn label(self) -> &'static str {
         match self {
             PickerEntry::Xiangqi => "Xiangqi (象棋)",
+            PickerEntry::XiangqiCasual => "Xiangqi (casual — allow self-check, lose by capture)",
             PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
             PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
             PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
@@ -44,6 +47,7 @@ impl PickerEntry {
     pub fn rules(self) -> Option<RuleSet> {
         match self {
             PickerEntry::Xiangqi => Some(RuleSet::xiangqi()),
+            PickerEntry::XiangqiCasual => Some(RuleSet::xiangqi_casual()),
             PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
             PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
             PickerEntry::BanqiAggressive => {

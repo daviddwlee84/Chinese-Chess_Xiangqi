@@ -42,6 +42,7 @@ cargo run -p chess-cli
 # Interactive TUI (default render: CJK glyphs + color)
 cargo run -p chess-tui                                    # variant picker
 cargo run -p chess-tui -- xiangqi                         # skip picker
+cargo run -p chess-tui -- xiangqi --allow-self-check      # casual mode
 cargo run -p chess-tui -- banqi --preset taiwan --seed 42
 cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
@@ -87,6 +88,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
 
 - **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+
+- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize.
 
 ## Where to put new work
 

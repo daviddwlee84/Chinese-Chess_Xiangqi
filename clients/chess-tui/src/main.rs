@@ -55,7 +55,12 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Cmd {
     /// Standard xiangqi (9×10).
-    Xiangqi,
+    Xiangqi {
+        /// Casual mode: allow moves that leave your own general capturable.
+        /// You lose only when the general is physically captured.
+        #[arg(long)]
+        allow_self_check: bool,
+    },
     /// Banqi (4×8 face-down).
     Banqi {
         /// Preset bundle of house rules.
@@ -104,7 +109,11 @@ fn main() -> Result<()> {
 
     let app = match &cli.cmd {
         None => AppState::new_picker(style, use_color, observer),
-        Some(Cmd::Xiangqi) => AppState::new_game(RuleSet::xiangqi(), style, use_color, observer),
+        Some(Cmd::Xiangqi { allow_self_check }) => {
+            let rules =
+                if *allow_self_check { RuleSet::xiangqi_casual() } else { RuleSet::xiangqi() };
+            AppState::new_game(rules, style, use_color, observer)
+        }
         Some(Cmd::Banqi { preset, house, seed }) => {
             let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
             AppState::new_game(rules, style, use_color, observer)

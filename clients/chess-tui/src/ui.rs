@@ -3,6 +3,7 @@
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::piece::{PieceKind, Side};
+use chess_core::state::GameStatus;
 use chess_core::view::{PlayerView, VisibleCell};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -66,7 +67,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let mut rect = app.board_rect;
     draw_board(frame, chunks[0], observer, style, use_color, g_ref, &mut rect);
     app.board_rect = rect;
-    draw_sidebar(frame, chunks[1], g_ref, help_open);
+    draw_sidebar(frame, chunks[1], g_ref, style, help_open);
 }
 
 fn draw_board(
@@ -249,7 +250,7 @@ fn side_color(side: Side) -> Color {
     }
 }
 
-fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, help_open: bool) {
+fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -258,13 +259,41 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, help_open: bool) {
     let mut lines: Vec<Line> = Vec::new();
 
     let variant_label = match view.shape {
-        BoardShape::Xiangqi9x10 => "Xiangqi (象棋)",
+        BoardShape::Xiangqi9x10 => {
+            if g.state.rules.xiangqi_allow_self_check {
+                "Xiangqi (象棋, casual)"
+            } else {
+                "Xiangqi (象棋)"
+            }
+        }
         BoardShape::Banqi4x8 => "Banqi (暗棋)",
         BoardShape::ThreeKingdom => "三國暗棋",
         BoardShape::Custom { .. } => "Custom",
     };
     lines.push(line_label_value("Variant:", variant_label));
-    lines.push(line_label_value("Side to move:", &format!("{:?}", view.side_to_move)));
+
+    // Side to move — colored to match the side, human-readable.
+    let stm_color = side_color(view.side_to_move);
+    lines.push(Line::from(vec![
+        Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::styled(
+            glyph::side_name(view.side_to_move, style),
+            TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+
+    // CHECK indicator (xiangqi only — banqi has no general-in-check concept).
+    if matches!(view.shape, BoardShape::Xiangqi9x10)
+        && g.state.is_in_check(view.side_to_move)
+        && !matches!(view.status, GameStatus::Won { .. })
+    {
+        lines.push(Line::from(Span::styled(
+            "  ⚠ CHECK 將軍 — your general is under attack",
+            TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )));
+    }
+
     lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
     lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
     lines.push(line_label_value("History:", &g.state.history.len().to_string()));

@@ -264,6 +264,7 @@ fn parse_pos_text(input: &str) -> Result<GameState, CoreError> {
             _ => DrawPolicy::BANQI,
         },
         banqi_seed: seed,
+        xiangqi_allow_self_check: false,
     };
 
     let shape = match variant {
