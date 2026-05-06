@@ -25781,3 +25781,1563 @@ ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
 7e6d031 feat(core): snapshot + replay formats; end-condition tests
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:49:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit transcript
+
+```bash
+git add .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md && git commit -m "$(cat <<'EOF'
+chore: bundle SpecStory transcript for casual-mode + UX fixes
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main 9af7522] chore: bundle SpecStory transcript for casual-mode + UX fixes
+ 1 file changed, 1730 insertions(+), 6 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:49:27Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #32 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:49:45Z)**_
+
+Shipped. Two commits:
+
+```
+9af7522 chore: bundle SpecStory transcript for casual-mode + UX fixes
+6ffe523 feat: human-readable side, CHECK indicator, casual xiangqi mode
+```
+
+## Per concern
+
+### 1. `Side(0)` → `Red 紅` / `Black 黑`
+
+Sidebar now shows the side name colored to match (Red glyphs in red, Black in white/dim). Variant line also reflects casual mode: `Xiangqi (象棋)` vs `Xiangqi (象棋, casual)`. ASCII style drops the CJK suffix.
+
+### 2. Horse 馬腿/拐馬腳 — verified correct + added CHECK indicator
+
+Audited `rules/xiangqi.rs:130 gen_horse`: the table at line 119 has 8 L-moves with the correct leg-square delta (orthogonal step in the dy direction for vertical jumps; orthogonal in dx for horizontal jumps). Standard `馬腿` block is properly enforced.
+
+Your screenshot 2's "horse can't move" wasn't a horse-rule bug — it was the legality filter rejecting all horse moves because they'd leave Black's general in check (the rules say you can't move into self-check). The TUI just didn't tell you that, so it looked broken.
+
+Fix: sidebar now shows a bold red banner when your general is under attack:
+
+```
+Side to move: Black 黑
+  ⚠ CHECK 將軍 — your general is under attack
+Status: Ongoing
+Legal moves: 9
+```
+
+(Banqi has no general-in-check concept, so the banner is xiangqi-only.)
+
+### 3. Casual mode toggle
+
+Engine: `RuleSet::xiangqi_allow_self_check` (default `false`). When `true`:
+- The xiangqi legality filter in `generate` is skipped — all pseudo-legal moves pass through.
+- `refresh_status` detects a missing general (any seat lacks one) → opposite side wins by `WinReason::GeneralCaptured` (new variant).
+- The CHECK banner still appears because the rules don't *require* you to escape — it's just informative now.
+
+Wire-up:
+- `RuleSet::xiangqi_casual()` constructor.
+- `cargo run -p chess-tui -- xiangqi --allow-self-check`.
+- Picker entry: `Xiangqi (casual — allow self-check, lose by capture)`.
+- 4 new integration tests in `tests/casual_xiangqi.rs` (default off, casual exposes moves in a checkmate position, GeneralCaptured detection works, standard opening still 44 legal moves).
+
+The new field is `#[serde(default)]` so existing snapshot/replay JSON still deserializes.
+
+## Verification
+
+`cargo fmt` ✓ · `cargo clippy --workspace --all-targets -- -D warnings` ✓ · `cargo test --workspace` ✓ (73 + 4 + 16 + 9 = ~102 tests) · `cargo build --target wasm32-unknown-unknown -p chess-core` ✓.
+
+---
+
+_**User (2026-05-06 06:57:13Z)**_
+
+1. [Image #5] 好像這種已經終局了但遊戲沒有判勝負？(感覺應該有彈窗詢問是否重來 或是結束得退出重開等等)
+2. default好像還是不能自殺move？ [Image #6]
+3. TUI新增清晰的規則教學頁
+4. 有沒有辦法有好看一點的棋盤 (可以允許畫起來整張變大一點 但是用一些線條那種的unicode之類的 看起來更像真的棋盤標線等等)
+
+_**User (2026-05-06 06:57:13Z)**_
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/5.png]
+
+[Image: source: /Users/daviddwlee84/.claude/image-cache/221ac761-ac41-4c8e-b657-b8e686b7224d/6.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:18Z)**_
+
+Four concerns. Let me track them and tackle in order.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:19Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+When state.status is Won/Drawn, sidebar shows a prominent banner with the result. 'n' key returns to variant picker so the player can start a new game without re-launching. Block move attempts when game over but keep 'u' (undo) working.
+
+```text
+Task #33 created successfully: Game-over banner + 'n' key for new game
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Modal overlay with concise xiangqi + banqi rules. Toggled by 'r'. Esc/'r' to close. Static text fitting one screen.
+
+```text
+Task #34 created successfully: Rules tutorial overlay ('r' key)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Rewrite render_board to use ┌┬┐├┼┤└┴┘─│ box-drawing. Each cell 3 cols × 2 rows. Update RectPx with cell_rows/cols + paddings. River replaces middle border. Update mouse hit_test math.
+
+```text
+Task #35 created successfully: Pretty board with box-drawing chars
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:24Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Final gate + commit batch.
+
+```text
+Task #36 created successfully: Verify, format, clippy, commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:43Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #33 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:01:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:12Z)**_
+
+Now wire up `NewGame`, `RulesToggle`, and game-over guard in app.rs:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:22Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:44Z)**_
+
+Now block move attempts when game is over but allow undo:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:49Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #33 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #34 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:02:57Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #35 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:03:02Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:03:03Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+1	//! ratatui draw layer. Stateless — reads `AppState` and draws.
+2	
+3	use chess_core::board::BoardShape;
+4	use chess_core::coord::Square;
+5	use chess_core::piece::{PieceKind, Side};
+6	use chess_core::state::GameStatus;
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	
+9	use ratatui::layout::{Constraint, Direction, Layout, Rect};
+10	use ratatui::style::{Color, Modifier, Style as TuiStyle};
+11	use ratatui::text::{Line, Span};
+12	use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+13	use ratatui::Frame;
+14	
+15	use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
+16	use crate::glyph::{self, Style};
+17	use crate::orient;
+18	
+19	const CELL_COLS: u16 = 3;
+20	const RANK_LABEL_COLS: u16 = 3;
+21	
+22	pub fn draw(frame: &mut Frame, app: &mut AppState) {
+23	    let area = frame.area();
+24	    // Borrow split: take screen out into a local view kind, then re-borrow app.
+25	    match &app.screen {
+26	        Screen::Picker(p) => draw_picker(frame, area, p),
+27	        Screen::Game(_) => draw_game(frame, area, app),
+28	    }
+29	}
+30	
+31	fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+32	    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+33	    let mut lines = vec![
+34	        Line::from(title),
+35	        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+36	        Line::from(""),
+37	    ];
+38	    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+39	        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+40	        let style = if i == picker.cursor {
+41	            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+42	        } else {
+43	            TuiStyle::default()
+44	        };
+45	        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+46	    }
+47	    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+48	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+49	    frame.render_widget(para, area);
+50	}
+51	
+52	fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+53	    let chunks = Layout::default()
+54	        .direction(Direction::Horizontal)
+55	        .constraints([Constraint::Min(36), Constraint::Length(34)])
+56	        .split(area);
+57	
+58	    let Screen::Game(g) = &app.screen else {
+59	        return;
+60	    };
+61	    let g_ref: &GameView = g.as_ref();
+62	    let observer = app.observer;
+63	    let style = app.style;
+64	    let use_color = app.use_color;
+65	    let help_open = app.help_open;
+66	
+67	    let mut rect = app.board_rect;
+68	    draw_board(frame, chunks[0], observer, style, use_color, g_ref, &mut rect);
+69	    app.board_rect = rect;
+70	    draw_sidebar(frame, chunks[1], g_ref, style, help_open);
+71	}
+72	
+73	fn draw_board(
+74	    frame: &mut Frame,
+75	    area: Rect,
+76	    observer: Side,
+77	    style: Style,
+78	    use_color: bool,
+79	    g: &GameView,
+80	    board_rect: &mut Option<RectPx>,
+81	) {
+82	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+83	    let inner = block.inner(area);
+84	    frame.render_widget(block, area);
+85	
+86	    let view = PlayerView::project(&g.state, g.state.side_to_move);
+87	    let shape = view.shape;
+88	    let (rows, cols) = orient::display_dims(shape);
+89	    let (model_w, _) = shape.dimensions();
+90	
+91	    // Build legal-target highlight set when a piece is selected.
+92	    let highlight: std::collections::HashSet<Square> = match g.selected {
+93	        Some(from) => view
+94	            .legal_moves
+95	            .iter()
+96	            .filter(|m| m.origin_square() == from)
+97	            .filter_map(|m| m.to_square())
+98	            .collect(),
+99	        None => std::collections::HashSet::new(),
+100	    };
+101	
+102	    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize + 2);
+103	
+104	    // Top header: file labels.
+105	    lines.push(file_header_line(observer, shape));
+106	
+107	    for display_row in 0..rows {
+108	        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+109	        spans.push(Span::raw(rank_label(observer, shape, display_row)));
+110	        for display_col in 0..cols {
+111	            let sq = orient::square_at_display(display_row, display_col, observer, shape);
+112	            let (glyph_text, st) = match sq {
+113	                Some(sq) => render_cell(
+114	                    &view,
+115	                    sq,
+116	                    model_w,
+117	                    &highlight,
+118	                    g,
+119	                    style,
+120	                    use_color,
+121	                    display_row,
+122	                    display_col,
+123	                ),
+124	                None => (format!("{:>3}", "·"), TuiStyle::default()),
+125	            };
+126	            spans.push(Span::styled(glyph_text, st));
+127	        }
+128	        lines.push(Line::from(spans));
+129	    }
+130	
+131	    // Footer: file labels again.
+132	    lines.push(file_header_line(observer, shape));
+133	    // River reminder for xiangqi — rendered as a separate line below the
+134	    // board so it doesn't disturb the cell-row layout used by mouse hit-test.
+135	    if matches!(shape, BoardShape::Xiangqi9x10) {
+136	        let banner = match style {
+137	            Style::Cjk => "   楚河 ─ 漢界  (between ranks 4–5)",
+138	            Style::Ascii => "   river (between ranks 4-5)",
+139	        };
+140	        lines.push(Line::from(Span::styled(banner, TuiStyle::default().fg(Color::DarkGray))));
+141	    }
+142	
+143	    let para = Paragraph::new(lines);
+144	    frame.render_widget(para, inner);
+145	
+146	    *board_rect = Some(RectPx {
+147	        x: inner.x,
+148	        y: inner.y,
+149	        cell_cols: CELL_COLS,
+150	        left_pad: RANK_LABEL_COLS,
+151	        top_pad: 1, // header row
+152	    });
+153	}
+154	
+155	fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+156	    let (w, _) = shape.dimensions();
+157	    let (_, cols) = orient::display_dims(shape);
+158	    let mut s = String::new();
+159	    s.push_str("   "); // align with rank labels (3 cols)
+160	    for display_col in 0..cols {
+161	        // What model file corresponds to this display column? Ask the inverse
+162	        // for any row (use 0); banqi transposes so use a model-file resolver.
+163	        let label = file_label_for_col(display_col, w, shape, observer);
+164	        s.push(label);
+165	        s.push_str("  "); // 1-char glyph + 2 spaces ≈ CELL_COLS for ASCII labels
+166	    }
+167	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+168	}
+169	
+170	fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+171	    // Resolve via the inverse: pick row 0 (xiangqi) or row 0 (banqi); compute
+172	    // model file from the resulting Square.
+173	    let sq = orient::square_at_display(0, col, observer, shape);
+174	    let f = match sq {
+175	        Some(sq) => (sq.0 % model_w as u16) as u8,
+176	        None => col, // best-effort fallback
+177	    };
+178	    (b'a' + f) as char
+179	}
+180	
+181	fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+182	    // Same trick: resolve inverse to find model rank for this display row.
+183	    let sq = orient::square_at_display(display_row, 0, observer, shape);
+184	    let r = match sq {
+185	        Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
+186	        None => display_row,
+187	    };
+188	    format!(" {} ", r)
+189	}
+190	
+191	#[allow(clippy::too_many_arguments)]
+192	fn render_cell(
+193	    view: &PlayerView,
+194	    sq: Square,
+195	    _model_w: u8,
+196	    highlight: &std::collections::HashSet<Square>,
+197	    g: &GameView,
+198	    style: Style,
+199	    use_color: bool,
+200	    display_row: u8,
+201	    display_col: u8,
+202	) -> (String, TuiStyle) {
+203	    let cell = &view.cells[sq.0 as usize];
+204	    let is_cursor = (display_row, display_col) == g.cursor;
+205	    let is_selected = g.selected == Some(sq);
+206	    let is_target = highlight.contains(&sq);
+207	
+208	    let mut text = match cell {
+209	        VisibleCell::Empty => glyph::empty(style).to_string(),
+210	        VisibleCell::Hidden => glyph::hidden(style).to_string(),
+211	        VisibleCell::Revealed(pos) => {
+212	            glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
+213	        }
+214	    };
+215	    // Pad to CELL_COLS terminal columns. CJK glyphs render as 2 cols already;
+216	    // append a space. ASCII glyphs are 2 chars; append a space.
+217	    text.push(' ');
+218	
+219	    let mut s = TuiStyle::default();
+220	    if use_color {
+221	        if let VisibleCell::Revealed(pos) = cell {
+222	            s = s.fg(side_color(pos.piece.side));
+223	            if !pos.revealed {
+224	                s = s.add_modifier(Modifier::DIM);
+225	            }
+226	            if pos.piece.kind == PieceKind::General {
+227	                s = s.add_modifier(Modifier::BOLD);
+228	            }
+229	        } else if matches!(cell, VisibleCell::Hidden) {
+230	            s = s.fg(Color::DarkGray);
+231	        }
+232	    }
+233	    if is_target {
+234	        s = s.bg(Color::Rgb(40, 80, 40));
+235	    }
+236	    if is_selected {
+237	        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+238	    }
+239	    if is_cursor {
+240	        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+241	    }
+242	    (text, s)
+243	}
+244	
+245	fn side_color(side: Side) -> Color {
+246	    match side {
+247	        Side::RED => Color::Red,
+248	        Side::BLACK => Color::White,
+249	        _ => Color::Green,
+250	    }
+251	}
+252	
+253	fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
+254	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+255	    let inner = block.inner(area);
+256	    frame.render_widget(block, area);
+257	
+258	    let view = PlayerView::project(&g.state, g.state.side_to_move);
+259	    let mut lines: Vec<Line> = Vec::new();
+260	
+261	    let variant_label = match view.shape {
+262	        BoardShape::Xiangqi9x10 => {
+263	            if g.state.rules.xiangqi_allow_self_check {
+264	                "Xiangqi (象棋, casual)"
+265	            } else {
+266	                "Xiangqi (象棋)"
+267	            }
+268	        }
+269	        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+270	        BoardShape::ThreeKingdom => "三國暗棋",
+271	        BoardShape::Custom { .. } => "Custom",
+272	    };
+273	    lines.push(line_label_value("Variant:", variant_label));
+274	
+275	    // Side to move — colored to match the side, human-readable.
+276	    let stm_color = side_color(view.side_to_move);
+277	    lines.push(Line::from(vec![
+278	        Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+279	        Span::raw(" "),
+280	        Span::styled(
+281	            glyph::side_name(view.side_to_move, style),
+282	            TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+283	        ),
+284	    ]));
+285	
+286	    // CHECK indicator (xiangqi only — banqi has no general-in-check concept).
+287	    if matches!(view.shape, BoardShape::Xiangqi9x10)
+288	        && g.state.is_in_check(view.side_to_move)
+289	        && !matches!(view.status, GameStatus::Won { .. })
+290	    {
+291	        lines.push(Line::from(Span::styled(
+292	            "  ⚠ CHECK 將軍 — your general is under attack",
+293	            TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+294	        )));
+295	    }
+296	
+297	    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+298	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+299	    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+300	
+301	    let selected_label = match g.selected {
+302	        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+303	        None => "—".into(),
+304	    };
+305	    lines.push(line_label_value("Selected:", &selected_label));
+306	
+307	    lines.push(Line::from(""));
+308	    if let Some(msg) = &g.last_msg {
+309	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+310	    }
+311	
+312	    if help_open {
+313	        lines.push(Line::from(""));
+314	        lines.push(Line::from(Span::styled(
+315	            "Help",
+316	            TuiStyle::default().add_modifier(Modifier::BOLD),
+317	        )));
+318	        for ln in HELP_LINES {
+319	            lines.push(Line::from(Span::raw(*ln)));
+320	        }
+321	    } else {
+322	        lines.push(Line::from(""));
+323	        lines.push(Line::from(Span::styled(
+324	            "? for help, q to quit",
+325	            TuiStyle::default().fg(Color::DarkGray),
+326	        )));
+327	    }
+328	
+329	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+330	    frame.render_widget(para, inner);
+331	}
+332	
+333	fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+334	    Line::from(vec![
+335	        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+336	        Span::raw(" "),
+337	        Span::raw(value.to_string()),
+338	    ])
+339	}
+340	
+341	const HELP_LINES: &[&str] = &[
+342	    "h j k l / ←↓↑→  move cursor",
+343	    "Enter / Space   select / commit",
+344	    "Esc             cancel selection",
+345	    "u               undo last move",
+346	    "f               flip (banqi)",
+347	    "Click           select / commit",
+348	    "?               toggle this help",
+349	    "q / Ctrl-C      quit",
+350	];
+351
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:11Z)**_
+
+I'll do a substantial rewrite of ui.rs to add the box-drawing board, game-over banner, and rules overlay. Let me also gate Flip when game is over.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:17Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:22Z)**_
+
+Now update `RectPx` to track cell rows:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:35Z)**_
+
+Update `hit_test` to handle 2-row cells + river offset:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:45Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>String to replace not found in file.
+String: /// Convert terminal click coords to (display_row, display_col) within board.
+fn hit_test(
+    rect: RectPx,
+    term_col: u16,
+    term_row: u16,
+    rows: u8,
+    cols: u8,
+) -> Option<(u8, u8)> {
+    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+        return None;
+    }
+    let col_off = term_col - rect.x - rect.left_pad;
+    let row_off = term_row - rect.y - rect.top_pad;
+    if rect.cell_cols == 0 {
+        return None;
+    }
+    let cell_col = col_off / rect.cell_cols;
+    let cell_row = row_off;
+    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+        return None;
+    }
+    Some((cell_row as u8, cell_col as u8))
+}</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:04:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find hit_test
+
+`grep -n "fn hit_test" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs`
+
+```text
+337:fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:05:00Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+335	
+336	/// Convert terminal click coords to (display_row, display_col) within board.
+337	fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
+338	    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+339	        return None;
+340	    }
+341	    let col_off = term_col - rect.x - rect.left_pad;
+342	    let row_off = term_row - rect.y - rect.top_pad;
+343	    if rect.cell_cols == 0 {
+344	        return None;
+345	    }
+346	    let cell_col = col_off / rect.cell_cols;
+347	    let cell_row = row_off;
+348	    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+349	        return None;
+350	    }
+351	    Some((cell_row as u8, cell_col as u8))
+352	}
+353
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:05:11Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:05:14Z)**_
+
+Now the major ui.rs rewrite:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:06:51Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! ratatui draw layer. Stateless — reads `AppState` and draws.
+
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::piece::{PieceKind, Side};
+use chess_core::state::{GameStatus, WinReason};
+use chess_core::view::{PlayerView, VisibleCell};
+
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Modifier, Style as TuiStyle};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+use ratatui::Frame;
+
+use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
+use crate::glyph::{self, Style};
+use crate::orient;
+
+const CELL_COLS: u16 = 3;
+const CELL_ROWS: u16 = 2;
+const RANK_LABEL_COLS: u16 = 3;
+
+pub fn draw(frame: &mut Frame, app: &mut AppState) {
+    let area = frame.area();
+    match &app.screen {
+        Screen::Picker(p) => draw_picker(frame, area, p),
+        Screen::Game(_) => draw_game(frame, area, app),
+    }
+
+    if app.rules_open {
+        draw_rules_overlay(frame, area, app.style);
+    }
+}
+
+fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+    let mut lines = vec![
+        Line::from(title),
+        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+        Line::from(""),
+    ];
+    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+        let style = if i == picker.cursor {
+            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            TuiStyle::default()
+        };
+        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+    }
+    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(36)])
+        .split(area);
+
+    let Screen::Game(g) = &app.screen else {
+        return;
+    };
+    let g_ref: &GameView = g.as_ref();
+    let observer = app.observer;
+    let style = app.style;
+    let use_color = app.use_color;
+    let help_open = app.help_open;
+
+    let mut rect = app.board_rect;
+    draw_board(frame, chunks[0], observer, style, use_color, g_ref, &mut rect);
+    app.board_rect = rect;
+    draw_sidebar(frame, chunks[1], g_ref, style, help_open);
+}
+
+fn draw_board(
+    frame: &mut Frame,
+    area: Rect,
+    observer: Side,
+    style: Style,
+    use_color: bool,
+    g: &GameView,
+    board_rect: &mut Option<RectPx>,
+) {
+    let block = Block::default().borders(Borders::ALL).title(" Board ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let view = PlayerView::project(&g.state, g.state.side_to_move);
+    let shape = view.shape;
+    let (rows, cols) = orient::display_dims(shape);
+
+    // Build legal-target highlight set when a piece is selected.
+    let highlight: std::collections::HashSet<Square> = match g.selected {
+        Some(from) => view
+            .legal_moves
+            .iter()
+            .filter(|m| m.origin_square() == from)
+            .filter_map(|m| m.to_square())
+            .collect(),
+        None => std::collections::HashSet::new(),
+    };
+
+    let border = TuiStyle::default().fg(Color::DarkGray);
+    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 4);
+
+    // File header (top)
+    lines.push(file_header_line(observer, shape));
+    // Top border of grid
+    lines.push(Line::from(Span::styled(border_row(BorderKind::Top, cols), border)));
+
+    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
+
+    for display_row in 0..rows {
+        // Rank-content row: │piece│piece│...│
+        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 2);
+        spans.push(Span::raw(rank_label(observer, shape, display_row)));
+        spans.push(Span::styled("│", border));
+        for display_col in 0..cols {
+            let sq = orient::square_at_display(display_row, display_col, observer, shape);
+            let (text, st) = match sq {
+                Some(sq) => render_cell(&view, sq, &highlight, g, style, use_color, display_row, display_col),
+                None => (glyph::empty(style).to_string(), TuiStyle::default()),
+            };
+            spans.push(Span::styled(text, st));
+            spans.push(Span::styled("│", border));
+        }
+        lines.push(Line::from(spans));
+
+        // Mid border or river break or bottom border
+        if display_row + 1 == rows {
+            lines.push(Line::from(Span::styled(border_row(BorderKind::Bottom, cols), border)));
+        } else if river_after == Some(display_row) {
+            lines.push(river_line(cols, style));
+        } else {
+            lines.push(Line::from(Span::styled(border_row(BorderKind::Mid, cols), border)));
+        }
+    }
+
+    // File header (bottom)
+    lines.push(file_header_line(observer, shape));
+
+    let para = Paragraph::new(lines);
+    frame.render_widget(para, inner);
+
+    *board_rect = Some(RectPx {
+        x: inner.x,
+        y: inner.y,
+        cell_cols: CELL_COLS,
+        cell_rows: CELL_ROWS,
+        // file header (1) + top border (1)
+        top_pad: 2,
+        // rank label (3) + leading │ (1)
+        left_pad: RANK_LABEL_COLS + 1,
+        river_after_display_row: river_after,
+    });
+}
+
+#[derive(Copy, Clone)]
+enum BorderKind {
+    Top,
+    Mid,
+    Bottom,
+}
+
+fn border_row(kind: BorderKind, cols: u8) -> String {
+    let (left, sep, right) = match kind {
+        BorderKind::Top => ('┌', '┬', '┐'),
+        BorderKind::Mid => ('├', '┼', '┤'),
+        BorderKind::Bottom => ('└', '┴', '┘'),
+    };
+    let mut s = String::from("   "); // align with rank label
+    s.push(left);
+    for i in 0..cols {
+        s.push_str("──");
+        if i + 1 < cols {
+            s.push(sep);
+        } else {
+            s.push(right);
+        }
+    }
+    s
+}
+
+fn river_line(cols: u8, style: Style) -> Line<'static> {
+    // Inner content fits between │ markers at the column boundaries.
+    // Total line width = 1 (left │) + 3*cols (cells) + (cols - 1) wait, no
+    // we keep the column-boundary │'s and put text between. To keep mouse
+    // hit-test simple, we render the river as a single continuous decorated
+    // band and rely on `river_after_display_row` to skip over it.
+    let total_cols_inner = (cols as usize) * 3 - 1; // 3 chars per cell minus the trailing │
+    let banner = match style {
+        Style::Cjk => "  楚 河 ── 漢 界  ",
+        Style::Ascii => "  ----- river ----- ",
+    };
+    // pad/truncate to total_cols_inner display width; CJK is 2 cols/glyph,
+    // so a literal char count is approximate. Use a generous overall row.
+    let mut s = String::from("   "); // rank label space
+    s.push('│');
+    let banner_pad = total_cols_inner.saturating_sub(visual_width(banner));
+    let left_pad = banner_pad / 2;
+    let right_pad = banner_pad - left_pad;
+    for _ in 0..left_pad {
+        s.push(' ');
+    }
+    s.push_str(banner);
+    for _ in 0..right_pad {
+        s.push(' ');
+    }
+    s.push('│');
+    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+}
+
+/// Approximate display width: CJK chars count as 2 cols, others as 1.
+fn visual_width(s: &str) -> usize {
+    s.chars()
+        .map(|c| {
+            let cp = c as u32;
+            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+            // box-drawing isn't wide. This is "good enough" — a real fix
+            // would pull in unicode-width.
+            if (0x1100..=0x115F).contains(&cp)
+                || (0x2E80..=0x303E).contains(&cp)
+                || (0x3041..=0x33FF).contains(&cp)
+                || (0x3400..=0x4DBF).contains(&cp)
+                || (0x4E00..=0x9FFF).contains(&cp)
+                || (0xA000..=0xA4CF).contains(&cp)
+                || (0xAC00..=0xD7A3).contains(&cp)
+                || (0xF900..=0xFAFF).contains(&cp)
+                || (0xFE30..=0xFE4F).contains(&cp)
+                || (0xFF00..=0xFF60).contains(&cp)
+                || (0xFFE0..=0xFFE6).contains(&cp)
+            {
+                2
+            } else {
+                1
+            }
+        })
+        .sum()
+}
+
+fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+    let (w, _) = shape.dimensions();
+    let (_, cols) = orient::display_dims(shape);
+    // Each cell is 3 cols: " label "  with the label centered.
+    let mut s = String::new();
+    s.push_str("    "); // 3 cols rank label + 1 col left │
+    for display_col in 0..cols {
+        let label = file_label_for_col(display_col, w, shape, observer);
+        s.push(label);
+        s.push_str("  "); // pad to 3 cols
+    }
+    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+}
+
+fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+    let sq = orient::square_at_display(0, col, observer, shape);
+    let f = match sq {
+        Some(sq) => (sq.0 % model_w as u16) as u8,
+        None => col,
+    };
+    (b'a' + f) as char
+}
+
+fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+    let sq = orient::square_at_display(display_row, 0, observer, shape);
+    let r = match sq {
+        Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
+        None => display_row,
+    };
+    format!(" {} ", r)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_cell(
+    view: &PlayerView,
+    sq: Square,
+    highlight: &std::collections::HashSet<Square>,
+    g: &GameView,
+    style: Style,
+    use_color: bool,
+    display_row: u8,
+    display_col: u8,
+) -> (String, TuiStyle) {
+    let cell = &view.cells[sq.0 as usize];
+    let is_cursor = (display_row, display_col) == g.cursor;
+    let is_selected = g.selected == Some(sq);
+    let is_target = highlight.contains(&sq);
+
+    let text = match cell {
+        VisibleCell::Empty => glyph::empty(style).to_string(),
+        VisibleCell::Hidden => glyph::hidden(style).to_string(),
+        VisibleCell::Revealed(pos) => {
+            glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
+        }
+    };
+
+    let mut s = TuiStyle::default();
+    if use_color {
+        if let VisibleCell::Revealed(pos) = cell {
+            s = s.fg(side_color(pos.piece.side));
+            if !pos.revealed {
+                s = s.add_modifier(Modifier::DIM);
+            }
+            if pos.piece.kind == PieceKind::General {
+                s = s.add_modifier(Modifier::BOLD);
+            }
+        } else if matches!(cell, VisibleCell::Hidden) {
+            s = s.fg(Color::DarkGray);
+        }
+    }
+    if is_target {
+        s = s.bg(Color::Rgb(40, 80, 40));
+    }
+    if is_selected {
+        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+    }
+    if is_cursor {
+        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+    }
+    (text, s)
+}
+
+fn side_color(side: Side) -> Color {
+    match side {
+        Side::RED => Color::Red,
+        Side::BLACK => Color::White,
+        _ => Color::Green,
+    }
+}
+
+fn draw_sidebar(frame: &mut Frame, area: Rect, g: &GameView, style: Style, help_open: bool) {
+    let block = Block::default().borders(Borders::ALL).title(" Status ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let view = PlayerView::project(&g.state, g.state.side_to_move);
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Game-over banner (takes priority).
+    if let Some(banner) = game_over_banner(&view.status, style) {
+        for l in banner {
+            lines.push(l);
+        }
+        lines.push(Line::from(""));
+    }
+
+    let variant_label = match view.shape {
+        BoardShape::Xiangqi9x10 => {
+            if g.state.rules.xiangqi_allow_self_check {
+                "Xiangqi (象棋, casual)"
+            } else {
+                "Xiangqi (象棋)"
+            }
+        }
+        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+        BoardShape::ThreeKingdom => "三國暗棋",
+        BoardShape::Custom { .. } => "Custom",
+    };
+    lines.push(line_label_value("Variant:", variant_label));
+
+    let stm_color = side_color(view.side_to_move);
+    lines.push(Line::from(vec![
+        Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::styled(
+            glyph::side_name(view.side_to_move, style),
+            TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+
+    if matches!(view.shape, BoardShape::Xiangqi9x10)
+        && g.state.is_in_check(view.side_to_move)
+        && matches!(view.status, GameStatus::Ongoing)
+    {
+        lines.push(Line::from(Span::styled(
+            "  ⚠ CHECK 將軍 — your general is under attack",
+            TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )));
+    }
+
+    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+
+    let selected_label = match g.selected {
+        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+        None => "—".into(),
+    };
+    lines.push(line_label_value("Selected:", &selected_label));
+
+    lines.push(Line::from(""));
+    if let Some(msg) = &g.last_msg {
+        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+    }
+
+    if help_open {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Help",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )));
+        for ln in HELP_LINES {
+            lines.push(Line::from(Span::raw(*ln)));
+        }
+    } else {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "?=help, r=rules, n=new, q=quit",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+
+    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(para, inner);
+}
+
+fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+    match status {
+        GameStatus::Ongoing => None,
+        GameStatus::Won { winner, reason } => {
+            let header = Line::from(Span::styled(
+                "★  GAME OVER  ★",
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ));
+            let winner_line = Line::from(vec![
+                Span::raw("Winner: "),
+                Span::styled(
+                    glyph::side_name(*winner, style),
+                    TuiStyle::default()
+                        .fg(side_color(*winner))
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let reason_line = Line::from(vec![
+                Span::raw("Reason: "),
+                Span::styled(
+                    win_reason_label(*reason),
+                    TuiStyle::default().add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let footer = Line::from(Span::styled(
+                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+                TuiStyle::default().fg(Color::Cyan),
+            ));
+            Some(vec![header, winner_line, reason_line, footer])
+        }
+        GameStatus::Drawn { reason } => {
+            let header = Line::from(Span::styled(
+                "—  DRAW  —",
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ));
+            let reason_line = Line::from(vec![
+                Span::raw("Reason: "),
+                Span::styled(
+                    format!("{:?}", reason),
+                    TuiStyle::default().add_modifier(Modifier::BOLD),
+                ),
+            ]);
+            let footer = Line::from(Span::styled(
+                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+                TuiStyle::default().fg(Color::Cyan),
+            ));
+            Some(vec![header, reason_line, footer])
+        }
+    }
+}
+
+fn win_reason_label(reason: WinReason) -> &'static str {
+    match reason {
+        WinReason::Checkmate => "Checkmate (將死)",
+        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+        WinReason::Resignation => "Resignation",
+        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+        WinReason::Timeout => "Time forfeit",
+        WinReason::GeneralCaptured => "General captured (將被吃)",
+    }
+}
+
+fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::raw(value.to_string()),
+    ])
+}
+
+fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+    // Center an overlay roughly 70 cols × 24 rows over the screen.
+    let pad_x = area.width.saturating_sub(72) / 2;
+    let pad_y = area.height.saturating_sub(26) / 2;
+    let overlay = Rect {
+        x: area.x + pad_x,
+        y: area.y + pad_y,
+        width: area.width.min(72),
+        height: area.height.min(26),
+    };
+    frame.render_widget(Clear, overlay);
+    let block =
+        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+    let lines: Vec<Line> = RULES_LINES
+        .iter()
+        .map(|(s, accent)| {
+            let style = if *accent {
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                TuiStyle::default()
+            };
+            Line::from(Span::styled(*s, style))
+        })
+        .collect();
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, overlay);
+}
+
+const HELP_LINES: &[&str] = &[
+    "h j k l / ←↓↑→  move cursor",
+    "Enter / Space   select / commit",
+    "Esc             cancel selection",
+    "u               undo last move",
+    "f               flip (banqi)",
+    "n               new game (back to picker)",
+    "r               toggle rules overlay",
+    "?               toggle this help",
+    "Click           select / commit",
+    "q / Ctrl-C      quit",
+];
+
+const RULES_LINES: &[(&str, bool)] = &[
+    ("Xiangqi 象棋", true),
+    ("", false),
+    ("• Red (帥仕相俥傌炮兵) moves first; Black (將士象車馬砲卒) replies.", false),
+    ("• General/Advisor stay inside the 3×3 palace (files d–f).", false),
+    ("• Elephants stay on their own side of the river (ranks 0–4 / 5–9).", false),
+    ("• Horses are blocked by 馬腿 — the orthogonal step in the move's direction.", false),
+    ("• Cannon non-capturing slide is like a chariot; capture requires jumping", false),
+    ("  exactly one piece (the screen 砲架) in a straight line.", false),
+    ("• Soldiers move forward one square; after crossing the river they can also", false),
+    ("  move sideways (but never backward).", false),
+    ("• Generals cannot face each other on a clear file (飛將 rule).", false),
+    ("• Standard: any move that leaves your general capturable is illegal.", false),
+    ("  Casual mode (--allow-self-check / picker entry) lifts that filter;", false),
+    ("  the game ends when the general is physically captured.", false),
+    ("", false),
+    ("Banqi 暗棋", true),
+    ("", false),
+    ("• 4×8 half-board, 32 pieces face-down. Pick a hidden piece to flip;", false),
+    ("  the FIRST flip locks the colors (flipper plays the revealed color).", false),
+    ("• Capture by piece rank: General > Advisor > Elephant > Chariot >", false),
+    ("  Horse > Cannon > Soldier. Soldier captures General (民推翻王).", false),
+    ("• Cannon captures by jumping over exactly one piece (any rank).", false),
+    ("• House rules (toggleable presets): chain-capture (連吃), chariot-rush", false),
+    ("  (車衝). Other house rules are P1 TODO.", false),
+    ("", false),
+    ("Press r or Esc to close. Default keys: hjkl/arrows · Enter · u · f · n · q", true),
+];
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:07:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Compile check
+
+`cargo check -p chess-tui 2>&1 | tail -25`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.73s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:07:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace clippy
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.65s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:07:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format + test
+
+`cargo fmt --all && cargo fmt --check 2>&1 | tail -3 && echo "===" && cargo test --workspace 2>&1 | grep "test result\|FAIL" | head -20`
+
+```text
+===
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[This command modified 2 files you've previously read: clients/chess-tui/src/app.rs, clients/chess-tui/src/ui.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:16Z)**_
+
+All gates green. Let me run the binary to smoke-test the help/CLI surface and then commit.
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Rebuild + verify CLI
+
+`cargo build -p chess-tui 2>&1 | tail -5 && ./target/debug/chess-tui --help 2>&1 | head -20`
+
+```text
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.05s
+ratatui frontend for chess-core
+
+Usage: chess-tui [OPTIONS] [COMMAND]
+
+Commands:
+  xiangqi  Standard xiangqi (9×10)
+  banqi    Banqi (4×8 face-down)
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --style <STYLE>  Render style [default: cjk] [possible values: cjk, ascii]
+      --no-color       Disable ANSI color (keeps the chosen glyph set)
+      --as <OBSERVER>  Render from this side's perspective (debug; default RED) [default: red] [possible values: red, black]
+  -h, --help           Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM gate
+
+`cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.26s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:31Z)**_
+
+Update CLAUDE.md:
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:43Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #34 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #35 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #36 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:08:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Status pre-commit
+
+`git status`
+
+```text
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+	modified:   CLAUDE.md
+	modified:   clients/chess-tui/src/app.rs
+	modified:   clients/chess-tui/src/input.rs
+	modified:   clients/chess-tui/src/ui.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 07:09:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit feature batch
+
+```bash
+git add CLAUDE.md clients/chess-tui/src/app.rs clients/chess-tui/src/input.rs clients/chess-tui/src/ui.rs && git commit -m "$(cat <<'EOF'
+feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+
+Three playtest fixes:
+
+1. Box-drawing board layout — replaces flat-row rendering with a proper
+   grid using ┌┬┐├┼┤└┴┘─│ box-drawing characters. Each cell is 3 cols ×
+   2 rows (piece on top, ─── border below); the river replaces the mid
+   border between display rows 4 and 5. RectPx now carries cell_rows
+   and river_after_display_row so mouse hit-test stays accurate (clicks
+   on the river itself return None; clicks below are offset by 1).
+
+2. Game-over UX — when state.status is Won/Drawn, a prominent banner
+   appears at the top of the sidebar (winner side colored, reason in a
+   readable label like "General captured (將被吃)" or "Stalemate
+   (困死)"). New 'n' key returns to the variant picker so a fresh game
+   doesn't require restarting the binary. Move attempts (SelectOrCommit
+   and Flip) are gated when game over but undo still works, so the
+   loser can take back and explore alternatives.
+
+3. Rules overlay — 'r' toggles a centered modal with concise
+   xiangqi + banqi rules (palace, river, 馬腿, cannon-jump, soldier
+   crossing, generals-cannot-face-each-other, casual mode, banqi
+   rank-based capture, house-rule presets).
+
+Sidebar tweaks:
+- Game-over banner takes precedence; CHECK indicator now suppressed
+  once status flips to Won so it doesn't double up with the result.
+- Hint footer expanded: "?=help, r=rules, n=new, q=quit".
+
+Layout grew slightly — board chunk is now Min(40), sidebar Length(36).
+Fits an 80-col terminal with margin to spare.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline -5
+```
+
+```text
+[main f276962] feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+ 4 files changed, 314 insertions(+), 48 deletions(-)
+f276962 feat(tui): box-drawing board, game-over banner, rules overlay, new-game key
+9af7522 chore: bundle SpecStory transcript for casual-mode + UX fixes
+6ffe523 feat: human-readable side, CHECK indicator, casual xiangqi mode
+d5f40ea chore: bundle SpecStory transcript for chess-tui PR
+ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+```
+</details></tool-use>
