@@ -2,7 +2,7 @@
 
 ## Context
 
-Five banqi house rules combine independently with one another, with three xiangqi-style variants, with three-kingdoms, and (eventually) with large-board variants. The natural OO instinct is "trait `RuleSet` and stack decorators" — `StandardRules ∘ ChainCapture ∘ ChariotRush`.
+Five banqi house rules combine independently with one another, with three xiangqi-style variants, and with three-kingdoms. The natural OO instinct is "trait `RuleSet` and stack decorators" — `StandardRules ∘ ChainCapture ∘ ChariotRush`.
 
 In practice with Rust this hurts:
 

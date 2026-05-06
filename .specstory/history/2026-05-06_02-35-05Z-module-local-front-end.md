@@ -14322,3 +14322,1122 @@ Check unknown ADR README
 # Architecture Decision Record (ADR)
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:51Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:51Z)**_
+
+Auto-generated ADR README; harmless. Committing everything.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:49:52Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage all changes
+
+`git add -A && git status --short`
+
+```text
+M  .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+M  CLAUDE.md
+M  TODO.md
+M  crates/chess-core/Cargo.toml
+M  crates/chess-core/src/lib.rs
+M  crates/chess-core/src/notation/iccs.rs
+M  crates/chess-core/src/prelude.rs
+A  crates/chess-core/src/replay.rs
+A  crates/chess-core/src/snapshot.rs
+A  crates/chess-core/tests/end_conditions.rs
+A  crates/chess-core/tests/fixtures/banqi/red-wiped-out.pos
+A  crates/chess-core/tests/fixtures/xiangqi/horse-stalemate.pos
+A  crates/chess-core/tests/fixtures/xiangqi/three-chariot-mate.pos
+A  crates/chess-core/tests/replay_round_trip.rs
+A  docs/adr/README.md
+A  docs/snapshot-format.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:50:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit snapshot + replay + tests
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(core): snapshot + replay formats; end-condition tests
+
+Two new modules and four new test files. The same primitive (Replay
+with initial state + move sequence) underpins save/load, animation
+playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle
+mode — solving five user-facing features with one piece of code.
+
+Snapshot (`crates/chess-core/src/snapshot.rs`)
+- GameState::to_json / from_json — canonical, lossless via serde
+- GameState::to_pos_text / from_pos_text — human-friendly .pos DSL for
+  hand-written fixtures and endgame puzzles. Xiangqi-FEN piece letters,
+  ?-prefix for face-down banqi pieces, top-of-grid is highest rank
+- 7 unit tests covering round-trip, header parsing, malformed input,
+  rank order
+
+Replay (`crates/chess-core/src/replay.rs`)
+- Replay { version, metadata, initial: GameState, moves: Vec<Move> }
+- from_game(state) — reconstructs the initial state via unmake_move,
+  records the moves in order. Lossless capture of any played-out game
+- play_to(step) — fork primitive: returns a fresh GameState that has
+  played the first `step` moves; the returned state is independently
+  playable, so fork-from-midpoint and "play differently" Just Work
+- to_json / from_json
+- 7 unit tests covering capture, round-trip, intermediate states,
+  fork divergence, JSON, out-of-range, iter_states
+
+Fixtures (`crates/chess-core/tests/fixtures/`)
+- xiangqi/three-chariot-mate.pos — Black checkmated by R(d8)/R(e8)/R(f8)
+- xiangqi/horse-stalemate.pos    — Black stalemated; Asian rules:
+  stalemated side loses
+- banqi/red-wiped-out.pos        — Red has zero pieces, no legal moves
+
+Tests
+- tests/end_conditions.rs (4): asserts refresh_status produces
+  Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} for each
+  fixture. Closes the 'no test verifies game-end status detection' gap
+- tests/replay_round_trip.rs (4): full pipeline tests that exercise the
+  public API surface — play game, build replay, JSON round-trip, fork
+  divergence, fixture-as-replay-initial (endgame puzzle pattern)
+
+Total: 93 tests pass + 1 ignored (depth-3 perft, release-only).
+Up from 71 in the previous commit.
+
+Wiring
+- chess-core/Cargo.toml: serde_json moves from dev-dependencies to
+  regular dependencies (now part of the public API surface)
+- prelude re-exports Replay, ReplayMeta, PlayerView, VisibleCell
+
+Docs
+- docs/snapshot-format.md — full .pos DSL spec + use-case examples
+  (test fixtures, endgame puzzles, animation, fork)
+- CLAUDE.md gotchas updated to point new agents at .pos DSL and the
+  Replay = (initial, moves[]) primitive
+
+TODO updates
+- Promoted "End-condition unit tests" P1/S → Done (this commit)
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline | head -5
+```
+
+```text
+[main 7e6d031] feat(core): snapshot + replay formats; end-condition tests
+ 16 files changed, 3475 insertions(+), 3 deletions(-)
+ create mode 100644 crates/chess-core/src/replay.rs
+ create mode 100644 crates/chess-core/src/snapshot.rs
+ create mode 100644 crates/chess-core/tests/end_conditions.rs
+ create mode 100644 crates/chess-core/tests/fixtures/banqi/red-wiped-out.pos
+ create mode 100644 crates/chess-core/tests/fixtures/xiangqi/horse-stalemate.pos
+ create mode 100644 crates/chess-core/tests/fixtures/xiangqi/three-chariot-mate.pos
+ create mode 100644 crates/chess-core/tests/replay_round_trip.rs
+ create mode 100644 docs/adr/README.md
+ create mode 100644 docs/snapshot-format.md
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:50:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #18 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:50:40Z)**_
+
+Done. Commit `7e6d031` shipped, all 6 tasks complete.
+
+## 結果
+
+**93 tests pass + 1 ignored**（從 71 跳到 93）
+
+### 新增的 public API
+
+```rust
+// 棋面快照
+state.to_json()? / GameState::from_json(s)?               // canonical, 無損
+state.to_pos_text() / GameState::from_pos_text(s)?        // 人寫 DSL
+
+// 對局回放
+Replay::from_game(&state, meta)?      // 從已下完狀態抓取
+Replay::new(initial, meta)            // 從特定棋面開始（殘局模式）
+replay.play_to(step)?                 // 任一中間態 — 動畫/悔棋/分支共用 primitive
+replay.final_state()?
+replay.iter_states()                  // 從 0 走到末步
+replay.to_json()? / Replay::from_json(s)?
+```
+
+### 殘局/測試 fixture 範例
+
+```
+# tests/fixtures/xiangqi/three-chariot-mate.pos
+variant: xiangqi
+side_to_move: black
+
+board:
+  . . . . k . . . .
+  . . . R R R . . .
+  ...
+  . . . . K . . . .
+```
+
+載入：
+```rust
+let mut s = GameState::from_pos_text(&fs::read_to_string(path)?)?;
+s.refresh_status();
+assert_eq!(s.status, GameStatus::Won { winner: Side::RED, reason: WinReason::Checkmate });
+```
+
+### 一個 primitive 解決五個功能
+
+`Replay::play_to(step)` 同一個函數同時是：
+- **存檔載入**：`from_json` 後 `play_to(len())` 取末態
+- **動畫播放**：UI 在 timer 上呼叫 `play_to(0..=len())` 逐幀渲染
+- **多步悔棋**：`play_to(len() - n)` 退 n 步
+- **任意分支**：`play_to(k)` 拿到的 `GameState` 可繼續 `make_move` 走出不同路線（fork test 已驗證 a/b 分歧）
+- **殘局模式**：`Replay::new(load_fixture(), meta)` + `play_to(0)` 把局面交給玩家
+
+### 三個殘局 fixture
+
+| 檔案 | 預期結果 |
+|---|---|
+| `xiangqi/three-chariot-mate.pos` | `Won { Red, Checkmate }` |
+| `xiangqi/horse-stalemate.pos` | `Won { Red, Stalemate }`（亞洲規則 stalemated 一方判輸） |
+| `banqi/red-wiped-out.pos` | `Won { Black, OnlyOneSideHasPieces }` |
+
+每個 fixture 都註解清楚棋面意圖，跑 `tests/end_conditions.rs` 自動驗證。
+
+### 文件
+- `docs/snapshot-format.md` — `.pos` DSL 完整規格 + 各用途範例
+- `CLAUDE.md` 加了兩條 gotcha 給未來 agent
+
+`TODO.md` 中 P1/S 「End-condition unit tests」已 promote 到 Done。
+
+---
+
+_**User (2026-05-06 05:56:49Z)**_
+
+```
+2026-05-06-chinese-chess on  main [!] via  v1.93.0
+❯ cargo run -p chess-cli
+   Compiling zmij v1.0.21
+   Compiling memchr v2.8.0
+   Compiling itoa v1.0.18
+   Compiling serde_json v1.0.149
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+   Compiling chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.72s
+     Running `target/debug/chess-cli`
+chess-cli ready. Type 'help' for commands.
+help
+Commands:
+  xiangqi
+  banqi [--preset purist|taiwan|aggressive] [--house chain,dark-chain,rush,horse-diagonal,cannon-fast] [--seed N]
+  moves
+  play <iccs>             e.g. h2e2 or 'flip a0' or 'a3xb3xc3' for chains
+  undo
+  view [side]             0 = RED, 1 = BLACK, 2 = third (3-kingdoms)
+  status
+  help
+  quit
+> xiangqi
+Started standard xiangqi. Red to move.
+> view
+Observer: Side(0)  Side to move: Side(0)
+  9 | r h b a g a b h r
+  8 | . . . . . . . . .
+  7 | . c . . . . . c .
+  6 | p . p . p . p . p
+  5 | . . . . . . . . .
+    | -- 楚河 漢界 --
+  4 | . . . . . . . . .
+  3 | P . P . P . P . P
+  2 | . C . . . . . C .
+  1 | . . . . . . . . .
+  0 | R H B A G A B H R
+    +------------------
+       a b c d e f g h i
+Status: Ongoing  legal moves available: 44
+> quit
+
+```
+
+我想了解現在除了CLI mode 能有TUI或Web mode了嗎？
+
+另外 修正一下 我之前指的大盤就是標準規則 並不是特殊玩法
+
+然後我們也新增規則 比如其實可以配置讓棋 比如讓車馬炮 等等 之類的可開關設置 (這部分可以先扔Todo)
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 05:57:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:57:27Z)**_
+
+要先校正幾個地方。先看 grep 一下 大盤 在哪些地方被誤當成變體寫進去了。
+
+_**Agent (claude-opus-4-7 2026-05-06 05:57:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find all 大盤 references
+
+`grep -rn "大盤\|big board\|big-board\|large.board\|large-board" --include="*.md" --include="*.rs" --include="*.toml" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/ 2>&1 | grep -v "target/\|.git/" | head -40`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md:46:- [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/README.md:9:- **Large board variants (大盤)** — n×m via `BoardShape::Custom` *(planned)*
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md:7:Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and large-board variants. PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:20:    /// 大盤 / arbitrary variants. `mask` bit `i` set means cell `i` is
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/three-kingdoms-banqi.md:9:User listed 三國暗棋 as one of the four target variants alongside xiangqi, banqi, and 大盤. The reference URL the user shared (`zh.wikipedia.org/zh-sg/三國暗棋`) confirms this is a banqi-family three-player variant on a half-board, NOT a three-player xiangqi.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:9:我想做一個象棋遊戲 能支援大盤、暗棋、特殊家規、三國棋等
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:66:支援大盤、暗棋、三國棋、家規這四件事對抽象的拉扯**完全不一樣**，必須一開始就設計對：
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:72:│   ├── grid_nxm.rs          ← 大盤
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:134:| **大盤 / 大象棋** | n×m (常見 11×11、13×14、16×16，宋代廣象戲到 19×19) | 2 | 新棋種 (旗、弩、獅、虎…) → `PieceKind` 要可擴充；走法生成器是 trait，不是 enum match |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:147:5. **才開始加變體**：暗棋 → 大盤 → 家規系統 → 三國棋。三國棋放最後，因為它逼你重審所有「2 player」假設。
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:183:特別注意一下你給的連結：URL 解碼後是「**三國暗棋**」——這是個 banqi (暗棋) 的三人變體（半盤、4×8、三隊），不是我前一輪講的三人象棋。家規也都是 banqi 規則。所以 core 的重心會落在 **xiangqi 基礎 + banqi (含家規與三國暗棋)**，大盤等變體靠後。
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:682:    /// Future-proofing for 大盤 variants (10x11, 11x12, etc).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1181:| 大盤 variants (10×11, 11×12, etc.) | M | `BoardShape::Custom` already exists; widen the mask from `u128` if >128 squares; add per-variant setup + rules. |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1197:- `docs/adr/0002-square-as-u16.md` — why one integer index instead of `(file, rank)` tuples; how it scales to 大盤 and three-kingdoms.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1253:  5. **Large board variants (大盤)**: deferred — must not be precluded by core design
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1264:   - `Board` (must support 9×10, 4×8 banqi, 3-kingdom topology, future n×m large boards — coord type should be abstract, not hardcoded `(u8,u8)`)
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1288:- A prioritized TODO list for the **first PR** (core only) and a follow-up roadmap (TUI, net, web, AI, big board, three kingdoms) with rough effort estimates (S/M/L)
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:1711:    /// Future-proofing for 大盤 variants (10x11, 11x12, etc).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:2210:| 大盤 variants (10×11, 11×12, etc.) | M | `BoardShape::Custom` already exists; widen the mask from `u128` if >128 squares; add per-variant setup + rules. |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:2226:- `docs/adr/0002-square-as-u16.md` — why one integer index instead of `(file, rank)` tuples; how it scales to 大盤 and three-kingdoms.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:2463:| 7  | 大盤 variants via `BoardShape::Custom`; widen mask if > 128 squares | M |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:2747:| 7  | 大盤 variants via `BoardShape::Custom`; widen mask if > 128 squares | M |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:3156:- **Large board variants (大盤)** — n×m via `BoardShape::Custom` *(planned)*
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:3853:- Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), 三國暗棋, and 大盤 variants.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:3868:**Why Rust + WASM**: variant explosion (xiangqi vs banqi vs 三國暗棋 vs 大盤 vs N house-rule combinations) is a type-system problem. Rust enums + bitflags express it cleanly without runtime cost. Same `chess-core` crate compiles to native (TUI / server) and `wasm32-unknown-unknown` (browser), so there's exactly one source of truth for rules. Single-binary distribution. Unity-as-renderer remains open via FFI later.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:3918:| 7 | 大盤 variants |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:4290:- 大盤 variants (n×m, possibly up to 19×19)
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:4334:Five banqi house rules combine independently with one another, with three xiangqi-style variants, with three-kingdoms, and (eventually) with large-board variants. The natural OO instinct is "trait `RuleSet` and stack decorators" — `StandardRules ∘ ChainCapture ∘ ChariotRush`.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:4955:    /// 大盤 / arbitrary variants. `mask` bit `i` set means cell `i` is
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:9973:- **PR 3+**: `chess-tui` (ratatui), `chess-net` (tokio + ws server-authoritative), `chess-web` (Leptos + WASM), `chess-engine` + `chess-ai`, 大盤 variants
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:10306:xiangqi, banqi, three-kingdoms banqi, and large-board variants. This PR
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:10788:Add big-board
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:10790:`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/add-todo.sh --priority P3 --effort M --title "Large-board variants (大盤)" --description "BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first." 2>&1 | tail -3`
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:10793:Added to ## P3: - [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:10942:47	- [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:11062:- [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:11176:User listed 三國暗棋 as one of the four target variants alongside xiangqi, banqi, and 大盤. The reference URL the user shared (`zh.wikipedia.org/zh-sg/三國暗棋`) confirms this is a banqi-family three-player variant on a half-board, NOT a three-player xiangqi.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:11627:- 大盤 variants
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:11676:| **P3** (someday) | 4 | chess-engine + chess-ai (αβ + ISMCTS) · 大盤變體 · replay format · insta snapshots |
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md:11907:Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and large-board variants. PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:58:23Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:58:25Z)**_
+
+先回答非規劃的問題：
+
+**TUI / Web mode 都還沒實作**，目前只有 `chess-cli` REPL 能玩。`chess-tui`（ratatui）和 `chess-web`（Leptos+WASM）都是 stub crates，在 `TODO.md` 的 P2 區。
+
+接下來進 Plan Mode 處理 大盤 校正與 讓棋 TODO。先讀現有 plan 跟相關檔案。
+
+_**Agent (claude-opus-4-7 2026-05-06 05:58:27Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `/Users/daviddwlee84/.claude/plans/magical-honking-book.md`
+
+```text
+1	# Chinese Chess (Rust + WASM) — Foundational Core PR
+2	
+3	## Context
+4	
+5	Greenfield project at `/Volumes/Data/Program/tries/2026-05-06-chinese-chess` (only `.git/` and `.specstory/` exist; zero commits). The user wants a hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and 大盤 variants, with toggleable banqi house rules (連吃/暗連/車衝/馬斜/炮快移). End goal: friends play via TUI (ratatui) or web (Leptos/Yew via WASM) on a self-hosted server, with mouse + keyboard UX (Vim-style + coordinate input).
+6	
+7	After comparing Go+Charm/wish, Python+Textual, TypeScript, and Unity, we chose **Rust + WASM** for: (1) type system handles variant explosion cleanly, (2) `chess-core` recompiles to native + WASM so TUI and Web reuse the same engine, (3) single-binary distribution, (4) Unity-as-renderer remains open via FFI later.
+8	
+9	**Scope of this PR: foundational core only.** Workspace scaffolding + `chess-core` with full xiangqi + base banqi + at least the `CHAIN_CAPTURE` and `CHARIOT_RUSH` house rules wired end-to-end + a minimal CLI test harness. Three-kingdoms rules implementation, networking, TUI/Web clients, and AI all come in follow-up PRs — but the core types must support them without rework (this is verified by the design's `TurnOrder` already supporting 3 seats and `BoardShape` already having a `ThreeKingdom` variant slot).
+10	
+11	**Terminology note**: the user's link `zh.wikipedia.org/zh-sg/三國暗棋` confirms 三國棋 here means **三國暗棋** (banqi variant with 3 teams on a half-board), not 3-player xiangqi. The five house rules (連吃/暗連/車衝/馬斜/炮快移) are all banqi-specific, per `darkchess.funtown.com.tw/rules2.html`.
+12	
+13	## Workspace Layout
+14	
+15	```
+16	chinese-chess/
+17	├── Cargo.toml                       # workspace manifest
+18	├── rust-toolchain.toml              # pin stable (rustc 1.84)
+19	├── rustfmt.toml, clippy.toml, .gitignore
+20	├── README.md
+21	├── docs/
+22	│   ├── architecture.md              # distilled tech analysis + design
+23	│   ├── rules/
+24	│   │   ├── xiangqi.md               # SKELETON
+25	│   │   ├── banqi.md                 # SKELETON
+26	│   │   ├── banqi-house.md           # SKELETON: 5 toggles + presets
+27	│   │   └── three-kingdoms.md        # SKELETON: link to zh.wiki
+28	│   ├── notation.md                  # SKELETON
+29	│   └── adr/
+30	│       ├── 0001-rust-workspace-layout.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:58:27Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/architecture.md`
+
+```text
+1	# Architecture
+2	
+3	Distilled from the technology selection round. See [`adr/`](adr/) for individual decisions.
+4	
+5	## Goals
+6	
+7	- Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), 三國暗棋, and 大盤 variants.
+8	- Toggleable banqi house rules: 連吃, 暗連, 車衝, 馬斜, 炮快移.
+9	- Self-hostable server for friends; native TUI and Web clients sharing the same engine.
+10	- Mouse + keyboard UX (Vim-style + coordinate input).
+11	
+12	## Tech Selection
+13	
+14	| Option | TUI | Web | Multiplayer | Core reuse | Verdict |
+15	|---|---|---|---|---|---|
+16	| **Rust + WASM** | ratatui | Yew · Leptos · Dioxus (same core via WASM) | tokio + axum/ws | ★★★★★ | **Chosen** |
+17	| Go (Charm) | bubbletea + lipgloss | templ + htmx (extra effort) | wish (SSH) + ws | ★★★★ | Strong "for fun" alt |
+18	| Python (Textual) | Textual (mouse native) | `textual serve` (terminal-in-browser) | FastAPI + ws | ★★★★ | Fastest to ship |
+19	| TypeScript | Ink (React) | any framework | ws | ★★★★ | OK |
+20	| Unity | hard | WebGL | Mirror | ★ | Over-engineered |
+21	
+22	**Why Rust + WASM**: variant explosion (xiangqi vs banqi vs 三國暗棋 vs 大盤 vs N house-rule combinations) is a type-system problem. Rust enums + bitflags express it cleanly without runtime cost. Same `chess-core` crate compiles to native (TUI / server) and `wasm32-unknown-unknown` (browser), so there's exactly one source of truth for rules. Single-binary distribution. Unity-as-renderer remains open via FFI later.
+23	
+24	## Workspace Layout
+25	
+26	```
+27	chinese-chess/
+28	├── crates/
+29	│   ├── chess-core    # pure logic — board, pieces, rules, state, view
+30	│   ├── chess-engine  # search/eval (planned)
+31	│   ├── chess-net     # wire protocol over chess-core (planned)
+32	│   └── chess-ai      # heuristic + ISMCTS for banqi (planned)
+33	├── clients/
+34	│   ├── chess-cli     # REPL test harness — proves engine end-to-end
+35	│   ├── chess-tui     # ratatui frontend (planned)
+36	│   └── chess-web     # Leptos + WASM frontend (planned)
+37	└── xtask/            # project automation
+38	```
+39	
+40	`chess-core` has no IO, no rendering, no platform deps. WASM cleanliness is enforced in CI.
+41	
+42	## Key Design Decisions
+43	
+44	The five locked-in decisions, each with its own ADR:
+45	
+46	1. **`Square(u16)` linear index, not `(file, rank)` tuples.** Scales to 19×19, supports irregular topologies via per-shape mask. ([ADR-0002](adr/0002-square-as-u16.md))
+47	2. **`Move` is a flat enum.** Variants: `Reveal { revealed: Option<Piece> }`, `Step`, `Capture`, `ChainCapture { path: SmallVec<[ChainHop; 4]> }`, `CannonJump`. The `Option<Piece>` on `Reveal` is the network ABI boundary — opponents never see the identity ahead of the flip. ([ADR-0004](adr/0004-player-view-projection.md))
+48	3. **`RuleSet` is plain data, not a trait.** House rules are `bitflags::bitflags!`, presets are named consts. Move generation is free functions dispatching on `Variant` + flag checks. Rejected: trait-object rule layering — kills inlining, fights serde, over-engineers a closed set. ([ADR-0003](adr/0003-ruleset-as-data-not-trait.md))
+49	4. **`GameState` is one concrete struct, not generic.** `TurnOrder` supports 2 or 3 seats (`SmallVec<[Side; 3]>`) so 三國暗棋 isn't a special case in code paths.
+50	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces map to `VisibleCell::Hidden` with no identity. A proptest enforces no-leak.
+51	
+52	## Extensibility Path
+53	
+54	| Want to add… | Touch… | Effort |
+55	|---|---|---|
+56	| New variant (e.g. 廣象戲) | `BoardShape::Custom`, `Variant::*`, `rules/<name>.rs`, `setup.rs` | M |
+57	| New house rule | `HouseRules` bitflag + a free function in `rules/house.rs` | S |
+58	| New piece kind | `PieceKind` variant, movement generator, banqi rank | S |
+59	| 3-player turn-skip rules | `TurnOrder::advance_skipping` already exists | S |
+60	| Different render (TUI / Web / Unity) | new client crate consuming `PlayerView` | M |
+61	
+62	## Roadmap
+63	
+64	| PR | Item |
+65	|---|---|
+66	| 1 (this) | Workspace + `chess-core` foundations + xiangqi + banqi + CHAIN/RUSH + CLI harness |
+67	| 2 | 三國暗棋 board mask + rules; remaining house rules (DARK_CHAIN, HORSE_DIAGONAL, CANNON_FAST_MOVE) |
+68	| 3 | `chess-tui` (ratatui, vim + mouse) |
+69	| 4 | `chess-net` (tokio + ws, server-authoritative, ships PlayerView only) |
+70	| 5 | `chess-web` (Leptos + WASM consuming PlayerView) |
+71	| 6 | `chess-engine` + `chess-ai` (alpha-beta + Zobrist; ISMCTS) |
+72	| 7 | 大盤 variants |
+73
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:58:28Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/board/shape.rs`
+
+```text
+1	//! Board shapes.
+2	//!
+3	//! `BoardShape` is the discriminator: pick one and the `Board` knows its
+4	//! dimensions and (for irregular boards) which cells are off-limits.
+5	
+6	use serde::{Deserialize, Serialize};
+7	
+8	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+9	pub enum BoardShape {
+10	    /// Standard xiangqi: 9 files × 10 ranks. All cells valid.
+11	    Xiangqi9x10,
+12	
+13	    /// Banqi: 4 files × 8 ranks (half a xiangqi board, oriented sideways).
+14	    Banqi4x8,
+15	
+16	    /// 三國暗棋. Implementation lands in PR 2; the variant exists in PR 1
+17	    /// so the type system is already wired for it.
+18	    ThreeKingdom,
+19	
+20	    /// 大盤 / arbitrary variants. `mask` bit `i` set means cell `i` is
+21	    /// playable. Up to 128 cells; widen if a future variant exceeds that.
+22	    Custom { width: u8, height: u8, mask: u128 },
+23	}
+24	
+25	impl BoardShape {
+26	    #[inline]
+27	    pub const fn dimensions(self) -> (u8, u8) {
+28	        match self {
+29	            BoardShape::Xiangqi9x10 => (9, 10),
+30	            BoardShape::Banqi4x8 => (4, 8),
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:06Z)**_
+
+Got the context. This is a different task from the previous plan (which was the PR-1 foundation work, already shipped). Overwriting the plan file with the new scope.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:27Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Correct "大盤" misinterpretation across docs; add 讓棋 to TODO
+
+## Context
+
+Two things surfaced after the user looked at the current state:
+
+1. **大盤 was a misinterpretation, not a future variant.** In Chinese chess parlance, "大盤" simply means the **standard full-size 9×10 board** — the opposite of "半盤" (the half-board banqi uses, 4×8). The user listed it alongside 暗棋, 三國棋, 家規 in the very first turn; I read it as "large-board *variants*" (廣象戲 19×19 etc.) and inflated that misreading across the docs and a P3 TODO entry. The standard board is already implemented (it's `BoardShape::Xiangqi9x10`), so the "Large-board variants" P3 TODO is bogus and the README / architecture / CLAUDE.md mentions need pruning. The architectural escape hatch (`BoardShape::Custom`) stays — it's still useful for actual future non-standard variants — but the docstring shouldn't claim 大盤.
+
+2. **Add 讓棋 (handicap mode) as a TODO** (P2, S). Stronger player removes specific own pieces (車/馬/炮 single or pairs) before play. User said "可以先扔TODO" — so just a TODO entry, no implementation this round.
+
+The user also asked whether TUI / Web mode work yet. They don't — both are P2 stubs. That's a chat answer, not part of this plan.
+
+## Changes
+
+### 1. Remove "大盤 = future variant" misclaim from active docs
+
+| File | Where | Edit |
+|---|---|---|
+| `TODO.md` | P3 line `[M] Large-board variants (大盤)` | Delete. Re-validate with `scripts/todo-kanban.sh --validate-only`. |
+| `README.md` | bullet `Large board variants (大盤) — n×m via BoardShape::Custom *(planned)*` | Delete the bullet. |
+| `CLAUDE.md` | "and large-board variants" in the opening paragraph | Remove phrase. |
+| `docs/architecture.md` | (a) Goals bullet "and 大盤 variants"; (b) "vs 大盤 vs N house-rule combinations" in Why-Rust paragraph; (c) Roadmap row `7 | 大盤 variants` | Strip "大盤" wording from each spot; keep surrounding sentences/rows. |
+| `crates/chess-core/src/board/shape.rs` | line 20 docstring "/// 大盤 / arbitrary variants." | Replace with "/// Arbitrary custom-shape variants." `BoardShape::Custom` itself stays — still useful as future-proofing for genuinely non-standard variants. |
+
+**Do NOT touch:**
+- `.specstory/history/*` — historical chat record, frozen.
+- `backlog/three-kingdoms-banqi.md` — its passing mention is recording what the user said in turn 1 (factually accurate; backlog docs are time-anchored notes).
+
+### 2. Add 讓棋 to TODO
+
+Run:
+
+\```bash
+scripts/add-todo.sh --priority P2 --effort S \
+  --title "Handicap mode (讓棋)" \
+  --description "Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks."
+\```
+
+### 3. Commit
+
+After edits + validation pass, stage and commit. Message body should:
+- Note the misinterpretation correction (so future-me doesn't undo it).
+- Mention the new 讓棋 TODO entry.
+- Reference the affected files briefly.
+
+## Critical files
+
+- `TODO.md`
+- `README.md`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `crates/chess-core/src/board/shape.rs`
+
+## Verification
+
+1. `scripts/todo-kanban.sh --validate-only TODO.md` — format intact after manual delete.
+2. `scripts/todo-kanban.sh TODO.md` — visually confirm 讓棋 in P2, 大盤 entry gone from P3.
+3. `grep -rn "大盤" --include="*.md" --include="*.rs" .` (excluding `.specstory/`) — only acceptable mentions remain (`backlog/three-kingdoms-banqi.md` historical reference is OK).
+4. `cargo check --workspace` — confirm the shape.rs docstring edit doesn't break compilation.
+5. `cargo test --workspace` — sanity; no test depends on the docstring.
+
+## Out of scope
+
+- Implementing handicap (just adding TODO).
+- Building TUI / Web mode (both already P2; user asked the question, not for the work).
+- Editing `.specstory/history/*` (frozen) or `backlog/three-kingdoms-banqi.md` (historical note).
+
+```
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:30Z)**_
+
+Plan is small and concrete. Loading `ExitPlanMode`.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:31Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:59:53Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/daviddwlee84/.claude/plans/magical-honking-book.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# Correct "大盤" misinterpretation across docs; add 讓棋 to TODO
+
+## Context
+
+Two things surfaced after the user looked at the current state:
+
+1. **大盤 was a misinterpretation, not a future variant.** In Chinese chess parlance, "大盤" simply means the **standard full-size 9×10 board** — the opposite of "半盤" (the half-board banqi uses, 4×8). The user listed it alongside 暗棋, 三國棋, 家規 in the very first turn; I read it as "large-board *variants*" (廣象戲 19×19 etc.) and inflated that misreading across the docs and a P3 TODO entry. The standard board is already implemented (it's `BoardShape::Xiangqi9x10`), so the "Large-board variants" P3 TODO is bogus and the README / architecture / CLAUDE.md mentions need pruning. The architectural escape hatch (`BoardShape::Custom`) stays — it's still useful for actual future non-standard variants — but the docstring shouldn't claim 大盤.
+
+2. **Add 讓棋 (handicap mode) as a TODO** (P2, S). Stronger player removes specific own pieces (車/馬/炮 single or pairs) before play. User said "可以先扔TODO" — so just a TODO entry, no implementation this round.
+
+The user also asked whether TUI / Web mode work yet. They don't — both are P2 stubs. That's a chat answer, not part of this plan.
+
+## Changes
+
+### 1. Remove "大盤 = future variant" misclaim from active docs
+
+| File | Where | Edit |
+|---|---|---|
+| `TODO.md` | P3 line `[M] Large-board variants (大盤)` | Delete. Re-validate with `scripts/todo-kanban.sh --validate-only`. |
+| `README.md` | bullet `Large board variants (大盤) — n×m via BoardShape::Custom *(planned)*` | Delete the bullet. |
+| `CLAUDE.md` | "and large-board variants" in the opening paragraph | Remove phrase. |
+| `docs/architecture.md` | (a) Goals bullet "and 大盤 variants"; (b) "vs 大盤 vs N house-rule combinations" in Why-Rust paragraph; (c) Roadmap row `7 | 大盤 variants` | Strip "大盤" wording from each spot; keep surrounding sentences/rows. |
+| `crates/chess-core/src/board/shape.rs` | line 20 docstring "/// 大盤 / arbitrary variants." | Replace with "/// Arbitrary custom-shape variants." `BoardShape::Custom` itself stays — still useful as future-proofing for genuinely non-standard variants. |
+
+**Do NOT touch:**
+- `.specstory/history/*` — historical chat record, frozen.
+- `backlog/three-kingdoms-banqi.md` — its passing mention is recording what the user said in turn 1 (factually accurate; backlog docs are time-anchored notes).
+
+### 2. Add 讓棋 to TODO
+
+Run:
+
+```bash
+scripts/add-todo.sh --priority P2 --effort S \
+  --title "Handicap mode (讓棋)" \
+  --description "Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks."
+```
+
+### 3. Commit
+
+After edits + validation pass, stage and commit. Message body should:
+- Note the misinterpretation correction (so future-me doesn't undo it).
+- Mention the new 讓棋 TODO entry.
+- Reference the affected files briefly.
+
+## Critical files
+
+- `TODO.md`
+- `README.md`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `crates/chess-core/src/board/shape.rs`
+
+## Verification
+
+1. `scripts/todo-kanban.sh --validate-only TODO.md` — format intact after manual delete.
+2. `scripts/todo-kanban.sh TODO.md` — visually confirm 讓棋 in P2, 大盤 entry gone from P3.
+3. `grep -rn "大盤" --include="*.md" --include="*.rs" .` (excluding `.specstory/`) — only acceptable mentions remain (`backlog/three-kingdoms-banqi.md` historical reference is OK).
+4. `cargo check --workspace` — confirm the shape.rs docstring edit doesn't break compilation.
+5. `cargo test --workspace` — sanity; no test depends on the docstring.
+
+## Out of scope
+
+- Implementing handicap (just adding TODO).
+- Building TUI / Web mode (both already P2; user asked the question, not for the work).
+- Editing `.specstory/history/*` (frozen) or `backlog/three-kingdoms-banqi.md` (historical note).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./README.md`
+
+```text
+1	# Chinese Chess
+2	
+3	A hobby Chinese chess game in Rust supporting:
+4	
+5	- **Standard Xiangqi (象棋)** — 9×10, two players
+6	- **Banqi (暗棋)** — 4×8 dark chess, rank-based capture
+7	- **Three Kingdoms Banqi (三國暗棋)** — banqi variant with three teams *(planned)*
+8	- **House rules** — toggleable: 連吃, 暗連, 車衝, 馬斜, 炮快移
+9	- **Large board variants (大盤)** — n×m via `BoardShape::Custom` *(planned)*
+10	
+11	## Goals
+12	
+13	- Modular core (`chess-core`) reusable across native TUI and browser (WASM)
+14	- Self-hostable server for play with friends
+15	- Mouse + keyboard UX (Vim-style + coordinate input)
+16	
+17	## Layout
+18	
+19	```
+20	crates/chess-core    — pure game logic (this is where everything starts)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and large-board variants. PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:07Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/README.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:13Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/architecture.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:15Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/architecture.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:17Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/architecture.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:25Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:32Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Validate TODO.md after deletion
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/todo-kanban.sh --validate-only TODO.md`
+
+```text
+OK: TODO.md passes project-knowledge-harness format
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Add 讓棋 TODO
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/add-todo.sh --priority P2 --effort S --title "Handicap mode (讓棋)" --description "Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks." 2>&1 | tail -3`
+
+```text
+Added to ## P2: - [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:48Z)**_
+
+Edit didn't land due to a concurrent modification (likely by a hook). Re-reading and retrying.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:48Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+1	# TODO
+2	
+3	Long-term backlog for Chinese Chess. See AGENTS.md
+4	for the maintenance workflow that agents should follow.
+5	
+6	> **For agents**: when the user surfaces an idea explicitly **not** being
+7	> implemented this session (signals: "maybe later", "nice to have",
+8	> "工程量太大需要再評估", "先記下來"), add it here with priority + effort tags.
+9	> Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files —
+10	> `TODO.md` is the single backlog index. Long-form research goes in
+11	> [`backlog/<slug>.md`](backlog/).
+12	
+13	<!-- Use the exact section order: P1, P2, P3, P?, Done.
+14	     The bundled scripts/todo-kanban.sh validator only inspects top-level
+15	     `- [ ]` and `- ✅` items inside these sections. Prose paragraphs,
+16	     blockquotes, indented sub-bullets, HTML comments, and `---` rules are
+17	     ignored — feel free to add inline guidance like this without breaking
+18	     machine readability. -->
+19	
+20	## P1
+21	
+22	Likely next batch — items you'd reach for if you sat down to work today.
+23	
+24	- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+25	- [ ] **[S] Wire DARK_CHAIN house rule** — Chain captures pass through face-down squares; auto-reveal as chain progresses. Requires changing ChainHop.captured to Option<Piece> and updating sanitize_for_observer for the network ABI. See docs/rules/banqi-house.md.
+26	- [ ] **[S] Wire HORSE_DIAGONAL house rule** — Banqi horse moves like xiangqi horse (L-shape with 馬腿 leg block) when flag enabled. Reuse pattern from rules/xiangqi.rs::gen_horse.
+27	- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+28	- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+29	
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[M] chess-tui: ratatui frontend** — Replace the chess-cli REPL with a real TUI: vim-style cursor (hjkl), click selection, ICCS quick-input, board rendered with ratatui. Mouse + keyboard parity. Connects directly to chess-core for local play.
+35	- [ ] **[M] chess-net: server-authoritative websocket protocol** — tokio + axum + ws. Server runs the authoritative GameState; clients only ever see PlayerView (the no-leak ABI is the whole point of view.rs). Lobby + reconnection out of scope for first cut. → [research](backlog/chess-net-protocol.md)
+36	- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+37	- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+38	- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+39	- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+40	- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+41	
+42	## P3
+43	
+44	Someday / nice-to-have.
+45	
+46	- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+47	- [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
+48	- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+49	- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+50	
+51	## P?
+52	
+53	Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
+54	
+55	- [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
+56	- [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
+57	
+58	## Done
+59	
+60	- ✅ [2026-05-06] [P1/S] End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress) — tests/end_conditions.rs verifies refresh_status produces Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} from .pos fixtures. Pattern reusable for endgame puzzles.
+61	
+62	Recently shipped. When implementing an active item, in the same commit run:
+63	
+64	```
+65	scripts/promote-todo.sh --title "<substring>" --summary "<one-line shipped summary>"
+66	```
+67	
+68	This moves the entry here using the dated `Done` syntax and re-validates.
+69	
+70	- ✅ [2026-05-06] [P1/L] Foundational chess-core + workspace scaffolding — full xiangqi (perft-validated 1=44, 2=1920, 3=79666) + base banqi + CHAIN_CAPTURE/CHARIOT_RUSH house rules + PlayerView projection (no-leak proptest) + ICCS notation + chess-cli REPL. 8-crate workspace + WASM cleanliness in CI. 71 tests passing.
+71	
+72	<!-- Prune older entries into CHANGELOG.md once prior-year items appear here
+73	     or this section grows past ~20 entries. -->
+74
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:00:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Validate and view TODO kanban
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/todo-kanban.sh --validate-only TODO.md && /Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/todo-kanban.sh TODO.md 2>&1 | head -30`
+
+```text
+OK: TODO.md passes project-knowledge-harness format
+# TODO Kanban
+
+_Source: `TODO.md`_
+
+| Lane | Count |
+|---|---:|
+| `P1` | 5 |
+| `P2` | 7 |
+| `P3` | 3 |
+| `P?` | 2 |
+| `Done` | 2 |
+
+## P1 (5)
+
+- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+- [ ] **[S] Wire DARK_CHAIN house rule** — Chain captures pass through face-down squares; auto-reveal as chain progresses. Requires changing ChainHop.captured to Option<Piece> and updating sanitize_for_observer for the network ABI. See docs/rules/banqi-house.md.
+- [ ] **[S] Wire HORSE_DIAGONAL house rule** — Banqi horse moves like xiangqi horse (L-shape with 馬腿 leg block) when flag enabled. Reuse pattern from rules/xiangqi.rs::gen_horse.
+- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+
+## P2 (7)
+
+- [ ] **[M] chess-tui: ratatui frontend** — Replace the chess-cli REPL with a real TUI: vim-style cursor (hjkl), click selection, ICCS quick-input, board rendered with ratatui. Mouse + keyboard parity. Connects directly to chess-core for local play.
+- [ ] **[M] chess-net: server-authoritative websocket protocol** — tokio + axum + ws. Server runs the authoritative GameState; clients only ever see PlayerView (the no-leak ABI is the whole point of view.rs). Lobby + reconnection out of scope for first cut. → [research](backlog/chess-net-protocol.md)
+- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:00Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify no stray 大盤 references in active docs
+
+`grep -rn "大盤\|large.board\|large-board\|big board\|big-board" --include="*.md" --include="*.rs" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/ 2>&1 | grep -v ".specstory/\|target/\|.git/" | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/three-kingdoms-banqi.md:9:User listed 三國暗棋 as one of the four target variants alongside xiangqi, banqi, and 大盤. The reference URL the user shared (`zh.wikipedia.org/zh-sg/三國暗棋`) confirms this is a banqi-family three-player variant on a half-board, NOT a three-player xiangqi.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0003-ruleset-as-data-not-trait.md:5:Five banqi house rules combine independently with one another, with three xiangqi-style variants, with three-kingdoms, and (eventually) with large-board variants. The natural OO instinct is "trait `RuleSet` and stack decorators" — `StandardRules ∘ ChainCapture ∘ ChariotRush`.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0002-square-as-u16.md:10:- 大盤 variants (n×m, possibly up to 19×19)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm tests still pass
+
+`cargo test --workspace 2>&1 | grep -E "^test result|FAILED" | head -15`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:21Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:21Z)**_
+
+Two stray references in ADRs I missed. Cleaning those.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/adr/0003-ruleset-as-data-not-trait.md`
+
+```text
+1	# ADR 0003: `RuleSet` is plain data, not a trait
+2	
+3	## Context
+4	
+5	Five banqi house rules combine independently with one another, with three xiangqi-style variants, with three-kingdoms, and (eventually) with large-board variants. The natural OO instinct is "trait `RuleSet` and stack decorators" — `StandardRules ∘ ChainCapture ∘ ChariotRush`.
+6	
+7	In practice with Rust this hurts:
+8	
+9	- Trait objects (`Box<dyn RuleSet>`) kill inlining on the move-gen hot path that AI will spam.
+10	- Generic `RuleSet: Sized` means `GameState` becomes generic, which propagates through the entire net protocol — there's no single `SaveGame` type to ship.
+11	- Serde for trait objects requires `typetag` and a global registry.
+12	- The set of rules is **closed**: we own all of them. No third party adds rules dynamically.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:23Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/adr/0002-square-as-u16.md`
+
+```text
+1	# ADR 0002: Square as `u16` linear index
+2	
+3	## Context
+4	
+5	We support multiple board shapes:
+6	
+7	- 9×10 standard xiangqi
+8	- 4×8 banqi
+9	- Three-kingdoms (irregular shape, holes in the grid)
+10	- 大盤 variants (n×m, possibly up to 19×19)
+11	
+12	A `(file, rank)` tuple coord type bakes a rectangular assumption into every signature in the crate.
+13	
+14	## Decision
+15
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0003-ruleset-as-data-not-trait.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:32Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0002-square-as-u16.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final grep for stray references
+
+`grep -rn "大盤\|large.board\|large-board\|big board\|big-board" --include="*.md" --include="*.rs" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/ 2>&1 | grep -v ".specstory/\|target/\|.git/" | head -10`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/three-kingdoms-banqi.md:9:User listed 三國暗棋 as one of the four target variants alongside xiangqi, banqi, and 大盤. The reference URL the user shared (`zh.wikipedia.org/zh-sg/三國暗棋`) confirms this is a banqi-family three-player variant on a half-board, NOT a three-player xiangqi.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm shape.rs edit compiles
+
+`cargo check --workspace 2>&1 | tail -3`
+
+```text
+    Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.34s
+```
+</details></tool-use>

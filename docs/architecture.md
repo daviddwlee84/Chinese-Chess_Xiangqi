@@ -4,7 +4,7 @@ Distilled from the technology selection round. See [`adr/`](adr/) for individual
 
 ## Goals
 
-- Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), 三國暗棋, and 大盤 variants.
+- Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), and 三國暗棋.
 - Toggleable banqi house rules: 連吃, 暗連, 車衝, 馬斜, 炮快移.
 - Self-hostable server for friends; native TUI and Web clients sharing the same engine.
 - Mouse + keyboard UX (Vim-style + coordinate input).
@@ -19,7 +19,7 @@ Distilled from the technology selection round. See [`adr/`](adr/) for individual
 | TypeScript | Ink (React) | any framework | ws | ★★★★ | OK |
 | Unity | hard | WebGL | Mirror | ★ | Over-engineered |
 
-**Why Rust + WASM**: variant explosion (xiangqi vs banqi vs 三國暗棋 vs 大盤 vs N house-rule combinations) is a type-system problem. Rust enums + bitflags express it cleanly without runtime cost. Same `chess-core` crate compiles to native (TUI / server) and `wasm32-unknown-unknown` (browser), so there's exactly one source of truth for rules. Single-binary distribution. Unity-as-renderer remains open via FFI later.
+**Why Rust + WASM**: variant explosion (xiangqi vs banqi vs 三國暗棋 vs N house-rule combinations) is a type-system problem. Rust enums + bitflags express it cleanly without runtime cost. Same `chess-core` crate compiles to native (TUI / server) and `wasm32-unknown-unknown` (browser), so there's exactly one source of truth for rules. Single-binary distribution. Unity-as-renderer remains open via FFI later.
 
 ## Workspace Layout
 
@@ -69,4 +69,3 @@ The five locked-in decisions, each with its own ADR:
 | 4 | `chess-net` (tokio + ws, server-authoritative, ships PlayerView only) |
 | 5 | `chess-web` (Leptos + WASM consuming PlayerView) |
 | 6 | `chess-engine` + `chess-ai` (alpha-beta + Zobrist; ISMCTS) |
-| 7 | 大盤 variants |

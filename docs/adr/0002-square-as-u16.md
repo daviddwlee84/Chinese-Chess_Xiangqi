@@ -7,7 +7,7 @@ We support multiple board shapes:
 - 9×10 standard xiangqi
 - 4×8 banqi
 - Three-kingdoms (irregular shape, holes in the grid)
-- 大盤 variants (n×m, possibly up to 19×19)
+- An open escape hatch (`BoardShape::Custom`) for any future non-standard shape
 
 A `(file, rank)` tuple coord type bakes a rectangular assumption into every signature in the crate.
 

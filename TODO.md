@@ -37,13 +37,13 @@ Worth doing, no rush.
 - [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
 - [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
 - [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
 
 ## P3
 
 Someday / nice-to-have.
 
 - [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
-- [ ] **[M] Large-board variants (大盤)** — BoardShape::Custom already exists with u128 mask (sufficient up to 128 cells; widen to two u128s if some variant exceeds that). Need per-variant setup and rules. Candidates: 廣象戲 (19×19), 13×14 modern variants. Pick one canonical first.
 - [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
 - [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project at a glance
 
-Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and large-board variants. PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
 
 For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 

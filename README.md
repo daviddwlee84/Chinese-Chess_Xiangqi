@@ -6,7 +6,6 @@ A hobby Chinese chess game in Rust supporting:
 - **Banqi (暗棋)** — 4×8 dark chess, rank-based capture
 - **Three Kingdoms Banqi (三國暗棋)** — banqi variant with three teams *(planned)*
 - **House rules** — toggleable: 連吃, 暗連, 車衝, 馬斜, 炮快移
-- **Large board variants (大盤)** — n×m via `BoardShape::Custom` *(planned)*
 
 ## Goals
 
@@ -46,10 +45,6 @@ cargo build --target wasm32-unknown-unknown -p chess-core
 
 MIT OR Apache-2.0
 
-<!-- project-knowledge-harness:readme-roadmap -->
-<!-- Snippet for project's README.md, placed near other meta sections like
-     "Customization" or "Contributing". -->
-
 ## Roadmap & lessons learned
 
 Forward-looking work — long-term ideas, deferred items, things needing
@@ -61,4 +56,3 @@ Backward-looking knowledge — past traps and non-obvious debugging — lives in
 [`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
 message and land on the root cause + workaround instead of re-debugging from
 scratch.
-<!-- project-knowledge-harness:readme-roadmap --> (end)

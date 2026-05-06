@@ -17,8 +17,9 @@ pub enum BoardShape {
     /// so the type system is already wired for it.
     ThreeKingdom,
 
-    /// 大盤 / arbitrary variants. `mask` bit `i` set means cell `i` is
-    /// playable. Up to 128 cells; widen if a future variant exceeds that.
+    /// Arbitrary custom-shape variants (escape hatch for future use).
+    /// `mask` bit `i` set means cell `i` is playable. Up to 128 cells;
+    /// widen if a future variant exceeds that.
     Custom { width: u8, height: u8, mask: u128 },
 }
 
