@@ -11685,3 +11685,326 @@ Done. Two commits:
 - `pitfalls/wasm-getrandom-unresolved-imp.md` — `getrandom 0.2` 在 `wasm32-unknown-unknown` 沒有預設 backend，必須用 target-conditional dep 開 `js` feature。CI 的 WASM 步驟就是為了這種事
 
 任何 P1 想先動的就告訴我，例如「先補三條家規」是個 quick win，三國暗棋可以等你給規格。
+
+---
+
+_**User (2026-05-06 05:18:29Z)**_
+
+<command-message>init</command-message>
+<command-name>/init</command-name>
+<command-args>(specstory chat history跟著對應commit一起add)</command-args>
+
+_**User (2026-05-06 05:18:29Z)**_
+
+Please analyze this codebase and create a CLAUDE.md file, which will be given to future instances of Claude Code to operate in this repository.
+
+What to add:
+1. Commands that will be commonly used, such as how to build, lint, and run tests. Include the necessary commands to develop in this codebase, such as how to run a single test.
+2. High-level code architecture and structure so that future instances can be productive more quickly. Focus on the "big picture" architecture that requires reading multiple files to understand.
+
+Usage notes:
+- If there's already a CLAUDE.md, suggest improvements to it.
+- When you make the initial CLAUDE.md, do not repeat yourself and do not include obvious instructions like "Provide helpful error messages to users", "Write unit tests for all new utilities", "Never include sensitive information (API keys, tokens) in code or commits".
+- Avoid listing every component or file structure that can be easily discovered.
+- Don't include generic development practices.
+- If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), make sure to include the important parts.
+- If there is a README.md, make sure to include the important parts.
+- Do not make up information such as "Common Development Tasks", "Tips for Development", "Support and Documentation" unless this is expressly included in other files that you read.
+- Be sure to prefix the file with the following text:
+
+```
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+```
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 05:18:50Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:18:50Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./AGENTS.md`
+
+```text
+1	
+2	<!-- project-knowledge-harness:agent-guidance -->
+3	<!-- Snippet for the project's agent contract file (AGENTS.md / CLAUDE.md /
+4	     similar). The bundled scripts/init.sh appends this between sentinel
+5	     markers; safe to re-run. -->
+6	
+7	### Long-term backlog → `TODO.md` + `backlog/`
+8	
+9	When the user surfaces an idea explicitly **not** being implemented this
+10	session (signals: "maybe later", "nice to have", "if I'm interested",
+11	"工程量太大需要再評估", "先記下來"), add an entry to [`TODO.md`](TODO.md) using
+12	the priority + effort tag schema. Do **not** create new `ROADMAP.md` /
+13	`IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index.
+14	
+15	The bundled `scripts/todo-kanban.sh` validates the format. Run it
+16	(`scripts/todo-kanban.sh --validate-only TODO.md`) after editing so syntax
+17	drift is caught immediately.
+18	
+19	#### Three ways to add a TODO entry (preferred order)
+20	
+21	1. **Structured CLI — `scripts/add-todo.sh`** (default):
+22	
+23	   ```
+24	   scripts/add-todo.sh --priority P3 --effort M \
+25	     --title "Title" --description "Description"
+26	   ```
+27	
+28	   Inserts a canonically-formatted line into the right `## P*` lane and
+29	   re-runs the validator. Add `--backlog` to also scaffold
+30	   `backlog/<slug>.md` from the bundled template.
+31	
+32	2. **Quick capture — `backlog/inbox.md`** (when priority/effort unclear):
+33	
+34	   ```
+35	   echo "- maybe add docs versioning with mike" >> backlog/inbox.md
+36	   ```
+37	
+38	   When the user asks "sweep the inbox", run
+39	   `scripts/sweep-inbox.sh`. It prompts for the missing fields per loose
+40	   line and calls `add-todo.sh`. Use `--batch` for non-interactive runs
+41	   that only formalize lines with parseable `key=value` pairs.
+42	
+43	3. **Direct edit of `TODO.md`** — fine if the format is fresh; run
+44	   `scripts/todo-kanban.sh --validate-only` afterwards.
+45	
+46	Add a `backlog/<slug>.md` companion doc when the item meets any of:
+47	
+48	- carries a `P?` tag (record what was tried so it doesn't need re-investigation)
+49	- captures a paused troubleshooting session that you intend to fix later
+50	  (preserve the error trace + root cause analysis before context evaporates)
+51	- weighs multiple options (record trade-offs, not only the winner)
+52	- is `[L]` or `[XL]` (architectural; needs design before code)
+53	
+54	`[S]` items rarely need a backlog doc — a file path in the `TODO.md` line is
+55	usually enough. See [`backlog/README.md`](backlog/README.md) for the full
+56	template and "when to add a doc" rules.
+57	
+58	When implementing a `TODO.md` item, in the same commit:
+59	
+60	1. Run `scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"`
+61	   to move the entry into `## Done` with the dated syntax and re-validate.
+62	2. Mark the corresponding `backlog/<slug>.md` (if any) `Status: shipped`
+63	   and keep it as a historical record (don't delete — future-you may
+64	   revisit adjacent decisions).
+65	
+66	`backlog/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A); it
+67	is repo metadata for maintainers, not user-facing config to deploy.
+68	
+69	### Past pitfalls → `pitfalls/`
+70	
+71	When you spend more than ~15 minutes debugging something that wasn't
+72	googleable and the fix is non-obvious, write a `pitfalls/<slug>.md`
+73	capturing:
+74	
+75	1. **Verbatim symptom** — copy-paste error messages exactly, do not
+76	   paraphrase (preserves grep-ability for future-you / future agent)
+77	2. **Root cause** — why this happens (with source / docs / upstream issue link)
+78	3. **Workaround** — copy-pasteable commands or config diff
+79	4. **Prevention** — how to avoid stepping on this again
+80	
+81	Title the doc by the **symptom**, not the root cause (you'll search by what
+82	you're seeing, not by what you eventually learned). See
+83	[`pitfalls/README.md`](pitfalls/README.md) for the full template and
+84	when-to-add rules.
+85	
+86	**Pitfall vs Hard invariant**: a pitfall *graduates* to a Hard invariant in
+87	this file when it (a) recurs across machines/agents/sessions despite being
+88	documented, (b) silently corrupts state, or (c) the workaround is non-obvious
+89	enough that "remember to do X" isn't safe. When graduating, leave the
+90	`pitfalls/<slug>.md` as historical record and link to it from the new
+91	invariant.
+92	
+93	`pitfalls/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A) and
+94	**not** auto-redacted; review for secrets before committing.
+95	<!-- project-knowledge-harness:agent-guidance --> (end)
+96
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:18:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect specstory contents
+
+`ls -la /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/ /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/ 2>&1`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/:
+drwxr-xr-x@   - daviddwlee84  6 May 10:28  **cli
+drwxr-xr-x@   - daviddwlee84  6 May 10:35  **history
+.rw-r--r--@ 134 daviddwlee84  6 May 10:28  .project.json
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/:
+.rw-r--r--@ 457k daviddwlee84  6 May 13:18  2026-05-06_02-35-05Z-module-local-front-end.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:11Z)**_
+
+Reading existing docs to keep CLAUDE.md non-duplicative, then I'll handle the specstory commit.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Scan transcript for secrets
+
+`grep -iE "(BEGIN [A-Z]+ PRIVATE KEY|api[_-]?key|secret|sk-[a-zA-Z0-9]{20,}|password\s*=|AKIA[A-Z0-9]{16})" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md 2>&1 | head -20`
+
+```text
+  - For any banqi `GameState`, `view_for(opponent)` never contains an unrevealed piece's true identity (scan the serde-JSON of the view and grep for the secret).
+  - For any banqi `GameState`, `view_for(opponent)` never contains an unrevealed piece's true identity (scan the serde-JSON of the view and grep for the secret).
+94	**not** auto-redacted; review for secrets before committing.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:14Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Transcript size and project metadata
+
+`wc -l /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md && head -10 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/.project.json`
+
+```text
+   11848 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+{
+  "workspace_id": "54d7-f5d4-e8b8-5f15",
+  "workspace_id_at": "2026-05-06T02:28:58Z",
+  "project_name": "2026-05-06-chinese-chess"
+}
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:20Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 05:20:20Z)**_
+
+No secrets in the transcript (only legitimate uses of the word "secret" in a proptest description). Writing CLAUDE.md now.
+
+_**Agent (claude-opus-4-7 2026-05-06 05:21:08Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project at a glance
+
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), three-kingdoms banqi (三國暗棋), and large-board variants. PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+
+For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+
+## Common commands
+
+\```bash
+# Workspace sanity (all 8 crates compile)
+cargo check --workspace
+
+# Format + lint (CI requires both clean; clippy uses -D warnings)
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+
+# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+cargo test -p chess-core
+
+# Run a single test
+cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+
+# Slow xiangqi perft depth-3 — runs in release for speed
+cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+
+# WASM cleanliness — proves chess-core has no platform deps
+cargo build --target wasm32-unknown-unknown -p chess-core
+
+# Run the REPL test harness (proves the engine end-to-end)
+cargo run -p chess-cli
+> xiangqi
+> moves
+> play h2e2
+> banqi --preset taiwan --seed 42
+> view 0
+> quit
+\```
+
+`rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
+
+## Architecture quick reference
+
+The engine lives entirely in `crates/chess-core`. Everything else (`chess-engine`, `chess-net`, `chess-ai`, `chess-tui`, `chess-web`, `xtask`) is a stub for follow-up PRs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+
+1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+
+Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+
+## Gotchas worth knowing
+
+- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+
+- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+
+- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+
+- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+
+- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+
+- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+
+- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+
+## Where to put new work
+
+| Kind | Where |
+|---|---|
+| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+| Game rules reference | `docs/rules/<variant>.md` |
+| Architectural overview / tech analysis | `docs/architecture.md` |
+
+[`AGENTS.md`](AGENTS.md) describes the full backlog/pitfalls workflow with examples. Do **not** create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index, validated by `scripts/todo-kanban.sh`.
+
+When implementing a `TODO.md` item, in the same commit run:
+
+\```bash
+scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+\```
+
+## Pre-push checklist
+
+CI runs all four. Run them locally before pushing:
+
+\```bash
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+\```
+
+The depth-3 perft (`cargo test --release -p chess-core --test xiangqi_perft -- --ignored`) also runs in CI.
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md
+```
+</details></tool-use>
