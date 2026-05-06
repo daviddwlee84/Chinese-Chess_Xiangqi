@@ -2,6 +2,17 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 
+/// Where the user's focus is right now. Drives the keymap branch in
+/// [`from_key`]. `Game` covers both local hot-seat (`Screen::Game`) and
+/// online (`Screen::Net`) play.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum InputMode {
+    Picker,
+    Lobby,
+    Text,
+    Game,
+}
+
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
@@ -13,10 +24,23 @@ pub enum Action {
     HelpToggle,
     RulesToggle,
     NewGame,
-    // Picker
+    /// "Back one screen" — Esc semantics outside game/picker. The
+    /// dispatcher decides what to back into per screen.
+    Back,
+    // Picker / Lobby (list-cursor)
     PickerUp,
     PickerDown,
     PickerSelect,
+    // Lobby
+    LobbyCreate,
+    LobbyRefresh,
+    // Text input (HostPrompt / CreateRoom)
+    TextInput(char),
+    TextBackspace,
+    FocusNext,
+    FocusPrev,
+    /// Submit a text-input form (Enter while in `Text` mode).
+    Submit,
     // Game
     CursorUp,
     CursorDown,
@@ -34,7 +58,7 @@ pub enum Action {
     },
 }
 
-pub fn from_key(ev: KeyEvent, in_picker: bool, quit_confirm_open: bool) -> Action {
+pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Action {
     // Quit-confirm dialog hijacks input: y/Y confirms, anything else cancels.
     if quit_confirm_open {
         return match ev.code {
@@ -45,18 +69,40 @@ pub fn from_key(ev: KeyEvent, in_picker: bool, quit_confirm_open: bool) -> Actio
     if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
         return Action::Quit;
     }
-    match ev.code {
-        KeyCode::Char('q') => Action::Quit,
-        KeyCode::Char('?') => Action::HelpToggle,
-        KeyCode::Char('r') if !in_picker => Action::RulesToggle,
-        _ if in_picker => match ev.code {
+    match mode {
+        InputMode::Picker => match ev.code {
             KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
             KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
             KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
             KeyCode::Esc => Action::Quit,
             _ => Action::None,
         },
-        _ => match ev.code {
+        InputMode::Lobby => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Char('c') => Action::LobbyCreate,
+            KeyCode::Char('r') => Action::LobbyRefresh,
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Esc => Action::Back,
+            _ => Action::None,
+        },
+        InputMode::Text => match ev.code {
+            KeyCode::Esc => Action::Back,
+            KeyCode::Enter => Action::Submit,
+            KeyCode::Backspace => Action::TextBackspace,
+            KeyCode::Tab => Action::FocusNext,
+            KeyCode::BackTab => Action::FocusPrev,
+            KeyCode::Char(c) => Action::TextInput(c),
+            _ => Action::None,
+        },
+        InputMode::Game => match ev.code {
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Char('r') => Action::RulesToggle,
             KeyCode::Up | KeyCode::Char('k') => Action::CursorUp,
             KeyCode::Down | KeyCode::Char('j') => Action::CursorDown,
             KeyCode::Left | KeyCode::Char('h') => Action::CursorLeft,

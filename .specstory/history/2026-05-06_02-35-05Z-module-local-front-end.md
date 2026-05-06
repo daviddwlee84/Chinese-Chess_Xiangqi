@@ -9980,12 +9980,6 @@ When you're ready, describe the 三國暗棋 capture rules + the home-zone layou
 
 _**User (2026-05-06 05:09:26Z)**_
 
-<command-message>project-knowledge-harness</command-message>
-<command-name>/project-knowledge-harness</command-name>
-<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
-
-_**User (2026-05-06 05:09:26Z)**_
-
 Base directory for this skill: /Users/daviddwlee84/.claude/skills/project-knowledge-harness
 
 # project-knowledge-harness
@@ -10185,6 +10179,12 @@ A live example of this harness is at
 
 
 ARGUMENTS: git commit 然後 把還沒做的feature羅列起來
+
+_**User (2026-05-06 05:09:26Z)**_
+
+<command-message>project-knowledge-harness</command-message>
+<command-name>/project-knowledge-harness</command-name>
+<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
 
 ---
 
@@ -41521,3 +41521,15759 @@ EOF
  create mode 100755 scripts/play-local.sh
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:49:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit transcript
+
+```bash
+git add .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+git commit -m "$(cat <<'EOF'
+chore: bundle SpecStory transcript for chess-net-mvp PR
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+echo "---"
+git log -3 --oneline
+```
+
+```text
+[main e0570e2] chore: bundle SpecStory transcript for chess-net-mvp PR
+ 1 file changed, 11730 insertions(+)
+---
+e0570e2 chore: bundle SpecStory transcript for chess-net-mvp PR
+3d5e947 feat(net): chess-net MVP + tmux launcher
+1be48f2 chore: bundle SpecStory transcript for tui-polish PR
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:19Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:20Z)**_
+
+Two commits in. Now the three follow-ups — let me set up tasks for the new work.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+scripts/play-local.sh: detect $TMUX env; use `tmux switch-client` instead of `tmux attach` when already inside a tmux session.
+
+```text
+Task #54 created successfully: Handle nested-tmux in launcher
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:24Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add ClientMsg::Rematch to protocol.rs. Server tracks per-side rematch flags; when both sides request after game-over, reset GameState and re-broadcast Hello. One side requesting → notify both with informational Error. Add a server_smoke test.
+
+```text
+Task #55 created successfully: Add Rematch protocol + server logic
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:27Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+In Net mode, intercept Action::NewGame: if game is Won/Drawn, send ClientMsg::Rematch; else show "rematch only after game over". Hello handler also clears n.selected (so a rematch's fresh view doesn't keep stale selection). Refine the welcome msg to "Rematch — new game." when re-Hello arrives.
+
+```text
+Task #56 created successfully: Wire Rematch into chess-tui dispatch
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+cargo fmt --check, clippy, test --workspace, wasm canary. Then commit "fix(net): rematch + nested-tmux launcher".
+
+```text
+Task #57 created successfully: Run gates + commit fixes
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:30Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add a TODO.md P2 entry for multi-room support (room IDs, optional password, GET /rooms list). Reference in chat reply with design sketch.
+
+```text
+Task #58 created successfully: Add lobby/rooms TODO entry
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:33Z)**_
+
+Starting with the nested-tmux fix.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #54 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./scripts/play-local.sh`
+
+```text
+55	SERVER_CMD="$SERVER_BIN --port $PORT $VARIANT ${SERVER_EXTRA[*]:-}"
+56	
+57	# Two windows: "clients" (split into two client panes) and "server".
+58	# Address windows by NAME — `tmux new-session -n` honors `base-index`, so
+59	# letting tmux pick the index avoids "index 1 in use" when the user has
+60	# `set -g base-index 1` in ~/.tmux.conf.
+61	tmux new-session  -d -s "$SESSION" -n clients
+62	tmux new-window   -t "$SESSION" -n server "$SERVER_CMD"
+63	
+64	# Tiny grace period so the server has bound :$PORT before clients try
+65	# to connect. The clients also retry on failure, so this is just to
+66	# avoid the first try wasting a backoff.
+67	sleep 0.5
+68	
+69	tmux send-keys    -t "${SESSION}:clients" "$CLIENT_CMD" C-m
+70	tmux split-window -h -t "${SESSION}:clients" "$CLIENT_CMD"
+71	tmux select-layout -t "${SESSION}:clients" even-horizontal
+72	tmux select-window -t "${SESSION}:clients"
+73	tmux attach -t "$SESSION"
+74
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:45Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-local.sh has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:48Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Validate launcher syntax
+
+`bash -n /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-local.sh && echo "syntax ok"`
+
+```text
+syntax ok
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:53Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #54 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:51:53Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #55 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:00Z)**_
+
+Now Rematch protocol + server.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:07Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:11Z)**_
+
+Now update the server to handle `Rematch`.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/server.rs`
+
+```text
+25	
+26	struct RoomState {
+27	    state: GameState,
+28	    /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
+29	    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+30	}
+31	
+32	impl RoomState {
+33	    fn new(rules: RuleSet) -> Self {
+34	        Self { state: GameState::new(rules), seats: Vec::with_capacity(2) }
+35	    }
+36	
+37	    fn next_seat(&self) -> Option<Side> {
+38	        match self.seats.len() {
+39	            0 => Some(Side::RED),
+40	            1 => {
+41	                let taken = self.seats[0].0;
+42	                Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
+43	            }
+44	            _ => None,
+45	        }
+46	    }
+47	}
+48	
+49	type Room = Arc<Mutex<RoomState>>;
+50	
+51	/// Bind `addr` and serve until error / SIGINT (caller's choice — we don't
+52	/// install signal handling here). For tests that need an ephemeral port,
+53	/// use [`serve`] directly with a pre-bound listener.
+54	pub async fn run(addr: SocketAddr, rules: RuleSet) -> Result<()> {
+55	    let listener =
+56	        tokio::net::TcpListener::bind(addr).await.with_context(|| format!("bind {addr}"))?;
+57	    eprintln!("[server] listening on ws://{}", listener.local_addr()?);
+58	    serve(listener, rules).await
+59	}
+60	
+61	/// Serve on a pre-bound listener. The listener owns the port; use
+62	/// `listener.local_addr()` before passing it in if you need to know it
+63	/// (e.g. ephemeral ports in tests).
+64	pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
+65	    let room: Room = Arc::new(Mutex::new(RoomState::new(rules)));
+66	    let app = Router::new().route("/", get(upgrade)).route("/ws", get(upgrade)).with_state(room);
+67	    axum::serve(listener, app).await.context("axum::serve")?;
+68	    Ok(())
+69	}
+70	
+71	async fn upgrade(State(room): State<Room>, ws: WebSocketUpgrade) -> impl IntoResponse {
+72	    ws.on_upgrade(move |socket| handle_socket(socket, room))
+73	}
+74
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:26Z)**_
+
+Now update `process_client_msg` to handle Rematch and rewrite per-variant guards.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:27Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/server.rs`
+
+```text
+150	        let msg: ClientMsg = match serde_json::from_str(&text) {
+151	            Ok(m) => m,
+152	            Err(e) => {
+153	                let _ =
+154	                    out_tx.send(ServerMsg::Error { message: format!("malformed message: {e}") });
+155	                continue;
+156	            }
+157	        };
+158	        let mut g = room.lock().await;
+159	        process_client_msg(&mut g, seat, msg);
+160	    }
+161	
+162	    // Disconnect: remove seat, notify peer if game was live.
+163	    eprintln!("[server] {:?} disconnected", seat);
+164	    {
+165	        let mut g = room.lock().await;
+166	        g.seats.retain(|(s, _)| *s != seat);
+167	        if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
+168	            for (_, tx) in &g.seats {
+169	                let _ = tx.send(ServerMsg::Error { message: "opponent disconnected".into() });
+170	            }
+171	        }
+172	    }
+173	
+174	    drop(out_tx);
+175	    let _ = write_task.await;
+176	}
+177	
+178	fn process_client_msg(g: &mut RoomState, seat: Side, msg: ClientMsg) {
+179	    if !matches!(g.state.status, GameStatus::Ongoing) {
+180	        send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
+181	        return;
+182	    }
+183	    match msg {
+184	        ClientMsg::Move { mv } => process_move(g, seat, mv),
+185	        ClientMsg::Resign => {
+186	            let winner = if seat == Side::RED { Side::BLACK } else { Side::RED };
+187	            g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+188	            broadcast_update(g);
+189	        }
+190	    }
+191	}
+192	
+193	fn process_move(g: &mut RoomState, seat: Side, mv: Move) {
+194	    if g.state.side_to_move != seat {
+195	        send_to(g, seat, ServerMsg::Error { message: "not your turn".into() });
+196	        return;
+197	    }
+198	    match g.state.make_move(&mv) {
+199	        Ok(()) => {
+200	            g.state.refresh_status();
+201	            eprintln!("[server] {:?} -> {:?}", seat, mv);
+202	            broadcast_update(g);
+203	        }
+204	        Err(e) => {
+205	            send_to(g, seat, ServerMsg::Error { message: format!("illegal move: {e}") });
+206	        }
+207	    }
+208	}
+209
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:52Z)**_
+
+Now add a smoke test for the rematch flow.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:52:53Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/server_smoke.rs`
+
+```text
+File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:18Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/protocol_roundtrip.rs`
+
+```text
+75	    match roundtrip_client(&ClientMsg::Move { mv: mv.clone() }) {
+76	        ClientMsg::Move { mv: back } => assert_eq!(back, mv),
+77	        _ => panic!("wrong variant"),
+78	    }
+79	}
+80	
+81	#[test]
+82	fn client_resign_roundtrips() {
+83	    let json = serde_json::to_string(&ClientMsg::Resign).unwrap();
+84	    assert!(json.contains("Resign"), "got: {json}");
+85	    assert!(matches!(roundtrip_client(&ClientMsg::Resign), ClientMsg::Resign));
+86	}
+87	
+88	#[test]
+89	fn protocol_uses_type_tag() {
+90	    // Sanity check: the schema uses `"type"` as the tag, matching our docs
+91	    // (so `wscat` users can switch on it directly).
+92	    let json = serde_json::to_string(&ClientMsg::Move {
+93	        mv: Move::Step { from: Square(0), to: Square(1) },
+94	    })
+95	    .unwrap();
+96	    assert!(json.starts_with("{\"type\":\"Move\""), "got: {json}");
+97	}
+98
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:25Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/protocol_roundtrip.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:30Z)**_
+
+Run chess-net tests to make sure server-side rematch is solid before touching the client.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chess-net tests
+
+`cargo test -p chess-net 2>&1 | tail -30`
+
+```text
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+error[E0382]: borrow of partially moved value: `red_hello`
+   --> crates/chess-net/tests/server_smoke.rs:118:46
+    |
+109 |             ServerMsg::Hello { observer, view, .. } => {
+    |                                          ---- value partially moved here
+...
+118 |         let mv = match read_json_after_hello(&red_hello) {
+    |                                              ^^^^^^^^^^ value borrowed here after partial move
+    |
+    = note: partial move occurs because value has type `PlayerView`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+    |
+109 |             ServerMsg::Hello { observer, ref view, .. } => {
+    |                                          +++
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `chess-net` (test "server_smoke") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:53:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-run chess-net tests
+
+`cargo test -p chess-net 2>&1 | tail -25`
+
+```text
+test protocol_uses_type_tag ... ok
+test client_resign_roundtrips ... ok
+test client_rematch_roundtrips ... ok
+test client_reveal_none_stays_none_on_wire ... ok
+test server_update_and_error_roundtrip ... ok
+test server_hello_roundtrips ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/server_smoke.rs (target/debug/deps/server_smoke-94d230306833e38e)
+
+running 4 tests
+test rematch_rejected_while_game_in_progress ... ok
+test two_clients_play_one_move ... ok
+test third_client_gets_room_full ... ok
+test rematch_resets_after_both_request ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:06Z)**_
+
+Server side green. Now wire Rematch into the TUI.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #55 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #56 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:08Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+163	            quit_confirm_open: false,
+164	            board_rect: None,
+165	            should_quit: false,
+166	        }
+167	    }
+168	
+169	    pub fn new_net(url: String, style: Style, use_color: bool) -> Self {
+170	        let client = NetClient::spawn(url.clone());
+171	        Self {
+172	            screen: Screen::Net(Box::new(NetView {
+173	                client,
+174	                url,
+175	                last_view: None,
+176	                rules: None,
+177	                observer: None,
+178	                cursor: (0, 0),
+179	                selected: None,
+180	                last_msg: Some("Connecting…".into()),
+181	                connected: false,
+182	            })),
+183	            style,
+184	            use_color,
+185	            // Pre-Hello, we render as Red until the server tells us our seat.
+186	            observer: Side::RED,
+187	            help_open: false,
+188	            rules_open: false,
+189	            quit_confirm_open: false,
+190	            board_rect: None,
+191	            should_quit: false,
+192	        }
+193	    }
+194	
+195	    /// Drain ws events from the worker thread and apply them to the
+196	    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+197	    pub fn tick_net(&mut self) {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+205	
+206	    pub fn dispatch(&mut self, action: Action) {
+207	        match action {
+208	            Action::None => {}
+209	            Action::ConfirmYes => {
+210	                self.quit_confirm_open = false;
+211	                self.should_quit = true;
+212	            }
+213	            Action::ConfirmNo => self.quit_confirm_open = false,
+214	            Action::Quit => {
+215	                if self.is_game_in_progress() {
+216	                    self.quit_confirm_open = true;
+217	                } else {
+218	                    self.should_quit = true;
+219	                }
+220	            }
+221	            Action::HelpToggle => self.help_open = !self.help_open,
+222	            Action::RulesToggle => self.rules_open = !self.rules_open,
+223	            Action::NewGame => {
+224	                let style = self.style;
+225	                let use_color = self.use_color;
+226	                let observer = self.observer;
+227	                *self = AppState::new_picker(style, use_color, observer);
+228	            }
+229	            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
+230	                self.dispatch_picker(action);
+231	            }
+232	            _ => match &self.screen {
+233	                Screen::Net(_) => self.dispatch_net(action),
+234	                Screen::Game(_) => self.dispatch_game(action),
+235	                Screen::Picker(_) => {}
+236	            },
+237	        }
+238	    }
+239	
+240	    fn is_game_in_progress(&self) -> bool {
+241	        match &self.screen {
+242	            Screen::Game(g) => {
+243	                matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty()
+244	            }
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:21Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:25Z)**_
+
+Now refine the Hello handler so a re-Hello (rematch reset) clears `selected` and shows a friendlier message.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:26Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+540	    if !matches!(view.status, GameStatus::Ongoing) {
+541	        return SelectOutcome::Msg("Game over.".into());
+542	    }
+543	    let shape = view.shape;
+544	    let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape) else {
+545	        return SelectOutcome::Msg("Cursor not on a playable square.".into());
+546	    };
+547	    if view.side_to_move != observer {
+548	        return SelectOutcome::Msg("Not your turn.".into());
+549	    }
+550	    match n.selected {
+551	        None => {
+552	            if view.legal_moves.iter().any(|m| m.origin_square() == sq) {
+553	                SelectOutcome::Select(sq)
+554	            } else if matches!(view.cells[sq.0 as usize], VisibleCell::Hidden) {
+555	                SelectOutcome::Msg("Hidden piece. Press 'f' to flip.".into())
+556	            } else {
+557	                SelectOutcome::Msg("No legal move from that square.".into())
+558	            }
+559	        }
+560	        Some(from) if from == sq => SelectOutcome::Deselect,
+561	        Some(from) => {
+562	            let candidate = view
+563	                .legal_moves
+564	                .iter()
+565	                .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+566	                .cloned();
+567	            match candidate {
+568	                Some(mv) => SelectOutcome::Commit(mv),
+569	                None => SelectOutcome::ClearAndMsg("Illegal move.".into()),
+570	            }
+571	        }
+572	    }
+573	}
+574	
+575	fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
+576	    match outcome {
+577	        SelectOutcome::Ignore => {}
+578	        SelectOutcome::Msg(m) => n.last_msg = Some(m),
+579	        SelectOutcome::ClearAndMsg(m) => {
+580	            n.selected = None;
+581	            n.last_msg = Some(m);
+582	        }
+583	        SelectOutcome::Select(sq) => {
+584	            n.selected = Some(sq);
+585	            n.last_msg = None;
+586	        }
+587	        SelectOutcome::Deselect => {
+588	            n.selected = None;
+589	            n.last_msg = None;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:31Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+600	    match evt {
+601	        NetEvent::Connected => {
+602	            n.connected = true;
+603	            n.last_msg = Some("Connected. Waiting for hello…".into());
+604	        }
+605	        NetEvent::Server(boxed) => match *boxed {
+606	            ServerMsg::Hello { observer, rules, view, .. } => {
+607	                n.observer = Some(observer);
+608	                n.rules = Some(rules);
+609	                let shape = view.shape;
+610	                let (rows, cols) = orient::display_dims(shape);
+611	                n.cursor = (rows / 2, cols / 2);
+612	                n.last_view = Some(view);
+613	                n.connected = true;
+614	                n.last_msg = Some(format!("Joined as {}.", side_label(observer)));
+615	            }
+616	            ServerMsg::Update { view } => {
+617	                n.last_view = Some(view);
+618	                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
+619	                if n.last_msg.as_deref() == Some("Sent.") {
+620	                    n.last_msg = None;
+621	                }
+622	            }
+623	            ServerMsg::Error { message } => {
+624	                n.last_msg = Some(message);
+625	            }
+626	        },
+627	        NetEvent::Disconnected(reason) => {
+628	            n.connected = false;
+629	            n.last_msg = Some(format!("Disconnected: {reason}"));
+630	        }
+631	    }
+632	}
+633	
+634	fn side_label(side: Side) -> &'static str {
+635	    if side == Side::RED {
+636	        "Red 紅"
+637	    } else if side == Side::BLACK {
+638	        "Black 黑"
+639	    } else {
+640	        "Green 綠"
+641	    }
+642	}
+643	
+644	/// Convert terminal click coords to (display_row, display_col) within board.
+645	///
+646	/// Cells are `cell_rows × cell_cols` terminal cells. With the intersection
+647	/// layout, `cell_rows = 2` (rank row + between row) so clicks on either of
+648	/// those rows resolve to the same display cell — including the river row,
+649	/// which simply replaces the between-row at index 4 without changing the
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:46Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:47Z)**_
+
+Update the net help line to reflect the new `n` semantics.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:52Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:56Z)**_
+
+Run gates.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:57Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #56 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:54:58Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #57 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + clippy
+
+```bash
+cargo fmt --check 2>&1 | tail -3
+echo "--- clippy ---"
+cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -8
+```
+
+```text
+             },
+         );
+         return;
+--- clippy ---
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.08s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply and verify fmt
+
+```bash
+cargo fmt 2>&1 | tail -3
+echo "--- verify ---"
+cargo fmt --check 2>&1 | tail -3 && echo "fmt clean"
+```
+
+```text
+--- verify ---
+fmt clean
+[This command modified 2 files you've previously read: crates/chess-net/src/server.rs, clients/chess-tui/src/app.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run all gates
+
+```bash
+cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -8
+echo "--- tests ---"
+cargo test --workspace 2>&1 | grep -E "^test result:|FAILED" | head -20
+echo "--- wasm ---"
+cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3
+```
+
+```text
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.58s
+--- tests ---
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+--- wasm ---
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:28Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:28Z)**_
+
+All green. Now the lobby TODO entry.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #57
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #58 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:30Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+35	- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+36	- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+37	- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+38	- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+39	
+40	## P3
+41	
+42	Someday / nice-to-have.
+43	
+44	- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+45	- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+46	- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+47	
+48	## P?
+49
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-validate TODO.md
+
+`/Users/daviddwlee84/.claude/skills/project-knowledge-harness/scripts/todo-kanban.sh --validate-only /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md 2>&1`
+
+```text
+OK: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md passes project-knowledge-harness format
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:49Z)**_
+
+Now commit.
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:50Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #58 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:55:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Pre-commit check
+
+```bash
+git status --short
+echo "---"
+git diff --stat HEAD
+```
+
+```text
+ M .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+ M TODO.md
+ M clients/chess-tui/src/app.rs
+ M clients/chess-tui/src/ui.rs
+ M crates/chess-net/src/protocol.rs
+ M crates/chess-net/src/server.rs
+ M crates/chess-net/tests/protocol_roundtrip.rs
+ M crates/chess-net/tests/server_smoke.rs
+ M scripts/play-local.sh
+---
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 988 ++++++++++++++++++++-
+ TODO.md                                            |   1 +
+ clients/chess-tui/src/app.rs                       |  40 +-
+ clients/chess-tui/src/ui.rs                        |   5 +-
+ crates/chess-net/src/protocol.rs                   |   5 +
+ crates/chess-net/src/server.rs                     |  84 +-
+ crates/chess-net/tests/protocol_roundtrip.rs       |   7 +
+ crates/chess-net/tests/server_smoke.rs             |  91 ++
+ scripts/play-local.sh                              |  16 +-
+ 9 files changed, 1217 insertions(+), 20 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:56:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit fixes
+
+```bash
+git add TODO.md clients/chess-tui/src/app.rs clients/chess-tui/src/ui.rs \
+  crates/chess-net/src/protocol.rs crates/chess-net/src/server.rs \
+  crates/chess-net/tests/protocol_roundtrip.rs crates/chess-net/tests/server_smoke.rs \
+  scripts/play-local.sh
+
+git commit -m "$(cat <<'EOF'
+fix(net): rematch protocol + nested-tmux launcher
+
+Two issues from the first chess-net playtest:
+
+- Pressing 'n' after game over killed the connection (it reset the
+  whole AppState to the local picker, dropping the NetClient → server
+  saw disconnect → peer got "opponent disconnected"). Now 'n' in Net
+  mode sends `ClientMsg::Rematch`. Server tracks per-side rematch
+  flags; when both have requested after the game is Won/Drawn it
+  resets `GameState` to a fresh game (same RuleSet, same seats) and
+  re-broadcasts Hello. One side requesting → server notifies both:
+  requester sees "Waiting for opponent…", opponent sees "Press 'n' to
+  accept." Hello handler also clears `n.selected` and shows
+  "Rematch — new game." on the second arrival.
+
+- `make play-local` failed with "sessions should be nested with care"
+  when launched from inside an existing tmux. scripts/play-local.sh
+  now detects `$TMUX` and uses `tmux switch-client` instead of
+  `tmux attach` — current client switches to the new session;
+  prefix+s / prefix+d returns to the previous one.
+
+Plus: TODO.md gets a P2/M entry for multi-room lobby + optional
+passwords, since "how do we coordinate which server to join" is the
+obvious next ask once two people have actually played a game.
+
+3 new tests (1 protocol round-trip + 2 server smoke for rematch
+accept/reject); existing 11 chess-net tests still pass; full workspace
+fmt/clippy/test/wasm gates green.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+echo "---"
+git log -3 --oneline
+```
+
+```text
+[main 8f5a269] fix(net): rematch protocol + nested-tmux launcher
+ 8 files changed, 235 insertions(+), 14 deletions(-)
+---
+8f5a269 fix(net): rematch protocol + nested-tmux launcher
+e0570e2 chore: bundle SpecStory transcript for chess-net-mvp PR
+3d5e947 feat(net): chess-net MVP + tmux launcher
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:56:13Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #57 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 08:56:35Z)**_
+
+Committed. Here's the summary of all three:
+
+## 1. Nested-tmux ✅
+
+`scripts/play-local.sh` now detects `$TMUX` and uses `tmux switch-client` instead of `tmux attach`:
+
+- Outside tmux → behaves the same: `tmux attach` opens the new session.
+- **Inside tmux** → switches your current client to the new `chess-local` session. To return to your previous session, **prefix + s** (session picker) or **prefix + d** (detach back to shell). Your previous tmux session keeps running in the background.
+
+Try `make play-local` again — should drop you straight into the clients window.
+
+## 2. Rematch ✅
+
+`n` no longer disconnects. New flow:
+
+- Game over → press `n` on either client → `ClientMsg::Rematch` to server.
+- Server replies to **both**: requester sees `Rematch requested. Waiting for opponent…`, opponent sees `Opponent wants a rematch. Press 'n' to accept.`
+- Once **both** sides have requested, server resets `GameState` (same `RuleSet`, same seats) and re-broadcasts `Hello`. Both clients get a fresh board with cursor centered, `selected` cleared, sidebar shows `Rematch — new game.`
+- Pressing `n` while game is still ongoing → polite reject (`'n' requests a rematch only after the game is over.`).
+- 'q' still quits the binary entirely (closes connection — that's the "leave the room" path).
+
+Two new server-smoke tests cover the accept-after-both-request flow and the reject-while-ongoing flow.
+
+## 3. 確認連線到同一個房間 / 密碼
+
+**Today (MVP):** single-room server. As long as both clients hit the same `ws://host:port`, they're in the same game. Coordination is out-of-band — you tell your friend the host:port out loud or over Slack. No explicit confirmation; you'll know you're paired up because both sidebars say "You: Red 紅" / "Black 黑" and the board reacts when one side moves.
+
+**Right answer (now in `TODO.md` as P2/M `chess-net: multi-room lobby + optional password`):**
+
+| Layer | What it adds |
+|---|---|
+| Server | Multi-room: `Map<RoomId, RoomState>`. Route `GET /ws/<room-id>` upgrades into that room (auto-created on first arrival). `GET /rooms` returns JSON `[{id, variant, seats, has_password}]` for a lobby UI. |
+| Server | Optional password: `?password=secret` query param. First connect locks it in; later joiners with wrong password get `Error{"bad password"}` and dropped. |
+| Client | `--connect ws://host/ws/<room-id>` plus `--password <pw>`. A `--list ws://host` mode that fetches `GET /rooms` and prints them is the obvious lobby. |
+
+Effort: ~M. Most of the work is HashMap<String, Arc<Mutex<Room>>> + axum path extractor + a small REST endpoint. The single-room MVP server stays compatible (route `/ws` → room "default") so old clients keep working.
+
+If you want me to do the multi-room thing next, just say the word — it's the natural follow-up. Otherwise the rematch + nested-tmux fixes are committed and ready to playtest again.
+
+---
+
+_**User (2026-05-06 09:01:09Z)**_
+
+<command-name>/compact</command-name>
+            <command-message>compact</command-message>
+            <command-args></command-args>
+
+_**User (2026-05-06 09:01:09Z)**_
+
+<local-command-caveat>Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.</local-command-caveat>
+
+_**User (2026-05-06 09:03:32Z)**_
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The session began with the user asking about the state of online/connection mode (continued from a compacted session). They then asked for three concrete deliverables:
+   - **Build chess-net MVP**: "做一個chess-net MVP 然後弄一個tmuxp之類的combo 可以在第一頁開兩個client 第二頁開server 然後把這個起動器也放到makefile 這樣方便我測試" — chess-net MVP + tmuxp-like launcher (window 1 = 2 clients, window 2 = server) + Makefile target.
+   - **First playtest fix**: `make play-local` failed with `create window failed: index 1 in use` due to user's `set -g base-index 1` tmux config.
+   - **Three follow-ups after first commit**: (a) `make play-local` fails inside tmux with "sessions should be nested with care", (b) after game over pressing 'n' disconnects, (c) is there a good way to know we're connected to each other (game room list + optional password).
+   - **Commit work**: User explicitly requested `git commit` before the three follow-ups.
+
+2. Key Technical Concepts:
+   - Rust + WASM workspace (8 crates: chess-core, chess-engine, chess-net, chess-ai, chess-cli, chess-tui, chess-web, xtask)
+   - axum 0.7 + tokio + futures-util for ws server; sync tungstenite 0.24 in chess-tui (no tokio in TUI binary)
+   - JSON wire protocol with `#[serde(tag = "type")]` tagged enums
+   - `std::sync::mpsc` channels bridging async ws thread and sync crossterm event loop
+   - axum's WebSocketUpgrade pattern (`socket.split()` → Sink/Stream halves)
+   - `tokio::sync::Mutex<RoomState>` for single-room shared state
+   - tmux session-by-name addressing (robust to `base-index 1`)
+   - tmux `switch-client` vs `attach` for nested sessions
+   - PlayerView::project no-leak proptest-validated ABI
+   - Move::Reveal { revealed: None } as wire ABI boundary (server fills in)
+   - Server-authoritative GameState with per-side broadcast on every move
+   - Mutual-consent rematch protocol pattern
+
+3. Files and Code Sections:
+   - **`Cargo.toml` (root)**: Added workspace deps `tokio = { version = "1.42", features = ["macros", "rt-multi-thread", "net", "sync", "time"] }`, `axum = { version = "0.7", features = ["ws"] }`, `tungstenite = "0.24"`, `futures-util = "0.3"`, `clap = { version = "4.5", features = ["derive"] }`, `anyhow = "1.0"`.
+
+   - **`crates/chess-net/Cargo.toml`**: Added deps + `[[bin]] name = "chess-net-server", path = "src/bin/server.rs"`. Removed tracing.
+
+   - **`crates/chess-net/src/lib.rs`**: `pub mod protocol; pub mod server;` + `pub use protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION}; pub use server::{run, serve};`
+
+   - **`crates/chess-net/src/protocol.rs`** (new): 
+     ```rust
+     pub const PROTOCOL_VERSION: u16 = 1;
+     #[derive(Clone, Debug, Serialize, Deserialize)]
+     #[serde(tag = "type")]
+     pub enum ServerMsg {
+         Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+         Update { view: PlayerView },
+         Error { message: String },
+     }
+     #[derive(Clone, Debug, Serialize, Deserialize)]
+     #[serde(tag = "type")]
+     pub enum ClientMsg {
+         Move { mv: Move },
+         Resign,
+         Rematch,  // added in 2nd commit
+     }
+     ```
+
+   - **`crates/chess-net/src/server.rs`** (new): Key fragments:
+     ```rust
+     struct RoomState {
+         state: GameState,
+         seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+         rematch: Vec<Side>,  // added in 2nd commit
+     }
+     pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
+         let room: Room = Arc::new(Mutex::new(RoomState::new(rules)));
+         let app = Router::new().route("/", get(upgrade)).route("/ws", get(upgrade)).with_state(room);
+         axum::serve(listener, app).await.context("axum::serve")?;
+         Ok(())
+     }
+     fn process_rematch(g: &mut RoomState, seat: Side) {
+         if matches!(g.state.status, GameStatus::Ongoing) { /* error */ return; }
+         if g.seats.len() < 2 { /* error */ return; }
+         if !g.rematch.contains(&seat) { g.rematch.push(seat); }
+         let want_seats: Vec<Side> = g.seats.iter().map(|(s, _)| *s).collect();
+         if want_seats.iter().all(|s| g.rematch.contains(s)) {
+             let rules = g.state.rules.clone();
+             g.state = GameState::new(rules);
+             g.rematch.clear();
+             // re-broadcast Hello to each seat with fresh view
+         } else {
+             // notify both: requester "Waiting…", opponent "Press 'n' to accept."
+         }
+     }
+     ```
+
+   - **`crates/chess-net/src/bin/server.rs`** (new): clap CLI with `Xiangqi { strict }` and `Banqi { preset, house, seed }` subcommands. `#[tokio::main]` async main. Lifted `build_banqi_rules` from chess-tui.
+
+   - **`crates/chess-net/tests/protocol_roundtrip.rs`** (new): 7 tests including `client_rematch_roundtrips` (added in 2nd commit) and `client_reveal_none_stays_none_on_wire` verifying JSON contains `"revealed":null`.
+
+   - **`crates/chess-net/tests/server_smoke.rs`** (new): 4 tests using `#[tokio::test(flavor = "multi_thread")]` + `tokio::task::spawn_blocking` for sync tungstenite clients. Includes `two_clients_play_one_move`, `third_client_gets_room_full`, `rematch_resets_after_both_request`, `rematch_rejected_while_game_in_progress`.
+
+   - **`clients/chess-tui/Cargo.toml`**: Added `chess-net`, `tungstenite`, `serde_json`, promoted `clap`/`anyhow` to workspace.
+
+   - **`clients/chess-tui/src/net.rs`** (new): 
+     ```rust
+     #[derive(Debug)]
+     pub enum NetEvent {
+         Connected,
+         Server(Box<ServerMsg>),  // boxed for clippy::large_enum_variant
+         Disconnected(String),
+     }
+     pub struct NetClient {
+         pub cmd_tx: Sender<ClientMsg>,
+         pub evt_rx: Receiver<NetEvent>,
+         _handle: JoinHandle<()>,
+     }
+     // run() loop: try ws.read() with WouldBlock detection, drain cmd_rx via try_recv, sleep 20ms
+     // connect_with_retry: 8 attempts × 200ms backoff
+     // set_nonblocking on MaybeTlsStream::Plain
+     ```
+
+   - **`clients/chess-tui/src/main.rs`**: Added `mod net;`, `--connect: Option<String>` flag, `normalize_ws_url` (auto-appends `/ws`), branch `if let Some(url) = cli.connect.as_deref() { AppState::new_net(...) }`. Reduced poll to 60ms in Net mode for snappy server pushes.
+
+   - **`clients/chess-tui/src/app.rs`**: Added `NetView` struct, `Screen::Net(Box<NetView>)`, `AppState::new_net`, `tick_net`, `dispatch_net`, `compute_select_outcome` + `apply_select_outcome` (decision-enum pattern to avoid borrow conflicts), `apply_net_event`, `side_label`. Updated `is_game_in_progress` for Net mode. Most recent change:
+     ```rust
+     Action::NewGame => {
+         if matches!(self.screen, Screen::Net(_)) {
+             if let Screen::Net(n) = &mut self.screen {
+                 let status = n.last_view.as_ref().map(|v| v.status);
+                 match status {
+                     Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
+                         let _ = n.client.cmd_tx.send(ClientMsg::Rematch);
+                         n.last_msg = Some("Rematch requested. Waiting for opponent…".into());
+                     }
+                     Some(GameStatus::Ongoing) => { /* not allowed */ }
+                     None => { /* not connected */ }
+                 }
+             }
+         } else { *self = AppState::new_picker(...); }
+     }
+     ```
+     Hello handler now clears `n.selected = None` and uses "Rematch — new game." on second Hello.
+
+   - **`clients/chess-tui/src/ui.rs`**: Refactored `draw_board`, `rank_row`, `intersection_or_piece` to take `cursor: (u8,u8), selected: Option<Square>` instead of `&GameView`. Added `draw_net`, `draw_sidebar_net`, `draw_connecting_placeholder`, `draw_sidebar_net_idle`. Updated `HELP_LINES_NET` to mention `n` = rematch.
+
+   - **`Makefile`** (new): `build`, `server`, `play-local`, `stop-local`, `check`, `fmt`, `clippy`, `test`, `wasm` targets. Help uses `@echo` (not printf with `\$`).
+
+   - **`scripts/play-local.sh`** (new): Pure bash + tmux. Pre-builds binaries, kills stale session, creates window "clients" + window "server", splits clients into 2 panes. Most recent fixes:
+     ```bash
+     # Address windows by NAME, not index — robust to base-index 1
+     tmux new-session  -d -s "$SESSION" -n clients
+     tmux new-window   -t "$SESSION" -n server "$SERVER_CMD"
+     tmux send-keys    -t "${SESSION}:clients" "$CLIENT_CMD" C-m  # braced for zsh safety
+     # Detect nested tmux:
+     if [[ -n "${TMUX:-}" ]]; then
+         exec tmux switch-client -t "$SESSION"
+     else
+         exec tmux attach -t "$SESSION"
+     fi
+     ```
+
+   - **`CLAUDE.md`**: Updated project-at-a-glance line, added net commands to Common commands, updated architecture quick reference, added new gotcha about chess-net MVP.
+
+   - **`TODO.md`**: Removed chess-net P2 entry; added P2/M `chess-net: multi-room lobby + optional password` entry; added shipped entry in Done section.
+
+   - **`backlog/chess-net-protocol.md`**: Updated to "shipped" status with what shipped + out-of-scope sections.
+
+4. Errors and fixes:
+   - **Clippy `useless_conversion`**: `Message::Text(payload.into())` flagged. Fixed by removing `.into()`. (Tungstenite 0.24's `Message::Text` accepts `String` directly.)
+   - **Clippy `large_enum_variant`**: `NetEvent::Server(ServerMsg)` was 1152 bytes. Fixed by boxing: `NetEvent::Server(Box<ServerMsg>)`.
+   - **fmt issues twice**: After server.rs/test edits, `cargo fmt` reformatted; `cargo fmt --check` then clean.
+   - **`borrow of partially moved value: red_hello`** in server_smoke test: Fixed by extracting `view.legal_moves[0].clone()` inside the match arm and using only `mv` afterward.
+   - **`make help` showed literal `:$(PORT)`**: Fixed by switching from `printf "...\$(PORT)"` to `@echo "...$(PORT)"`.
+   - **`create window failed: index 1 in use`** (USER REPORTED): User has `set -g base-index 1` in `~/.tmux.conf`. The script used `tmux new-window -t SESSION:1` which collided with the first window (already at index 1 due to base-index). FIX: address windows by NAME (`SESSION:clients`, `SESSION:server`) instead of index; let tmux auto-assign indices.
+   - **zsh expansion bug discovered during dry-run**: `$SESSION:clients` in zsh interpreted as `${SESSION:c}` modifier (showed `chess-test-buglients`). Script uses bash via shebang so user wouldn't hit this, but defensively braced all to `${SESSION}:clients`.
+   - **`sessions should be nested with care`** (USER REPORTED): `make play-local` failed inside existing tmux. FIX: detect `$TMUX` env and use `exec tmux switch-client -t "$SESSION"` instead of `tmux attach`.
+   - **'n' disconnects after game over** (USER REPORTED): NewGame action did `*self = AppState::new_picker(...)` which dropped NetClient → ws closed. FIX: in Net mode, intercept NewGame → send ClientMsg::Rematch to server; server tracks per-side rematch flags and resets on mutual consent.
+
+5. Problem Solving:
+   - Designed wire protocol using `#[serde(tag = "type")]` for debuggability with `wscat`/`jq`.
+   - Chose sync tungstenite + std::sync::mpsc for chess-tui to avoid pulling tokio into the TUI binary (would have forced a refactor of the existing crossterm event loop).
+   - Used `tokio::task::spawn_blocking` in tests so sync tungstenite clients don't block the tokio runtime.
+   - Decision-enum pattern (`SelectOutcome`) in `compute_select_outcome` to separate read-only logic from mutation, avoiding borrow checker conflicts on `n` while view is borrowed.
+   - Used `let was_seated = n.observer.is_some()` to distinguish first Hello from rematch Hello in client.
+   - Server `process_client_msg` restructured to handle Rematch outside game-status guards (since Rematch is valid only when game is OVER).
+
+6. All user messages:
+   - "現在我想了解一下連線模式的可用狀態" (already addressed in previous turn before this session's main work)
+   - "做一個chess-net MVP 然後弄一個tmuxp之類的combo 可以在第一頁開兩個client 第二頁開server 然後把這個起動器也放到makefile 這樣方便我測試"
+   - "Tool loaded." (after ToolSearch loading ExitPlanMode)
+   - First playtest report with build output ending: "create window failed: index 1 in use \n make: *** [play-local] Error 1 \n 似乎有bug"
+   - "git commit \n 然後有幾點 \n 1. 在tmux中沒辦法直接打開 不知道有沒有什麼workaround \n [build output] \n sessions should be nested with care, unset $TMUX to force \n make: *** [play-local] Error 1 \n 2. 遊戲出現輸贏後 似乎不能再來一局 其中按n會直接disconnect \n 3. 目前有沒有什麼好方法可以確定我們互相連線 (e.g. 遊戲室列表 + optional 密碼等機制)"
+
+7. Pending Tasks:
+   - None explicitly pending. All TaskCreate items have been marked completed. The user has been silent since my last commit.
+   - Implicit next: verbal/text reply to the user summarizing the three fixes and answering question 3 (lobby/rooms concept) — the assistant did not write a final natural-language summary message after the most recent commit.
+
+8. Current Work:
+   I had just completed the second round of fixes and committed them as `8f5a269 fix(net): rematch protocol + nested-tmux launcher`. Final task state: all 5 follow-up tasks (#54 Handle nested-tmux, #55 Add Rematch protocol+server, #56 Wire Rematch into chess-tui, #57 Run gates+commit, #58 Add lobby TODO) marked completed.
+
+   Verified state:
+   - cargo fmt --check ✓
+   - cargo clippy --workspace --all-targets -- -D warnings ✓  
+   - cargo test --workspace ✓ (117 tests, 1 ignored = perft slow): chess-net jumped from 8 to 11 tests (7 protocol roundtrip + 4 server smoke)
+   - cargo build --target wasm32-unknown-unknown -p chess-core ✓
+
+   Three commits total this session:
+   - `3d5e947 feat(net): chess-net MVP + tmux launcher`
+   - `e0570e2 chore: bundle SpecStory transcript for chess-net-mvp PR`
+   - `8f5a269 fix(net): rematch protocol + nested-tmux launcher`
+
+   The most recent assistant action was the final `TaskUpdate` marking task #57 completed. No text response was sent to the user explaining what was done in the second commit or answering question 3 about lobby/rooms (the TODO entry was added but the conceptual explanation was never delivered as a chat reply).
+
+9. Optional Next Step:
+   Write a final text summary to the user covering: (a) the nested-tmux fix (`switch-client` when inside tmux), (b) the rematch fix (mutual consent via `ClientMsg::Rematch`), and (c) the conceptual answer to question 3 about lobby/rooms (added to TODO.md as P2/M; sketch the design — `GET /ws/<room-id>` upgrade, `GET /rooms` list endpoint, optional `?password=<secret>` query param locked on first join, chess-tui flags `--connect ws://host/ws/<id> --password <pw>`).
+
+   Direct quotes showing the most recent state: User's last message was "git commit \n 然後有幾點 \n 1. 在tmux中沒辦法直接打開 不知道有沒有什麼workaround \n ... \n 2. 遊戲出現輸贏後 似乎不能再來一局 其中按n會直接disconnect \n 3. 目前有沒有什麼好方法可以確定我們互相連線 (e.g. 遊戲室列表 + optional 密碼等機制)". I committed the fixes for (1) and (2) and added a TODO entry for (3), but never wrote the chat reply explaining what was done and answering question 3 conceptually. That natural-language reply is the natural next step.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/daviddwlee84/.claude/projects/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+_**User (2026-05-06 09:03:34Z)**_
+
+<local-command-stdout>[2mCompacted (ctrl+o to see full summary)[22m
+[2mPreCompact [~/.codeisland/codeisland-hook.sh] completed successfully[22m</local-command-stdout>
+
+_**User (2026-05-06 09:03:45Z)**_
+
+現在設計實現 chess-net: multi-room lobby + optional password 的功能
+然後看看怎樣可以集成到原tui 又或是新增command更好 之類的 還是要變成ssh server 總之設計一下看看best practice是什麼(當然最好可以複用已有設施的同時保證UX)
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 09:03:59Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:04:00Z)**_
+
+I'll work through the plan workflow. Starting with Phase 1 — understanding what's already in place so I can design the lobby + password feature to reuse existing facilities.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:04:39Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Map chess-tui Net mode wiring
+
+```text
+## Architecture Summary: Current Net Mode Wiring
+
+**Screen State Machine**
+The `Screen` enum at app.rs:90-94 has three variants: `Picker`, `Game`, and `Net`. There is **no re-entry mechanism** — once in `Screen::Net`, the picker cannot be re-entered except through 'n' (new game) which sends `ClientMsg::Rematch` to the server, not back to the picker (app.rs:223-251). The `Screen::Picker` is stateless and only boots from CLI with no arguments (main.rs:125) or via `Action::NewGame` from a local game (app.rs:249).
+
+**Hello → Net State Transition (app.rs:598-638)**
+`apply_net_event` handles `NetEvent::Connected` and `ServerMsg::Hello` separately:
+- `Connected` sets `connected = true` and displays "Connected. Waiting for hello…" (line 602)
+- `Hello { observer, rules, view, .. }` sets the side, rules, cursor/selection, and `last_view` (lines 605-620). Only `last_view` drives rendering — the net board only appears when `last_view.is_some()` (ui.rs:107-128). The connection state (`n.connected`) is the only other bit that matters for display.
+
+**Worker Thread Model (net.rs)**
+`NetClient::spawn` (net.rs:42) spawns a non-blocking poll thread. The thread loop (net.rs:50-116) is **strictly a long-lived ws connection** — there's no request/response pattern, only:
+1. Try to read one frame (lines 66-88)
+2. Drain all pending `ClientMsg` from `cmd_tx` and send them (lines 91-112)
+3. Sleep 20ms (line 114)
+
+No support for one-shot requests; every outbound message is a `ClientMsg` enum variant. The `NetEvent` variants are `Connected`, `Server(ServerMsg)`, and `Disconnected` (net.rs:26-30).
+
+**Protocol (protocol.rs)**
+- `ServerMsg`: `Hello { protocol, observer, rules, view }`, `Update { view }`, `Error { message }`
+- `ClientMsg`: `Move { mv }`, `Resign`, `Rematch`
+- No room list, no game discovery, no password handshake in the current wire schema.
+
+**Server CLI (server.rs)**
+The server is single-room MVP (line 15). It only accepts a variant subcommand (`Xiangqi` or `Banqi`) with optional flags (`--strict`, `--preset`, `--house`, `--seed`), not room names or lobby configuration. Binding is hardcoded to loopback `127.0.0.1:<port>` (line 61).
+
+**Picker Semantics (app.rs:18-62, ui.rs:39-57)**
+`PickerEntry::ALL` has 6 hardcoded entries (variant + house-rule combos) plus a Quit option. The picker is **purely for local game variant selection**, not extensible to a room/lobby list. `dispatch_picker` (app.rs:276-298) transitions directly from Picker → Game on selection via `new_game`, or quits.
+
+**Keyboard Collisions (ui.rs:790-801, 945-956)**
+- `HELP_LINES_NET`: No number-key or room-list navigation (h/j/k/l for cursor, Enter/Space to commit, Esc to cancel, f to flip, n for rematch, r/? for toggles, q to quit)
+- `HELP_LINES_GAME`: Same keys except 'u' (undo) is supported locally, 'n' returns to picker
+- No shortcuts reserved for selection lists or numeric input
+
+**Connectivity State Rendering (ui.rs:131-157)**
+Before `Hello` arrives:
+- `draw_connecting_placeholder` (line 131): shows "Connecting…" with the URL and `last_msg` (yellow)
+- `draw_sidebar_net_idle` (line 147): shows "Connecting…", the URL, and a hint to press 'q'
+
+After `Hello`: `draw_sidebar_net` (line 686) shows variant, your side, opponent's side, status, and the connection state (line 762).
+
+**Critical Design Constraint**: The screen state drives everything. `last_view` is the only flag that switches from "connecting" placeholder to live board rendering. The `connected` flag is consulted only for quit-in-progress detection (app.rs:269) and sidebar display (ui.rs:762). There's **no intermediate "lobby" view** today — the flow is linear: CLI → worker spawns → `Connected` event → `Hello` event → board appears.
+
+---
+
+**For your lobby design:**
+- The Picker can **not** be reused for rooms (it's variant-specific, stateless, no data model). You'd need a new `Screen::Lobby` variant with its own view struct.
+- The worker thread **cannot fetch a room list** over the same ws (it's send-only commands → recv-only server pushes). You'd need either HTTP (separate from ws worker) or a new `ServerMsg::RoomList` before Hello.
+- Keyboard shortcuts are open for room selection (no collisions with 1-9, arrow modifiers, or prefixes).
+- `connected = true` is set only after `Connected` event; you could add a pre-Hello phase like `authenticating/auth_needed` if passwords require a challenge-response before Hello.
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-06 09:04:17Z)**_
+
+I'm designing a new feature: multi-room lobby + optional password for the existing single-room chess-net websocket server. The TUI currently joins via `--connect ws://host:port` and lands directly in a Net game. I need to know **exactly** how the Net mode is wired today so I can design the lobby UI without breaking it.
+
+Read these files in full and report back:
+
+1. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs` — CLI args, especially the `--connect` branch, how `AppState::new_net` is called, how `normalize_ws_url` rewrites URLs.
+
+2. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/net.rs` — `NetClient` struct, `connect_with_retry`, the worker thread loop (cmd_tx/evt_rx pattern), `NetEvent` variants.
+
+3. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs` — focus on:
+   - The `Screen` enum (Picker, Game, Net variants)
+   - `NetView` struct fields
+   - `AppState::new_picker` (how the variant picker boots)
+   - `AppState::new_net` (how Net mode boots)
+   - `dispatch_picker` (how picker selections become Cmd/AppState transitions)
+   - `dispatch_net`, `tick_net`, `apply_net_event` (Hello/Update/Error handling)
+   - Any place that switches between Screen variants — I need to know whether the picker can be re-entered.
+
+4. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs` — focus on:
+   - `draw_picker` / picker rendering
+   - `draw_net` / `draw_sidebar_net` / `draw_connecting_placeholder` / `draw_sidebar_net_idle`
+   - HELP_LINES_NET vs HELP_LINES_GAME
+
+5. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs` — current ServerMsg/ClientMsg enums in full.
+
+6. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/bin/server.rs` — current CLI args (variant, port, house, seed, strict).
+
+What I specifically need:
+- Can the existing `Screen::Picker` be reused/extended for a "room list" picker, or does it conceptually only handle local-game variant selection?
+- Is there a clean place to add a new `Screen::Lobby` variant that shows a list of rooms (fetched over a separate ws or HTTP request) before transitioning to `Screen::Net`?
+- What does the Hello → Net mode transition look like — is `last_view` the only state that drives rendering, or are there multiple bits?
+- Does the worker thread support sending a request and getting a one-shot response (like a `GET /rooms` REST call), or is it strictly a long-lived ws connection?
+- Are there any existing keyboard shortcuts I'd collide with for "select room from list" (Enter / number keys / etc)?
+
+Return a focused summary under 600 words with file:line references. Don't propose the design — I need the facts of what exists today.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:18Z)**_
+
+I'll read all six files to map the current architecture.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend for chess-core.
+2	//!
+3	//! Run modes:
+4	//!   chess-tui                                       # variant picker
+5	//!   chess-tui xiangqi
+6	//!   chess-tui banqi --preset taiwan --seed 42
+7	//!   chess-tui --style ascii xiangqi
+8	//!   chess-tui --no-color xiangqi
+9	//!   chess-tui --as black xiangqi                    # debug: render as Black
+10	
+11	mod app;
+12	mod glyph;
+13	mod input;
+14	mod net;
+15	mod orient;
+16	mod ui;
+17	
+18	use std::io::{self, Stdout};
+19	use std::time::Duration;
+20	
+21	use anyhow::{anyhow, Context, Result};
+22	use chess_core::piece::Side;
+23	use chess_core::rules::{HouseRules, RuleSet};
+24	use clap::{Parser, Subcommand, ValueEnum};
+25	use crossterm::event::{self, Event};
+26	use crossterm::execute;
+27	use crossterm::terminal::{
+28	    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+29	};
+30	use ratatui::backend::CrosstermBackend;
+31	use ratatui::Terminal;
+32	
+33	use crate::app::AppState;
+34	use crate::glyph::Style;
+35	use crate::input::{from_key, from_mouse, Action};
+36	
+37	#[derive(Parser, Debug)]
+38	#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+39	struct Cli {
+40	    /// Render style.
+41	    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+42	    style: StyleArg,
+43	
+44	    /// Disable ANSI color (keeps the chosen glyph set).
+45	    #[arg(long)]
+46	    no_color: bool,
+47	
+48	    /// Render from this side's perspective (debug; default RED). Ignored
+49	    /// when `--connect` is set — the server assigns a side on join.
+50	    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+51	    observer: SideArg,
+52	
+53	    /// Connect to a chess-net-server instead of starting a local game.
+54	    /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
+55	    /// automatically if missing).
+56	    #[arg(long)]
+57	    connect: Option<String>,
+58	
+59	    #[command(subcommand)]
+60	    cmd: Option<Cmd>,
+61	}
+62	
+63	#[derive(Subcommand, Debug)]
+64	enum Cmd {
+65	    /// Xiangqi (9×10). Casual rules by default — moves that leave your own
+66	    /// general capturable are allowed; the game ends when the general is
+67	    /// actually captured. Pass `--strict` for the standard self-check filter.
+68	    Xiangqi {
+69	        /// Strict mode: standard rules. Moves that would leave your own
+70	        /// general in check are rejected.
+71	        #[arg(long)]
+72	        strict: bool,
+73	    },
+74	    /// Banqi (4×8 face-down).
+75	    Banqi {
+76	        /// Preset bundle of house rules.
+77	        #[arg(long, value_enum)]
+78	        preset: Option<PresetArg>,
+79	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+80	        #[arg(long)]
+81	        house: Option<String>,
+82	        /// Deterministic shuffle seed.
+83	        #[arg(long)]
+84	        seed: Option<u64>,
+85	    },
+86	}
+87	
+88	#[derive(Copy, Clone, Debug, ValueEnum)]
+89	enum StyleArg {
+90	    Cjk,
+91	    Ascii,
+92	}
+93	
+94	#[derive(Copy, Clone, Debug, ValueEnum)]
+95	enum SideArg {
+96	    Red,
+97	    Black,
+98	}
+99	
+100	#[derive(Copy, Clone, Debug, ValueEnum)]
+101	enum PresetArg {
+102	    Purist,
+103	    Taiwan,
+104	    Aggressive,
+105	}
+106	
+107	fn main() -> Result<()> {
+108	    let cli = Cli::parse();
+109	
+110	    let style = match cli.style {
+111	        StyleArg::Cjk => Style::Cjk,
+112	        StyleArg::Ascii => Style::Ascii,
+113	    };
+114	    let observer = match cli.observer {
+115	        SideArg::Red => Side::RED,
+116	        SideArg::Black => Side::BLACK,
+117	    };
+118	    let use_color = !cli.no_color;
+119	
+120	    let app = if let Some(url) = cli.connect.as_deref() {
+121	        let url = normalize_ws_url(url);
+122	        AppState::new_net(url, style, use_color)
+123	    } else {
+124	        match &cli.cmd {
+125	            None => AppState::new_picker(style, use_color, observer),
+126	            Some(Cmd::Xiangqi { strict }) => {
+127	                let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+128	                AppState::new_game(rules, style, use_color, observer)
+129	            }
+130	            Some(Cmd::Banqi { preset, house, seed }) => {
+131	                let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+132	                AppState::new_game(rules, style, use_color, observer)
+133	            }
+134	        }
+135	    };
+136	
+137	    run(app)
+138	}
+139	
+140	fn normalize_ws_url(url: &str) -> String {
+141	    if url.contains("/ws") || url.ends_with('/') {
+142	        url.to_string()
+143	    } else {
+144	        format!("{url}/ws")
+145	    }
+146	}
+147	
+148	fn build_banqi_rules(
+149	    preset: Option<&PresetArg>,
+150	    house: Option<&str>,
+151	    seed: Option<u64>,
+152	) -> Result<RuleSet> {
+153	    let mut flags = HouseRules::empty();
+154	    if let Some(p) = preset {
+155	        flags |= match p {
+156	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+157	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+158	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+159	        };
+160	    }
+161	    if let Some(s) = house {
+162	        for tok in s.split(',') {
+163	            flags |= match tok.trim() {
+164	                "chain" => HouseRules::CHAIN_CAPTURE,
+165	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+166	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+167	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+168	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+169	                other => return Err(anyhow!("unknown house rule: {other}")),
+170	            };
+171	        }
+172	    }
+173	    let flags = chess_core::rules::house::normalize(flags);
+174	    Ok(match seed {
+175	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+176	        None => RuleSet::banqi(flags),
+177	    })
+178	}
+179	
+180	fn run(mut app: AppState) -> Result<()> {
+181	    let mut terminal = setup_terminal()?;
+182	    let result = run_loop(&mut terminal, &mut app);
+183	    teardown_terminal(&mut terminal).ok();
+184	    result
+185	}
+186	
+187	fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+188	    enable_raw_mode().context("enable raw mode")?;
+189	    let mut stdout = io::stdout();
+190	    execute!(stdout, EnterAlternateScreen, crossterm::event::EnableMouseCapture)
+191	        .context("enter alt screen")?;
+192	    let backend = CrosstermBackend::new(stdout);
+193	    let terminal = Terminal::new(backend).context("init terminal")?;
+194	    Ok(terminal)
+195	}
+196	
+197	fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+198	    disable_raw_mode().ok();
+199	    execute!(terminal.backend_mut(), LeaveAlternateScreen, crossterm::event::DisableMouseCapture)
+200	        .ok();
+201	    terminal.show_cursor().ok();
+202	    Ok(())
+203	}
+204	
+205	fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppState) -> Result<()> {
+206	    loop {
+207	        // Drain ws events first so the next draw shows server-pushed state.
+208	        // No-op outside Net mode.
+209	        app.tick_net();
+210	
+211	        terminal.draw(|frame| ui::draw(frame, app))?;
+212	        if app.should_quit {
+213	            return Ok(());
+214	        }
+215	
+216	        // Shorter poll in Net mode keeps server pushes feeling snappy
+217	        // (we redraw at most every poll interval). 200ms in single-process
+218	        // mode is fine — there's no async source to drain.
+219	        let poll_ms = if matches!(app.screen, app::Screen::Net(_)) { 60 } else { 200 };
+220	        if event::poll(Duration::from_millis(poll_ms))? {
+221	            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+222	            let quit_confirm = app.quit_confirm_open;
+223	            let action = match event::read()? {
+224	                Event::Key(k) if k.kind == event::KeyEventKind::Press => {
+225	                    from_key(k, in_picker, quit_confirm)
+226	                }
+227	                Event::Mouse(m) => from_mouse(m),
+228	                Event::Resize(_, _) => Action::None,
+229	                _ => Action::None,
+230	            };
+231	            app.dispatch(action);
+232	        }
+233	    }
+234	}
+235
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/net.rs`
+
+```text
+1	//! Sync `tungstenite` ws client driven from a background OS thread, with
+2	//! `std::sync::mpsc` channels to/from the (sync) TUI loop. We deliberately
+3	//! keep tokio out of the TUI binary — `crossterm::event::poll` is sync, and
+4	//! mixing in a runtime would force a refactor.
+5	//!
+6	//! The thread does a non-blocking poll cycle: try one ws read, drain pending
+7	//! outbound `ClientMsg`s, sleep ~20ms. Every parsed `ServerMsg` (or fatal
+8	//! error) is shipped to the TUI as a `NetEvent`.
+9	
+10	use std::io::ErrorKind;
+11	use std::net::TcpStream;
+12	use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+13	use std::thread::{self, JoinHandle};
+14	use std::time::Duration;
+15	
+16	use anyhow::{anyhow, Result};
+17	use chess_net::{ClientMsg, ServerMsg};
+18	use tungstenite::stream::MaybeTlsStream;
+19	use tungstenite::{Message, WebSocket};
+20	
+21	const POLL_INTERVAL: Duration = Duration::from_millis(20);
+22	const CONNECT_ATTEMPTS: u32 = 8;
+23	const CONNECT_BACKOFF: Duration = Duration::from_millis(200);
+24	
+25	#[derive(Debug)]
+26	pub enum NetEvent {
+27	    Connected,
+28	    Server(Box<ServerMsg>),
+29	    Disconnected(String),
+30	}
+31	
+32	pub struct NetClient {
+33	    pub cmd_tx: Sender<ClientMsg>,
+34	    pub evt_rx: Receiver<NetEvent>,
+35	    _handle: JoinHandle<()>,
+36	}
+37	
+38	impl NetClient {
+39	    /// Spawns the worker thread and returns immediately. The caller polls
+40	    /// `evt_rx` each frame (use `try_recv`, never `recv` — the TUI loop must
+41	    /// not block) and pushes outbound moves via `cmd_tx`.
+42	    pub fn spawn(url: String) -> Self {
+43	        let (cmd_tx, cmd_rx) = mpsc::channel::<ClientMsg>();
+44	        let (evt_tx, evt_rx) = mpsc::channel::<NetEvent>();
+45	        let handle = thread::spawn(move || run(url, cmd_rx, evt_tx));
+46	        Self { cmd_tx, evt_rx, _handle: handle }
+47	    }
+48	}
+49	
+50	fn run(url: String, cmd_rx: Receiver<ClientMsg>, evt_tx: Sender<NetEvent>) {
+51	    let mut ws = match connect_with_retry(&url) {
+52	        Ok(ws) => ws,
+53	        Err(e) => {
+54	            let _ = evt_tx.send(NetEvent::Disconnected(format!("connect failed: {e}")));
+55	            return;
+56	        }
+57	    };
+58	    if let Err(e) = set_nonblocking(&mut ws) {
+59	        let _ = evt_tx.send(NetEvent::Disconnected(format!("set_nonblocking: {e}")));
+60	        return;
+61	    }
+62	    let _ = evt_tx.send(NetEvent::Connected);
+63	
+64	    loop {
+65	        // Inbound: try to read one frame.
+66	        match ws.read() {
+67	            Ok(Message::Text(t)) => match serde_json::from_str::<ServerMsg>(t.as_str()) {
+68	                Ok(msg) => {
+69	                    if evt_tx.send(NetEvent::Server(Box::new(msg))).is_err() {
+70	                        return; // TUI dropped the receiver
+71	                    }
+72	                }
+73	                Err(e) => {
+74	                    let _ = evt_tx.send(NetEvent::Disconnected(format!("decode ServerMsg: {e}")));
+75	                    return;
+76	                }
+77	            },
+78	            Ok(Message::Close(_)) => {
+79	                let _ = evt_tx.send(NetEvent::Disconnected("server closed".into()));
+80	                return;
+81	            }
+82	            Ok(_) => {} // ping/pong/binary — ignore, tungstenite handles ping/pong itself
+83	            Err(tungstenite::Error::Io(e)) if e.kind() == ErrorKind::WouldBlock => {}
+84	            Err(e) => {
+85	                let _ = evt_tx.send(NetEvent::Disconnected(format!("read: {e}")));
+86	                return;
+87	            }
+88	        }
+89	
+90	        // Outbound: drain whatever's queued.
+91	        loop {
+92	            match cmd_rx.try_recv() {
+93	                Ok(msg) => {
+94	                    let json = match serde_json::to_string(&msg) {
+95	                        Ok(j) => j,
+96	                        Err(e) => {
+97	                            let _ = evt_tx.send(NetEvent::Disconnected(format!("encode: {e}")));
+98	                            return;
+99	                        }
+100	                    };
+101	                    if let Err(e) = ws.send(Message::Text(json)) {
+102	                        let _ = evt_tx.send(NetEvent::Disconnected(format!("send: {e}")));
+103	                        return;
+104	                    }
+105	                }
+106	                Err(TryRecvError::Empty) => break,
+107	                Err(TryRecvError::Disconnected) => {
+108	                    let _ = ws.close(None);
+109	                    return;
+110	                }
+111	            }
+112	        }
+113	
+114	        thread::sleep(POLL_INTERVAL);
+115	    }
+116	}
+117	
+118	fn connect_with_retry(url: &str) -> Result<WebSocket<MaybeTlsStream<TcpStream>>> {
+119	    let mut last_err: Option<tungstenite::Error> = None;
+120	    for _ in 0..CONNECT_ATTEMPTS {
+121	        match tungstenite::connect(url) {
+122	            Ok((ws, _resp)) => return Ok(ws),
+123	            Err(e) => {
+124	                last_err = Some(e);
+125	                thread::sleep(CONNECT_BACKOFF);
+126	            }
+127	        }
+128	    }
+129	    Err(anyhow!(
+130	        "could not reach {url} after {} attempts: {}",
+131	        CONNECT_ATTEMPTS,
+132	        last_err.map(|e| e.to_string()).unwrap_or_default()
+133	    ))
+134	}
+135	
+136	fn set_nonblocking(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> std::io::Result<()> {
+137	    match ws.get_mut() {
+138	        MaybeTlsStream::Plain(tcp) => tcp.set_nonblocking(true),
+139	        // Other MaybeTlsStream variants (rustls/native-tls) only appear when
+140	        // those features are enabled; we don't enable them.
+141	        _ => Ok(()),
+142	    }
+143	}
+144
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+1	//! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
+2	//! short-lived flash message; actions from `input.rs` mutate it.
+3	
+4	use chess_core::coord::Square;
+5	use chess_core::moves::Move;
+6	use chess_core::piece::Side;
+7	use chess_core::rules::{HouseRules, RuleSet};
+8	use chess_core::state::{GameState, GameStatus};
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use chess_net::{ClientMsg, ServerMsg};
+11	
+12	use crate::glyph::Style;
+13	use crate::input::Action;
+14	use crate::net::{NetClient, NetEvent};
+15	use crate::orient;
+16	
+17	/// Variant + preset choices in the picker, in display order.
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+19	pub enum PickerEntry {
+20	    Xiangqi,
+21	    XiangqiStrict,
+22	    BanqiPurist,
+23	    BanqiTaiwan,
+24	    BanqiAggressive,
+25	    Quit,
+26	}
+27	
+28	impl PickerEntry {
+29	    pub const ALL: [PickerEntry; 6] = [
+30	        PickerEntry::Xiangqi,
+31	        PickerEntry::XiangqiStrict,
+32	        PickerEntry::BanqiPurist,
+33	        PickerEntry::BanqiTaiwan,
+34	        PickerEntry::BanqiAggressive,
+35	        PickerEntry::Quit,
+36	    ];
+37	
+38	    pub fn label(self) -> &'static str {
+39	        match self {
+40	            PickerEntry::Xiangqi => "Xiangqi (象棋)",
+41	            PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
+42	            PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
+43	            PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
+44	            PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+45	            PickerEntry::Quit => "Quit",
+46	        }
+47	    }
+48	
+49	    pub fn rules(self) -> Option<RuleSet> {
+50	        match self {
+51	            // Default xiangqi is casual: more permissive, you lose by general
+52	            // capture. Strict (standard rules) is one row down.
+53	            PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
+54	            PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
+55	            PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
+56	            PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
+57	            PickerEntry::BanqiAggressive => {
+58	                Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
+59	            }
+60	            PickerEntry::Quit => None,
+61	        }
+62	    }
+63	}
+64	
+65	pub struct PickerView {
+66	    pub cursor: usize,
+67	}
+68	
+69	pub struct GameView {
+70	    pub state: GameState,
+71	    pub cursor: (u8, u8),
+72	    pub selected: Option<Square>,
+73	    pub last_msg: Option<String>,
+74	}
+75	
+76	pub struct NetView {
+77	    pub client: NetClient,
+78	    pub url: String,
+79	    pub last_view: Option<PlayerView>,
+80	    pub rules: Option<RuleSet>,
+81	    /// Server-assigned side. `None` until `Hello` arrives.
+82	    pub observer: Option<Side>,
+83	    pub cursor: (u8, u8),
+84	    pub selected: Option<Square>,
+85	    pub last_msg: Option<String>,
+86	    /// True between Connected and Disconnected events. Used by the sidebar.
+87	    pub connected: bool,
+88	}
+89	
+90	pub enum Screen {
+91	    Picker(PickerView),
+92	    Game(Box<GameView>),
+93	    Net(Box<NetView>),
+94	}
+95	
+96	pub struct AppState {
+97	    pub screen: Screen,
+98	    pub style: Style,
+99	    pub use_color: bool,
+100	    pub observer: Side,
+101	    pub help_open: bool,
+102	    pub rules_open: bool,
+103	    /// True while the y/N quit-confirm dialog is shown. Set when the user
+104	    /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
+105	    /// at least one move played). Picker / game-over `q` skip the prompt.
+106	    pub quit_confirm_open: bool,
+107	    /// Rect of the board widget last drawn (terminal coords). Used for
+108	    /// mouse-click hit-testing. ui.rs writes this each frame.
+109	    pub board_rect: Option<RectPx>,
+110	    pub should_quit: bool,
+111	}
+112	
+113	/// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
+114	#[derive(Copy, Clone, Debug)]
+115	pub struct RectPx {
+116	    pub x: u16,
+117	    pub y: u16,
+118	    /// Width in terminal cols of one cell (glyph + padding).
+119	    pub cell_cols: u16,
+120	    /// Height in terminal rows of one cell (rank row + between row).
+121	    pub cell_rows: u16,
+122	    /// Offset (cols) of the first cell's start from rect.x.
+123	    pub left_pad: u16,
+124	    /// Offset (rows) of the first row from rect.y.
+125	    pub top_pad: u16,
+126	}
+127	
+128	impl AppState {
+129	    pub fn new_picker(style: Style, use_color: bool, observer: Side) -> Self {
+130	        Self {
+131	            screen: Screen::Picker(PickerView { cursor: 0 }),
+132	            style,
+133	            use_color,
+134	            observer,
+135	            help_open: false,
+136	            rules_open: false,
+137	            quit_confirm_open: false,
+138	            board_rect: None,
+139	            should_quit: false,
+140	        }
+141	    }
+142	
+143	    pub fn new_game(rules: RuleSet, style: Style, use_color: bool, observer: Side) -> Self {
+144	        let state = GameState::new(rules);
+145	        let shape = state.board.shape();
+146	        let (rows, cols) = orient::display_dims(shape);
+147	        let cursor = (rows / 2, cols / 2);
+148	        Self {
+149	            screen: Screen::Game(Box::new(GameView {
+150	                state,
+151	                cursor,
+152	                selected: None,
+153	                last_msg: Some(
+154	                    "Welcome. Arrows/hjkl move cursor. Enter selects. r=rules, ?=help, n=new, q=quit."
+155	                        .into(),
+156	                ),
+157	            })),
+158	            style,
+159	            use_color,
+160	            observer,
+161	            help_open: false,
+162	            rules_open: false,
+163	            quit_confirm_open: false,
+164	            board_rect: None,
+165	            should_quit: false,
+166	        }
+167	    }
+168	
+169	    pub fn new_net(url: String, style: Style, use_color: bool) -> Self {
+170	        let client = NetClient::spawn(url.clone());
+171	        Self {
+172	            screen: Screen::Net(Box::new(NetView {
+173	                client,
+174	                url,
+175	                last_view: None,
+176	                rules: None,
+177	                observer: None,
+178	                cursor: (0, 0),
+179	                selected: None,
+180	                last_msg: Some("Connecting…".into()),
+181	                connected: false,
+182	            })),
+183	            style,
+184	            use_color,
+185	            // Pre-Hello, we render as Red until the server tells us our seat.
+186	            observer: Side::RED,
+187	            help_open: false,
+188	            rules_open: false,
+189	            quit_confirm_open: false,
+190	            board_rect: None,
+191	            should_quit: false,
+192	        }
+193	    }
+194	
+195	    /// Drain ws events from the worker thread and apply them to the
+196	    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+197	    pub fn tick_net(&mut self) {
+198	        let Screen::Net(n) = &mut self.screen else {
+199	            return;
+200	        };
+201	        while let Ok(evt) = n.client.evt_rx.try_recv() {
+202	            apply_net_event(n, evt);
+203	        }
+204	    }
+205	
+206	    pub fn dispatch(&mut self, action: Action) {
+207	        match action {
+208	            Action::None => {}
+209	            Action::ConfirmYes => {
+210	                self.quit_confirm_open = false;
+211	                self.should_quit = true;
+212	            }
+213	            Action::ConfirmNo => self.quit_confirm_open = false,
+214	            Action::Quit => {
+215	                if self.is_game_in_progress() {
+216	                    self.quit_confirm_open = true;
+217	                } else {
+218	                    self.should_quit = true;
+219	                }
+220	            }
+221	            Action::HelpToggle => self.help_open = !self.help_open,
+222	            Action::RulesToggle => self.rules_open = !self.rules_open,
+223	            Action::NewGame => {
+224	                if matches!(self.screen, Screen::Net(_)) {
+225	                    // In Net mode, 'n' requests a rematch via the server
+226	                    // instead of dropping the connection. Game must be over.
+227	                    if let Screen::Net(n) = &mut self.screen {
+228	                        let status = n.last_view.as_ref().map(|v| v.status);
+229	                        match status {
+230	                            Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
+231	                                let _ = n.client.cmd_tx.send(ClientMsg::Rematch);
+232	                                n.last_msg =
+233	                                    Some("Rematch requested. Waiting for opponent…".into());
+234	                            }
+235	                            Some(GameStatus::Ongoing) => {
+236	                                n.last_msg = Some(
+237	                                    "'n' requests a rematch only after the game is over.".into(),
+238	                                );
+239	                            }
+240	                            None => {
+241	                                n.last_msg = Some("Not connected yet.".into());
+242	                            }
+243	                        }
+244	                    }
+245	                } else {
+246	                    let style = self.style;
+247	                    let use_color = self.use_color;
+248	                    let observer = self.observer;
+249	                    *self = AppState::new_picker(style, use_color, observer);
+250	                }
+251	            }
+252	            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
+253	                self.dispatch_picker(action);
+254	            }
+255	            _ => match &self.screen {
+256	                Screen::Net(_) => self.dispatch_net(action),
+257	                Screen::Game(_) => self.dispatch_game(action),
+258	                Screen::Picker(_) => {}
+259	            },
+260	        }
+261	    }
+262	
+263	    fn is_game_in_progress(&self) -> bool {
+264	        match &self.screen {
+265	            Screen::Game(g) => {
+266	                matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty()
+267	            }
+268	            Screen::Net(n) => match &n.last_view {
+269	                Some(view) => matches!(view.status, GameStatus::Ongoing) && n.connected,
+270	                None => false,
+271	            },
+272	            Screen::Picker(_) => false,
+273	        }
+274	    }
+275	
+276	    fn dispatch_picker(&mut self, action: Action) {
+277	        let Screen::Picker(p) = &mut self.screen else {
+278	            return;
+279	        };
+280	        let n = PickerEntry::ALL.len();
+281	        match action {
+282	            Action::PickerUp => p.cursor = (p.cursor + n - 1) % n,
+283	            Action::PickerDown => p.cursor = (p.cursor + 1) % n,
+284	            Action::PickerSelect => {
+285	                let entry = PickerEntry::ALL[p.cursor];
+286	                match entry.rules() {
+287	                    Some(rules) => {
+288	                        let observer = self.observer;
+289	                        let style = self.style;
+290	                        let use_color = self.use_color;
+291	                        *self = AppState::new_game(rules, style, use_color, observer);
+292	                    }
+293	                    None => self.should_quit = true,
+294	                }
+295	            }
+296	            _ => {}
+297	        }
+298	    }
+299	
+300	    fn dispatch_game(&mut self, action: Action) {
+301	        let Screen::Game(g) = &mut self.screen else {
+302	            return;
+303	        };
+304	        let shape = g.state.board.shape();
+305	        let (rows, cols) = orient::display_dims(shape);
+306	        match action {
+307	            Action::CursorUp => {
+308	                if g.cursor.0 > 0 {
+309	                    g.cursor.0 -= 1;
+310	                }
+311	            }
+312	            Action::CursorDown => {
+313	                if g.cursor.0 + 1 < rows {
+314	                    g.cursor.0 += 1;
+315	                }
+316	            }
+317	            Action::CursorLeft => {
+318	                if g.cursor.1 > 0 {
+319	                    g.cursor.1 -= 1;
+320	                }
+321	            }
+322	            Action::CursorRight => {
+323	                if g.cursor.1 + 1 < cols {
+324	                    g.cursor.1 += 1;
+325	                }
+326	            }
+327	            Action::Cancel => {
+328	                g.selected = None;
+329	                g.last_msg = None;
+330	            }
+331	            Action::SelectOrCommit => {
+332	                let observer = self.observer;
+333	                Self::handle_select_or_commit(g, observer);
+334	            }
+335	            Action::Undo => match g.state.unmake_move() {
+336	                Ok(()) => {
+337	                    g.state.refresh_status();
+338	                    g.selected = None;
+339	                    g.last_msg = Some(format!("Undone. {:?} to move.", g.state.side_to_move));
+340	                }
+341	                Err(e) => {
+342	                    g.last_msg = Some(format!("Cannot undo: {e}"));
+343	                }
+344	            },
+345	            Action::Flip => {
+346	                if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+347	                    g.last_msg = Some(
+348	                        "Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into(),
+349	                    );
+350	                    return;
+351	                }
+352	                let observer = self.observer;
+353	                let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape)
+354	                else {
+355	                    g.last_msg = Some("Cursor not on a playable square.".into());
+356	                    return;
+357	                };
+358	                let m = Move::Reveal { at: sq, revealed: None };
+359	                Self::apply_move(g, m);
+360	            }
+361	            Action::Click { term_col, term_row } => {
+362	                if let Some(rect) = self.board_rect {
+363	                    let observer = self.observer;
+364	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+365	                        g.cursor = (row, col);
+366	                        Self::handle_select_or_commit(g, observer);
+367	                    }
+368	                }
+369	            }
+370	            _ => {}
+371	        }
+372	    }
+373	
+374	    fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+375	        if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+376	            g.last_msg =
+377	                Some("Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into());
+378	            return;
+379	        }
+380	        let shape = g.state.board.shape();
+381	        let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape) else {
+382	            g.last_msg = Some("Cursor not on a playable square.".into());
+383	            return;
+384	        };
+385	
+386	        let view = PlayerView::project(&g.state, g.state.side_to_move);
+387	
+388	        match g.selected {
+389	            None => {
+390	                // Try to select a piece. Allowed if there's a legal move from this square.
+391	                let any = view.legal_moves.iter().any(|m| m.origin_square() == sq);
+392	                if any {
+393	                    g.selected = Some(sq);
+394	                    g.last_msg = None;
+395	                } else {
+396	                    // Maybe it's a banqi hidden cell — suggest 'f' to flip.
+397	                    match g.state.board.get(sq) {
+398	                        Some(p) if !p.revealed => {
+399	                            g.last_msg = Some("Hidden piece. Press 'f' to flip.".into());
+400	                        }
+401	                        _ => g.last_msg = Some("No legal move from that square.".into()),
+402	                    }
+403	                }
+404	            }
+405	            Some(from) if from == sq => {
+406	                g.selected = None;
+407	                g.last_msg = None;
+408	            }
+409	            Some(from) => {
+410	                // Find a legal move from `from` to `sq`. Prefer Capture / CannonJump
+411	                // over a chain ending at sq (for banqi); take the first match.
+412	                let candidate = view
+413	                    .legal_moves
+414	                    .iter()
+415	                    .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+416	                    .cloned();
+417	                match candidate {
+418	                    Some(m) => Self::apply_move(g, m),
+419	                    None => {
+420	                        g.last_msg = Some("Illegal move.".into());
+421	                        g.selected = None;
+422	                    }
+423	                }
+424	            }
+425	        }
+426	    }
+427	
+428	    fn apply_move(g: &mut GameView, m: Move) {
+429	        match g.state.make_move(&m) {
+430	            Ok(()) => {
+431	                g.state.refresh_status();
+432	                g.selected = None;
+433	                g.last_msg = Some(format!(
+434	                    "Played: {}",
+435	                    chess_core::notation::iccs::encode_move(&g.state.board, &m)
+436	                ));
+437	            }
+438	            Err(e) => {
+439	                g.last_msg = Some(format!("Engine rejected move: {e}"));
+440	                g.selected = None;
+441	            }
+442	        }
+443	    }
+444	
+445	    fn dispatch_net(&mut self, action: Action) {
+446	        let Screen::Net(n) = &mut self.screen else {
+447	            return;
+448	        };
+449	        // Pre-Hello: no view yet, nothing to dispatch on.
+450	        let Some(view) = n.last_view.as_ref() else {
+451	            return;
+452	        };
+453	        let shape = view.shape;
+454	        let (rows, cols) = orient::display_dims(shape);
+455	        let observer = n.observer.unwrap_or(Side::RED);
+456	        match action {
+457	            Action::CursorUp => {
+458	                if n.cursor.0 > 0 {
+459	                    n.cursor.0 -= 1;
+460	                }
+461	            }
+462	            Action::CursorDown => {
+463	                if n.cursor.0 + 1 < rows {
+464	                    n.cursor.0 += 1;
+465	                }
+466	            }
+467	            Action::CursorLeft => {
+468	                if n.cursor.1 > 0 {
+469	                    n.cursor.1 -= 1;
+470	                }
+471	            }
+472	            Action::CursorRight => {
+473	                if n.cursor.1 + 1 < cols {
+474	                    n.cursor.1 += 1;
+475	                }
+476	            }
+477	            Action::Cancel => {
+478	                n.selected = None;
+479	                n.last_msg = None;
+480	            }
+481	            Action::SelectOrCommit => {
+482	                let outcome = compute_select_outcome(n, observer);
+483	                apply_select_outcome(n, outcome);
+484	            }
+485	            Action::Flip => {
+486	                if !matches!(view.status, GameStatus::Ongoing) {
+487	                    n.last_msg = Some("Game over.".into());
+488	                    return;
+489	                }
+490	                if view.side_to_move != observer {
+491	                    n.last_msg = Some("Not your turn.".into());
+492	                    return;
+493	                }
+494	                let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape)
+495	                else {
+496	                    n.last_msg = Some("Cursor not on a playable square.".into());
+497	                    return;
+498	                };
+499	                let _ = n
+500	                    .client
+501	                    .cmd_tx
+502	                    .send(ClientMsg::Move { mv: Move::Reveal { at: sq, revealed: None } });
+503	                n.last_msg = Some("Reveal sent.".into());
+504	            }
+505	            Action::Undo => {
+506	                n.last_msg = Some("Undo not supported in online mode yet.".into());
+507	            }
+508	            Action::Click { term_col, term_row } => {
+509	                if let Some(rect) = self.board_rect {
+510	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+511	                        let n = match &mut self.screen {
+512	                            Screen::Net(b) => b,
+513	                            _ => return,
+514	                        };
+515	                        n.cursor = (row, col);
+516	                        let outcome = compute_select_outcome(n, observer);
+517	                        apply_select_outcome(n, outcome);
+518	                    }
+519	                }
+520	            }
+521	            _ => {}
+522	        }
+523	    }
+524	}
+525	
+526	enum SelectOutcome {
+527	    Ignore,
+528	    Msg(String),
+529	    ClearAndMsg(String),
+530	    Select(Square),
+531	    Deselect,
+532	    Commit(Move),
+533	}
+534	
+535	fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
+536	    let Some(view) = n.last_view.as_ref() else {
+537	        return SelectOutcome::Ignore;
+538	    };
+539	    if !matches!(view.status, GameStatus::Ongoing) {
+540	        return SelectOutcome::Msg("Game over.".into());
+541	    }
+542	    let shape = view.shape;
+543	    let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape) else {
+544	        return SelectOutcome::Msg("Cursor not on a playable square.".into());
+545	    };
+546	    if view.side_to_move != observer {
+547	        return SelectOutcome::Msg("Not your turn.".into());
+548	    }
+549	    match n.selected {
+550	        None => {
+551	            if view.legal_moves.iter().any(|m| m.origin_square() == sq) {
+552	                SelectOutcome::Select(sq)
+553	            } else if matches!(view.cells[sq.0 as usize], VisibleCell::Hidden) {
+554	                SelectOutcome::Msg("Hidden piece. Press 'f' to flip.".into())
+555	            } else {
+556	                SelectOutcome::Msg("No legal move from that square.".into())
+557	            }
+558	        }
+559	        Some(from) if from == sq => SelectOutcome::Deselect,
+560	        Some(from) => {
+561	            let candidate = view
+562	                .legal_moves
+563	                .iter()
+564	                .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+565	                .cloned();
+566	            match candidate {
+567	                Some(mv) => SelectOutcome::Commit(mv),
+568	                None => SelectOutcome::ClearAndMsg("Illegal move.".into()),
+569	            }
+570	        }
+571	    }
+572	}
+573	
+574	fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
+575	    match outcome {
+576	        SelectOutcome::Ignore => {}
+577	        SelectOutcome::Msg(m) => n.last_msg = Some(m),
+578	        SelectOutcome::ClearAndMsg(m) => {
+579	            n.selected = None;
+580	            n.last_msg = Some(m);
+581	        }
+582	        SelectOutcome::Select(sq) => {
+583	            n.selected = Some(sq);
+584	            n.last_msg = None;
+585	        }
+586	        SelectOutcome::Deselect => {
+587	            n.selected = None;
+588	            n.last_msg = None;
+589	        }
+590	        SelectOutcome::Commit(mv) => {
+591	            let _ = n.client.cmd_tx.send(ClientMsg::Move { mv });
+592	            n.selected = None;
+593	            n.last_msg = Some("Sent.".into());
+594	        }
+595	    }
+596	}
+597	
+598	fn apply_net_event(n: &mut NetView, evt: NetEvent) {
+599	    match evt {
+600	        NetEvent::Connected => {
+601	            n.connected = true;
+602	            n.last_msg = Some("Connected. Waiting for hello…".into());
+603	        }
+604	        NetEvent::Server(boxed) => match *boxed {
+605	            ServerMsg::Hello { observer, rules, view, .. } => {
+606	                let was_seated = n.observer.is_some();
+607	                n.observer = Some(observer);
+608	                n.rules = Some(rules);
+609	                let shape = view.shape;
+610	                let (rows, cols) = orient::display_dims(shape);
+611	                n.cursor = (rows / 2, cols / 2);
+612	                n.selected = None;
+613	                n.last_view = Some(view);
+614	                n.connected = true;
+615	                // First Hello = "Joined as X". Subsequent Hello = rematch reset.
+616	                n.last_msg = Some(if was_seated {
+617	                    "Rematch — new game.".into()
+618	                } else {
+619	                    format!("Joined as {}.", side_label(observer))
+620	                });
+621	            }
+622	            ServerMsg::Update { view } => {
+623	                n.last_view = Some(view);
+624	                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
+625	                if n.last_msg.as_deref() == Some("Sent.") {
+626	                    n.last_msg = None;
+627	                }
+628	            }
+629	            ServerMsg::Error { message } => {
+630	                n.last_msg = Some(message);
+631	            }
+632	        },
+633	        NetEvent::Disconnected(reason) => {
+634	            n.connected = false;
+635	            n.last_msg = Some(format!("Disconnected: {reason}"));
+636	        }
+637	    }
+638	}
+639	
+640	fn side_label(side: Side) -> &'static str {
+641	    if side == Side::RED {
+642	        "Red 紅"
+643	    } else if side == Side::BLACK {
+644	        "Black 黑"
+645	    } else {
+646	        "Green 綠"
+647	    }
+648	}
+649	
+650	/// Convert terminal click coords to (display_row, display_col) within board.
+651	///
+652	/// Cells are `cell_rows × cell_cols` terminal cells. With the intersection
+653	/// layout, `cell_rows = 2` (rank row + between row) so clicks on either of
+654	/// those rows resolve to the same display cell — including the river row,
+655	/// which simply replaces the between-row at index 4 without changing the
+656	/// row layout.
+657	fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
+658	    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+659	        return None;
+660	    }
+661	    let col_off = term_col - rect.x - rect.left_pad;
+662	    let row_off = term_row - rect.y - rect.top_pad;
+663	    if rect.cell_cols == 0 || rect.cell_rows == 0 {
+664	        return None;
+665	    }
+666	    let cell_col = col_off / rect.cell_cols;
+667	    let cell_row = row_off / rect.cell_rows;
+668	    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+669	        return None;
+670	    }
+671	    Some((cell_row as u8, cell_col as u8))
+672	}
+673
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+1	//! ratatui draw layer. Stateless — reads `AppState` and draws.
+2	
+3	use chess_core::board::BoardShape;
+4	use chess_core::coord::Square;
+5	use chess_core::piece::{PieceKind, Side};
+6	use chess_core::state::{GameStatus, WinReason};
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	
+9	use ratatui::layout::{Constraint, Direction, Layout, Rect};
+10	use ratatui::style::{Color, Modifier, Style as TuiStyle};
+11	use ratatui::text::{Line, Span};
+12	use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+13	use ratatui::Frame;
+14	
+15	use crate::app::{AppState, GameView, NetView, PickerEntry, PickerView, RectPx, Screen};
+16	use crate::glyph::{self, Style};
+17	use crate::orient;
+18	
+19	const CELL_COLS: u16 = 4;
+20	const CELL_ROWS: u16 = 2;
+21	const RANK_LABEL_COLS: u16 = 3;
+22	
+23	pub fn draw(frame: &mut Frame, app: &mut AppState) {
+24	    let area = frame.area();
+25	    match &app.screen {
+26	        Screen::Picker(p) => draw_picker(frame, area, p),
+27	        Screen::Game(_) => draw_game(frame, area, app),
+28	        Screen::Net(_) => draw_net(frame, area, app),
+29	    }
+30	
+31	    if app.rules_open {
+32	        draw_rules_overlay(frame, area, app.style);
+33	    }
+34	    if app.quit_confirm_open {
+35	        draw_quit_confirm_overlay(frame, area);
+36	    }
+37	}
+38	
+39	fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+40	    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+41	    let mut lines = vec![
+42	        Line::from(title),
+43	        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+44	        Line::from(""),
+45	    ];
+46	    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+47	        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+48	        let style = if i == picker.cursor {
+49	            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+50	        } else {
+51	            TuiStyle::default()
+52	        };
+53	        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+54	    }
+55	    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+56	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+57	    frame.render_widget(para, area);
+58	}
+59	
+60	fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+61	    let chunks = Layout::default()
+62	        .direction(Direction::Horizontal)
+63	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+64	        .split(area);
+65	
+66	    let Screen::Game(g) = &app.screen else {
+67	        return;
+68	    };
+69	    let g_ref: &GameView = g.as_ref();
+70	    let observer = app.observer;
+71	    let style = app.style;
+72	    let use_color = app.use_color;
+73	    let help_open = app.help_open;
+74	
+75	    let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
+76	    let mut rect = app.board_rect;
+77	    draw_board(
+78	        frame,
+79	        chunks[0],
+80	        observer,
+81	        style,
+82	        use_color,
+83	        &view,
+84	        g_ref.cursor,
+85	        g_ref.selected,
+86	        &mut rect,
+87	    );
+88	    app.board_rect = rect;
+89	    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open);
+90	}
+91	
+92	fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
+93	    let chunks = Layout::default()
+94	        .direction(Direction::Horizontal)
+95	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+96	        .split(area);
+97	
+98	    let Screen::Net(n) = &app.screen else {
+99	        return;
+100	    };
+101	    let n_ref: &NetView = n.as_ref();
+102	    let style = app.style;
+103	    let use_color = app.use_color;
+104	    let help_open = app.help_open;
+105	    let observer = n_ref.observer.unwrap_or(app.observer);
+106	
+107	    match n_ref.last_view.as_ref() {
+108	        Some(view) => {
+109	            let mut rect = app.board_rect;
+110	            draw_board(
+111	                frame,
+112	                chunks[0],
+113	                observer,
+114	                style,
+115	                use_color,
+116	                view,
+117	                n_ref.cursor,
+118	                n_ref.selected,
+119	                &mut rect,
+120	            );
+121	            app.board_rect = rect;
+122	            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open);
+123	        }
+124	        None => {
+125	            draw_connecting_placeholder(frame, chunks[0], n_ref);
+126	            draw_sidebar_net_idle(frame, chunks[1], n_ref);
+127	        }
+128	    }
+129	}
+130	
+131	fn draw_connecting_placeholder(frame: &mut Frame, area: Rect, n: &NetView) {
+132	    let block = Block::default().borders(Borders::ALL).title(" Net ");
+133	    let lines = vec![
+134	        Line::from(""),
+135	        Line::from(Span::styled("  Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+136	        Line::from(Span::styled(format!("  → {}", n.url), TuiStyle::default().fg(Color::Gray))),
+137	        Line::from(""),
+138	        Line::from(Span::styled(
+139	            n.last_msg.clone().unwrap_or_else(|| "  (waiting for server hello)".into()),
+140	            TuiStyle::default().fg(Color::Yellow),
+141	        )),
+142	    ];
+143	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+144	    frame.render_widget(para, area);
+145	}
+146	
+147	fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
+148	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+149	    let lines = vec![
+150	        Line::from(Span::styled("Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+151	        Line::from(format!("URL: {}", n.url)),
+152	        Line::from(""),
+153	        Line::from(Span::styled("Press q to give up.", TuiStyle::default().fg(Color::DarkGray))),
+154	    ];
+155	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+156	    frame.render_widget(para, area);
+157	}
+158	
+159	#[allow(clippy::too_many_arguments)]
+160	fn draw_board(
+161	    frame: &mut Frame,
+162	    area: Rect,
+163	    observer: Side,
+164	    style: Style,
+165	    use_color: bool,
+166	    view: &PlayerView,
+167	    cursor: (u8, u8),
+168	    selected: Option<Square>,
+169	    board_rect: &mut Option<RectPx>,
+170	) {
+171	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+172	    let inner = block.inner(area);
+173	    frame.render_widget(block, area);
+174	
+175	    let shape = view.shape;
+176	    let (rows, cols) = orient::display_dims(shape);
+177	    let model_w = shape.dimensions().0;
+178	
+179	    // Build legal-target highlight set when a piece is selected.
+180	    let highlight: std::collections::HashSet<Square> = match selected {
+181	        Some(from) => view
+182	            .legal_moves
+183	            .iter()
+184	            .filter(|m| m.origin_square() == from)
+185	            .filter_map(|m| m.to_square())
+186	            .collect(),
+187	        None => std::collections::HashSet::new(),
+188	    };
+189	
+190	    let border_style = TuiStyle::default().fg(Color::DarkGray);
+191	    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 2);
+192	
+193	    // File header (top)
+194	    lines.push(file_header_line(observer, shape));
+195	
+196	    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
+197	
+198	    for display_row in 0..rows {
+199	        lines.push(rank_row(
+200	            view,
+201	            observer,
+202	            shape,
+203	            display_row,
+204	            cols,
+205	            model_w,
+206	            &highlight,
+207	            cursor,
+208	            selected,
+209	            style,
+210	            use_color,
+211	            border_style,
+212	        ));
+213	
+214	        // Between row (skip after last rank)
+215	        if display_row + 1 == rows {
+216	            // no between row after the final rank
+217	        } else if river_after == Some(display_row) {
+218	            lines.push(river_line(cols, style));
+219	        } else {
+220	            lines.push(between_row(observer, shape, display_row, cols, style, border_style));
+221	        }
+222	    }
+223	
+224	    // File header (bottom)
+225	    lines.push(file_header_line(observer, shape));
+226	
+227	    let para = Paragraph::new(lines);
+228	    frame.render_widget(para, inner);
+229	
+230	    *board_rect = Some(RectPx {
+231	        x: inner.x,
+232	        y: inner.y,
+233	        cell_cols: CELL_COLS,
+234	        cell_rows: CELL_ROWS,
+235	        // file header (1)
+236	        top_pad: 1,
+237	        // rank label (3)
+238	        left_pad: RANK_LABEL_COLS,
+239	    });
+240	}
+241	
+242	#[allow(clippy::too_many_arguments)]
+243	fn rank_row<'a>(
+244	    view: &'a PlayerView,
+245	    observer: Side,
+246	    shape: BoardShape,
+247	    display_row: u8,
+248	    cols: u8,
+249	    model_w: u8,
+250	    highlight: &std::collections::HashSet<Square>,
+251	    cursor: (u8, u8),
+252	    selected: Option<Square>,
+253	    style: Style,
+254	    use_color: bool,
+255	    border_style: TuiStyle,
+256	) -> Line<'a> {
+257	    let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+258	    spans.push(Span::raw(rank_label(observer, shape, display_row)));
+259	
+260	    for display_col in 0..cols {
+261	        let sq = orient::square_at_display(display_row, display_col, observer, shape);
+262	        let (content, st, is_piece_or_glyph) = match sq {
+263	            Some(sq) => intersection_or_piece(
+264	                view,
+265	                sq,
+266	                model_w,
+267	                shape,
+268	                highlight,
+269	                cursor,
+270	                selected,
+271	                style,
+272	                use_color,
+273	                display_row,
+274	                display_col,
+275	            ),
+276	            None => (intersection_glyph(false, style).to_string(), TuiStyle::default(), false),
+277	        };
+278	
+279	        spans.push(Span::styled(content, st));
+280	
+281	        // Connector to next cell or trailing pad on last cell
+282	        if display_col + 1 < cols {
+283	            let connector = horizontal_connector(is_piece_or_glyph, style);
+284	            spans.push(Span::styled(connector, border_style));
+285	        } else if !is_piece_or_glyph {
+286	            // Last cell with 1-col content: pad to 2 cols so all rows have
+287	            // a consistent total width.
+288	            spans.push(Span::raw(" "));
+289	        }
+290	    }
+291	
+292	    Line::from(spans)
+293	}
+294	
+295	/// Per-cell content for a rank row.
+296	/// Returns `(content_str, content_style, content_is_glyph_width_2)`.
+297	/// `content_is_glyph_width_2` is true for revealed pieces and hidden banqi
+298	/// pieces (which use a 2-col glyph); false for empty intersections (1 col).
+299	#[allow(clippy::too_many_arguments)]
+300	fn intersection_or_piece(
+301	    view: &PlayerView,
+302	    sq: Square,
+303	    model_w: u8,
+304	    shape: BoardShape,
+305	    highlight: &std::collections::HashSet<Square>,
+306	    cursor: (u8, u8),
+307	    selected: Option<Square>,
+308	    style: Style,
+309	    use_color: bool,
+310	    display_row: u8,
+311	    display_col: u8,
+312	) -> (String, TuiStyle, bool) {
+313	    let cell = &view.cells[sq.0 as usize];
+314	    let is_cursor = (display_row, display_col) == cursor;
+315	    let is_selected = selected == Some(sq);
+316	    let is_target = highlight.contains(&sq);
+317	
+318	    let (text, is_glyph_w2) = match cell {
+319	        VisibleCell::Empty => {
+320	            let palace_center = is_palace_center(sq, model_w, shape);
+321	            (intersection_glyph(palace_center, style).to_string(), false)
+322	        }
+323	        VisibleCell::Hidden => (glyph::hidden(style).to_string(), true),
+324	        VisibleCell::Revealed(pos) => {
+325	            (glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string(), true)
+326	        }
+327	    };
+328	
+329	    let mut s = TuiStyle::default();
+330	    if use_color {
+331	        if let VisibleCell::Revealed(pos) = cell {
+332	            s = s.fg(side_color(pos.piece.side));
+333	            if !pos.revealed {
+334	                s = s.add_modifier(Modifier::DIM);
+335	            }
+336	            if pos.piece.kind == PieceKind::General {
+337	                s = s.add_modifier(Modifier::BOLD);
+338	            }
+339	        } else if matches!(cell, VisibleCell::Hidden) {
+340	            s = s.fg(Color::DarkGray);
+341	        } else if is_palace_center(sq, model_w, shape) {
+342	            s = s.fg(Color::Yellow);
+343	        } else {
+344	            s = s.fg(Color::DarkGray);
+345	        }
+346	    }
+347	    if is_target {
+348	        s = s.bg(Color::Rgb(40, 80, 40));
+349	    }
+350	    if is_selected {
+351	        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+352	    }
+353	    if is_cursor {
+354	        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+355	    }
+356	    (text, s, is_glyph_w2)
+357	}
+358	
+359	fn is_palace_center(sq: Square, model_w: u8, shape: BoardShape) -> bool {
+360	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+361	        return false;
+362	    }
+363	    let f = (sq.0 % model_w as u16) as u8;
+364	    let r = (sq.0 / model_w as u16) as u8;
+365	    f == 4 && (r == 1 || r == 8)
+366	}
+367	
+368	fn intersection_glyph(palace_center: bool, style: Style) -> &'static str {
+369	    match (palace_center, style) {
+370	        (true, Style::Cjk) => "╳",
+371	        (true, Style::Ascii) => "X",
+372	        (false, Style::Cjk) => "┼",
+373	        (false, Style::Ascii) => "+",
+374	    }
+375	}
+376	
+377	fn horizontal_connector(content_is_w2: bool, style: Style) -> &'static str {
+378	    let dash: char = match style {
+379	        Style::Cjk => '─',
+380	        Style::Ascii => '-',
+381	    };
+382	    if content_is_w2 {
+383	        // 2-col content (piece) leaves 2 cols for connector.
+384	        match dash {
+385	            '─' => "──",
+386	            _ => "--",
+387	        }
+388	    } else {
+389	        // 1-col content (intersection) leaves 3 cols for connector.
+390	        match dash {
+391	            '─' => "───",
+392	            _ => "---",
+393	        }
+394	    }
+395	}
+396	
+397	fn between_row(
+398	    observer: Side,
+399	    shape: BoardShape,
+400	    display_row_above: u8,
+401	    cols: u8,
+402	    style: Style,
+403	    border_style: TuiStyle,
+404	) -> Line<'static> {
+405	    let vbar: char = match style {
+406	        Style::Cjk => '│',
+407	        Style::Ascii => '|',
+408	    };
+409	    let diagonals = palace_diagonals(display_row_above, observer, shape, style);
+410	
+411	    let mut s = String::from("   "); // rank label
+412	    for cell_idx in 0..cols {
+413	        s.push(vbar);
+414	        if cell_idx + 1 < cols {
+415	            // 3-space gap, possibly with a diagonal char in the middle
+416	            // for palace between-rows. cell_idx is the index of the LEFT
+417	            // cell of the gap. Diagonals appear between cells (3, 4) and (4, 5).
+418	            let diag_char = match (diagonals, cell_idx) {
+419	                (Some((left_diag, _)), 3) => Some(left_diag),
+420	                (Some((_, right_diag)), 4) => Some(right_diag),
+421	                _ => None,
+422	            };
+423	            match diag_char {
+424	                Some(c) => {
+425	                    s.push(' ');
+426	                    s.push(c);
+427	                    s.push(' ');
+428	                }
+429	                None => s.push_str("   "),
+430	            }
+431	        }
+432	    }
+433	    // Trailing space so the row width matches rank rows (34 cols of content
+434	    // + 3 of rank label).
+435	    s.push(' ');
+436	    Line::from(Span::styled(s, border_style))
+437	}
+438	
+439	/// For a between-row sitting between display rows N and N+1, returns the
+440	/// (left, right) diagonal characters if this between-row crosses a palace.
+441	/// Otherwise None.
+442	fn palace_diagonals(
+443	    display_row_above: u8,
+444	    observer: Side,
+445	    shape: BoardShape,
+446	    style: Style,
+447	) -> Option<(char, char)> {
+448	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+449	        return None;
+450	    }
+451	    let top_sq = orient::square_at_display(display_row_above, 4, observer, shape)?;
+452	    let bot_sq = orient::square_at_display(display_row_above + 1, 4, observer, shape)?;
+453	    let top_rank = (top_sq.0 / 9) as u8;
+454	    let bot_rank = (bot_sq.0 / 9) as u8;
+455	    let (low, high) = if top_rank < bot_rank { (top_rank, bot_rank) } else { (bot_rank, top_rank) };
+456	
+457	    let center_rank = match (low, high) {
+458	        (0, 1) | (1, 2) => 1u8,
+459	        (7, 8) | (8, 9) => 8u8,
+460	        _ => return None,
+461	    };
+462	
+463	    let top_dist = (top_rank as i32 - center_rank as i32).abs();
+464	    let bot_dist = (bot_rank as i32 - center_rank as i32).abs();
+465	    let converging = bot_dist < top_dist;
+466	
+467	    let (left_cjk, right_cjk) = if converging { ('╲', '╱') } else { ('╱', '╲') };
+468	    let (left, right) = match style {
+469	        Style::Cjk => (left_cjk, right_cjk),
+470	        Style::Ascii => (if converging { '\\' } else { '/' }, if converging { '/' } else { '\\' }),
+471	    };
+472	    Some((left, right))
+473	}
+474	
+475	fn river_line(cols: u8, style: Style) -> Line<'static> {
+476	    // The river replaces the between-row entirely; there are no vertical
+477	    // bars connecting through it. Total width must match a rank row:
+478	    //   rank label (3) + grid (cols * 4 - 2) + trailing pad to align.
+479	    let target_width = (cols as usize) * 4 - 2;
+480	    let banner = match style {
+481	        Style::Cjk => "〇 楚 河 ── 漢 界 〇",
+482	        Style::Ascii => "~ river -- river ~",
+483	    };
+484	    let mut s = String::from("   "); // rank label
+485	    let banner_w = visual_width(banner);
+486	    let pad = target_width.saturating_sub(banner_w);
+487	    let left_pad = pad / 2;
+488	    let right_pad = pad - left_pad;
+489	    for _ in 0..left_pad {
+490	        s.push(' ');
+491	    }
+492	    s.push_str(banner);
+493	    for _ in 0..right_pad {
+494	        s.push(' ');
+495	    }
+496	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+497	}
+498	
+499	/// Approximate display width: CJK chars count as 2 cols, others as 1.
+500	fn visual_width(s: &str) -> usize {
+501	    s.chars()
+502	        .map(|c| {
+503	            let cp = c as u32;
+504	            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+505	            // box-drawing isn't wide. This is "good enough" — a real fix
+506	            // would pull in unicode-width.
+507	            if (0x1100..=0x115F).contains(&cp)
+508	                || (0x2E80..=0x303E).contains(&cp)
+509	                || (0x3041..=0x33FF).contains(&cp)
+510	                || (0x3400..=0x4DBF).contains(&cp)
+511	                || (0x4E00..=0x9FFF).contains(&cp)
+512	                || (0xA000..=0xA4CF).contains(&cp)
+513	                || (0xAC00..=0xD7A3).contains(&cp)
+514	                || (0xF900..=0xFAFF).contains(&cp)
+515	                || (0xFE30..=0xFE4F).contains(&cp)
+516	                || (0xFF00..=0xFF60).contains(&cp)
+517	                || (0xFFE0..=0xFFE6).contains(&cp)
+518	            {
+519	                2
+520	            } else {
+521	                1
+522	            }
+523	        })
+524	        .sum()
+525	}
+526	
+527	fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+528	    let (w, _) = shape.dimensions();
+529	    let (_, cols) = orient::display_dims(shape);
+530	    // Each cell takes 4 cols (label at col 0, then 3 spaces). Last cell
+531	    // has just the label + 1 trailing space to match rank-row width.
+532	    let mut s = String::from("   "); // rank label
+533	    for display_col in 0..cols {
+534	        let label = file_label_for_col(display_col, w, shape, observer);
+535	        s.push(label);
+536	        if display_col + 1 < cols {
+537	            s.push_str("   ");
+538	        } else {
+539	            s.push(' '); // trailing pad
+540	        }
+541	    }
+542	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+543	}
+544	
+545	fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+546	    let sq = orient::square_at_display(0, col, observer, shape);
+547	    match (shape, sq) {
+548	        // Banqi displays transposed (8 cols × 4 rows). Display columns
+549	        // therefore correspond to model RANKS (0–7), and rows to files (a–d).
+550	        (BoardShape::Banqi4x8, Some(sq)) => {
+551	            let r = (sq.0 / model_w as u16) as u8;
+552	            (b'0' + r) as char
+553	        }
+554	        (_, Some(sq)) => {
+555	            let f = (sq.0 % model_w as u16) as u8;
+556	            (b'a' + f) as char
+557	        }
+558	        _ => '?',
+559	    }
+560	}
+561	
+562	fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+563	    let sq = orient::square_at_display(display_row, 0, observer, shape);
+564	    let model_w = shape.dimensions().0;
+565	    match (shape, sq) {
+566	        (BoardShape::Banqi4x8, Some(sq)) => {
+567	            // Banqi rows = model files; show as a–d.
+568	            let f = (sq.0 % model_w as u16) as u8;
+569	            format!(" {} ", (b'a' + f) as char)
+570	        }
+571	        (_, Some(sq)) => {
+572	            let r = (sq.0 / model_w as u16) as u8;
+573	            format!(" {} ", r)
+574	        }
+575	        _ => "   ".to_string(),
+576	    }
+577	}
+578	
+579	fn side_color(side: Side) -> Color {
+580	    match side {
+581	        Side::RED => Color::Red,
+582	        Side::BLACK => Color::White,
+583	        _ => Color::Green,
+584	    }
+585	}
+586	
+587	fn draw_sidebar(
+588	    frame: &mut Frame,
+589	    area: Rect,
+590	    g: &GameView,
+591	    view: &PlayerView,
+592	    style: Style,
+593	    help_open: bool,
+594	) {
+595	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+596	    let inner = block.inner(area);
+597	    frame.render_widget(block, area);
+598	
+599	    let mut lines: Vec<Line> = Vec::new();
+600	
+601	    // Game-over banner (takes priority).
+602	    if let Some(banner) = game_over_banner(&view.status, style) {
+603	        for l in banner {
+604	            lines.push(l);
+605	        }
+606	        lines.push(Line::from(""));
+607	    }
+608	
+609	    let variant_label = match view.shape {
+610	        BoardShape::Xiangqi9x10 => {
+611	            // Casual is the TUI default; strict is the alternative.
+612	            if g.state.rules.xiangqi_allow_self_check {
+613	                "Xiangqi (象棋)"
+614	            } else {
+615	                "Xiangqi (象棋, strict)"
+616	            }
+617	        }
+618	        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+619	        BoardShape::ThreeKingdom => "三國暗棋",
+620	        BoardShape::Custom { .. } => "Custom",
+621	    };
+622	    lines.push(line_label_value("Variant:", variant_label));
+623	
+624	    // Side-to-move only makes sense while the game is ongoing; once it's
+625	    // Won/Drawn the banner above already shows the winner.
+626	    if matches!(view.status, GameStatus::Ongoing) {
+627	        let stm_color = side_color(view.side_to_move);
+628	        lines.push(Line::from(vec![
+629	            Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+630	            Span::raw(" "),
+631	            Span::styled(
+632	                glyph::side_name(view.side_to_move, style),
+633	                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+634	            ),
+635	        ]));
+636	
+637	        if matches!(view.shape, BoardShape::Xiangqi9x10) && g.state.is_in_check(view.side_to_move) {
+638	            lines.push(Line::from(Span::styled(
+639	                "  ⚠ CHECK 將軍 — your general is under attack",
+640	                TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+641	            )));
+642	        }
+643	    }
+644	
+645	    let (status_text, status_color) = format_status_short(view.status, style);
+646	    lines.push(Line::from(vec![
+647	        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+648	        Span::raw(" "),
+649	        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+650	    ]));
+651	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+652	    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+653	
+654	    let selected_label = match g.selected {
+655	        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+656	        None => "—".into(),
+657	    };
+658	    lines.push(line_label_value("Selected:", &selected_label));
+659	
+660	    lines.push(Line::from(""));
+661	    if let Some(msg) = &g.last_msg {
+662	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+663	    }
+664	
+665	    if help_open {
+666	        lines.push(Line::from(""));
+667	        lines.push(Line::from(Span::styled(
+668	            "Help",
+669	            TuiStyle::default().add_modifier(Modifier::BOLD),
+670	        )));
+671	        for ln in HELP_LINES {
+672	            lines.push(Line::from(Span::raw(*ln)));
+673	        }
+674	    } else {
+675	        lines.push(Line::from(""));
+676	        lines.push(Line::from(Span::styled(
+677	            "?=help, r=rules, n=new, q=quit",
+678	            TuiStyle::default().fg(Color::DarkGray),
+679	        )));
+680	    }
+681	
+682	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+683	    frame.render_widget(para, inner);
+684	}
+685	
+686	fn draw_sidebar_net(
+687	    frame: &mut Frame,
+688	    area: Rect,
+689	    n: &NetView,
+690	    view: &PlayerView,
+691	    style: Style,
+692	    help_open: bool,
+693	) {
+694	    let block = Block::default().borders(Borders::ALL).title(" Status (net) ");
+695	    let inner = block.inner(area);
+696	    frame.render_widget(block, area);
+697	
+698	    let mut lines: Vec<Line> = Vec::new();
+699	
+700	    if let Some(banner) = game_over_banner(&view.status, style) {
+701	        for l in banner {
+702	            lines.push(l);
+703	        }
+704	        lines.push(Line::from(""));
+705	    }
+706	
+707	    let variant_label = match (view.shape, n.rules.as_ref()) {
+708	        (BoardShape::Xiangqi9x10, Some(r)) => {
+709	            if r.xiangqi_allow_self_check {
+710	                "Xiangqi (象棋)"
+711	            } else {
+712	                "Xiangqi (象棋, strict)"
+713	            }
+714	        }
+715	        (BoardShape::Xiangqi9x10, None) => "Xiangqi (象棋)",
+716	        (BoardShape::Banqi4x8, _) => "Banqi (暗棋)",
+717	        (BoardShape::ThreeKingdom, _) => "三國暗棋",
+718	        (BoardShape::Custom { .. }, _) => "Custom",
+719	    };
+720	    lines.push(line_label_value("Variant:", variant_label));
+721	
+722	    if let Some(side) = n.observer {
+723	        let c = side_color(side);
+724	        lines.push(Line::from(vec![
+725	            Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
+726	            Span::raw(" "),
+727	            Span::styled(
+728	                glyph::side_name(side, style),
+729	                TuiStyle::default().fg(c).add_modifier(Modifier::BOLD),
+730	            ),
+731	        ]));
+732	    }
+733	
+734	    if matches!(view.status, GameStatus::Ongoing) {
+735	        let stm_color = side_color(view.side_to_move);
+736	        let label = if Some(view.side_to_move) == n.observer { "Your turn:" } else { "Opponent:" };
+737	        lines.push(Line::from(vec![
+738	            Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+739	            Span::raw(" "),
+740	            Span::styled(
+741	                glyph::side_name(view.side_to_move, style),
+742	                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+743	            ),
+744	        ]));
+745	    }
+746	
+747	    let (status_text, status_color) = format_status_short(view.status, style);
+748	    lines.push(Line::from(vec![
+749	        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+750	        Span::raw(" "),
+751	        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+752	    ]));
+753	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+754	
+755	    let selected_label = match n.selected {
+756	        Some(sq) => format!("sq {}", sq.0),
+757	        None => "—".into(),
+758	    };
+759	    lines.push(line_label_value("Selected:", &selected_label));
+760	
+761	    lines.push(line_label_value("Server:", &n.url));
+762	    lines.push(line_label_value("Connection:", if n.connected { "live" } else { "disconnected" }));
+763	
+764	    lines.push(Line::from(""));
+765	    if let Some(msg) = &n.last_msg {
+766	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+767	    }
+768	
+769	    if help_open {
+770	        lines.push(Line::from(""));
+771	        lines.push(Line::from(Span::styled(
+772	            "Help",
+773	            TuiStyle::default().add_modifier(Modifier::BOLD),
+774	        )));
+775	        for ln in HELP_LINES_NET {
+776	            lines.push(Line::from(Span::raw(*ln)));
+777	        }
+778	    } else {
+779	        lines.push(Line::from(""));
+780	        lines.push(Line::from(Span::styled(
+781	            "?=help, r=rules, q=quit",
+782	            TuiStyle::default().fg(Color::DarkGray),
+783	        )));
+784	    }
+785	
+786	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+787	    frame.render_widget(para, inner);
+788	}
+789	
+790	const HELP_LINES_NET: &[&str] = &[
+791	    "h j k l / ←↓↑→  move cursor",
+792	    "Enter / Space   select / commit (sends Move to server)",
+793	    "Esc             cancel selection",
+794	    "f               flip (banqi)",
+795	    "n               request rematch (after game over; needs both sides)",
+796	    "r               toggle rules overlay",
+797	    "?               toggle this help",
+798	    "Click           select / commit",
+799	    "q / Ctrl-C      quit (closes the connection)",
+800	    "(undo not supported online yet)",
+801	];
+802	
+803	fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+804	    match status {
+805	        GameStatus::Ongoing => None,
+806	        GameStatus::Won { winner, reason } => {
+807	            let header = Line::from(Span::styled(
+808	                "★  GAME OVER  ★",
+809	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+810	            ));
+811	            let winner_line = Line::from(vec![
+812	                Span::raw("Winner: "),
+813	                Span::styled(
+814	                    glyph::side_name(*winner, style),
+815	                    TuiStyle::default().fg(side_color(*winner)).add_modifier(Modifier::BOLD),
+816	                ),
+817	            ]);
+818	            let reason_line = Line::from(vec![
+819	                Span::raw("Reason: "),
+820	                Span::styled(
+821	                    win_reason_label(*reason),
+822	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+823	                ),
+824	            ]);
+825	            let footer = Line::from(Span::styled(
+826	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+827	                TuiStyle::default().fg(Color::Cyan),
+828	            ));
+829	            Some(vec![header, winner_line, reason_line, footer])
+830	        }
+831	        GameStatus::Drawn { reason } => {
+832	            let header = Line::from(Span::styled(
+833	                "—  DRAW  —",
+834	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+835	            ));
+836	            let reason_line = Line::from(vec![
+837	                Span::raw("Reason: "),
+838	                Span::styled(
+839	                    format!("{:?}", reason),
+840	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+841	                ),
+842	            ]);
+843	            let footer = Line::from(Span::styled(
+844	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+845	                TuiStyle::default().fg(Color::Cyan),
+846	            ));
+847	            Some(vec![header, reason_line, footer])
+848	        }
+849	    }
+850	}
+851	
+852	fn win_reason_label(reason: WinReason) -> &'static str {
+853	    match reason {
+854	        WinReason::Checkmate => "Checkmate (將死)",
+855	        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+856	        WinReason::Resignation => "Resignation",
+857	        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+858	        WinReason::Timeout => "Time forfeit",
+859	        WinReason::GeneralCaptured => "General captured (將被吃)",
+860	    }
+861	}
+862	
+863	/// Compact, human-readable rendering of `GameStatus` for the sidebar's
+864	/// `Status:` line. Returns `(text, color)`. Engine `Debug` repr leaks
+865	/// `Side(0)` etc. and reads as noise to a player.
+866	fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+867	    match status {
+868	        GameStatus::Ongoing => ("Ongoing".to_string(), Color::Gray),
+869	        GameStatus::Won { winner, reason } => (
+870	            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+871	            side_color(winner),
+872	        ),
+873	        GameStatus::Drawn { reason } => (format!("Draw — {:?}", reason), Color::Gray),
+874	    }
+875	}
+876	
+877	fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+878	    Line::from(vec![
+879	        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+880	        Span::raw(" "),
+881	        Span::raw(value.to_string()),
+882	    ])
+883	}
+884	
+885	fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+886	    // Center an overlay roughly 70 cols × 24 rows over the screen.
+887	    let pad_x = area.width.saturating_sub(72) / 2;
+888	    let pad_y = area.height.saturating_sub(26) / 2;
+889	    let overlay = Rect {
+890	        x: area.x + pad_x,
+891	        y: area.y + pad_y,
+892	        width: area.width.min(72),
+893	        height: area.height.min(26),
+894	    };
+895	    frame.render_widget(Clear, overlay);
+896	    let block =
+897	        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+898	    let lines: Vec<Line> = RULES_LINES
+899	        .iter()
+900	        .map(|(s, accent)| {
+901	            let style = if *accent {
+902	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+903	            } else {
+904	                TuiStyle::default()
+905	            };
+906	            Line::from(Span::styled(*s, style))
+907	        })
+908	        .collect();
+909	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+910	    frame.render_widget(para, overlay);
+911	}
+912	
+913	fn draw_quit_confirm_overlay(frame: &mut Frame, area: Rect) {
+914	    // Small modal centered over the screen.
+915	    let w = 48u16;
+916	    let h = 7u16;
+917	    let pad_x = area.width.saturating_sub(w) / 2;
+918	    let pad_y = area.height.saturating_sub(h) / 2;
+919	    let overlay = Rect {
+920	        x: area.x + pad_x,
+921	        y: area.y + pad_y,
+922	        width: area.width.min(w),
+923	        height: area.height.min(h),
+924	    };
+925	    frame.render_widget(Clear, overlay);
+926	    let block = Block::default()
+927	        .borders(Borders::ALL)
+928	        .title(" Quit? ")
+929	        .border_style(TuiStyle::default().fg(Color::Yellow));
+930	    let lines = vec![
+931	        Line::from(""),
+932	        Line::from(Span::styled(
+933	            "  End the in-progress game?",
+934	            TuiStyle::default().add_modifier(Modifier::BOLD),
+935	        )),
+936	        Line::from(Span::styled(
+937	            "  Press y to quit, anything else to keep playing.",
+938	            TuiStyle::default().fg(Color::Gray),
+939	        )),
+940	    ];
+941	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+942	    frame.render_widget(para, overlay);
+943	}
+944	
+945	const HELP_LINES: &[&str] = &[
+946	    "h j k l / ←↓↑→  move cursor",
+947	    "Enter / Space   select / commit",
+948	    "Esc             cancel selection",
+949	    "u               undo last move",
+950	    "f               flip (banqi)",
+951	    "n               new game (back to picker)",
+952	    "r               toggle rules overlay",
+953	    "?               toggle this help",
+954	    "Click           select / commit",
+955	    "q / Ctrl-C      quit",
+956	];
+957	
+958	const RULES_LINES: &[(&str, bool)] = &[
+959	    ("Xiangqi 象棋", true),
+960	    ("", false),
+961	    ("• Red (帥仕相俥傌炮兵) moves first; Black (將士象車馬砲卒) replies.", false),
+962	    ("• General/Advisor stay inside the 3×3 palace (files d–f).", false),
+963	    ("• Elephants stay on their own side of the river (ranks 0–4 / 5–9).", false),
+964	    ("• Horses are blocked by 馬腿 — the orthogonal step in the move's direction.", false),
+965	    ("• Cannon non-capturing slide is like a chariot; capture requires jumping", false),
+966	    ("  exactly one piece (the screen 砲架) in a straight line.", false),
+967	    ("• Soldiers move forward one square; after crossing the river they can also", false),
+968	    ("  move sideways (but never backward).", false),
+969	    ("• Generals cannot face each other on a clear file (飛將 rule).", false),
+970	    ("• Standard: any move that leaves your general capturable is illegal.", false),
+971	    ("  Casual mode (--allow-self-check / picker entry) lifts that filter;", false),
+972	    ("  the game ends when the general is physically captured.", false),
+973	    ("", false),
+974	    ("Banqi 暗棋", true),
+975	    ("", false),
+976	    ("• 4×8 half-board, 32 pieces face-down. Pick a hidden piece to flip;", false),
+977	    ("  the FIRST flip locks the colors (flipper plays the revealed color).", false),
+978	    ("• Capture by piece rank: General > Advisor > Elephant > Chariot >", false),
+979	    ("  Horse > Cannon > Soldier. Soldier captures General (民推翻王).", false),
+980	    ("• Cannon captures by jumping over exactly one piece (any rank).", false),
+981	    ("• House rules (toggleable presets): chain-capture (連吃), chariot-rush", false),
+982	    ("  (車衝). Other house rules are P1 TODO.", false),
+983	    ("", false),
+984	    ("Press r or Esc to close. Default keys: hjkl/arrows · Enter · u · f · n · q", true),
+985	];
+986
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/protocol.rs`
+
+```text
+1	//! Wire protocol between `chess-net-server` and clients.
+2	//!
+3	//! Frames are JSON text frames, one message per frame. Tagged enums via
+4	//! `#[serde(tag = "type")]` keep the schema obvious in `wscat`/`jq`.
+5	//!
+6	//! All payload types come straight from `chess-core` and already derive
+7	//! `Serialize/Deserialize`, including the proptest-validated no-leak
+8	//! projection in `PlayerView` (hidden banqi pieces stay opaque on the wire).
+9	
+10	use chess_core::moves::Move;
+11	use chess_core::piece::Side;
+12	use chess_core::rules::RuleSet;
+13	use chess_core::view::PlayerView;
+14	use serde::{Deserialize, Serialize};
+15	
+16	/// Bumped whenever the wire schema changes incompatibly.
+17	pub const PROTOCOL_VERSION: u16 = 1;
+18	
+19	/// Server → client.
+20	#[derive(Clone, Debug, Serialize, Deserialize)]
+21	#[serde(tag = "type")]
+22	pub enum ServerMsg {
+23	    /// Sent once per client right after side assignment. Carries the variant
+24	    /// (so the client knows what to render) plus the initial `PlayerView`.
+25	    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+26	    /// Sent to every seated client after each committed move.
+27	    Update { view: PlayerView },
+28	    /// Illegal move, room full, malformed message, opponent disconnect, etc.
+29	    /// Non-fatal by default — clients should display and keep the connection.
+30	    Error { message: String },
+31	}
+32	
+33	/// Client → server.
+34	#[derive(Clone, Debug, Serialize, Deserialize)]
+35	#[serde(tag = "type")]
+36	pub enum ClientMsg {
+37	    /// Submit a move. For `Move::Reveal`, send `revealed: None` — the server
+38	    /// fills in the piece identity locally; the wire form stays `None`.
+39	    Move { mv: Move },
+40	    /// Resign — ends the game with `WinReason::Resignation` for the opponent.
+41	    Resign,
+42	    /// Request a rematch. Only valid after the current game has ended
+43	    /// (Won / Drawn). Server resets the game when both sides have requested
+44	    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+45	    /// fresh `GameState`.
+46	    Rematch,
+47	}
+48
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/bin/server.rs`
+
+```text
+1	//! `chess-net-server` — single-room ws host for chess-core.
+2	//!
+3	//! Examples:
+4	//!   chess-net-server xiangqi --port 7878
+5	//!   chess-net-server xiangqi --port 7878 --strict
+6	//!   chess-net-server banqi --port 7878 --preset taiwan --seed 42
+7	
+8	use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+9	
+10	use anyhow::{anyhow, Result};
+11	use chess_core::rules::{HouseRules, RuleSet};
+12	use clap::{Parser, Subcommand, ValueEnum};
+13	
+14	#[derive(Parser, Debug)]
+15	#[command(name = "chess-net-server", about = "ws server for chess-core (single room MVP)")]
+16	struct Cli {
+17	    /// Listen port (loopback only).
+18	    #[arg(long, default_value_t = 7878)]
+19	    port: u16,
+20	
+21	    /// Override bind address. Defaults to 127.0.0.1:<port>.
+22	    #[arg(long)]
+23	    addr: Option<SocketAddr>,
+24	
+25	    #[command(subcommand)]
+26	    variant: VariantCmd,
+27	}
+28	
+29	#[derive(Subcommand, Debug)]
+30	enum VariantCmd {
+31	    /// Xiangqi (9×10). Casual rules by default; pass `--strict` for the
+32	    /// standard self-check filter.
+33	    Xiangqi {
+34	        #[arg(long)]
+35	        strict: bool,
+36	    },
+37	    /// Banqi (4×8 face-down).
+38	    Banqi {
+39	        #[arg(long, value_enum)]
+40	        preset: Option<PresetArg>,
+41	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+42	        #[arg(long)]
+43	        house: Option<String>,
+44	        #[arg(long)]
+45	        seed: Option<u64>,
+46	    },
+47	}
+48	
+49	#[derive(Copy, Clone, Debug, ValueEnum)]
+50	enum PresetArg {
+51	    Purist,
+52	    Taiwan,
+53	    Aggressive,
+54	}
+55	
+56	#[tokio::main]
+57	async fn main() -> Result<()> {
+58	    let cli = Cli::parse();
+59	    let addr = cli
+60	        .addr
+61	        .unwrap_or_else(|| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), cli.port));
+62	
+63	    let rules = match cli.variant {
+64	        VariantCmd::Xiangqi { strict } => {
+65	            if strict {
+66	                RuleSet::xiangqi()
+67	            } else {
+68	                RuleSet::xiangqi_casual()
+69	            }
+70	        }
+71	        VariantCmd::Banqi { preset, house, seed } => {
+72	            build_banqi_rules(preset.as_ref(), house.as_deref(), seed)?
+73	        }
+74	    };
+75	
+76	    chess_net::run(addr, rules).await
+77	}
+78	
+79	fn build_banqi_rules(
+80	    preset: Option<&PresetArg>,
+81	    house: Option<&str>,
+82	    seed: Option<u64>,
+83	) -> Result<RuleSet> {
+84	    let mut flags = HouseRules::empty();
+85	    if let Some(p) = preset {
+86	        flags |= match p {
+87	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+88	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+89	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+90	        };
+91	    }
+92	    if let Some(s) = house {
+93	        for tok in s.split(',') {
+94	            flags |= match tok.trim() {
+95	                "chain" => HouseRules::CHAIN_CAPTURE,
+96	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+97	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+98	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+99	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+100	                other => return Err(anyhow!("unknown house rule: {other}")),
+101	            };
+102	        }
+103	    }
+104	    let flags = chess_core::rules::house::normalize(flags);
+105	    Ok(match seed {
+106	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+107	        None => RuleSet::banqi(flags),
+108	    })
+109	}
+110
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:05:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Research lobby/SSH chess server patterns
+
+```text
+Perfect. Now I have all the information I need. Let me compile my findings into a comprehensive report:
+
+## Summary Report: Multi-Room Lobby Integration Approaches
+
+Based on analysis of the codebase, here are the three options evaluated against architectural reality:
+
+### **Existing Context from Docs**
+
+**Architecture.md** (Go+wish vs Rust+axum analysis):
+The tech-selection table notes Go+wish would "give 'ssh chess.you.dev' for free" as a multiplayer story, but Rust+WASM+axum was chosen for better core reuse (same `chess-core` compiled to native TUI and wasm32-unknown-unknown). This decision is locked in and mentioned as intentional trade-off.
+
+**TODO.md — Direct Quotes**:
+- **P? entry**: `[?/L] Wish/SSH multiplayer alternative to chess-net` — "Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?"
+- **P2 entry**: `[M] chess-net: multi-room lobby + optional password` — "Today the server hosts a single hard-coded room; two clients connect to the same `ws://host:port` and that's the game. Move to: route `GET /ws/<room-id>` upgrades into room `<room-id>` (auto-created if absent), `GET /rooms` returns a JSON list `[{id, variant, seats, has_password}]`, optional `?password=<secret>` query param locked in on first join (subsequent joiners with wrong password get `Error{"bad password"}` and are dropped). chess-tui flag: `--connect ws://host/ws/<id>` plus `--password <pw>`."
+
+**CLAUDE.md** constraint:
+"`chess-net` MVP is single-room, single-game." The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds one authoritative `GameState` in `Arc<Mutex<RoomState>>`. First connection = Red, second = Black, third+ gets "room full". This is a hard simplification; the backlog notes the multi-room work separately.
+
+**No conflicting pitfalls found** — neither `pitfalls/` nor `backlog/` document ws+http coexistence issues or room-state gotchas yet.
+
+---
+
+### **Option A: Extend chess-tui with Screen::Lobby**
+
+**Pro:**
+- **Minimal app.rs churn**: The `Screen` enum (line 90 of app.rs) already has `Picker(PickerView)`, `Game(Box<GameView>)`, `Net(Box<NetView>)`. Adding `Lobby(LobbyView)` follows the established pattern. Dispatch in ui.rs (~985 lines) already handles three screen types; a fourth is incremental.
+- **Reuse PickerEntry logic**: The picker's cursor-based list navigation (line 28-62 of app.rs) is reusable for room browsing — same keybinds (hjkl, Enter, Esc).
+- **Single transport**: Net client (net.rs, 144 lines) currently polls `ServerMsg` enums. Adding a `Lobby` variant to `ServerMsg` and a lobby-list subscription keeps the sync `tungstenite` thread architecture intact (no tokio in TUI).
+
+**Con:**
+- **Protocol expansion**: `ServerMsg` and `ClientMsg` enums (protocol.rs, 48 lines total) must grow `Lobby{ rooms: Vec<RoomInfo> }` + `ClientMsg::ListRooms` + `ClientMsg::JoinRoom(id)`. Not large, but couples the net layer to TUI concerns.
+- **Server-side multi-room**: chess-net's single `Arc<Mutex<RoomState>>` (server.rs line 26) must become `HashMap<RoomId, Arc<Mutex<RoomState>>>`, subscription management, cleanup. The upgrade path is `Router::new().route("/:room_id/ws", ...)` with state extraction — axum pattern is clean here, but you're adding multiplexing logic to a 140-line server that today has none.
+- **Lobby → Game transition**: Picking a room in the lobby has to wire into the existing `--connect` flow. The `url` field in `NetView` (app.rs line 78) becomes dynamic post-selection. Doable, but not trivial — the current code assumes static `--connect <url>`.
+
+---
+
+### **Option B: Separate Command `chess-tui-lobby` or Subcommand**
+
+**Pro:**
+- **Code isolation**: A `chess-tui-lobby` binary or `chess-tui lobby <host>` subcommand is a separate Rust crate or entry point. Zero changes to existing GameView/picker logic.
+- **Focused scope**: Only needs to render a room list, poll `GET /rooms`, and output a selected room URL. Doesn't touch the move-commit pipeline.
+- **Reusable UI**: Could reuse ratatui + the cursor picker directly; only the data model is new (rooms instead of PickerEntry variants).
+
+**Con:**
+- **NetClient duplication**: The lobby command needs to poll a REST endpoint or a "lobby subscription" channel. It can't reuse `net.rs` (which is tungstenite ws + mpsc for game moves). You'll either copy the http-polling logic or write a thin REST client. Cost: ~100–200 LOC, but requires a second mini-transport layer.
+- **UX friction**: Users run `chess-tui-lobby chess.you.dev`, pick a room, then copy the room ID and run `chess-tui --connect ws://chess.you.dev/ws/<id>`. Two commands instead of one. For the "casual friends" scenario, this is slower than in-app switching.
+- **Maintenance burden**: A second binary doubles the test matrix and release surface. If the server's room schema changes, both `chess-tui` and `chess-tui-lobby` must stay in sync.
+
+---
+
+### **Option C: SSH Server with russh**
+
+**Pro:**
+- **No axum overhead**: The TCP server loop is entirely owned by russh; you get full terminal emulation and session handling for free.
+- **Native TUI delivery**: Users `ssh chess.you.dev` and immediately get a ratatui lobby + interactive game, all in their terminal. No copy-paste of room URLs.
+- **Session-per-player**: russh assigns a pty and multiplexes stdin/stdout. Multiplayer state lives server-side per connection, naturally.
+
+**Con:**
+- **Axum vs russh coexistence**: Today chess-net is axum-ws only. Adding russh means two transport stacks on the same host. The game state (`RoomState`, `GameState`) can be shared via `Arc<Mutex<...>>` across both, but you're maintaining two IO loops (one async axum + one threaded russh). Operational complexity: two listener threads, separate port bindings, different error handling.
+- **Maintenance cost is real**: russh is less polished than axum (documentation shallower, smaller ecosystem). You're on the hook for SSH key management, pty handling, signal delivery (SIGWINCH for resize). If a player's SSH session disconnects ungracefully, you need to detect it and notify their opponent (reconnect-aware room state).
+- **Locks in the transport**: This approach says "SSH is the canonical transport." If later you want to ship a web client or a native iOS app, they can't use the same SSH server. The axum path leaves room for `chess-web` (P2 TODO) to coexist; this one doesn't.
+- **Build complexity**: russh is a big dependency tree. Single-binary deployment becomes less single — you need runtime config (host keys, user DB if auth exists).
+
+---
+
+### **REST vs Lobby-WS Patterns for Room Discovery**
+
+Both approaches appear in Rust multiplayer architectures:
+
+| Pattern | Pros | Cons |
+|---------|------|------|
+| **`GET /rooms` JSON endpoint** | Stateless, cacheable, CLI-friendly (`curl http://...`). No subscription overhead. | Lobby list is snapshot, not live. If a room fills during your read, you don't know until the next poll. |
+| **Lobby WS channel** (subscribe to room updates) | Live notifications when rooms fill/empty. Scales to many concurrent lobby watchers. | Adds connection overhead (one more ws per viewer). Requires server-side subscription book-keeping. Slightly trickier error handling (what if subscribe fails mid-game). |
+
+**Recommendation for this codebase**: `GET /rooms` JSON is simpler for an MVP. The chess-net server is already axum; adding one more route is trivial (axum::routing::get(handlers::list_rooms)).  Polling every 2–5 seconds in a `Screen::Lobby` is fine for "a dozen friends playing"—scale it to hundreds of concurrent lobbies later.
+
+---
+
+## Bottom Line
+
+**Option A** has the lowest friction for the "single integrated experience" goal — users never leave the TUI. Surface area is ~500 LOC (new Screen variant, room list picker, protocol enums). Tradeoff: couples lobby UI to game protocol, and the server grows multiplexing logic.
+
+**Option B** minimizes code changes to the core game path but doubles tooling complexity and UX friction. Use this if you want to ship game-only logic as stable while lobby browsing is orthogonal research.
+
+**Option C** is architecturally cleanest (single transport, native terminal session) but adds operational burden (two transport stacks, SSH key management) and pre-commits to SSH as the canonical interface. Revisit after chess-web ships, if at all.
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-06 09:04:33Z)**_
+
+I'm designing a multi-room lobby + optional password layer on top of an existing axum-ws chess server (Rust). I want to evaluate three integration approaches before committing:
+
+A. **Extend chess-tui** with a new `Screen::Lobby` showing a room list, integrated into the existing connect flow.
+B. **Separate command** like `chess-tui-lobby` or a `chess-tui lobby <host>` subcommand that's purely for room browsing.
+C. **SSH-based server** using `russh` so users do `ssh chess.you.dev` and get a TUI-rendered lobby + game.
+
+The repo already discusses option C in `TODO.md` and `docs/architecture.md` as a P? spike. Read these files and summarize what's already been considered:
+
+1. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/architecture.md` — find the section that compares Go+wish vs Rust+axum+ws for the multiplayer story.
+
+2. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md` — already loaded in context; find the `P?` entry on `Wish/SSH multiplayer alternative to chess-net` and the new `P2` entry on `chess-net: multi-room lobby + optional password`. Quote them.
+
+3. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/AGENTS.md` — does it mention any architectural constraints that rule out adding HTTP routes (vs ws-only) on the chess-net server?
+
+4. `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md` — already loaded; find the section that mentions `chess-net MVP is single-room`. What constraints does it imply for the lobby design?
+
+5. Are there any `backlog/<slug>.md` files relating to lobby, multi-room, or ssh? Use `ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/` and grep for keywords.
+
+6. Any `pitfalls/<slug>.md` that warns about ws+http coexistence, room state, or client reconnect issues? Use `ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/` and grep.
+
+For each of the three integration options, give a 3-bullet pro/con summary based on the codebase reality (not generic advice). Specifically:
+- Option A: how much app.rs / ui.rs surface area changes? Reuse of existing picker?
+- Option B: code duplication cost — does it need its own NetClient or share?
+- Option C: would it require axum to coexist with russh, or replace it? What's the maintenance cost of two transport stacks?
+
+Also: is there an idiomatic way axum-ws servers expose a lobby? (e.g. `GET /rooms` REST endpoint returning JSON, vs a "lobby ws" channel that streams room-list updates). Briefly note pros/cons of each.
+
+Keep the report under 700 words. I'm looking for facts + tradeoffs, not a recommendation.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:34Z)**_
+
+I'll systematically explore the repo to gather the architectural context you need.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/architecture.md`
+
+```text
+1	# Architecture
+2	
+3	Distilled from the technology selection round. See [`adr/`](adr/) for individual decisions.
+4	
+5	## Goals
+6	
+7	- Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), and 三國暗棋.
+8	- Toggleable banqi house rules: 連吃, 暗連, 車衝, 馬斜, 炮快移.
+9	- Self-hostable server for friends; native TUI and Web clients sharing the same engine.
+10	- Mouse + keyboard UX (Vim-style + coordinate input).
+11	
+12	## Tech Selection
+13	
+14	| Option | TUI | Web | Multiplayer | Core reuse | Verdict |
+15	|---|---|---|---|---|---|
+16	| **Rust + WASM** | ratatui | Yew · Leptos · Dioxus (same core via WASM) | tokio + axum/ws | ★★★★★ | **Chosen** |
+17	| Go (Charm) | bubbletea + lipgloss | templ + htmx (extra effort) | wish (SSH) + ws | ★★★★ | Strong "for fun" alt |
+18	| Python (Textual) | Textual (mouse native) | `textual serve` (terminal-in-browser) | FastAPI + ws | ★★★★ | Fastest to ship |
+19	| TypeScript | Ink (React) | any framework | ws | ★★★★ | OK |
+20	| Unity | hard | WebGL | Mirror | ★ | Over-engineered |
+21	
+22	**Why Rust + WASM**: variant explosion (xiangqi vs banqi vs 三國暗棋 vs N house-rule combinations) is a type-system problem. Rust enums + bitflags express it cleanly without runtime cost. Same `chess-core` crate compiles to native (TUI / server) and `wasm32-unknown-unknown` (browser), so there's exactly one source of truth for rules. Single-binary distribution. Unity-as-renderer remains open via FFI later.
+23	
+24	## Workspace Layout
+25	
+26	```
+27	chinese-chess/
+28	├── crates/
+29	│   ├── chess-core    # pure logic — board, pieces, rules, state, view
+30	│   ├── chess-engine  # search/eval (planned)
+31	│   ├── chess-net     # wire protocol over chess-core (planned)
+32	│   └── chess-ai      # heuristic + ISMCTS for banqi (planned)
+33	├── clients/
+34	│   ├── chess-cli     # REPL test harness — proves engine end-to-end
+35	│   ├── chess-tui     # ratatui frontend (planned)
+36	│   └── chess-web     # Leptos + WASM frontend (planned)
+37	└── xtask/            # project automation
+38	```
+39	
+40	`chess-core` has no IO, no rendering, no platform deps. WASM cleanliness is enforced in CI.
+41	
+42	## Key Design Decisions
+43	
+44	The five locked-in decisions, each with its own ADR:
+45	
+46	1. **`Square(u16)` linear index, not `(file, rank)` tuples.** Scales to 19×19, supports irregular topologies via per-shape mask. ([ADR-0002](adr/0002-square-as-u16.md))
+47	2. **`Move` is a flat enum.** Variants: `Reveal { revealed: Option<Piece> }`, `Step`, `Capture`, `ChainCapture { path: SmallVec<[ChainHop; 4]> }`, `CannonJump`. The `Option<Piece>` on `Reveal` is the network ABI boundary — opponents never see the identity ahead of the flip. ([ADR-0004](adr/0004-player-view-projection.md))
+48	3. **`RuleSet` is plain data, not a trait.** House rules are `bitflags::bitflags!`, presets are named consts. Move generation is free functions dispatching on `Variant` + flag checks. Rejected: trait-object rule layering — kills inlining, fights serde, over-engineers a closed set. ([ADR-0003](adr/0003-ruleset-as-data-not-trait.md))
+49	4. **`GameState` is one concrete struct, not generic.** `TurnOrder` supports 2 or 3 seats (`SmallVec<[Side; 3]>`) so 三國暗棋 isn't a special case in code paths.
+50	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces map to `VisibleCell::Hidden` with no identity. A proptest enforces no-leak.
+51	
+52	## Extensibility Path
+53	
+54	| Want to add… | Touch… | Effort |
+55	|---|---|---|
+56	| New variant (e.g. 廣象戲) | `BoardShape::Custom`, `Variant::*`, `rules/<name>.rs`, `setup.rs` | M |
+57	| New house rule | `HouseRules` bitflag + a free function in `rules/house.rs` | S |
+58	| New piece kind | `PieceKind` variant, movement generator, banqi rank | S |
+59	| 3-player turn-skip rules | `TurnOrder::advance_skipping` already exists | S |
+60	| Different render (TUI / Web / Unity) | new client crate consuming `PlayerView` | M |
+61	
+62	## Roadmap
+63	
+64	| PR | Item |
+65	|---|---|
+66	| 1 (this) | Workspace + `chess-core` foundations + xiangqi + banqi + CHAIN/RUSH + CLI harness |
+67	| 2 | 三國暗棋 board mask + rules; remaining house rules (DARK_CHAIN, HORSE_DIAGONAL, CANNON_FAST_MOVE) |
+68	| 3 | `chess-tui` (ratatui, vim + mouse) |
+69	| 4 | `chess-net` (tokio + ws, server-authoritative, ships PlayerView only) |
+70	| 5 | `chess-web` (Leptos + WASM consuming PlayerView) |
+71	| 6 | `chess-engine` + `chess-ai` (alpha-beta + Zobrist; ISMCTS) |
+72
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+1	# TODO
+2	
+3	Long-term backlog for Chinese Chess. See AGENTS.md
+4	for the maintenance workflow that agents should follow.
+5	
+6	> **For agents**: when the user surfaces an idea explicitly **not** being
+7	> implemented this session (signals: "maybe later", "nice to have",
+8	> "工程量太大需要再評估", "先記下來"), add it here with priority + effort tags.
+9	> Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files —
+10	> `TODO.md` is the single backlog index. Long-form research goes in
+11	> [`backlog/<slug>.md`](backlog/).
+12	
+13	<!-- Use the exact section order: P1, P2, P3, P?, Done.
+14	     The bundled scripts/todo-kanban.sh validator only inspects top-level
+15	     `- [ ]` and `- ✅` items inside these sections. Prose paragraphs,
+16	     blockquotes, indented sub-bullets, HTML comments, and `---` rules are
+17	     ignored — feel free to add inline guidance like this without breaking
+18	     machine readability. -->
+19	
+20	## P1
+21	
+22	Likely next batch — items you'd reach for if you sat down to work today.
+23	
+24	- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+25	- [ ] **[S] Wire DARK_CHAIN house rule** — Chain captures pass through face-down squares; auto-reveal as chain progresses. Requires changing ChainHop.captured to Option<Piece> and updating sanitize_for_observer for the network ABI. See docs/rules/banqi-house.md.
+26	- [ ] **[S] Wire HORSE_DIAGONAL house rule** — Banqi horse moves like xiangqi horse (L-shape with 馬腿 leg block) when flag enabled. Reuse pattern from rules/xiangqi.rs::gen_horse.
+27	- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+28	- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+29	
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+35	- [ ] **[M] chess-net: multi-room lobby + optional password** — Today the server hosts a single hard-coded room; two clients connect to the same `ws://host:port` and that's the game. Move to: route `GET /ws/<room-id>` upgrades into room `<room-id>` (auto-created if absent), `GET /rooms` returns a JSON list `[{id, variant, seats, has_password}]`, optional `?password=<secret>` query param locked in on first join (subsequent joiners with wrong password get `Error{"bad password"}` and are dropped). chess-tui flag: `--connect ws://host/ws/<id>` plus `--password <pw>`. Replaces the current "Slack the IP, count seats by hand" coordination.
+36	- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+37	- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+38	- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+39	- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+40	
+41	## P3
+42	
+43	Someday / nice-to-have.
+44	
+45	- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+46	- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+47	- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+48	
+49	## P?
+50	
+51	Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
+52	
+53	- [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
+54	- [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
+55	
+56	## Done
+57	
+58	- ✅ [2026-05-06] [P2/M] chess-net MVP: single-room websocket server + chess-tui --connect + tmux launcher — `crates/chess-net` ships an axum-ws server (`chess-net-server`) hosting one game/room. Wire schema: tagged JSON enums `ServerMsg` (Hello/Update/Error) and `ClientMsg` (Move/Resign), `Move::Reveal` stays `revealed: None` end-to-end. First connection = Red, second = Black, third gets "room full". `chess-tui --connect ws://...` runs a sync `tungstenite` worker thread + `std::sync::mpsc` channels (no tokio in TUI). `make play-local` / `scripts/play-local.sh` opens a tmux session with two clients in window 0 and the server in window 1. 8 new tests (6 protocol round-trip + 2 end-to-end smoke). Lobby / reconnect / time controls / takeback still deferred (kept as separate TODO items).
+59	
+60	- ✅ [2026-05-06] [P2/M] chess-tui: ratatui frontend — interactive TUI for xiangqi + banqi. Vim cursor (hjkl) + arrows + mouse, Enter/Space select-or-commit, `u` undo, `f` flip (banqi). Two render styles: CJK glyphs (帥仕相俥傌炮兵 / 將士象車馬砲卒, default with color) and ASCII (--style ascii). Banqi displays in traditional 8×4 layout (transposed from 4×8 model). Variant picker on bare invocation; --as black flips xiangqi orientation for net-readiness. Engine stays presentation-free — orient.rs + glyph.rs live in the client.
+61	
+62	- ✅ [2026-05-06] [P1/S] End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress) — tests/end_conditions.rs verifies refresh_status produces Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} from .pos fixtures. Pattern reusable for endgame puzzles.
+63	
+64	Recently shipped. When implementing an active item, in the same commit run:
+65	
+66	```
+67	scripts/promote-todo.sh --title "<substring>" --summary "<one-line shipped summary>"
+68	```
+69	
+70	This moves the entry here using the dated `Done` syntax and re-validates.
+71	
+72	- ✅ [2026-05-06] [P1/L] Foundational chess-core + workspace scaffolding — full xiangqi (perft-validated 1=44, 2=1920, 3=79666) + base banqi + CHAIN_CAPTURE/CHARIOT_RUSH house rules + PlayerView projection (no-leak proptest) + ICCS notation + chess-cli REPL. 8-crate workspace + WASM cleanliness in CI. 71 tests passing.
+73	
+74	<!-- Prune older entries into CHANGELOG.md once prior-year items appear here
+75	     or this section grows past ~20 entries. -->
+76
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./AGENTS.md`
+
+```text
+1	
+2	<!-- project-knowledge-harness:agent-guidance -->
+3	<!-- Snippet for the project's agent contract file (AGENTS.md / CLAUDE.md /
+4	     similar). The bundled scripts/init.sh appends this between sentinel
+5	     markers; safe to re-run. -->
+6	
+7	### Long-term backlog → `TODO.md` + `backlog/`
+8	
+9	When the user surfaces an idea explicitly **not** being implemented this
+10	session (signals: "maybe later", "nice to have", "if I'm interested",
+11	"工程量太大需要再評估", "先記下來"), add an entry to [`TODO.md`](TODO.md) using
+12	the priority + effort tag schema. Do **not** create new `ROADMAP.md` /
+13	`IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index.
+14	
+15	The bundled `scripts/todo-kanban.sh` validates the format. Run it
+16	(`scripts/todo-kanban.sh --validate-only TODO.md`) after editing so syntax
+17	drift is caught immediately.
+18	
+19	#### Three ways to add a TODO entry (preferred order)
+20	
+21	1. **Structured CLI — `scripts/add-todo.sh`** (default):
+22	
+23	   ```
+24	   scripts/add-todo.sh --priority P3 --effort M \
+25	     --title "Title" --description "Description"
+26	   ```
+27	
+28	   Inserts a canonically-formatted line into the right `## P*` lane and
+29	   re-runs the validator. Add `--backlog` to also scaffold
+30	   `backlog/<slug>.md` from the bundled template.
+31	
+32	2. **Quick capture — `backlog/inbox.md`** (when priority/effort unclear):
+33	
+34	   ```
+35	   echo "- maybe add docs versioning with mike" >> backlog/inbox.md
+36	   ```
+37	
+38	   When the user asks "sweep the inbox", run
+39	   `scripts/sweep-inbox.sh`. It prompts for the missing fields per loose
+40	   line and calls `add-todo.sh`. Use `--batch` for non-interactive runs
+41	   that only formalize lines with parseable `key=value` pairs.
+42	
+43	3. **Direct edit of `TODO.md`** — fine if the format is fresh; run
+44	   `scripts/todo-kanban.sh --validate-only` afterwards.
+45	
+46	Add a `backlog/<slug>.md` companion doc when the item meets any of:
+47	
+48	- carries a `P?` tag (record what was tried so it doesn't need re-investigation)
+49	- captures a paused troubleshooting session that you intend to fix later
+50	  (preserve the error trace + root cause analysis before context evaporates)
+51	- weighs multiple options (record trade-offs, not only the winner)
+52	- is `[L]` or `[XL]` (architectural; needs design before code)
+53	
+54	`[S]` items rarely need a backlog doc — a file path in the `TODO.md` line is
+55	usually enough. See [`backlog/README.md`](backlog/README.md) for the full
+56	template and "when to add a doc" rules.
+57	
+58	When implementing a `TODO.md` item, in the same commit:
+59	
+60	1. Run `scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"`
+61	   to move the entry into `## Done` with the dated syntax and re-validate.
+62	2. Mark the corresponding `backlog/<slug>.md` (if any) `Status: shipped`
+63	   and keep it as a historical record (don't delete — future-you may
+64	   revisit adjacent decisions).
+65	
+66	`backlog/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A); it
+67	is repo metadata for maintainers, not user-facing config to deploy.
+68	
+69	### Past pitfalls → `pitfalls/`
+70	
+71	When you spend more than ~15 minutes debugging something that wasn't
+72	googleable and the fix is non-obvious, write a `pitfalls/<slug>.md`
+73	capturing:
+74	
+75	1. **Verbatim symptom** — copy-paste error messages exactly, do not
+76	   paraphrase (preserves grep-ability for future-you / future agent)
+77	2. **Root cause** — why this happens (with source / docs / upstream issue link)
+78	3. **Workaround** — copy-pasteable commands or config diff
+79	4. **Prevention** — how to avoid stepping on this again
+80	
+81	Title the doc by the **symptom**, not the root cause (you'll search by what
+82	you're seeing, not by what you eventually learned). See
+83	[`pitfalls/README.md`](pitfalls/README.md) for the full template and
+84	when-to-add rules.
+85	
+86	**Pitfall vs Hard invariant**: a pitfall *graduates* to a Hard invariant in
+87	this file when it (a) recurs across machines/agents/sessions despite being
+88	documented, (b) silently corrupts state, or (c) the workaround is non-obvious
+89	enough that "remember to do X" isn't safe. When graduating, leave the
+90	`pitfalls/<slug>.md` as historical record and link to it from the new
+91	invariant.
+92	
+93	`pitfalls/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A) and
+94	**not** auto-redacted; review for secrets before committing.
+95	<!-- project-knowledge-harness:agent-guidance --> (end)
+96
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships an MVP single-room websocket server (`chess-net-server`) that two `chess-tui --connect` clients can play on. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+16	
+17	# Format + lint (CI requires both clean; clippy uses -D warnings)
+18	cargo fmt --check
+19	cargo clippy --workspace --all-targets -- -D warnings
+20	
+21	# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+22	cargo test -p chess-core
+23	
+24	# Run a single test
+25	cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+26	
+27	# Slow xiangqi perft depth-3 — runs in release for speed
+28	cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+29	
+30	# WASM cleanliness — proves chess-core has no platform deps
+31	cargo build --target wasm32-unknown-unknown -p chess-core
+32	
+33	# Run the REPL test harness (proves the engine end-to-end)
+34	cargo run -p chess-cli
+35	> xiangqi
+36	> moves
+37	> play h2e2
+38	> banqi --preset taiwan --seed 42
+39	> view 0
+40	> quit
+41	
+42	# Interactive TUI (default render: CJK glyphs + color)
+43	cargo run -p chess-tui                                    # variant picker
+44	cargo run -p chess-tui -- xiangqi                         # casual mode (default)
+45	cargo run -p chess-tui -- xiangqi --strict                # standard self-check rules
+46	cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+47	cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+48	cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+49	cargo run -p chess-tui -- --as black xiangqi              # render as Black
+50	
+51	# Networked play (MVP: single room, no lobby / reconnect / time controls)
+52	cargo run -p chess-net -- --port 7878 xiangqi             # server
+53	cargo run -p chess-net -- --port 7878 xiangqi --strict    # ditto, strict self-check
+54	cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+55	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878   # client (server picks variant + side)
+56	
+57	# One-shot local 2-client harness (tmux: window 0 = clients, window 1 = server)
+58	make play-local                                           # xiangqi casual on :7878
+59	make play-local VARIANT=banqi                             # banqi
+60	make play-local PORT=9000 VARIANT=xiangqi                 # custom port
+61	make stop-local                                           # tear down the tmux session
+62	```
+63	
+64	TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
+65	`Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
+66	`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit.
+67	Mouse left-click selects or commits. When the game ends, a banner appears in
+68	the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
+69	back the losing move.
+70	
+71	`rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
+72	
+73	## Architecture quick reference
+74	
+75	The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, `chess-web`, and `xtask` are still stubs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+76	
+77	1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+78	2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+79	3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+80	4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+81	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+82	
+83	Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+84	
+85	## Gotchas worth knowing
+86	
+87	- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+88	
+89	- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+90	
+91	- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+92	
+93	- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+94	
+95	- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+96	
+97	- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+98	
+99	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+100	
+101	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+102	
+103	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+104	
+105	- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+106	
+107	- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+108	
+109	- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+110	
+111	- **`chess-net` MVP is single-room, single-game.** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds the authoritative `GameState` and broadcasts per-side `PlayerView` after every committed move. First connection = Red, second = Black, third+ gets `Error{"room full"}` and is dropped. `chess-tui` joins via `--connect` and runs a sync `tungstenite` worker thread (`clients/chess-tui/src/net.rs`) that talks to the TUI over `std::sync::mpsc` — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / lobby / time controls / takeback are deferred (see `TODO.md`).
+112	
+113	## Where to put new work
+114	
+115	| Kind | Where |
+116	|---|---|
+117	| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+118	| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+119	| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+120	| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+121	| Game rules reference | `docs/rules/<variant>.md` |
+122	| Architectural overview / tech analysis | `docs/architecture.md` |
+123	
+124	[`AGENTS.md`](AGENTS.md) describes the full backlog/pitfalls workflow with examples. Do **not** create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index, validated by `scripts/todo-kanban.sh`.
+125	
+126	When implementing a `TODO.md` item, in the same commit run:
+127	
+128	```bash
+129	scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+130	```
+131	
+132	## Pre-push checklist
+133	
+134	CI runs all four. Run them locally before pushing:
+135	
+136	```bash
+137	cargo fmt --check
+138	cargo clippy --workspace --all-targets -- -D warnings
+139	cargo test --workspace
+140	cargo build --target wasm32-unknown-unknown -p chess-core
+141	```
+142	
+143	The depth-3 perft (`cargo test --release -p chess-core --test xiangqi_perft -- --ignored`) also runs in CI.
+144
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`ls -la /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/ 2>/dev/null | grep -E "\.md$" || echo "No backlog files found"`
+
+```text
+.rw-r--r--@ 1.2k daviddwlee84  6 May 13:12  chess-ai-search.md
+.rw-r--r--@ 2.8k daviddwlee84  6 May 16:33  chess-net-protocol.md
+.rw-r--r--@  502 daviddwlee84  6 May 13:10  inbox.md
+.rw-r--r--@ 3.0k daviddwlee84  6 May 13:13  three-kingdoms-banqi.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`ls -la /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/ 2>/dev/null | grep -E "\.md$" || echo "No pitfalls files found"`
+
+```text
+.rw-r--r--@ 2.6k daviddwlee84  6 May 13:14  wasm-getrandom-unresolved-imp.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:38Z)**_
+
+Now let me search the backlog and pitfalls for relevant files related to lobbies, multi-room, SSH, and network issues.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:38Z)**_
+
+## Architecture Summary: Current Net Mode Wiring
+
+**Screen State Machine**
+The `Screen` enum at app.rs:90-94 has three variants: `Picker`, `Game`, and `Net`. There is **no re-entry mechanism** — once in `Screen::Net`, the picker cannot be re-entered except through 'n' (new game) which sends `ClientMsg::Rematch` to the server, not back to the picker (app.rs:223-251). The `Screen::Picker` is stateless and only boots from CLI with no arguments (main.rs:125) or via `Action::NewGame` from a local game (app.rs:249).
+
+**Hello → Net State Transition (app.rs:598-638)**
+`apply_net_event` handles `NetEvent::Connected` and `ServerMsg::Hello` separately:
+- `Connected` sets `connected = true` and displays "Connected. Waiting for hello…" (line 602)
+- `Hello { observer, rules, view, .. }` sets the side, rules, cursor/selection, and `last_view` (lines 605-620). Only `last_view` drives rendering — the net board only appears when `last_view.is_some()` (ui.rs:107-128). The connection state (`n.connected`) is the only other bit that matters for display.
+
+**Worker Thread Model (net.rs)**
+`NetClient::spawn` (net.rs:42) spawns a non-blocking poll thread. The thread loop (net.rs:50-116) is **strictly a long-lived ws connection** — there's no request/response pattern, only:
+1. Try to read one frame (lines 66-88)
+2. Drain all pending `ClientMsg` from `cmd_tx` and send them (lines 91-112)
+3. Sleep 20ms (line 114)
+
+No support for one-shot requests; every outbound message is a `ClientMsg` enum variant. The `NetEvent` variants are `Connected`, `Server(ServerMsg)`, and `Disconnected` (net.rs:26-30).
+
+**Protocol (protocol.rs)**
+- `ServerMsg`: `Hello { protocol, observer, rules, view }`, `Update { view }`, `Error { message }`
+- `ClientMsg`: `Move { mv }`, `Resign`, `Rematch`
+- No room list, no game discovery, no password handshake in the current wire schema.
+
+**Server CLI (server.rs)**
+The server is single-room MVP (line 15). It only accepts a variant subcommand (`Xiangqi` or `Banqi`) with optional flags (`--strict`, `--preset`, `--house`, `--seed`), not room names or lobby configuration. Binding is hardcoded to loopback `127.0.0.1:<port>` (line 61).
+
+**Picker Semantics (app.rs:18-62, ui.rs:39-57)**
+`PickerEntry::ALL` has 6 hardcoded entries (variant + house-rule combos) plus a Quit option. The picker is **purely for local game variant selection**, not extensible to a room/lobby list. `dispatch_picker` (app.rs:276-298) transitions directly from Picker → Game on selection via `new_game`, or quits.
+
+**Keyboard Collisions (ui.rs:790-801, 945-956)**
+- `HELP_LINES_NET`: No number-key or room-list navigation (h/j/k/l for cursor, Enter/Space to commit, Esc to cancel, f to flip, n for rematch, r/? for toggles, q to quit)
+- `HELP_LINES_GAME`: Same keys except 'u' (undo) is supported locally, 'n' returns to picker
+- No shortcuts reserved for selection lists or numeric input
+
+**Connectivity State Rendering (ui.rs:131-157)**
+Before `Hello` arrives:
+- `draw_connecting_placeholder` (line 131): shows "Connecting…" with the URL and `last_msg` (yellow)
+- `draw_sidebar_net_idle` (line 147): shows "Connecting…", the URL, and a hint to press 'q'
+
+After `Hello`: `draw_sidebar_net` (line 686) shows variant, your side, opponent's side, status, and the connection state (line 762).
+
+**Critical Design Constraint**: The screen state drives everything. `last_view` is the only flag that switches from "connecting" placeholder to live board rendering. The `connected` flag is consulted only for quit-in-progress detection (app.rs:269) and sidebar display (ui.rs:762). There's **no intermediate "lobby" view** today — the flow is linear: CLI → worker spawns → `Connected` event → `Hello` event → board appears.
+
+---
+
+**For your lobby design:**
+- The Picker can **not** be reused for rooms (it's variant-specific, stateless, no data model). You'd need a new `Screen::Lobby` variant with its own view struct.
+- The worker thread **cannot fetch a room list** over the same ws (it's send-only commands → recv-only server pushes). You'd need either HTTP (separate from ws worker) or a new `ServerMsg::RoomList` before Hello.
+- Keyboard shortcuts are open for room selection (no collisions with 1-9, arrow modifiers, or prefixes).
+- `connected = true` is set only after `Connected` event; you could add a pre-Hello phase like `authenticating/auth_needed` if passwords require a challenge-response before Hello.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:39Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./backlog/chess-net-protocol.md`
+
+```text
+1	# chess-net: server-authoritative websocket protocol
+2	
+3	**Status**: shipped (2026-05-06, MVP — single room, no lobby/reconnect/time controls)
+4	**Effort**: M (matched estimate)
+5	**Related**: `TODO.md` · `crates/chess-net/src/{protocol,server}.rs` · `crates/chess-net/src/bin/server.rs` · `clients/chess-tui/src/net.rs` · `Makefile` + `scripts/play-local.sh`
+6	
+7	## What shipped
+8	
+9	- `axum 0.7` + `tokio` server on `127.0.0.1:<port>`. Single room; first 2 ws clients seat as Red / Black, third gets `Error{"room full"}`. JSON over text frames, tagged enums (`{"type": ...}`).
+10	- `ServerMsg::{Hello{protocol, observer, rules, view}, Update{view}, Error{message}}` and `ClientMsg::{Move{mv}, Resign}`. `Move::Reveal { revealed: None }` stays None on the wire — server fills `Some(piece)` only inside its local `GameState`.
+11	- `chess-tui --connect ws://host:port` runs a sync `tungstenite` worker on a background OS thread; talks to the TUI via `std::sync::mpsc`. No tokio in the TUI binary. `--as` flag is overridden by the server's seat assignment.
+12	- `make play-local` / `scripts/play-local.sh` boots one server + two clients in a single tmux session for fast manual smoke.
+13	- 8 new tests: 6 protocol roundtrip (covers `Hello`/`Update`/`Error`/`Move(Step)`/`Move(Reveal None)`/`Resign`) + 2 end-to-end smoke (two clients exchange a real move; third connect gets "room full"). All pass under `cargo test -p chess-net`.
+14	
+15	## Out of scope (separate TODO items)
+16	
+17	- Lobby / matchmaking / multiple concurrent games.
+18	- Reconnect (transient disconnect today drops the player; opponent gets `Error{"opponent disconnected"}`).
+19	- Time controls (TODO entry retained; `WinReason::Timeout` already exists).
+20	- Takeback / 悔棋 (TODO entry retained; needs opponent-approval protocol).
+21	- TLS / wss / auth.
+22	- chess-web frontend (separate TODO).
+23	
+24	## Context
+25	
+26	Why this surfaced. Trigger (conversation, bug, new tool, recurring annoyance).
+27	Date helps — "2026-04, came up while reviewing X".
+28	
+29	## Investigation
+30	
+31	What's already been tried / read / measured. **This is the section that saves
+32	future-you time.** Be specific:
+33	
+34	- Commands run + relevant output
+35	- Docs/issue/SO links read
+36	- Benchmark numbers
+37	- Error messages copy-pasted in full (not paraphrased)
+38	
+39	## Options considered
+40	
+41	| Option | Pros | Cons |
+42	|---|---|---|
+43	| A. … | … | … |
+44	| B. … | … | … |
+45	
+46	## Current blocker / open questions
+47	
+48	Why this is still on the backlog. One of:
+49	
+50	- Waiting on upstream X (link)
+51	- Need host/data Y to verify
+52	- Trade-offs unclear, need user preference
+53	- Effort estimate exceeds current budget
+54	
+55	## Decision (if any)
+56	
+57	`2026-04 deferred — waiting for X release` or
+58	`2026-04 chose option B because …`
+59	
+60	Dates matter. A 6-month-old "decided to use mise" needs re-validation.
+61	
+62	## References
+63	
+64	Issues, PRs, SO links, related discussions.
+65
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "lobby\|multi.room\|ssh\|reconnect\|ws.*http\|room.*state" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/ 2>/dev/null | head -30`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/chess-net-protocol.md:**Status**: shipped (2026-05-06, MVP — single room, no lobby/reconnect/time controls)
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "lobby\|multi.room\|ssh\|reconnect\|ws.*http\|room.*state" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/ 2>/dev/null | head -30`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src -name "*.rs" | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/net.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/glyph.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/orient.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:42Z)**_
+
+Now let me explore the chess-net server code and chess-tui client structure to understand the existing surface area:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net -name "*.rs" -type f`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/protocol_roundtrip.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/lib.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/bin/server.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:43Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src`
+
+```text
+EISDIR: illegal operation on a directory, read '/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src'
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:45Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/server.rs`
+
+```text
+1	//! Single-room ws server. Accepts the first two clients (Red then Black),
+2	//! validates moves through `GameState::make_move`, broadcasts per-side
+3	//! `PlayerView` after each commit. Lobby / multi-room / reconnect / TLS
+4	//! deferred to follow-up PRs (see `TODO.md`).
+5	
+6	use std::net::SocketAddr;
+7	use std::sync::Arc;
+8	
+9	use anyhow::{Context, Result};
+10	use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+11	use axum::extract::State;
+12	use axum::response::IntoResponse;
+13	use axum::routing::get;
+14	use axum::Router;
+15	use chess_core::moves::Move;
+16	use chess_core::piece::Side;
+17	use chess_core::rules::RuleSet;
+18	use chess_core::state::{GameState, GameStatus, WinReason};
+19	use chess_core::view::PlayerView;
+20	use futures_util::stream::StreamExt;
+21	use futures_util::SinkExt;
+22	use tokio::sync::{mpsc, Mutex};
+23	
+24	use crate::protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+25	
+26	struct RoomState {
+27	    state: GameState,
+28	    /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
+29	    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+30	    /// Sides that have requested a rematch since the last reset. Cleared
+31	    /// every time the game resets; mutual consent triggers reset.
+32	    rematch: Vec<Side>,
+33	}
+34	
+35	impl RoomState {
+36	    fn new(rules: RuleSet) -> Self {
+37	        Self {
+38	            state: GameState::new(rules),
+39	            seats: Vec::with_capacity(2),
+40	            rematch: Vec::with_capacity(2),
+41	        }
+42	    }
+43	
+44	    fn next_seat(&self) -> Option<Side> {
+45	        match self.seats.len() {
+46	            0 => Some(Side::RED),
+47	            1 => {
+48	                let taken = self.seats[0].0;
+49	                Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
+50	            }
+51	            _ => None,
+52	        }
+53	    }
+54	}
+55	
+56	type Room = Arc<Mutex<RoomState>>;
+57	
+58	/// Bind `addr` and serve until error / SIGINT (caller's choice — we don't
+59	/// install signal handling here). For tests that need an ephemeral port,
+60	/// use [`serve`] directly with a pre-bound listener.
+61	pub async fn run(addr: SocketAddr, rules: RuleSet) -> Result<()> {
+62	    let listener =
+63	        tokio::net::TcpListener::bind(addr).await.with_context(|| format!("bind {addr}"))?;
+64	    eprintln!("[server] listening on ws://{}", listener.local_addr()?);
+65	    serve(listener, rules).await
+66	}
+67	
+68	/// Serve on a pre-bound listener. The listener owns the port; use
+69	/// `listener.local_addr()` before passing it in if you need to know it
+70	/// (e.g. ephemeral ports in tests).
+71	pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
+72	    let room: Room = Arc::new(Mutex::new(RoomState::new(rules)));
+73	    let app = Router::new().route("/", get(upgrade)).route("/ws", get(upgrade)).with_state(room);
+74	    axum::serve(listener, app).await.context("axum::serve")?;
+75	    Ok(())
+76	}
+77	
+78	async fn upgrade(State(room): State<Room>, ws: WebSocketUpgrade) -> impl IntoResponse {
+79	    ws.on_upgrade(move |socket| handle_socket(socket, room))
+80	}
+81	
+82	async fn handle_socket(socket: WebSocket, room: Room) {
+83	    let (mut sender, mut receiver) = socket.split();
+84	    let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
+85	
+86	    // Seat assignment + Hello. Held under one lock so a third connect can't
+87	    // squeeze between assignment and seat insertion.
+88	    let seat: Side = {
+89	        let mut g = room.lock().await;
+90	        match g.next_seat() {
+91	            Some(s) => {
+92	                let view = PlayerView::project(&g.state, s);
+93	                let hello = ServerMsg::Hello {
+94	                    protocol: PROTOCOL_VERSION,
+95	                    observer: s,
+96	                    rules: g.state.rules.clone(),
+97	                    view,
+98	                };
+99	                if out_tx.send(hello).is_err() {
+100	                    return;
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:46Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/protocol.rs`
+
+```text
+1	//! Wire protocol between `chess-net-server` and clients.
+2	//!
+3	//! Frames are JSON text frames, one message per frame. Tagged enums via
+4	//! `#[serde(tag = "type")]` keep the schema obvious in `wscat`/`jq`.
+5	//!
+6	//! All payload types come straight from `chess-core` and already derive
+7	//! `Serialize/Deserialize`, including the proptest-validated no-leak
+8	//! projection in `PlayerView` (hidden banqi pieces stay opaque on the wire).
+9	
+10	use chess_core::moves::Move;
+11	use chess_core::piece::Side;
+12	use chess_core::rules::RuleSet;
+13	use chess_core::view::PlayerView;
+14	use serde::{Deserialize, Serialize};
+15	
+16	/// Bumped whenever the wire schema changes incompatibly.
+17	pub const PROTOCOL_VERSION: u16 = 1;
+18	
+19	/// Server → client.
+20	#[derive(Clone, Debug, Serialize, Deserialize)]
+21	#[serde(tag = "type")]
+22	pub enum ServerMsg {
+23	    /// Sent once per client right after side assignment. Carries the variant
+24	    /// (so the client knows what to render) plus the initial `PlayerView`.
+25	    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+26	    /// Sent to every seated client after each committed move.
+27	    Update { view: PlayerView },
+28	    /// Illegal move, room full, malformed message, opponent disconnect, etc.
+29	    /// Non-fatal by default — clients should display and keep the connection.
+30	    Error { message: String },
+31	}
+32	
+33	/// Client → server.
+34	#[derive(Clone, Debug, Serialize, Deserialize)]
+35	#[serde(tag = "type")]
+36	pub enum ClientMsg {
+37	    /// Submit a move. For `Move::Reveal`, send `revealed: None` — the server
+38	    /// fills in the piece identity locally; the wire form stays `None`.
+39	    Move { mv: Move },
+40	    /// Resign — ends the game with `WinReason::Resignation` for the opponent.
+41	    Resign,
+42	    /// Request a rematch. Only valid after the current game has ended
+43	    /// (Won / Drawn). Server resets the game when both sides have requested
+44	    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+45	    /// fresh `GameState`.
+46	    Rematch,
+47	}
+48
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:46Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+1	//! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
+2	//! short-lived flash message; actions from `input.rs` mutate it.
+3	
+4	use chess_core::coord::Square;
+5	use chess_core::moves::Move;
+6	use chess_core::piece::Side;
+7	use chess_core::rules::{HouseRules, RuleSet};
+8	use chess_core::state::{GameState, GameStatus};
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use chess_net::{ClientMsg, ServerMsg};
+11	
+12	use crate::glyph::Style;
+13	use crate::input::Action;
+14	use crate::net::{NetClient, NetEvent};
+15	use crate::orient;
+16	
+17	/// Variant + preset choices in the picker, in display order.
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+19	pub enum PickerEntry {
+20	    Xiangqi,
+21	    XiangqiStrict,
+22	    BanqiPurist,
+23	    BanqiTaiwan,
+24	    BanqiAggressive,
+25	    Quit,
+26	}
+27	
+28	impl PickerEntry {
+29	    pub const ALL: [PickerEntry; 6] = [
+30	        PickerEntry::Xiangqi,
+31	        PickerEntry::XiangqiStrict,
+32	        PickerEntry::BanqiPurist,
+33	        PickerEntry::BanqiTaiwan,
+34	        PickerEntry::BanqiAggressive,
+35	        PickerEntry::Quit,
+36	    ];
+37	
+38	    pub fn label(self) -> &'static str {
+39	        match self {
+40	            PickerEntry::Xiangqi => "Xiangqi (象棋)",
+41	            PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
+42	            PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
+43	            PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
+44	            PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+45	            PickerEntry::Quit => "Quit",
+46	        }
+47	    }
+48	
+49	    pub fn rules(self) -> Option<RuleSet> {
+50	        match self {
+51	            // Default xiangqi is casual: more permissive, you lose by general
+52	            // capture. Strict (standard rules) is one row down.
+53	            PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
+54	            PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
+55	            PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
+56	            PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
+57	            PickerEntry::BanqiAggressive => {
+58	                Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
+59	            }
+60	            PickerEntry::Quit => None,
+61	        }
+62	    }
+63	}
+64	
+65	pub struct PickerView {
+66	    pub cursor: usize,
+67	}
+68	
+69	pub struct GameView {
+70	    pub state: GameState,
+71	    pub cursor: (u8, u8),
+72	    pub selected: Option<Square>,
+73	    pub last_msg: Option<String>,
+74	}
+75	
+76	pub struct NetView {
+77	    pub client: NetClient,
+78	    pub url: String,
+79	    pub last_view: Option<PlayerView>,
+80	    pub rules: Option<RuleSet>,
+81	    /// Server-assigned side. `None` until `Hello` arrives.
+82	    pub observer: Option<Side>,
+83	    pub cursor: (u8, u8),
+84	    pub selected: Option<Square>,
+85	    pub last_msg: Option<String>,
+86	    /// True between Connected and Disconnected events. Used by the sidebar.
+87	    pub connected: bool,
+88	}
+89	
+90	pub enum Screen {
+91	    Picker(PickerView),
+92	    Game(Box<GameView>),
+93	    Net(Box<NetView>),
+94	}
+95	
+96	pub struct AppState {
+97	    pub screen: Screen,
+98	    pub style: Style,
+99	    pub use_color: bool,
+100	    pub observer: Side,
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:47Z)**_
+
+Now let me check the chess-tui client's net.rs to understand its networking model:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:48Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/net.rs`
+
+```text
+1	//! Sync `tungstenite` ws client driven from a background OS thread, with
+2	//! `std::sync::mpsc` channels to/from the (sync) TUI loop. We deliberately
+3	//! keep tokio out of the TUI binary — `crossterm::event::poll` is sync, and
+4	//! mixing in a runtime would force a refactor.
+5	//!
+6	//! The thread does a non-blocking poll cycle: try one ws read, drain pending
+7	//! outbound `ClientMsg`s, sleep ~20ms. Every parsed `ServerMsg` (or fatal
+8	//! error) is shipped to the TUI as a `NetEvent`.
+9	
+10	use std::io::ErrorKind;
+11	use std::net::TcpStream;
+12	use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+13	use std::thread::{self, JoinHandle};
+14	use std::time::Duration;
+15	
+16	use anyhow::{anyhow, Result};
+17	use chess_net::{ClientMsg, ServerMsg};
+18	use tungstenite::stream::MaybeTlsStream;
+19	use tungstenite::{Message, WebSocket};
+20	
+21	const POLL_INTERVAL: Duration = Duration::from_millis(20);
+22	const CONNECT_ATTEMPTS: u32 = 8;
+23	const CONNECT_BACKOFF: Duration = Duration::from_millis(200);
+24	
+25	#[derive(Debug)]
+26	pub enum NetEvent {
+27	    Connected,
+28	    Server(Box<ServerMsg>),
+29	    Disconnected(String),
+30	}
+31	
+32	pub struct NetClient {
+33	    pub cmd_tx: Sender<ClientMsg>,
+34	    pub evt_rx: Receiver<NetEvent>,
+35	    _handle: JoinHandle<()>,
+36	}
+37	
+38	impl NetClient {
+39	    /// Spawns the worker thread and returns immediately. The caller polls
+40	    /// `evt_rx` each frame (use `try_recv`, never `recv` — the TUI loop must
+41	    /// not block) and pushes outbound moves via `cmd_tx`.
+42	    pub fn spawn(url: String) -> Self {
+43	        let (cmd_tx, cmd_rx) = mpsc::channel::<ClientMsg>();
+44	        let (evt_tx, evt_rx) = mpsc::channel::<NetEvent>();
+45	        let handle = thread::spawn(move || run(url, cmd_rx, evt_tx));
+46	        Self { cmd_tx, evt_rx, _handle: handle }
+47	    }
+48	}
+49	
+50	fn run(url: String, cmd_rx: Receiver<ClientMsg>, evt_tx: Sender<NetEvent>) {
+51	    let mut ws = match connect_with_retry(&url) {
+52	        Ok(ws) => ws,
+53	        Err(e) => {
+54	            let _ = evt_tx.send(NetEvent::Disconnected(format!("connect failed: {e}")));
+55	            return;
+56	        }
+57	    };
+58	    if let Err(e) = set_nonblocking(&mut ws) {
+59	        let _ = evt_tx.send(NetEvent::Disconnected(format!("set_nonblocking: {e}")));
+60	        return;
+61	    }
+62	    let _ = evt_tx.send(NetEvent::Connected);
+63	
+64	    loop {
+65	        // Inbound: try to read one frame.
+66	        match ws.read() {
+67	            Ok(Message::Text(t)) => match serde_json::from_str::<ServerMsg>(t.as_str()) {
+68	                Ok(msg) => {
+69	                    if evt_tx.send(NetEvent::Server(Box::new(msg))).is_err() {
+70	                        return; // TUI dropped the receiver
+71	                    }
+72	                }
+73	                Err(e) => {
+74	                    let _ = evt_tx.send(NetEvent::Disconnected(format!("decode ServerMsg: {e}")));
+75	                    return;
+76	                }
+77	            },
+78	            Ok(Message::Close(_)) => {
+79	                let _ = evt_tx.send(NetEvent::Disconnected("server closed".into()));
+80	                return;
+81	            }
+82	            Ok(_) => {} // ping/pong/binary — ignore, tungstenite handles ping/pong itself
+83	            Err(tungstenite::Error::Io(e)) if e.kind() == ErrorKind::WouldBlock => {}
+84	            Err(e) => {
+85	                let _ = evt_tx.send(NetEvent::Disconnected(format!("read: {e}")));
+86	                return;
+87	            }
+88	        }
+89	
+90	        // Outbound: drain whatever's queued.
+91	        loop {
+92	            match cmd_rx.try_recv() {
+93	                Ok(msg) => {
+94	                    let json = match serde_json::to_string(&msg) {
+95	                        Ok(j) => j,
+96	                        Err(e) => {
+97	                            let _ = evt_tx.send(NetEvent::Disconnected(format!("encode: {e}")));
+98	                            return;
+99	                        }
+100	                    };
+101	                    if let Err(e) = ws.send(Message::Text(json)) {
+102	                        let _ = evt_tx.send(NetEvent::Disconnected(format!("send: {e}")));
+103	                        return;
+104	                    }
+105	                }
+106	                Err(TryRecvError::Empty) => break,
+107	                Err(TryRecvError::Disconnected) => {
+108	                    let _ = ws.close(None);
+109	                    return;
+110	                }
+111	            }
+112	        }
+113	
+114	        thread::sleep(POLL_INTERVAL);
+115	    }
+116	}
+117	
+118	fn connect_with_retry(url: &str) -> Result<WebSocket<MaybeTlsStream<TcpStream>>> {
+119	    let mut last_err: Option<tungstenite::Error> = None;
+120	    for _ in 0..CONNECT_ATTEMPTS {
+121	        match tungstenite::connect(url) {
+122	            Ok((ws, _resp)) => return Ok(ws),
+123	            Err(e) => {
+124	                last_err = Some(e);
+125	                thread::sleep(CONNECT_BACKOFF);
+126	            }
+127	        }
+128	    }
+129	    Err(anyhow!(
+130	        "could not reach {url} after {} attempts: {}",
+131	        CONNECT_ATTEMPTS,
+132	        last_err.map(|e| e.to_string()).unwrap_or_default()
+133	    ))
+134	}
+135	
+136	fn set_nonblocking(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> std::io::Result<()> {
+137	    match ws.get_mut() {
+138	        MaybeTlsStream::Plain(tcp) => tcp.set_nonblocking(true),
+139	        // Other MaybeTlsStream variants (rustls/native-tls) only appear when
+140	        // those features are enabled; we don't enable them.
+141	        _ => Ok(()),
+142	    }
+143	}
+144
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`wc -l /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs`
+
+```text
+     985 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs
+     672 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs
+    1657 total
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -n "enum Screen\|enum PickerEntry" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs`
+
+```text
+19:pub enum PickerEntry {
+90:pub enum Screen {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:53Z)**_
+
+Perfect. Now let me check the main.rs to see how the connect flow works and check if there's any mention of axum-only patterns:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:54Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend for chess-core.
+2	//!
+3	//! Run modes:
+4	//!   chess-tui                                       # variant picker
+5	//!   chess-tui xiangqi
+6	//!   chess-tui banqi --preset taiwan --seed 42
+7	//!   chess-tui --style ascii xiangqi
+8	//!   chess-tui --no-color xiangqi
+9	//!   chess-tui --as black xiangqi                    # debug: render as Black
+10	
+11	mod app;
+12	mod glyph;
+13	mod input;
+14	mod net;
+15	mod orient;
+16	mod ui;
+17	
+18	use std::io::{self, Stdout};
+19	use std::time::Duration;
+20	
+21	use anyhow::{anyhow, Context, Result};
+22	use chess_core::piece::Side;
+23	use chess_core::rules::{HouseRules, RuleSet};
+24	use clap::{Parser, Subcommand, ValueEnum};
+25	use crossterm::event::{self, Event};
+26	use crossterm::execute;
+27	use crossterm::terminal::{
+28	    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+29	};
+30	use ratatui::backend::CrosstermBackend;
+31	use ratatui::Terminal;
+32	
+33	use crate::app::AppState;
+34	use crate::glyph::Style;
+35	use crate::input::{from_key, from_mouse, Action};
+36	
+37	#[derive(Parser, Debug)]
+38	#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+39	struct Cli {
+40	    /// Render style.
+41	    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+42	    style: StyleArg,
+43	
+44	    /// Disable ANSI color (keeps the chosen glyph set).
+45	    #[arg(long)]
+46	    no_color: bool,
+47	
+48	    /// Render from this side's perspective (debug; default RED). Ignored
+49	    /// when `--connect` is set — the server assigns a side on join.
+50	    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+51	    observer: SideArg,
+52	
+53	    /// Connect to a chess-net-server instead of starting a local game.
+54	    /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
+55	    /// automatically if missing).
+56	    #[arg(long)]
+57	    connect: Option<String>,
+58	
+59	    #[command(subcommand)]
+60	    cmd: Option<Cmd>,
+61	}
+62	
+63	#[derive(Subcommand, Debug)]
+64	enum Cmd {
+65	    /// Xiangqi (9×10). Casual rules by default — moves that leave your own
+66	    /// general capturable are allowed; the game ends when the general is
+67	    /// actually captured. Pass `--strict` for the standard self-check filter.
+68	    Xiangqi {
+69	        /// Strict mode: standard rules. Moves that would leave your own
+70	        /// general in check are rejected.
+71	        #[arg(long)]
+72	        strict: bool,
+73	    },
+74	    /// Banqi (4×8 face-down).
+75	    Banqi {
+76	        /// Preset bundle of house rules.
+77	        #[arg(long, value_enum)]
+78	        preset: Option<PresetArg>,
+79	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+80	        #[arg(long)]
+81	        house: Option<String>,
+82	        /// Deterministic shuffle seed.
+83	        #[arg(long)]
+84	        seed: Option<u64>,
+85	    },
+86	}
+87	
+88	#[derive(Copy, Clone, Debug, ValueEnum)]
+89	enum StyleArg {
+90	    Cjk,
+91	    Ascii,
+92	}
+93	
+94	#[derive(Copy, Clone, Debug, ValueEnum)]
+95	enum SideArg {
+96	    Red,
+97	    Black,
+98	}
+99	
+100	#[derive(Copy, Clone, Debug, ValueEnum)]
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "Router\|route\|axum" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/*.rs | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:use axum::extract::State;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:use axum::response::IntoResponse;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:use axum::routing::get;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:use axum::Router;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:    let app = Router::new().route("/", get(upgrade)).route("/ws", get(upgrade)).with_state(room);
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs:    axum::serve(listener, app).await.context("axum::serve")?;
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:56Z)**_
+
+Excellent. Now let me search for any existing patterns or discussion about axum architectural patterns in the docs:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs -name "*.md" -type f`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/architecture.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/notation.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0004-player-view-projection.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0001-rust-workspace-layout.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/README.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0003-ruleset-as-data-not-trait.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0002-square-as-u16.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/banqi.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/banqi-house.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/three-kingdoms.md
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/xiangqi.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "REST\|json\|GET\|http" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/ | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0004-player-view-projection.md:- Property test: `serde_json::to_string(&view)` for any `(state, observer)` must not contain the byte sequence of any hidden piece's identity. Any future bug that leaks information fails this test loudly.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/banqi.md:- <https://darkchess.funtown.com.tw/rules2.html>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let json: String = state.to_json()?;        // serialize
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let state = GameState::from_json(&json)?;   // deserialize
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:Just `serde_json` of `GameState`. Every field is preserved including `history`, `side_assignment`, `no_progress_plies`, `status`. Use this for save files and over-the-wire transport (after [`view::PlayerView`](../crates/chess-core/src/view.rs) projection for hidden-info-safe variants like banqi).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let json = replay.to_json()?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let restored = Replay::from_json(&json)?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let replay = Replay::from_json(&saved_game)?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:let replay = Replay::from_json(&saved_game)?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/snapshot-format.md:- The `.pos` format does not record the `history` field — fixtures load with empty history. Use JSON (`to_json`) when you need to preserve a played-out state with its full move log.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/three-kingdoms.md:- <https://zh.wikipedia.org/wiki/三國暗棋>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/three-kingdoms.md:- <https://zh.wikipedia.org/zh-sg/三國暗棋>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/rules/banqi-house.md:- <https://darkchess.funtown.com.tw/rules2.html>
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:58Z)**_
+
+Now let me check the Cargo.toml to see what dependencies are available and understand better:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:04:59Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-net"
+3	description = "Wire protocol + axum websocket server for chess-core. Hosts a single-room game; clients see only PlayerView."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[lib]
+12	name = "chess_net"
+13	path = "src/lib.rs"
+14	
+15	[[bin]]
+16	name = "chess-net-server"
+17	path = "src/bin/server.rs"
+18	
+19	[dependencies]
+20	chess-core   = { path = "../chess-core" }
+21	serde        = { workspace = true }
+22	serde_json   = { workspace = true }
+23	anyhow       = { workspace = true }
+24	tokio        = { workspace = true }
+25	axum         = { workspace = true }
+26	futures-util = { workspace = true }
+27	clap         = { workspace = true }
+28	
+29	[dev-dependencies]
+30	tungstenite = { workspace = true }
+31
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 09:05:32Z)**_
+
+Perfect. Now I have all the information I need. Let me compile my findings into a comprehensive report:
+
+## Summary Report: Multi-Room Lobby Integration Approaches
+
+Based on analysis of the codebase, here are the three options evaluated against architectural reality:
+
+### **Existing Context from Docs**
+
+**Architecture.md** (Go+wish vs Rust+axum analysis):
+The tech-selection table notes Go+wish would "give 'ssh chess.you.dev' for free" as a multiplayer story, but Rust+WASM+axum was chosen for better core reuse (same `chess-core` compiled to native TUI and wasm32-unknown-unknown). This decision is locked in and mentioned as intentional trade-off.
+
+**TODO.md — Direct Quotes**:
+- **P? entry**: `[?/L] Wish/SSH multiplayer alternative to chess-net` — "Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?"
+- **P2 entry**: `[M] chess-net: multi-room lobby + optional password` — "Today the server hosts a single hard-coded room; two clients connect to the same `ws://host:port` and that's the game. Move to: route `GET /ws/<room-id>` upgrades into room `<room-id>` (auto-created if absent), `GET /rooms` returns a JSON list `[{id, variant, seats, has_password}]`, optional `?password=<secret>` query param locked in on first join (subsequent joiners with wrong password get `Error{"bad password"}` and are dropped). chess-tui flag: `--connect ws://host/ws/<id>` plus `--password <pw>`."
+
+**CLAUDE.md** constraint:
+"`chess-net` MVP is single-room, single-game." The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds one authoritative `GameState` in `Arc<Mutex<RoomState>>`. First connection = Red, second = Black, third+ gets "room full". This is a hard simplification; the backlog notes the multi-room work separately.
+
+**No conflicting pitfalls found** — neither `pitfalls/` nor `backlog/` document ws+http coexistence issues or room-state gotchas yet.
+
+---
+
+### **Option A: Extend chess-tui with Screen::Lobby**
+
+**Pro:**
+- **Minimal app.rs churn**: The `Screen` enum (line 90 of app.rs) already has `Picker(PickerView)`, `Game(Box<GameView>)`, `Net(Box<NetView>)`. Adding `Lobby(LobbyView)` follows the established pattern. Dispatch in ui.rs (~985 lines) already handles three screen types; a fourth is incremental.
+- **Reuse PickerEntry logic**: The picker's cursor-based list navigation (line 28-62 of app.rs) is reusable for room browsing — same keybinds (hjkl, Enter, Esc).
+- **Single transport**: Net client (net.rs, 144 lines) currently polls `ServerMsg` enums. Adding a `Lobby` variant to `ServerMsg` and a lobby-list subscription keeps the sync `tungstenite` thread architecture intact (no tokio in TUI).
+
+**Con:**
+- **Protocol expansion**: `ServerMsg` and `ClientMsg` enums (protocol.rs, 48 lines total) must grow `Lobby{ rooms: Vec<RoomInfo> }` + `ClientMsg::ListRooms` + `ClientMsg::JoinRoom(id)`. Not large, but couples the net layer to TUI concerns.
+- **Server-side multi-room**: chess-net's single `Arc<Mutex<RoomState>>` (server.rs line 26) must become `HashMap<RoomId, Arc<Mutex<RoomState>>>`, subscription management, cleanup. The upgrade path is `Router::new().route("/:room_id/ws", ...)` with state extraction — axum pattern is clean here, but you're adding multiplexing logic to a 140-line server that today has none.
+- **Lobby → Game transition**: Picking a room in the lobby has to wire into the existing `--connect` flow. The `url` field in `NetView` (app.rs line 78) becomes dynamic post-selection. Doable, but not trivial — the current code assumes static `--connect <url>`.
+
+---
+
+### **Option B: Separate Command `chess-tui-lobby` or Subcommand**
+
+**Pro:**
+- **Code isolation**: A `chess-tui-lobby` binary or `chess-tui lobby <host>` subcommand is a separate Rust crate or entry point. Zero changes to existing GameView/picker logic.
+- **Focused scope**: Only needs to render a room list, poll `GET /rooms`, and output a selected room URL. Doesn't touch the move-commit pipeline.
+- **Reusable UI**: Could reuse ratatui + the cursor picker directly; only the data model is new (rooms instead of PickerEntry variants).
+
+**Con:**
+- **NetClient duplication**: The lobby command needs to poll a REST endpoint or a "lobby subscription" channel. It can't reuse `net.rs` (which is tungstenite ws + mpsc for game moves). You'll either copy the http-polling logic or write a thin REST client. Cost: ~100–200 LOC, but requires a second mini-transport layer.
+- **UX friction**: Users run `chess-tui-lobby chess.you.dev`, pick a room, then copy the room ID and run `chess-tui --connect ws://chess.you.dev/ws/<id>`. Two commands instead of one. For the "casual friends" scenario, this is slower than in-app switching.
+- **Maintenance burden**: A second binary doubles the test matrix and release surface. If the server's room schema changes, both `chess-tui` and `chess-tui-lobby` must stay in sync.
+
+---
+
+### **Option C: SSH Server with russh**
+
+**Pro:**
+- **No axum overhead**: The TCP server loop is entirely owned by russh; you get full terminal emulation and session handling for free.
+- **Native TUI delivery**: Users `ssh chess.you.dev` and immediately get a ratatui lobby + interactive game, all in their terminal. No copy-paste of room URLs.
+- **Session-per-player**: russh assigns a pty and multiplexes stdin/stdout. Multiplayer state lives server-side per connection, naturally.
+
+**Con:**
+- **Axum vs russh coexistence**: Today chess-net is axum-ws only. Adding russh means two transport stacks on the same host. The game state (`RoomState`, `GameState`) can be shared via `Arc<Mutex<...>>` across both, but you're maintaining two IO loops (one async axum + one threaded russh). Operational complexity: two listener threads, separate port bindings, different error handling.
+- **Maintenance cost is real**: russh is less polished than axum (documentation shallower, smaller ecosystem). You're on the hook for SSH key management, pty handling, signal delivery (SIGWINCH for resize). If a player's SSH session disconnects ungracefully, you need to detect it and notify their opponent (reconnect-aware room state).
+- **Locks in the transport**: This approach says "SSH is the canonical transport." If later you want to ship a web client or a native iOS app, they can't use the same SSH server. The axum path leaves room for `chess-web` (P2 TODO) to coexist; this one doesn't.
+- **Build complexity**: russh is a big dependency tree. Single-binary deployment becomes less single — you need runtime config (host keys, user DB if auth exists).
+
+---
+
+### **REST vs Lobby-WS Patterns for Room Discovery**
+
+Both approaches appear in Rust multiplayer architectures:
+
+| Pattern | Pros | Cons |
+|---------|------|------|
+| **`GET /rooms` JSON endpoint** | Stateless, cacheable, CLI-friendly (`curl http://...`). No subscription overhead. | Lobby list is snapshot, not live. If a room fills during your read, you don't know until the next poll. |
+| **Lobby WS channel** (subscribe to room updates) | Live notifications when rooms fill/empty. Scales to many concurrent lobby watchers. | Adds connection overhead (one more ws per viewer). Requires server-side subscription book-keeping. Slightly trickier error handling (what if subscribe fails mid-game). |
+
+**Recommendation for this codebase**: `GET /rooms` JSON is simpler for an MVP. The chess-net server is already axum; adding one more route is trivial (axum::routing::get(handlers::list_rooms)).  Polling every 2–5 seconds in a `Screen::Lobby` is fine for "a dozen friends playing"—scale it to hundreds of concurrent lobbies later.
+
+---
+
+## Bottom Line
+
+**Option A** has the lowest friction for the "single integrated experience" goal — users never leave the TUI. Surface area is ~500 LOC (new Screen variant, room list picker, protocol enums). Tradeoff: couples lobby UI to game protocol, and the server grows multiplexing logic.
+
+**Option B** minimizes code changes to the core game path but doubles tooling complexity and UX friction. Use this if you want to ship game-only logic as stable while lobby browsing is orthogonal research.
+
+**Option C** is architecturally cleanest (single transport, native terminal session) but adds operational burden (two transport stacks, SSH key management) and pre-commits to SSH as the canonical interface. Revisit after chess-web ships, if at all.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:06:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:06:35Z)**_
+
+Got the lay of the land. Key facts I'll design around:
+
+- The TUI's `Screen::Picker` is hardcoded to local-game variants; can't be reused for room lists. Need a new `Screen::Lobby`.
+- The worker thread (`net.rs`) is a long-lived ws-only loop; no request/response. To browse rooms, the cleanest reuse is **a second ws connection to a lobby endpoint** rather than introducing an HTTP client.
+- The server is `Arc<Mutex<RoomState>>`; multi-room means `HashMap<RoomId, Arc<Mutex<RoomState>>>`.
+- SSH (russh) is already filed as a separate `P?/L` spike and would be a parallel transport, not a replacement. Skipping it here keeps the chess-web TODO viable on the same backend.
+- TODO already commits to `GET /ws/<room-id>` + `?password=<secret>` URL shape — I'll honor that and add a lobby channel for room discovery.
+
+Now Phase 2 — design via Plan agent.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Design chess-net lobby + password
+
+```text
+I have enough grounding now. I have everything I need to produce a comprehensive plan. Per my read-only system constraint, I cannot create files — I'll deliver the markdown plan directly as my response (the parent agent reads this output, which the user has confirmed elsewhere is the intended behavior).
+
+---
+
+# chess-net: multi-room lobby + optional password
+
+**Effort**: M · **Status**: planned, scope discipline locked at one PR
+**Touches**: `crates/chess-net/{lib.rs,protocol.rs,server.rs,bin/server.rs}`, `crates/chess-net/tests/*`, `clients/chess-tui/src/{app.rs,input.rs,main.rs,net.rs,ui.rs}`, `Makefile`, `scripts/play-local.sh`, `TODO.md`, `CLAUDE.md`, `docs/adr/0005-multi-room-lobby.md` (new ADR following the existing 0001–0004 numbering).
+
+## Context
+
+The MVP shipped 2026-05-06: one server boot = one room = one game; first two ws clients seat Red/Black, third gets `Error{"room full"}`; `chess-tui --connect ws://host:7878` is the only client entry point. Coordination is "Slack the IP, count seats by hand." This PR adds many concurrent rooms on one server plus an optional per-room password, exposed through a lobby browser inside chess-tui so players don't copy-paste room URLs out of band.
+
+The core design constraint from the existing stack: chess-tui has no tokio (sync `tungstenite` worker + `std::sync::mpsc`, see `clients/chess-tui/src/net.rs`), and the server already does all per-room I/O through `tokio::sync::mpsc::UnboundedSender<ServerMsg>` to per-socket write tasks. Both shapes survive untouched into multi-room.
+
+## Recommendation: Option A (in-process `Screen::Lobby`)
+
+Pick A. The lobby is one extra `Screen` variant reusing `PickerView`'s cursor model and an additional `NetClient` instance — neither is a structural change. **B (separate `chess-tui-lobby` binary)** would force users to launch two processes and somehow hand off the room URL between them, which is exactly the "copy-paste room URLs out of band" problem this PR exists to fix. **C (russh)** is a separate parallel transport stack worth ~1500 LOC of `russh` glue plus PTY rendering, conflicts with the chess-web roadmap, and is already tracked as the `[?/L] Wish/SSH multiplayer alternative` P? spike — it must not be absorbed into this PR.
+
+## Scope
+
+**In**: many rooms per server, named room ids, lobby ws subscription with live push, optional plain-text password per room (friend-list lock, not security), `Screen::Lobby` + `Screen::HostPrompt` + `Screen::CreateRoom` in chess-tui, `--lobby <host>` and `--password <pw>` CLI flags, `/rooms` JSON snapshot for `curl` debugging, two new wire messages each direction, backwards-compat default room "main".
+
+**Out** (each gets a new `TODO.md` entry, P2 unless noted; pre-existing TODOs that stay deferred are reused, not duplicated):
+- chat / spectators (>2 connections per room) — defer.
+- reconnect / resume on transient disconnect — already TODO, stays.
+- WSS / TLS / oauth — keeps "loopback only" posture; stays out.
+- Mixed-variant servers (one server hosting xiangqi room *and* banqi room concurrently) — adds one server-side `RuleSet` per room and a "default variant" knob; doable, but expands the picker UX and admin story. Defer.
+- Server-wide kick / admin / persistent room storage — defer.
+- `/` filter inside the lobby — defer (write the keybind reservation but no impl).
+- Separate lobby binary or russh transport — deliberately not chosen.
+
+## Wire schema
+
+`crates/chess-net/src/protocol.rs`. `PROTOCOL_VERSION` bumps to **2**. Old (v1) clients connecting to the new server still work for the default-room case — the additions are strictly new variants, so v1 message shapes deserialize unchanged.
+
+```rust
+pub const PROTOCOL_VERSION: u16 = 2;
+
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    Update { view: PlayerView },
+    Error { message: String },
+    // NEW: lobby push. Sent on `/lobby` connection (snapshot) and again on
+    // every room state change (debounced ≥250ms). Never sent to game sockets.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    Move { mv: Move },
+    Resign,
+    Rematch,
+    // NEW: lobby pull. Forces a fresh Rooms push to the requester only.
+    // Useful after the lobby tab regains focus or to manually refresh.
+    ListRooms,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RoomSummary {
+    pub id: String,            // url-safe, see validation below
+    pub variant: String,       // "xiangqi" | "xiangqi-strict" | "banqi" | …
+    pub seats: u8,             // 0|1|2
+    pub has_password: bool,
+    pub status: RoomStatus,    // Lobby | Playing | Finished
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus { Lobby, Playing, Finished }
+```
+
+Versioning behavior:
+- **New server + old (v1) client**: old client connects to `/ws` → default room "main", unchanged path through `handle_socket`. Sees `Hello{protocol: 2, ...}` — the field is `u16`, no parse error. The old client's `Hello` arm in `apply_net_event` ignores `protocol` (verified at `clients/chess-tui/src/app.rs:605`), so it works. Document this; no code change to the old client is needed for it to keep functioning against the new server in the default room.
+- **Old (v1) server + new client**: if the user typed `--lobby ws://oldhost`, the old server has no `/lobby` route and returns 404 on the upgrade. Surface in the TUI as "Server doesn't support lobby (try --connect ws://host/ws)". For `ListRooms` sent into a v1 game socket: the v1 server's `serde_json::from_str::<ClientMsg>` fails and replies `Error{"malformed message: ..."}`. New client doesn't send `ListRooms` over a game socket (lobby uses a separate `NetClient`), so this path is dead in practice — it's only a concern if a test or stray CLI explicitly does it.
+
+## Server architecture
+
+`crates/chess-net/src/server.rs` — three-layer split:
+
+```rust
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+
+struct AppState {
+    rooms: RoomMap,
+    /// Outbound senders for every connected lobby socket. Cleaned up on
+    /// disconnect by the lobby write task draining its mpsc and exiting.
+    lobby_subs: Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>,
+    /// Server-wide variant for MVP (matches today's `--variant` CLI). Every
+    /// auto-created room copies this. Mixed-variant servers are a separate
+    /// TODO.
+    default_rules: RuleSet,
+}
+```
+
+**Why two locks, not `DashMap` or nested-only**: the outer `RoomMap` lock is held only for HashMap entry / removal / iteration to build a `Vec<RoomSummary>` snapshot — never across an `await`, never across a per-room `send`. The inner `Mutex<RoomState>` is per-room as before. Splitting them avoids the head-of-line block where one slow room would freeze new joins. `DashMap` would also work, but `tokio::sync::Mutex<HashMap>` keeps the dep graph identical and the lock ordering trivial to reason about (always outer → inner; never the reverse).
+
+**Avoiding lock-while-send**: the existing pattern (write task drains an `UnboundedSender` and does the actual `ws.send`) already enforces this. Per-move broadcast continues to call `tx.send(ServerMsg::Update {...})` while holding the inner lock; that's fire-and-forget into an unbounded channel, no I/O. The lobby push uses the same pattern: snapshot under the outer lock, drop the lock, then iterate `lobby_subs` and `tx.send(rooms_msg)`.
+
+**Empty-room GC**: when the last seat in a room disconnects (existing `g.seats.retain` block in `handle_socket`), check `g.seats.is_empty()` after retain and, if true, drop the inner lock, re-acquire the outer `RoomMap`, and remove the entry. Special-case: room "main" is never GC'd (so the default-room URL stays stable). This avoids leaking memory for spectator-style room churn.
+
+**Lobby push triggers**: a single helper `notify_lobby(state: &AppState)` snapshots all rooms (outer lock, build `Vec<RoomSummary>`, drop), then iterates `lobby_subs` outside the lock. Called from:
+1. After seat insertion (room appearing or filling).
+2. After seat removal (room emptying or being GC'd).
+3. After `process_client_msg` commits a move that flips status to `Won`/`Drawn` (room → `Finished`).
+4. On explicit `ClientMsg::ListRooms` (sends only to the requester, not all subs).
+
+To prevent a flurry during normal play (every move flips no status), trigger #3 fires only on actual status transition, not on every Update. Trigger #1+#2 are infrequent. No debounce timer needed at MVP scale; document a 250ms debounce as a follow-up if room churn ever becomes a problem.
+
+**Room creation**: implicit on first arrival at `/ws/<id>`. If `<id>` doesn't exist, create with `default_rules` and the password from the `?password=` query (binding it as the room's password forever — first joiner sets the lock). Subsequent joiners must present the same `?password=` or get rejected before `Hello`. Validation: room id must match `^[a-zA-Z0-9_-]{1,32}$` (rejects path traversal, whitespace, NULs); password is `String`, max 64 chars, accepted as-is.
+
+**Routes** (axum):
+```rust
+Router::new()
+    .route("/", get(upgrade_default))                  // back-compat: room "main"
+    .route("/ws", get(upgrade_default))                //   "
+    .route("/ws/:room_id", get(upgrade_room))
+    .route("/lobby", get(upgrade_lobby))
+    .route("/rooms", get(rooms_snapshot_json))         // curl/debug only
+    .with_state(app_state)
+```
+
+`upgrade_room` extracts `Path(room_id): Path<String>` and `Query(q): Query<AuthQuery>` where `AuthQuery { password: Option<String> }`. Validation happens in the upgrade handler **before** `ws.on_upgrade`: invalid room id → 400; valid → upgrade, then on the resulting socket either send `Hello` or `Error{"bad password"}` + close. Choosing post-upgrade for password validation (not handshake-level reject) keeps the failure mode visible in the client's NetClient as a normal `ServerMsg::Error` instead of a confusing `tungstenite::Error::Http`.
+
+`/rooms` is a plain `axum::Json<Vec<RoomSummary>>` for `curl` debugging. The TUI does **not** use it; the TUI subscribes to `/lobby`.
+
+**Mixed-variant note**: the MVP keeps one `RuleSet` for the whole server. Document explicitly that `--variant` on the server CLI is the variant for every auto-created room, and creating a room with a different variant is out of scope. The `RoomSummary.variant` field is therefore always the same for every room on a given server today; it's already future-proofed for the mixed-variant follow-up.
+
+## Client architecture
+
+**`clients/chess-tui/src/net.rs`** stays mostly unchanged. Two notes:
+- `NetEvent::Server(Box<ServerMsg>)` already boxes the payload, so growing `ServerMsg` to include `Rooms { ... }` is a one-line addition with no size cliff.
+- A second `NetClient::spawn` is fine — each spawns its own OS thread + mpsc pair. The lobby connection lives in the new `Screen::Lobby` and is dropped (closing the ws via `_handle` cleanup) when the user picks a room and transitions into `Screen::Net`.
+
+**`clients/chess-tui/src/app.rs`** — new `Screen` variants:
+
+```rust
+pub enum Screen {
+    Picker(PickerView),
+    Game(Box<GameView>),
+    Net(Box<NetView>),
+    HostPrompt(HostPromptView),     // "Server URL: ws://___"
+    Lobby(Box<LobbyView>),          // browser
+    CreateRoom(CreateRoomView),     // name + password input
+}
+
+pub struct HostPromptView {
+    pub buf: String,                // free-text input
+    pub error: Option<String>,
+}
+
+pub struct LobbyView {
+    pub client: NetClient,          // ws to /lobby
+    pub host: String,               // "ws://host:port" (no /lobby suffix kept)
+    pub rooms: Vec<RoomSummary>,    // last Rooms push
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    pub password_buf: Option<String>, // when joining a password-locked room,
+                                      // mid-prompt buffer
+}
+
+pub struct CreateRoomView {
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,     // Id | Password | Submit
+    pub error: Option<String>,
+}
+```
+
+`PickerEntry` gets a new variant `ConnectToServer` inserted before `Quit`. Selecting it transitions to `Screen::HostPrompt` (preserving the existing `dispatch_picker` shape — just one more match arm). The variant picker is now a one-time choice (still local-only); to enter networked play the user selects the new "Connect to server…" entry, types a host, lands in `Screen::Lobby`, picks or creates a room. The variant is server-determined, so the pre-Hello local picker doesn't apply to net mode (already true in the current MVP).
+
+**Screen flow** (state machine):
+```
+chess-tui                              → Picker
+  └ "Connect to server..."             → HostPrompt
+      └ Enter ws://host:7878           → Lobby (spawns 2nd NetClient → /lobby)
+          ├ Enter on a row             → Net  (spawns 1st NetClient → /ws/<id>?pw=…)
+          ├ 'c'                        → CreateRoom
+          │   └ submit                 → Net  (server auto-creates on first join)
+          └ Esc                        → HostPrompt
+chess-tui --connect ws://host/ws/X     → Net directly (with --password forwarded)
+chess-tui --connect ws://host          → Net default room "main" (unchanged)
+chess-tui --lobby ws://host            → Lobby directly
+```
+
+**Esc from Lobby** returns to `HostPrompt`; **Esc from HostPrompt** returns to `Picker`. This is a real behavior change vs MVP (which had no re-entry), but it's the natural consequence of multi-screen entry. Implement by storing the previous-screen identity inside the new view structs only when needed — don't add a generic back-stack.
+
+**Keybinds** (`clients/chess-tui/src/input.rs`). Lobby:
+- `j`/`k` or `↓`/`↑` move cursor (reuse `PickerUp`/`PickerDown` action variants — they already mean "list cursor", not "picker-specific").
+- Enter / Space: join (`PickerSelect` reused).
+- `c`: new action `LobbyCreate`.
+- `r`: new action `LobbyRefresh` (sends `ClientMsg::ListRooms`). Note: collides with the existing global `RulesToggle` on `r`. Resolve by gating: in `Screen::Lobby`, `r` is `LobbyRefresh`; everywhere else, unchanged. Cleanest extension of the existing `in_picker` boolean — add `in_lobby`.
+- `/`: parsed and consumed but produces `Action::None` for now; reserves the keybind for the deferred filter.
+- Esc: new action `Back` (currently `Cancel`, but `Cancel` is overloaded with selection-clear in game). Add a distinct `Back` variant to disambiguate.
+
+HostPrompt and CreateRoom: text-input. **Don't add `tui-input` as a dep** — the inputs are simple ASCII strings, and the repo's `pitfalls/` ethos prefers small hand-rolled solutions over dep churn. Implement a 30-line helper that takes a `KeyEvent` and a `&mut String`, handling printable chars, backspace, and `Tab`/`Shift-Tab` for field focus inside `CreateRoom`. Validation regex for room id matches the server's; surface errors inline.
+
+**Client-side variant pre-render**: when the lobby shows `RoomSummary { variant: "banqi", ... }` and the user joins, the client doesn't know the rules until `Hello` arrives — same as today. The connecting-placeholder (`draw_connecting_placeholder` in `ui.rs`) already covers this; no change.
+
+**`clients/chess-tui/src/main.rs`** CLI additions:
+- `--lobby <ws-url>`: skip picker, land in `Screen::Lobby` for that host.
+- `--password <pw>`: forwarded into the `?password=` query when paired with `--connect ws://host/ws/<id>`.
+
+`normalize_ws_url` becomes two helpers: one preserves the existing `/ws` auto-append for `--connect`; the new `normalize_lobby_url` appends `/lobby` similarly.
+
+## Tests
+
+`crates/chess-net/tests/server_smoke.rs` adds (each follows the existing pattern: ephemeral port, `tokio::task::spawn_blocking` for the sync tungstenite client):
+- `lobby_lists_empty_initially` — connect to `/lobby`, expect `Rooms{rooms: []}`.
+- `lobby_sees_room_after_join` — open a `/lobby` socket, then a `/ws/foo` socket; lobby socket reads a second `Rooms` push containing `foo` with `seats: 1, status: Lobby`.
+- `lobby_sees_room_fill_and_finish` — join two clients to `/ws/foo`, lobby sees `seats: 2, status: Playing`; one resigns, lobby sees `Finished`.
+- `password_rejected_on_wrong` — first joiner sets `?password=alpha`, second joins with `?password=beta`, gets `Error{"bad password"}` and the socket closes; verify no Hello was sent.
+- `password_accepted_on_right` — same setup, second joiner uses correct password and gets seated as Black.
+- `two_rooms_isolated_no_crosstalk` — clients in `/ws/foo` play a move; `/ws/bar` clients receive no `Update`.
+- `room_gc_after_last_seat_leaves` — single client joins `/ws/temp`, disconnects; lobby push omits `temp`. The default room `main` is never GC'd — separate assertion.
+- `default_room_back_compat` — a v1-style `tungstenite::connect("ws://host/ws")` (no `/<id>`) lands in room "main" and gets a normal Hello.
+
+`crates/chess-net/tests/protocol_roundtrip.rs` adds one roundtrip test per new message variant (`Rooms`, `ListRooms`, `RoomSummary` with and without password). Mirrors the existing 6 roundtrip cases.
+
+chess-tui has no app-state-machine unit tests today; that's noted explicitly in the original prompt as something to defer beyond a single integration smoke. Defer here too — the server-side tests catch the protocol contract, and the manual `make play-local` pass (extended below) catches the UI flow.
+
+## Verification
+
+Pre-push gates (unchanged):
+```
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+```
+No CI changes needed. `chess-net` is not WASM-targeted today, so the wasm gate is unaffected.
+
+Manual smoke: extend `scripts/play-local.sh` so `make play-local` boots one server with two clients connecting to the same room "main" (default behavior — backwards compat verified). Add `make play-lobby` that boots the server, then opens three TUI panes — two go through the lobby flow into a room called "demo", the third stays in the lobby and watches the room fill. Drop in updated docs in `CLAUDE.md` mirroring the MVP "Networked play" block.
+
+Backwards-compat smoke: build the new server binary, run `./target/debug/chess-net-server xiangqi` (no extra flags), then connect with the **previous** chess-tui binary (rebuild from `git stash` before client changes if needed). Verify it lands in the default room and plays normally.
+
+## Out-of-scope follow-ups (TODO.md additions)
+
+Add as P2 entries in `TODO.md` under the existing P2 block, each with a one-line rationale per the repo's `add-todo.sh` convention:
+
+- **[S] chess-net: lobby filter + sort** — `/` filter inside the lobby, sort by recency / seat count / variant. Defer until ≥10 concurrent rooms is a real workflow.
+- **[M] chess-net: mixed-variant rooms** — per-room `RuleSet` instead of server-wide. Adds a variant chooser in `CreateRoom`. Architecture supports it (`RoomState` already owns its `GameState`); blocked on UX for "what variant filter applies in the lobby."
+- **[S] chess-net: lobby push debouncing** — ≥250ms coalesce on rapid status flips. Premature today; revisit if room churn is observable.
+- **[M] chess-net: spectator slots** — third+ connection joins as observer (read-only, gets `Update` but `Move` returns `Error{"spectators can't move"}`). Replaces today's "room full" dead-end.
+- **[S] chess-net: server-side kick / admin token** — close stuck rooms or force-disconnect a misbehaving client. Wants an admin-only ws path or signed token.
+- The existing P2 entry **chess-net: multi-room lobby + optional password** gets promoted via `scripts/promote-todo.sh` in the implementing commit, summary line: "Multi-room server (`/ws/<id>`), optional `?password=` lock, in-TUI `Screen::Lobby` browser with live ws push, `/rooms` JSON snapshot, default room 'main' preserved for v1 client back-compat."
+
+The pre-existing P? entry for SSH multiplayer (`russh`) is **not** touched by this PR; it remains a separate spike.
+
+### Critical Files for Implementation
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/net.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-06 09:07:31Z)**_
+
+Design an implementation plan for **chess-net: multi-room lobby + optional password**, integrated into the existing chess-tui. The MVP single-room server already exists; this is the natural follow-up.
+
+# Context
+
+The repo at `/Volumes/Data/Program/tries/2026-05-06-chinese-chess` has:
+
+- `crates/chess-net/src/server.rs` (~287 lines): single `Arc<Mutex<RoomState>>` axum-ws server with two routes (`/` and `/ws`) both upgrading into the same room. Seat assignment is first-arrival = Red, second = Black, third gets `Error{"room full"}`. Game state held authoritatively; per-side `PlayerView` broadcast on every move. `RoomState` already has a `rematch: Vec<Side>` field for the rematch protocol that just shipped.
+
+- `crates/chess-net/src/protocol.rs`: tagged-JSON enums `ServerMsg{Hello/Update/Error}` + `ClientMsg{Move/Resign/Rematch}`. `PROTOCOL_VERSION: u16 = 1`.
+
+- `crates/chess-net/src/bin/server.rs`: clap CLI with `Xiangqi { strict }` and `Banqi { preset, house, seed }` subcommands. **One server boot = one variant for the whole server today** — all rooms would share that variant in the simplest extension.
+
+- `clients/chess-tui/src/net.rs`: sync `tungstenite` worker thread + `std::sync::mpsc`. `NetEvent::{Connected, Server(Box<ServerMsg>), Disconnected(String)}`. `connect_with_retry` does 8 × 200ms backoff. `MaybeTlsStream::Plain` → `set_nonblocking(true)`. **Cannot do REST**: it's hard-wired to read/write `Message::Text` frames containing `ServerMsg`/`ClientMsg` JSON.
+
+- `clients/chess-tui/src/app.rs`: `Screen` enum has `Picker(PickerView)`, `Game(Box<GameView>)`, `Net(Box<NetView>)`. `dispatch_picker` is variant-only. `apply_net_event` handles Hello/Update/Error sequentially. `last_view` drives all rendering — pre-Hello shows `draw_connecting_placeholder`. No re-entry from `Screen::Net` back to `Screen::Picker`.
+
+- `clients/chess-tui/src/main.rs`: `--connect <url>` flag with `normalize_ws_url` (auto-appends `/ws`). When `Some`, branches to `AppState::new_net(url, ...)`.
+
+- `Makefile` + `scripts/play-local.sh`: tmux launcher booting one server + two `--connect` clients.
+
+# What the user wants
+
+- **Multi-room** server: many concurrent games on one chess-net process.
+- **Optional password** per room.
+- **Good UX**: don't make players copy-paste room URLs out of band. From the TUI, they should be able to browse rooms, pick one, and land in a game.
+- **Reuse existing facilities**: prefer not pulling in `reqwest` or `russh`; use the existing `tungstenite` + axum-ws stack.
+- **Backwards-compatible**: today's `chess-tui --connect ws://host:7878` should still work (default room "main").
+
+# Three integration options the user explicitly asked about
+
+A. Extend chess-tui in-process with `Screen::Lobby` (best UX, more code).
+B. Separate `chess-tui-lobby` binary or subcommand (low integration cost, two-step UX).
+C. SSH server via `russh` (huge dep, parallel transport, conflicts with chess-web roadmap).
+
+The user wants me to recommend one and design it. Your job: produce the plan.
+
+# Constraints I want you to honor
+
+1. **Default to Option A** unless you find a strong reason against it. The repo has a P? spike for SSH already — the lobby work shouldn't accidentally absorb that.
+
+2. **Use a second ws connection for lobby browsing**, not REST. Reasons: (a) reuses the existing NetClient/tungstenite worker shape, (b) gets live updates "for free" (rooms appearing/filling broadcast to all lobby subscribers), (c) avoids adding `reqwest` or hand-rolled HTTP. The REST-style `GET /rooms` JSON snapshot endpoint is fine to add in addition for `curl` debugging, but should NOT be how the TUI fetches rooms.
+
+3. **URL shape**: `ws://host/ws` = default room "main" (backwards compat), `ws://host/ws/<room-id>` = named room (auto-created on first arrival), `ws://host/lobby` = lobby ws (never seated; subscribes to room-list updates). Optional `?password=<secret>` query param on the game-room route.
+
+4. **Variant per room**: in MVP one server hosts one variant for all its rooms (matches today's `--variant` CLI). Mixed-variant servers are out of scope. Document this clearly.
+
+5. **No tokio in chess-tui**. The lobby NetClient is a second instance of the existing sync `tungstenite` worker, with the lobby-only ServerMsg variant added to the protocol enum.
+
+6. **Scope discipline**: this is one M-sized PR, not three. Out of scope: chat, spectators (>2 connections per room), reconnect, server-wide kick/admin, WSS/TLS, oauth, persistent room storage. Document each one with a one-line "see TODO.md".
+
+# Specific things to design
+
+For each, give file paths, struct/enum shapes, and the call-site changes — like the ADR-quality the repo already has.
+
+1. **Server-side data model**: How does `Arc<Mutex<RoomState>>` become multi-room? Pick a concrete structure (e.g. `Arc<Mutex<HashMap<RoomId, Arc<Mutex<RoomState>>>>>` vs `DashMap` vs nested locks). Address: how do you avoid holding the outer lock while sending to in-room sockets? When does an empty room get garbage collected? How do lobby subscribers get notified of room changes (push or pull)?
+
+2. **Server-side routes**: Exact axum router setup. Path-extraction for `:room_id`. Query-param extraction for `?password=`. Where does the lobby subscriber list live? How does a move-completion in room X trigger a lobby-list push to all subscribers (without holding any room's lock)?
+
+3. **Wire schema additions**: New `ServerMsg` and `ClientMsg` variants. JSON shapes. How does protocol versioning behave (old client connecting to new server should get a clear error or work fine)?
+
+4. **Password handling**: Where is the password stored on the server? (`RoomState.password: Option<String>` — fine, plain text is OK for an MVP since it's a friend-list lock not security; document this trade-off). When does the server validate it — on the upgrade handshake or after first message? Wrong password: `Error{"bad password"}` + close, before sending Hello.
+
+5. **chess-tui screen flow**: Concrete state machine. From bare invocation:
+   - `chess-tui` → variant picker → "Connect to server" entry → host prompt → lobby browser → pick room or create → game
+   - `chess-tui --connect ws://host/ws/<id>` → direct game join (with `--password` flag)
+   - `chess-tui --lobby ws://host` → skip picker, land directly in lobby
+   What new `Screen` variants are needed? (`Screen::HostPrompt`? `Screen::Lobby`? `Screen::CreateRoom`?) Or can some be combined? Reuse the `PickerView` cursor/selection mechanism where possible.
+
+6. **chess-tui keybinds**: Lobby keybinds — j/k or hjkl for cursor, Enter to join, 'c' to create, 'r' to refresh, '/' to filter (defer if scope-creep), Esc to back. Inside CreateRoom: name input + variant picker. Inside HostPrompt: free-text input for host:port. Where do text inputs go (use `tui-input` crate? hand-roll? the repo doesn't depend on tui-input today).
+
+7. **Tests**: Concretely list what to add. Suggested:
+   - `server_smoke.rs`: lobby_lists_empty_initially, lobby_sees_room_after_join, password_rejected_on_wrong, password_accepted_on_right, two_rooms_isolated_no_crosstalk.
+   - Protocol roundtrip for new variants.
+   - chess-tui has no unit tests for app state machine today; defer beyond an integration smoke if scope grows.
+
+8. **Pre-push checklist**: same 4 commands. Note any CI changes needed (probably none).
+
+9. **Migration path**: backwards compatibility commitment. Old server + new client: client tries `ListRooms`, gets `Error{"unknown command"}` from old server's malformed-message handler — does it gracefully fall back? New server + old client: old client connects to `/ws` → goes into default "main" room → no behavior change. Document both.
+
+Return the plan as a markdown document I can save to a plan file. Sections: Context (1-2 paragraphs), Recommendation (Option A — but justify against B and C in 2-3 sentences each), Scope (in/out), Wire schema, Server architecture, Client architecture, UX flow, Tests, Verification, Out-of-scope follow-ups (with TODO.md entries to add).
+
+Aim for ~1200-1800 words. The repo's existing ADRs and the prior chess-net MVP plan are good calibration — don't be looser than those.
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:34Z)**_
+
+I'll explore the repo to ground the plan in actual code shapes, then produce the markdown document.
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List repo root
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess`
+
+```text
+ **backlog
+ **clients
+ **crates
+ **docs
+ **pitfalls
+ **scripts
+ **target
+ **xtask
+ AGENTS.md
+ Cargo.lock
+ Cargo.toml
+ CLAUDE.md
+ clippy.toml
+ Makefile
+󰂺 README.md
+ rust-toolchain.toml
+ rustfmt.toml
+ TODO.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List chess-net and chess-tui sources
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src:
+ **bin
+ **lib.rs
+ **protocol.rs
+ **server.rs
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src:
+ **app.rs
+ **glyph.rs
+ **input.rs
+ **main.rs
+ **net.rs
+ **orient.rs
+ **ui.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:41Z)**_
+
+I'll note the plan-mode instruction to write to the specified plan file, but I also have a strict read-only constraint from my system prompt that says I cannot create/edit any files. I'll resolve this by returning the plan as my final markdown response (which is what the parent agent reads anyway, per my instructions). Let me first explore the actual code shapes so the plan is grounded.
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:42Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/server.rs`
+
+```text
+1	//! Single-room ws server. Accepts the first two clients (Red then Black),
+2	//! validates moves through `GameState::make_move`, broadcasts per-side
+3	//! `PlayerView` after each commit. Lobby / multi-room / reconnect / TLS
+4	//! deferred to follow-up PRs (see `TODO.md`).
+5	
+6	use std::net::SocketAddr;
+7	use std::sync::Arc;
+8	
+9	use anyhow::{Context, Result};
+10	use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+11	use axum::extract::State;
+12	use axum::response::IntoResponse;
+13	use axum::routing::get;
+14	use axum::Router;
+15	use chess_core::moves::Move;
+16	use chess_core::piece::Side;
+17	use chess_core::rules::RuleSet;
+18	use chess_core::state::{GameState, GameStatus, WinReason};
+19	use chess_core::view::PlayerView;
+20	use futures_util::stream::StreamExt;
+21	use futures_util::SinkExt;
+22	use tokio::sync::{mpsc, Mutex};
+23	
+24	use crate::protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+25	
+26	struct RoomState {
+27	    state: GameState,
+28	    /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
+29	    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+30	    /// Sides that have requested a rematch since the last reset. Cleared
+31	    /// every time the game resets; mutual consent triggers reset.
+32	    rematch: Vec<Side>,
+33	}
+34	
+35	impl RoomState {
+36	    fn new(rules: RuleSet) -> Self {
+37	        Self {
+38	            state: GameState::new(rules),
+39	            seats: Vec::with_capacity(2),
+40	            rematch: Vec::with_capacity(2),
+41	        }
+42	    }
+43	
+44	    fn next_seat(&self) -> Option<Side> {
+45	        match self.seats.len() {
+46	            0 => Some(Side::RED),
+47	            1 => {
+48	                let taken = self.seats[0].0;
+49	                Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
+50	            }
+51	            _ => None,
+52	        }
+53	    }
+54	}
+55	
+56	type Room = Arc<Mutex<RoomState>>;
+57	
+58	/// Bind `addr` and serve until error / SIGINT (caller's choice — we don't
+59	/// install signal handling here). For tests that need an ephemeral port,
+60	/// use [`serve`] directly with a pre-bound listener.
+61	pub async fn run(addr: SocketAddr, rules: RuleSet) -> Result<()> {
+62	    let listener =
+63	        tokio::net::TcpListener::bind(addr).await.with_context(|| format!("bind {addr}"))?;
+64	    eprintln!("[server] listening on ws://{}", listener.local_addr()?);
+65	    serve(listener, rules).await
+66	}
+67	
+68	/// Serve on a pre-bound listener. The listener owns the port; use
+69	/// `listener.local_addr()` before passing it in if you need to know it
+70	/// (e.g. ephemeral ports in tests).
+71	pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
+72	    let room: Room = Arc::new(Mutex::new(RoomState::new(rules)));
+73	    let app = Router::new().route("/", get(upgrade)).route("/ws", get(upgrade)).with_state(room);
+74	    axum::serve(listener, app).await.context("axum::serve")?;
+75	    Ok(())
+76	}
+77	
+78	async fn upgrade(State(room): State<Room>, ws: WebSocketUpgrade) -> impl IntoResponse {
+79	    ws.on_upgrade(move |socket| handle_socket(socket, room))
+80	}
+81	
+82	async fn handle_socket(socket: WebSocket, room: Room) {
+83	    let (mut sender, mut receiver) = socket.split();
+84	    let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
+85	
+86	    // Seat assignment + Hello. Held under one lock so a third connect can't
+87	    // squeeze between assignment and seat insertion.
+88	    let seat: Side = {
+89	        let mut g = room.lock().await;
+90	        match g.next_seat() {
+91	            Some(s) => {
+92	                let view = PlayerView::project(&g.state, s);
+93	                let hello = ServerMsg::Hello {
+94	                    protocol: PROTOCOL_VERSION,
+95	                    observer: s,
+96	                    rules: g.state.rules.clone(),
+97	                    view,
+98	                };
+99	                if out_tx.send(hello).is_err() {
+100	                    return;
+101	                }
+102	                g.seats.push((s, out_tx.clone()));
+103	                eprintln!("[server] seated {:?} ({}/2)", s, g.seats.len());
+104	                s
+105	            }
+106	            None => {
+107	                let _ = sender
+108	                    .send(Message::Text(
+109	                        serde_json::to_string(&ServerMsg::Error { message: "room full".into() })
+110	                            .unwrap_or_default(),
+111	                    ))
+112	                    .await;
+113	                let _ = sender.close().await;
+114	                return;
+115	            }
+116	        }
+117	    };
+118	
+119	    // Write task: drain mpsc → ws sink. Exits naturally when all senders drop.
+120	    let write_task = tokio::spawn(async move {
+121	        while let Some(msg) = out_rx.recv().await {
+122	            let json = match serde_json::to_string(&msg) {
+123	                Ok(s) => s,
+124	                Err(e) => {
+125	                    eprintln!("[server][warn] serialize ServerMsg: {e}");
+126	                    continue;
+127	                }
+128	            };
+129	            if sender.send(Message::Text(json)).await.is_err() {
+130	                break;
+131	            }
+132	        }
+133	        let _ = sender.close().await;
+134	    });
+135	
+136	    // Read loop.
+137	    while let Some(frame) = receiver.next().await {
+138	        let frame = match frame {
+139	            Ok(f) => f,
+140	            Err(e) => {
+141	                eprintln!("[server][warn] ws read error ({:?}): {e}", seat);
+142	                break;
+143	            }
+144	        };
+145	        let text = match frame {
+146	            Message::Text(t) => t,
+147	            Message::Close(_) => break,
+148	            _ => continue,
+149	        };
+150	        let msg: ClientMsg = match serde_json::from_str(&text) {
+151	            Ok(m) => m,
+152	            Err(e) => {
+153	                let _ =
+154	                    out_tx.send(ServerMsg::Error { message: format!("malformed message: {e}") });
+155	                continue;
+156	            }
+157	        };
+158	        let mut g = room.lock().await;
+159	        process_client_msg(&mut g, seat, msg);
+160	    }
+161	
+162	    // Disconnect: remove seat, notify peer if game was live.
+163	    eprintln!("[server] {:?} disconnected", seat);
+164	    {
+165	        let mut g = room.lock().await;
+166	        g.seats.retain(|(s, _)| *s != seat);
+167	        if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
+168	            for (_, tx) in &g.seats {
+169	                let _ = tx.send(ServerMsg::Error { message: "opponent disconnected".into() });
+170	            }
+171	        }
+172	    }
+173	
+174	    drop(out_tx);
+175	    let _ = write_task.await;
+176	}
+177	
+178	fn process_client_msg(g: &mut RoomState, seat: Side, msg: ClientMsg) {
+179	    match msg {
+180	        ClientMsg::Rematch => process_rematch(g, seat),
+181	        ClientMsg::Move { mv } => {
+182	            if !matches!(g.state.status, GameStatus::Ongoing) {
+183	                send_to(
+184	                    g,
+185	                    seat,
+186	                    ServerMsg::Error {
+187	                        message: "game is over — press 'n' to request a rematch".into(),
+188	                    },
+189	                );
+190	                return;
+191	            }
+192	            process_move(g, seat, mv);
+193	        }
+194	        ClientMsg::Resign => {
+195	            if !matches!(g.state.status, GameStatus::Ongoing) {
+196	                send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
+197	                return;
+198	            }
+199	            let winner = if seat == Side::RED { Side::BLACK } else { Side::RED };
+200	            g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+201	            broadcast_update(g);
+202	        }
+203	    }
+204	}
+205	
+206	fn process_rematch(g: &mut RoomState, seat: Side) {
+207	    if matches!(g.state.status, GameStatus::Ongoing) {
+208	        send_to(
+209	            g,
+210	            seat,
+211	            ServerMsg::Error {
+212	                message: "Game still in progress — finish or resign first.".into()
+213	            },
+214	        );
+215	        return;
+216	    }
+217	    if g.seats.len() < 2 {
+218	        send_to(
+219	            g,
+220	            seat,
+221	            ServerMsg::Error { message: "No opponent connected — can't start a rematch.".into() },
+222	        );
+223	        return;
+224	    }
+225	    if !g.rematch.contains(&seat) {
+226	        g.rematch.push(seat);
+227	    }
+228	    let want_seats: Vec<Side> = g.seats.iter().map(|(s, _)| *s).collect();
+229	    let all_ready = want_seats.iter().all(|s| g.rematch.contains(s));
+230	    if all_ready {
+231	        let rules = g.state.rules.clone();
+232	        g.state = GameState::new(rules);
+233	        g.rematch.clear();
+234	        eprintln!("[server] rematch — fresh game");
+235	        for (side, tx) in &g.seats {
+236	            let view = PlayerView::project(&g.state, *side);
+237	            let _ = tx.send(ServerMsg::Hello {
+238	                protocol: PROTOCOL_VERSION,
+239	                observer: *side,
+240	                rules: g.state.rules.clone(),
+241	                view,
+242	            });
+243	        }
+244	    } else {
+245	        for (s, tx) in &g.seats {
+246	            let msg = if *s == seat {
+247	                ServerMsg::Error { message: "Rematch requested. Waiting for opponent…".into() }
+248	            } else {
+249	                ServerMsg::Error {
+250	                    message: "Opponent wants a rematch. Press 'n' to accept.".into(),
+251	                }
+252	            };
+253	            let _ = tx.send(msg);
+254	        }
+255	    }
+256	}
+257	
+258	fn process_move(g: &mut RoomState, seat: Side, mv: Move) {
+259	    if g.state.side_to_move != seat {
+260	        send_to(g, seat, ServerMsg::Error { message: "not your turn".into() });
+261	        return;
+262	    }
+263	    match g.state.make_move(&mv) {
+264	        Ok(()) => {
+265	            g.state.refresh_status();
+266	            eprintln!("[server] {:?} -> {:?}", seat, mv);
+267	            broadcast_update(g);
+268	        }
+269	        Err(e) => {
+270	            send_to(g, seat, ServerMsg::Error { message: format!("illegal move: {e}") });
+271	        }
+272	    }
+273	}
+274	
+275	fn send_to(g: &RoomState, seat: Side, msg: ServerMsg) {
+276	    if let Some((_, tx)) = g.seats.iter().find(|(s, _)| *s == seat) {
+277	        let _ = tx.send(msg);
+278	    }
+279	}
+280	
+281	fn broadcast_update(g: &RoomState) {
+282	    for (side, tx) in &g.seats {
+283	        let view = PlayerView::project(&g.state, *side);
+284	        let _ = tx.send(ServerMsg::Update { view });
+285	    }
+286	}
+287
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:43Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/protocol.rs`
+
+```text
+1	//! Wire protocol between `chess-net-server` and clients.
+2	//!
+3	//! Frames are JSON text frames, one message per frame. Tagged enums via
+4	//! `#[serde(tag = "type")]` keep the schema obvious in `wscat`/`jq`.
+5	//!
+6	//! All payload types come straight from `chess-core` and already derive
+7	//! `Serialize/Deserialize`, including the proptest-validated no-leak
+8	//! projection in `PlayerView` (hidden banqi pieces stay opaque on the wire).
+9	
+10	use chess_core::moves::Move;
+11	use chess_core::piece::Side;
+12	use chess_core::rules::RuleSet;
+13	use chess_core::view::PlayerView;
+14	use serde::{Deserialize, Serialize};
+15	
+16	/// Bumped whenever the wire schema changes incompatibly.
+17	pub const PROTOCOL_VERSION: u16 = 1;
+18	
+19	/// Server → client.
+20	#[derive(Clone, Debug, Serialize, Deserialize)]
+21	#[serde(tag = "type")]
+22	pub enum ServerMsg {
+23	    /// Sent once per client right after side assignment. Carries the variant
+24	    /// (so the client knows what to render) plus the initial `PlayerView`.
+25	    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+26	    /// Sent to every seated client after each committed move.
+27	    Update { view: PlayerView },
+28	    /// Illegal move, room full, malformed message, opponent disconnect, etc.
+29	    /// Non-fatal by default — clients should display and keep the connection.
+30	    Error { message: String },
+31	}
+32	
+33	/// Client → server.
+34	#[derive(Clone, Debug, Serialize, Deserialize)]
+35	#[serde(tag = "type")]
+36	pub enum ClientMsg {
+37	    /// Submit a move. For `Move::Reveal`, send `revealed: None` — the server
+38	    /// fills in the piece identity locally; the wire form stays `None`.
+39	    Move { mv: Move },
+40	    /// Resign — ends the game with `WinReason::Resignation` for the opponent.
+41	    Resign,
+42	    /// Request a rematch. Only valid after the current game has ended
+43	    /// (Won / Drawn). Server resets the game when both sides have requested
+44	    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+45	    /// fresh `GameState`.
+46	    Rematch,
+47	}
+48
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:43Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/bin/server.rs`
+
+```text
+1	//! `chess-net-server` — single-room ws host for chess-core.
+2	//!
+3	//! Examples:
+4	//!   chess-net-server xiangqi --port 7878
+5	//!   chess-net-server xiangqi --port 7878 --strict
+6	//!   chess-net-server banqi --port 7878 --preset taiwan --seed 42
+7	
+8	use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+9	
+10	use anyhow::{anyhow, Result};
+11	use chess_core::rules::{HouseRules, RuleSet};
+12	use clap::{Parser, Subcommand, ValueEnum};
+13	
+14	#[derive(Parser, Debug)]
+15	#[command(name = "chess-net-server", about = "ws server for chess-core (single room MVP)")]
+16	struct Cli {
+17	    /// Listen port (loopback only).
+18	    #[arg(long, default_value_t = 7878)]
+19	    port: u16,
+20	
+21	    /// Override bind address. Defaults to 127.0.0.1:<port>.
+22	    #[arg(long)]
+23	    addr: Option<SocketAddr>,
+24	
+25	    #[command(subcommand)]
+26	    variant: VariantCmd,
+27	}
+28	
+29	#[derive(Subcommand, Debug)]
+30	enum VariantCmd {
+31	    /// Xiangqi (9×10). Casual rules by default; pass `--strict` for the
+32	    /// standard self-check filter.
+33	    Xiangqi {
+34	        #[arg(long)]
+35	        strict: bool,
+36	    },
+37	    /// Banqi (4×8 face-down).
+38	    Banqi {
+39	        #[arg(long, value_enum)]
+40	        preset: Option<PresetArg>,
+41	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+42	        #[arg(long)]
+43	        house: Option<String>,
+44	        #[arg(long)]
+45	        seed: Option<u64>,
+46	    },
+47	}
+48	
+49	#[derive(Copy, Clone, Debug, ValueEnum)]
+50	enum PresetArg {
+51	    Purist,
+52	    Taiwan,
+53	    Aggressive,
+54	}
+55	
+56	#[tokio::main]
+57	async fn main() -> Result<()> {
+58	    let cli = Cli::parse();
+59	    let addr = cli
+60	        .addr
+61	        .unwrap_or_else(|| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), cli.port));
+62	
+63	    let rules = match cli.variant {
+64	        VariantCmd::Xiangqi { strict } => {
+65	            if strict {
+66	                RuleSet::xiangqi()
+67	            } else {
+68	                RuleSet::xiangqi_casual()
+69	            }
+70	        }
+71	        VariantCmd::Banqi { preset, house, seed } => {
+72	            build_banqi_rules(preset.as_ref(), house.as_deref(), seed)?
+73	        }
+74	    };
+75	
+76	    chess_net::run(addr, rules).await
+77	}
+78	
+79	fn build_banqi_rules(
+80	    preset: Option<&PresetArg>,
+81	    house: Option<&str>,
+82	    seed: Option<u64>,
+83	) -> Result<RuleSet> {
+84	    let mut flags = HouseRules::empty();
+85	    if let Some(p) = preset {
+86	        flags |= match p {
+87	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+88	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+89	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+90	        };
+91	    }
+92	    if let Some(s) = house {
+93	        for tok in s.split(',') {
+94	            flags |= match tok.trim() {
+95	                "chain" => HouseRules::CHAIN_CAPTURE,
+96	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+97	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+98	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+99	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+100	                other => return Err(anyhow!("unknown house rule: {other}")),
+101	            };
+102	        }
+103	    }
+104	    let flags = chess_core::rules::house::normalize(flags);
+105	    Ok(match seed {
+106	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+107	        None => RuleSet::banqi(flags),
+108	    })
+109	}
+110
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:46Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/net.rs`
+
+```text
+1	//! Sync `tungstenite` ws client driven from a background OS thread, with
+2	//! `std::sync::mpsc` channels to/from the (sync) TUI loop. We deliberately
+3	//! keep tokio out of the TUI binary — `crossterm::event::poll` is sync, and
+4	//! mixing in a runtime would force a refactor.
+5	//!
+6	//! The thread does a non-blocking poll cycle: try one ws read, drain pending
+7	//! outbound `ClientMsg`s, sleep ~20ms. Every parsed `ServerMsg` (or fatal
+8	//! error) is shipped to the TUI as a `NetEvent`.
+9	
+10	use std::io::ErrorKind;
+11	use std::net::TcpStream;
+12	use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+13	use std::thread::{self, JoinHandle};
+14	use std::time::Duration;
+15	
+16	use anyhow::{anyhow, Result};
+17	use chess_net::{ClientMsg, ServerMsg};
+18	use tungstenite::stream::MaybeTlsStream;
+19	use tungstenite::{Message, WebSocket};
+20	
+21	const POLL_INTERVAL: Duration = Duration::from_millis(20);
+22	const CONNECT_ATTEMPTS: u32 = 8;
+23	const CONNECT_BACKOFF: Duration = Duration::from_millis(200);
+24	
+25	#[derive(Debug)]
+26	pub enum NetEvent {
+27	    Connected,
+28	    Server(Box<ServerMsg>),
+29	    Disconnected(String),
+30	}
+31	
+32	pub struct NetClient {
+33	    pub cmd_tx: Sender<ClientMsg>,
+34	    pub evt_rx: Receiver<NetEvent>,
+35	    _handle: JoinHandle<()>,
+36	}
+37	
+38	impl NetClient {
+39	    /// Spawns the worker thread and returns immediately. The caller polls
+40	    /// `evt_rx` each frame (use `try_recv`, never `recv` — the TUI loop must
+41	    /// not block) and pushes outbound moves via `cmd_tx`.
+42	    pub fn spawn(url: String) -> Self {
+43	        let (cmd_tx, cmd_rx) = mpsc::channel::<ClientMsg>();
+44	        let (evt_tx, evt_rx) = mpsc::channel::<NetEvent>();
+45	        let handle = thread::spawn(move || run(url, cmd_rx, evt_tx));
+46	        Self { cmd_tx, evt_rx, _handle: handle }
+47	    }
+48	}
+49	
+50	fn run(url: String, cmd_rx: Receiver<ClientMsg>, evt_tx: Sender<NetEvent>) {
+51	    let mut ws = match connect_with_retry(&url) {
+52	        Ok(ws) => ws,
+53	        Err(e) => {
+54	            let _ = evt_tx.send(NetEvent::Disconnected(format!("connect failed: {e}")));
+55	            return;
+56	        }
+57	    };
+58	    if let Err(e) = set_nonblocking(&mut ws) {
+59	        let _ = evt_tx.send(NetEvent::Disconnected(format!("set_nonblocking: {e}")));
+60	        return;
+61	    }
+62	    let _ = evt_tx.send(NetEvent::Connected);
+63	
+64	    loop {
+65	        // Inbound: try to read one frame.
+66	        match ws.read() {
+67	            Ok(Message::Text(t)) => match serde_json::from_str::<ServerMsg>(t.as_str()) {
+68	                Ok(msg) => {
+69	                    if evt_tx.send(NetEvent::Server(Box::new(msg))).is_err() {
+70	                        return; // TUI dropped the receiver
+71	                    }
+72	                }
+73	                Err(e) => {
+74	                    let _ = evt_tx.send(NetEvent::Disconnected(format!("decode ServerMsg: {e}")));
+75	                    return;
+76	                }
+77	            },
+78	            Ok(Message::Close(_)) => {
+79	                let _ = evt_tx.send(NetEvent::Disconnected("server closed".into()));
+80	                return;
+81	            }
+82	            Ok(_) => {} // ping/pong/binary — ignore, tungstenite handles ping/pong itself
+83	            Err(tungstenite::Error::Io(e)) if e.kind() == ErrorKind::WouldBlock => {}
+84	            Err(e) => {
+85	                let _ = evt_tx.send(NetEvent::Disconnected(format!("read: {e}")));
+86	                return;
+87	            }
+88	        }
+89	
+90	        // Outbound: drain whatever's queued.
+91	        loop {
+92	            match cmd_rx.try_recv() {
+93	                Ok(msg) => {
+94	                    let json = match serde_json::to_string(&msg) {
+95	                        Ok(j) => j,
+96	                        Err(e) => {
+97	                            let _ = evt_tx.send(NetEvent::Disconnected(format!("encode: {e}")));
+98	                            return;
+99	                        }
+100	                    };
+101	                    if let Err(e) = ws.send(Message::Text(json)) {
+102	                        let _ = evt_tx.send(NetEvent::Disconnected(format!("send: {e}")));
+103	                        return;
+104	                    }
+105	                }
+106	                Err(TryRecvError::Empty) => break,
+107	                Err(TryRecvError::Disconnected) => {
+108	                    let _ = ws.close(None);
+109	                    return;
+110	                }
+111	            }
+112	        }
+113	
+114	        thread::sleep(POLL_INTERVAL);
+115	    }
+116	}
+117	
+118	fn connect_with_retry(url: &str) -> Result<WebSocket<MaybeTlsStream<TcpStream>>> {
+119	    let mut last_err: Option<tungstenite::Error> = None;
+120	    for _ in 0..CONNECT_ATTEMPTS {
+121	        match tungstenite::connect(url) {
+122	            Ok((ws, _resp)) => return Ok(ws),
+123	            Err(e) => {
+124	                last_err = Some(e);
+125	                thread::sleep(CONNECT_BACKOFF);
+126	            }
+127	        }
+128	    }
+129	    Err(anyhow!(
+130	        "could not reach {url} after {} attempts: {}",
+131	        CONNECT_ATTEMPTS,
+132	        last_err.map(|e| e.to_string()).unwrap_or_default()
+133	    ))
+134	}
+135	
+136	fn set_nonblocking(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> std::io::Result<()> {
+137	    match ws.get_mut() {
+138	        MaybeTlsStream::Plain(tcp) => tcp.set_nonblocking(true),
+139	        // Other MaybeTlsStream variants (rustls/native-tls) only appear when
+140	        // those features are enabled; we don't enable them.
+141	        _ => Ok(()),
+142	    }
+143	}
+144
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:47Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+1	//! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
+2	//! short-lived flash message; actions from `input.rs` mutate it.
+3	
+4	use chess_core::coord::Square;
+5	use chess_core::moves::Move;
+6	use chess_core::piece::Side;
+7	use chess_core::rules::{HouseRules, RuleSet};
+8	use chess_core::state::{GameState, GameStatus};
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use chess_net::{ClientMsg, ServerMsg};
+11	
+12	use crate::glyph::Style;
+13	use crate::input::Action;
+14	use crate::net::{NetClient, NetEvent};
+15	use crate::orient;
+16	
+17	/// Variant + preset choices in the picker, in display order.
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+19	pub enum PickerEntry {
+20	    Xiangqi,
+21	    XiangqiStrict,
+22	    BanqiPurist,
+23	    BanqiTaiwan,
+24	    BanqiAggressive,
+25	    Quit,
+26	}
+27	
+28	impl PickerEntry {
+29	    pub const ALL: [PickerEntry; 6] = [
+30	        PickerEntry::Xiangqi,
+31	        PickerEntry::XiangqiStrict,
+32	        PickerEntry::BanqiPurist,
+33	        PickerEntry::BanqiTaiwan,
+34	        PickerEntry::BanqiAggressive,
+35	        PickerEntry::Quit,
+36	    ];
+37	
+38	    pub fn label(self) -> &'static str {
+39	        match self {
+40	            PickerEntry::Xiangqi => "Xiangqi (象棋)",
+41	            PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
+42	            PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
+43	            PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
+44	            PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+45	            PickerEntry::Quit => "Quit",
+46	        }
+47	    }
+48	
+49	    pub fn rules(self) -> Option<RuleSet> {
+50	        match self {
+51	            // Default xiangqi is casual: more permissive, you lose by general
+52	            // capture. Strict (standard rules) is one row down.
+53	            PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
+54	            PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
+55	            PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
+56	            PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
+57	            PickerEntry::BanqiAggressive => {
+58	                Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
+59	            }
+60	            PickerEntry::Quit => None,
+61	        }
+62	    }
+63	}
+64	
+65	pub struct PickerView {
+66	    pub cursor: usize,
+67	}
+68	
+69	pub struct GameView {
+70	    pub state: GameState,
+71	    pub cursor: (u8, u8),
+72	    pub selected: Option<Square>,
+73	    pub last_msg: Option<String>,
+74	}
+75	
+76	pub struct NetView {
+77	    pub client: NetClient,
+78	    pub url: String,
+79	    pub last_view: Option<PlayerView>,
+80	    pub rules: Option<RuleSet>,
+81	    /// Server-assigned side. `None` until `Hello` arrives.
+82	    pub observer: Option<Side>,
+83	    pub cursor: (u8, u8),
+84	    pub selected: Option<Square>,
+85	    pub last_msg: Option<String>,
+86	    /// True between Connected and Disconnected events. Used by the sidebar.
+87	    pub connected: bool,
+88	}
+89	
+90	pub enum Screen {
+91	    Picker(PickerView),
+92	    Game(Box<GameView>),
+93	    Net(Box<NetView>),
+94	}
+95	
+96	pub struct AppState {
+97	    pub screen: Screen,
+98	    pub style: Style,
+99	    pub use_color: bool,
+100	    pub observer: Side,
+101	    pub help_open: bool,
+102	    pub rules_open: bool,
+103	    /// True while the y/N quit-confirm dialog is shown. Set when the user
+104	    /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
+105	    /// at least one move played). Picker / game-over `q` skip the prompt.
+106	    pub quit_confirm_open: bool,
+107	    /// Rect of the board widget last drawn (terminal coords). Used for
+108	    /// mouse-click hit-testing. ui.rs writes this each frame.
+109	    pub board_rect: Option<RectPx>,
+110	    pub should_quit: bool,
+111	}
+112	
+113	/// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
+114	#[derive(Copy, Clone, Debug)]
+115	pub struct RectPx {
+116	    pub x: u16,
+117	    pub y: u16,
+118	    /// Width in terminal cols of one cell (glyph + padding).
+119	    pub cell_cols: u16,
+120	    /// Height in terminal rows of one cell (rank row + between row).
+121	    pub cell_rows: u16,
+122	    /// Offset (cols) of the first cell's start from rect.x.
+123	    pub left_pad: u16,
+124	    /// Offset (rows) of the first row from rect.y.
+125	    pub top_pad: u16,
+126	}
+127	
+128	impl AppState {
+129	    pub fn new_picker(style: Style, use_color: bool, observer: Side) -> Self {
+130	        Self {
+131	            screen: Screen::Picker(PickerView { cursor: 0 }),
+132	            style,
+133	            use_color,
+134	            observer,
+135	            help_open: false,
+136	            rules_open: false,
+137	            quit_confirm_open: false,
+138	            board_rect: None,
+139	            should_quit: false,
+140	        }
+141	    }
+142	
+143	    pub fn new_game(rules: RuleSet, style: Style, use_color: bool, observer: Side) -> Self {
+144	        let state = GameState::new(rules);
+145	        let shape = state.board.shape();
+146	        let (rows, cols) = orient::display_dims(shape);
+147	        let cursor = (rows / 2, cols / 2);
+148	        Self {
+149	            screen: Screen::Game(Box::new(GameView {
+150	                state,
+151	                cursor,
+152	                selected: None,
+153	                last_msg: Some(
+154	                    "Welcome. Arrows/hjkl move cursor. Enter selects. r=rules, ?=help, n=new, q=quit."
+155	                        .into(),
+156	                ),
+157	            })),
+158	            style,
+159	            use_color,
+160	            observer,
+161	            help_open: false,
+162	            rules_open: false,
+163	            quit_confirm_open: false,
+164	            board_rect: None,
+165	            should_quit: false,
+166	        }
+167	    }
+168	
+169	    pub fn new_net(url: String, style: Style, use_color: bool) -> Self {
+170	        let client = NetClient::spawn(url.clone());
+171	        Self {
+172	            screen: Screen::Net(Box::new(NetView {
+173	                client,
+174	                url,
+175	                last_view: None,
+176	                rules: None,
+177	                observer: None,
+178	                cursor: (0, 0),
+179	                selected: None,
+180	                last_msg: Some("Connecting…".into()),
+181	                connected: false,
+182	            })),
+183	            style,
+184	            use_color,
+185	            // Pre-Hello, we render as Red until the server tells us our seat.
+186	            observer: Side::RED,
+187	            help_open: false,
+188	            rules_open: false,
+189	            quit_confirm_open: false,
+190	            board_rect: None,
+191	            should_quit: false,
+192	        }
+193	    }
+194	
+195	    /// Drain ws events from the worker thread and apply them to the
+196	    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+197	    pub fn tick_net(&mut self) {
+198	        let Screen::Net(n) = &mut self.screen else {
+199	            return;
+200	        };
+201	        while let Ok(evt) = n.client.evt_rx.try_recv() {
+202	            apply_net_event(n, evt);
+203	        }
+204	    }
+205	
+206	    pub fn dispatch(&mut self, action: Action) {
+207	        match action {
+208	            Action::None => {}
+209	            Action::ConfirmYes => {
+210	                self.quit_confirm_open = false;
+211	                self.should_quit = true;
+212	            }
+213	            Action::ConfirmNo => self.quit_confirm_open = false,
+214	            Action::Quit => {
+215	                if self.is_game_in_progress() {
+216	                    self.quit_confirm_open = true;
+217	                } else {
+218	                    self.should_quit = true;
+219	                }
+220	            }
+221	            Action::HelpToggle => self.help_open = !self.help_open,
+222	            Action::RulesToggle => self.rules_open = !self.rules_open,
+223	            Action::NewGame => {
+224	                if matches!(self.screen, Screen::Net(_)) {
+225	                    // In Net mode, 'n' requests a rematch via the server
+226	                    // instead of dropping the connection. Game must be over.
+227	                    if let Screen::Net(n) = &mut self.screen {
+228	                        let status = n.last_view.as_ref().map(|v| v.status);
+229	                        match status {
+230	                            Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
+231	                                let _ = n.client.cmd_tx.send(ClientMsg::Rematch);
+232	                                n.last_msg =
+233	                                    Some("Rematch requested. Waiting for opponent…".into());
+234	                            }
+235	                            Some(GameStatus::Ongoing) => {
+236	                                n.last_msg = Some(
+237	                                    "'n' requests a rematch only after the game is over.".into(),
+238	                                );
+239	                            }
+240	                            None => {
+241	                                n.last_msg = Some("Not connected yet.".into());
+242	                            }
+243	                        }
+244	                    }
+245	                } else {
+246	                    let style = self.style;
+247	                    let use_color = self.use_color;
+248	                    let observer = self.observer;
+249	                    *self = AppState::new_picker(style, use_color, observer);
+250	                }
+251	            }
+252	            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
+253	                self.dispatch_picker(action);
+254	            }
+255	            _ => match &self.screen {
+256	                Screen::Net(_) => self.dispatch_net(action),
+257	                Screen::Game(_) => self.dispatch_game(action),
+258	                Screen::Picker(_) => {}
+259	            },
+260	        }
+261	    }
+262	
+263	    fn is_game_in_progress(&self) -> bool {
+264	        match &self.screen {
+265	            Screen::Game(g) => {
+266	                matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty()
+267	            }
+268	            Screen::Net(n) => match &n.last_view {
+269	                Some(view) => matches!(view.status, GameStatus::Ongoing) && n.connected,
+270	                None => false,
+271	            },
+272	            Screen::Picker(_) => false,
+273	        }
+274	    }
+275	
+276	    fn dispatch_picker(&mut self, action: Action) {
+277	        let Screen::Picker(p) = &mut self.screen else {
+278	            return;
+279	        };
+280	        let n = PickerEntry::ALL.len();
+281	        match action {
+282	            Action::PickerUp => p.cursor = (p.cursor + n - 1) % n,
+283	            Action::PickerDown => p.cursor = (p.cursor + 1) % n,
+284	            Action::PickerSelect => {
+285	                let entry = PickerEntry::ALL[p.cursor];
+286	                match entry.rules() {
+287	                    Some(rules) => {
+288	                        let observer = self.observer;
+289	                        let style = self.style;
+290	                        let use_color = self.use_color;
+291	                        *self = AppState::new_game(rules, style, use_color, observer);
+292	                    }
+293	                    None => self.should_quit = true,
+294	                }
+295	            }
+296	            _ => {}
+297	        }
+298	    }
+299	
+300	    fn dispatch_game(&mut self, action: Action) {
+301	        let Screen::Game(g) = &mut self.screen else {
+302	            return;
+303	        };
+304	        let shape = g.state.board.shape();
+305	        let (rows, cols) = orient::display_dims(shape);
+306	        match action {
+307	            Action::CursorUp => {
+308	                if g.cursor.0 > 0 {
+309	                    g.cursor.0 -= 1;
+310	                }
+311	            }
+312	            Action::CursorDown => {
+313	                if g.cursor.0 + 1 < rows {
+314	                    g.cursor.0 += 1;
+315	                }
+316	            }
+317	            Action::CursorLeft => {
+318	                if g.cursor.1 > 0 {
+319	                    g.cursor.1 -= 1;
+320	                }
+321	            }
+322	            Action::CursorRight => {
+323	                if g.cursor.1 + 1 < cols {
+324	                    g.cursor.1 += 1;
+325	                }
+326	            }
+327	            Action::Cancel => {
+328	                g.selected = None;
+329	                g.last_msg = None;
+330	            }
+331	            Action::SelectOrCommit => {
+332	                let observer = self.observer;
+333	                Self::handle_select_or_commit(g, observer);
+334	            }
+335	            Action::Undo => match g.state.unmake_move() {
+336	                Ok(()) => {
+337	                    g.state.refresh_status();
+338	                    g.selected = None;
+339	                    g.last_msg = Some(format!("Undone. {:?} to move.", g.state.side_to_move));
+340	                }
+341	                Err(e) => {
+342	                    g.last_msg = Some(format!("Cannot undo: {e}"));
+343	                }
+344	            },
+345	            Action::Flip => {
+346	                if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+347	                    g.last_msg = Some(
+348	                        "Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into(),
+349	                    );
+350	                    return;
+351	                }
+352	                let observer = self.observer;
+353	                let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape)
+354	                else {
+355	                    g.last_msg = Some("Cursor not on a playable square.".into());
+356	                    return;
+357	                };
+358	                let m = Move::Reveal { at: sq, revealed: None };
+359	                Self::apply_move(g, m);
+360	            }
+361	            Action::Click { term_col, term_row } => {
+362	                if let Some(rect) = self.board_rect {
+363	                    let observer = self.observer;
+364	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+365	                        g.cursor = (row, col);
+366	                        Self::handle_select_or_commit(g, observer);
+367	                    }
+368	                }
+369	            }
+370	            _ => {}
+371	        }
+372	    }
+373	
+374	    fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+375	        if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+376	            g.last_msg =
+377	                Some("Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into());
+378	            return;
+379	        }
+380	        let shape = g.state.board.shape();
+381	        let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape) else {
+382	            g.last_msg = Some("Cursor not on a playable square.".into());
+383	            return;
+384	        };
+385	
+386	        let view = PlayerView::project(&g.state, g.state.side_to_move);
+387	
+388	        match g.selected {
+389	            None => {
+390	                // Try to select a piece. Allowed if there's a legal move from this square.
+391	                let any = view.legal_moves.iter().any(|m| m.origin_square() == sq);
+392	                if any {
+393	                    g.selected = Some(sq);
+394	                    g.last_msg = None;
+395	                } else {
+396	                    // Maybe it's a banqi hidden cell — suggest 'f' to flip.
+397	                    match g.state.board.get(sq) {
+398	                        Some(p) if !p.revealed => {
+399	                            g.last_msg = Some("Hidden piece. Press 'f' to flip.".into());
+400	                        }
+401	                        _ => g.last_msg = Some("No legal move from that square.".into()),
+402	                    }
+403	                }
+404	            }
+405	            Some(from) if from == sq => {
+406	                g.selected = None;
+407	                g.last_msg = None;
+408	            }
+409	            Some(from) => {
+410	                // Find a legal move from `from` to `sq`. Prefer Capture / CannonJump
+411	                // over a chain ending at sq (for banqi); take the first match.
+412	                let candidate = view
+413	                    .legal_moves
+414	                    .iter()
+415	                    .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+416	                    .cloned();
+417	                match candidate {
+418	                    Some(m) => Self::apply_move(g, m),
+419	                    None => {
+420	                        g.last_msg = Some("Illegal move.".into());
+421	                        g.selected = None;
+422	                    }
+423	                }
+424	            }
+425	        }
+426	    }
+427	
+428	    fn apply_move(g: &mut GameView, m: Move) {
+429	        match g.state.make_move(&m) {
+430	            Ok(()) => {
+431	                g.state.refresh_status();
+432	                g.selected = None;
+433	                g.last_msg = Some(format!(
+434	                    "Played: {}",
+435	                    chess_core::notation::iccs::encode_move(&g.state.board, &m)
+436	                ));
+437	            }
+438	            Err(e) => {
+439	                g.last_msg = Some(format!("Engine rejected move: {e}"));
+440	                g.selected = None;
+441	            }
+442	        }
+443	    }
+444	
+445	    fn dispatch_net(&mut self, action: Action) {
+446	        let Screen::Net(n) = &mut self.screen else {
+447	            return;
+448	        };
+449	        // Pre-Hello: no view yet, nothing to dispatch on.
+450	        let Some(view) = n.last_view.as_ref() else {
+451	            return;
+452	        };
+453	        let shape = view.shape;
+454	        let (rows, cols) = orient::display_dims(shape);
+455	        let observer = n.observer.unwrap_or(Side::RED);
+456	        match action {
+457	            Action::CursorUp => {
+458	                if n.cursor.0 > 0 {
+459	                    n.cursor.0 -= 1;
+460	                }
+461	            }
+462	            Action::CursorDown => {
+463	                if n.cursor.0 + 1 < rows {
+464	                    n.cursor.0 += 1;
+465	                }
+466	            }
+467	            Action::CursorLeft => {
+468	                if n.cursor.1 > 0 {
+469	                    n.cursor.1 -= 1;
+470	                }
+471	            }
+472	            Action::CursorRight => {
+473	                if n.cursor.1 + 1 < cols {
+474	                    n.cursor.1 += 1;
+475	                }
+476	            }
+477	            Action::Cancel => {
+478	                n.selected = None;
+479	                n.last_msg = None;
+480	            }
+481	            Action::SelectOrCommit => {
+482	                let outcome = compute_select_outcome(n, observer);
+483	                apply_select_outcome(n, outcome);
+484	            }
+485	            Action::Flip => {
+486	                if !matches!(view.status, GameStatus::Ongoing) {
+487	                    n.last_msg = Some("Game over.".into());
+488	                    return;
+489	                }
+490	                if view.side_to_move != observer {
+491	                    n.last_msg = Some("Not your turn.".into());
+492	                    return;
+493	                }
+494	                let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape)
+495	                else {
+496	                    n.last_msg = Some("Cursor not on a playable square.".into());
+497	                    return;
+498	                };
+499	                let _ = n
+500	                    .client
+501	                    .cmd_tx
+502	                    .send(ClientMsg::Move { mv: Move::Reveal { at: sq, revealed: None } });
+503	                n.last_msg = Some("Reveal sent.".into());
+504	            }
+505	            Action::Undo => {
+506	                n.last_msg = Some("Undo not supported in online mode yet.".into());
+507	            }
+508	            Action::Click { term_col, term_row } => {
+509	                if let Some(rect) = self.board_rect {
+510	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+511	                        let n = match &mut self.screen {
+512	                            Screen::Net(b) => b,
+513	                            _ => return,
+514	                        };
+515	                        n.cursor = (row, col);
+516	                        let outcome = compute_select_outcome(n, observer);
+517	                        apply_select_outcome(n, outcome);
+518	                    }
+519	                }
+520	            }
+521	            _ => {}
+522	        }
+523	    }
+524	}
+525	
+526	enum SelectOutcome {
+527	    Ignore,
+528	    Msg(String),
+529	    ClearAndMsg(String),
+530	    Select(Square),
+531	    Deselect,
+532	    Commit(Move),
+533	}
+534	
+535	fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
+536	    let Some(view) = n.last_view.as_ref() else {
+537	        return SelectOutcome::Ignore;
+538	    };
+539	    if !matches!(view.status, GameStatus::Ongoing) {
+540	        return SelectOutcome::Msg("Game over.".into());
+541	    }
+542	    let shape = view.shape;
+543	    let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape) else {
+544	        return SelectOutcome::Msg("Cursor not on a playable square.".into());
+545	    };
+546	    if view.side_to_move != observer {
+547	        return SelectOutcome::Msg("Not your turn.".into());
+548	    }
+549	    match n.selected {
+550	        None => {
+551	            if view.legal_moves.iter().any(|m| m.origin_square() == sq) {
+552	                SelectOutcome::Select(sq)
+553	            } else if matches!(view.cells[sq.0 as usize], VisibleCell::Hidden) {
+554	                SelectOutcome::Msg("Hidden piece. Press 'f' to flip.".into())
+555	            } else {
+556	                SelectOutcome::Msg("No legal move from that square.".into())
+557	            }
+558	        }
+559	        Some(from) if from == sq => SelectOutcome::Deselect,
+560	        Some(from) => {
+561	            let candidate = view
+562	                .legal_moves
+563	                .iter()
+564	                .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+565	                .cloned();
+566	            match candidate {
+567	                Some(mv) => SelectOutcome::Commit(mv),
+568	                None => SelectOutcome::ClearAndMsg("Illegal move.".into()),
+569	            }
+570	        }
+571	    }
+572	}
+573	
+574	fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
+575	    match outcome {
+576	        SelectOutcome::Ignore => {}
+577	        SelectOutcome::Msg(m) => n.last_msg = Some(m),
+578	        SelectOutcome::ClearAndMsg(m) => {
+579	            n.selected = None;
+580	            n.last_msg = Some(m);
+581	        }
+582	        SelectOutcome::Select(sq) => {
+583	            n.selected = Some(sq);
+584	            n.last_msg = None;
+585	        }
+586	        SelectOutcome::Deselect => {
+587	            n.selected = None;
+588	            n.last_msg = None;
+589	        }
+590	        SelectOutcome::Commit(mv) => {
+591	            let _ = n.client.cmd_tx.send(ClientMsg::Move { mv });
+592	            n.selected = None;
+593	            n.last_msg = Some("Sent.".into());
+594	        }
+595	    }
+596	}
+597	
+598	fn apply_net_event(n: &mut NetView, evt: NetEvent) {
+599	    match evt {
+600	        NetEvent::Connected => {
+601	            n.connected = true;
+602	            n.last_msg = Some("Connected. Waiting for hello…".into());
+603	        }
+604	        NetEvent::Server(boxed) => match *boxed {
+605	            ServerMsg::Hello { observer, rules, view, .. } => {
+606	                let was_seated = n.observer.is_some();
+607	                n.observer = Some(observer);
+608	                n.rules = Some(rules);
+609	                let shape = view.shape;
+610	                let (rows, cols) = orient::display_dims(shape);
+611	                n.cursor = (rows / 2, cols / 2);
+612	                n.selected = None;
+613	                n.last_view = Some(view);
+614	                n.connected = true;
+615	                // First Hello = "Joined as X". Subsequent Hello = rematch reset.
+616	                n.last_msg = Some(if was_seated {
+617	                    "Rematch — new game.".into()
+618	                } else {
+619	                    format!("Joined as {}.", side_label(observer))
+620	                });
+621	            }
+622	            ServerMsg::Update { view } => {
+623	                n.last_view = Some(view);
+624	                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
+625	                if n.last_msg.as_deref() == Some("Sent.") {
+626	                    n.last_msg = None;
+627	                }
+628	            }
+629	            ServerMsg::Error { message } => {
+630	                n.last_msg = Some(message);
+631	            }
+632	        },
+633	        NetEvent::Disconnected(reason) => {
+634	            n.connected = false;
+635	            n.last_msg = Some(format!("Disconnected: {reason}"));
+636	        }
+637	    }
+638	}
+639	
+640	fn side_label(side: Side) -> &'static str {
+641	    if side == Side::RED {
+642	        "Red 紅"
+643	    } else if side == Side::BLACK {
+644	        "Black 黑"
+645	    } else {
+646	        "Green 綠"
+647	    }
+648	}
+649	
+650	/// Convert terminal click coords to (display_row, display_col) within board.
+651	///
+652	/// Cells are `cell_rows × cell_cols` terminal cells. With the intersection
+653	/// layout, `cell_rows = 2` (rank row + between row) so clicks on either of
+654	/// those rows resolve to the same display cell — including the river row,
+655	/// which simply replaces the between-row at index 4 without changing the
+656	/// row layout.
+657	fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
+658	    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+659	        return None;
+660	    }
+661	    let col_off = term_col - rect.x - rect.left_pad;
+662	    let row_off = term_row - rect.y - rect.top_pad;
+663	    if rect.cell_cols == 0 || rect.cell_rows == 0 {
+664	        return None;
+665	    }
+666	    let cell_col = col_off / rect.cell_cols;
+667	    let cell_row = row_off / rect.cell_rows;
+668	    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+669	        return None;
+670	    }
+671	    Some((cell_row as u8, cell_col as u8))
+672	}
+673
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:51Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend for chess-core.
+2	//!
+3	//! Run modes:
+4	//!   chess-tui                                       # variant picker
+5	//!   chess-tui xiangqi
+6	//!   chess-tui banqi --preset taiwan --seed 42
+7	//!   chess-tui --style ascii xiangqi
+8	//!   chess-tui --no-color xiangqi
+9	//!   chess-tui --as black xiangqi                    # debug: render as Black
+10	
+11	mod app;
+12	mod glyph;
+13	mod input;
+14	mod net;
+15	mod orient;
+16	mod ui;
+17	
+18	use std::io::{self, Stdout};
+19	use std::time::Duration;
+20	
+21	use anyhow::{anyhow, Context, Result};
+22	use chess_core::piece::Side;
+23	use chess_core::rules::{HouseRules, RuleSet};
+24	use clap::{Parser, Subcommand, ValueEnum};
+25	use crossterm::event::{self, Event};
+26	use crossterm::execute;
+27	use crossterm::terminal::{
+28	    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+29	};
+30	use ratatui::backend::CrosstermBackend;
+31	use ratatui::Terminal;
+32	
+33	use crate::app::AppState;
+34	use crate::glyph::Style;
+35	use crate::input::{from_key, from_mouse, Action};
+36	
+37	#[derive(Parser, Debug)]
+38	#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+39	struct Cli {
+40	    /// Render style.
+41	    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+42	    style: StyleArg,
+43	
+44	    /// Disable ANSI color (keeps the chosen glyph set).
+45	    #[arg(long)]
+46	    no_color: bool,
+47	
+48	    /// Render from this side's perspective (debug; default RED). Ignored
+49	    /// when `--connect` is set — the server assigns a side on join.
+50	    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+51	    observer: SideArg,
+52	
+53	    /// Connect to a chess-net-server instead of starting a local game.
+54	    /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
+55	    /// automatically if missing).
+56	    #[arg(long)]
+57	    connect: Option<String>,
+58	
+59	    #[command(subcommand)]
+60	    cmd: Option<Cmd>,
+61	}
+62	
+63	#[derive(Subcommand, Debug)]
+64	enum Cmd {
+65	    /// Xiangqi (9×10). Casual rules by default — moves that leave your own
+66	    /// general capturable are allowed; the game ends when the general is
+67	    /// actually captured. Pass `--strict` for the standard self-check filter.
+68	    Xiangqi {
+69	        /// Strict mode: standard rules. Moves that would leave your own
+70	        /// general in check are rejected.
+71	        #[arg(long)]
+72	        strict: bool,
+73	    },
+74	    /// Banqi (4×8 face-down).
+75	    Banqi {
+76	        /// Preset bundle of house rules.
+77	        #[arg(long, value_enum)]
+78	        preset: Option<PresetArg>,
+79	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+80	        #[arg(long)]
+81	        house: Option<String>,
+82	        /// Deterministic shuffle seed.
+83	        #[arg(long)]
+84	        seed: Option<u64>,
+85	    },
+86	}
+87	
+88	#[derive(Copy, Clone, Debug, ValueEnum)]
+89	enum StyleArg {
+90	    Cjk,
+91	    Ascii,
+92	}
+93	
+94	#[derive(Copy, Clone, Debug, ValueEnum)]
+95	enum SideArg {
+96	    Red,
+97	    Black,
+98	}
+99	
+100	#[derive(Copy, Clone, Debug, ValueEnum)]
+101	enum PresetArg {
+102	    Purist,
+103	    Taiwan,
+104	    Aggressive,
+105	}
+106	
+107	fn main() -> Result<()> {
+108	    let cli = Cli::parse();
+109	
+110	    let style = match cli.style {
+111	        StyleArg::Cjk => Style::Cjk,
+112	        StyleArg::Ascii => Style::Ascii,
+113	    };
+114	    let observer = match cli.observer {
+115	        SideArg::Red => Side::RED,
+116	        SideArg::Black => Side::BLACK,
+117	    };
+118	    let use_color = !cli.no_color;
+119	
+120	    let app = if let Some(url) = cli.connect.as_deref() {
+121	        let url = normalize_ws_url(url);
+122	        AppState::new_net(url, style, use_color)
+123	    } else {
+124	        match &cli.cmd {
+125	            None => AppState::new_picker(style, use_color, observer),
+126	            Some(Cmd::Xiangqi { strict }) => {
+127	                let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+128	                AppState::new_game(rules, style, use_color, observer)
+129	            }
+130	            Some(Cmd::Banqi { preset, house, seed }) => {
+131	                let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+132	                AppState::new_game(rules, style, use_color, observer)
+133	            }
+134	        }
+135	    };
+136	
+137	    run(app)
+138	}
+139	
+140	fn normalize_ws_url(url: &str) -> String {
+141	    if url.contains("/ws") || url.ends_with('/') {
+142	        url.to_string()
+143	    } else {
+144	        format!("{url}/ws")
+145	    }
+146	}
+147	
+148	fn build_banqi_rules(
+149	    preset: Option<&PresetArg>,
+150	    house: Option<&str>,
+151	    seed: Option<u64>,
+152	) -> Result<RuleSet> {
+153	    let mut flags = HouseRules::empty();
+154	    if let Some(p) = preset {
+155	        flags |= match p {
+156	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+157	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+158	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+159	        };
+160	    }
+161	    if let Some(s) = house {
+162	        for tok in s.split(',') {
+163	            flags |= match tok.trim() {
+164	                "chain" => HouseRules::CHAIN_CAPTURE,
+165	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+166	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+167	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+168	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+169	                other => return Err(anyhow!("unknown house rule: {other}")),
+170	            };
+171	        }
+172	    }
+173	    let flags = chess_core::rules::house::normalize(flags);
+174	    Ok(match seed {
+175	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+176	        None => RuleSet::banqi(flags),
+177	    })
+178	}
+179	
+180	fn run(mut app: AppState) -> Result<()> {
+181	    let mut terminal = setup_terminal()?;
+182	    let result = run_loop(&mut terminal, &mut app);
+183	    teardown_terminal(&mut terminal).ok();
+184	    result
+185	}
+186	
+187	fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+188	    enable_raw_mode().context("enable raw mode")?;
+189	    let mut stdout = io::stdout();
+190	    execute!(stdout, EnterAlternateScreen, crossterm::event::EnableMouseCapture)
+191	        .context("enter alt screen")?;
+192	    let backend = CrosstermBackend::new(stdout);
+193	    let terminal = Terminal::new(backend).context("init terminal")?;
+194	    Ok(terminal)
+195	}
+196	
+197	fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+198	    disable_raw_mode().ok();
+199	    execute!(terminal.backend_mut(), LeaveAlternateScreen, crossterm::event::DisableMouseCapture)
+200	        .ok();
+201	    terminal.show_cursor().ok();
+202	    Ok(())
+203	}
+204	
+205	fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppState) -> Result<()> {
+206	    loop {
+207	        // Drain ws events first so the next draw shows server-pushed state.
+208	        // No-op outside Net mode.
+209	        app.tick_net();
+210	
+211	        terminal.draw(|frame| ui::draw(frame, app))?;
+212	        if app.should_quit {
+213	            return Ok(());
+214	        }
+215	
+216	        // Shorter poll in Net mode keeps server pushes feeling snappy
+217	        // (we redraw at most every poll interval). 200ms in single-process
+218	        // mode is fine — there's no async source to drain.
+219	        let poll_ms = if matches!(app.screen, app::Screen::Net(_)) { 60 } else { 200 };
+220	        if event::poll(Duration::from_millis(poll_ms))? {
+221	            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+222	            let quit_confirm = app.quit_confirm_open;
+223	            let action = match event::read()? {
+224	                Event::Key(k) if k.kind == event::KeyEventKind::Press => {
+225	                    from_key(k, in_picker, quit_confirm)
+226	                }
+227	                Event::Mouse(m) => from_mouse(m),
+228	                Event::Resize(_, _) => Action::None,
+229	                _ => Action::None,
+230	            };
+231	            app.dispatch(action);
+232	        }
+233	    }
+234	}
+235
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:51Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+1	# TODO
+2	
+3	Long-term backlog for Chinese Chess. See AGENTS.md
+4	for the maintenance workflow that agents should follow.
+5	
+6	> **For agents**: when the user surfaces an idea explicitly **not** being
+7	> implemented this session (signals: "maybe later", "nice to have",
+8	> "工程量太大需要再評估", "先記下來"), add it here with priority + effort tags.
+9	> Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files —
+10	> `TODO.md` is the single backlog index. Long-form research goes in
+11	> [`backlog/<slug>.md`](backlog/).
+12	
+13	<!-- Use the exact section order: P1, P2, P3, P?, Done.
+14	     The bundled scripts/todo-kanban.sh validator only inspects top-level
+15	     `- [ ]` and `- ✅` items inside these sections. Prose paragraphs,
+16	     blockquotes, indented sub-bullets, HTML comments, and `---` rules are
+17	     ignored — feel free to add inline guidance like this without breaking
+18	     machine readability. -->
+19	
+20	## P1
+21	
+22	Likely next batch — items you'd reach for if you sat down to work today.
+23	
+24	- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+25	- [ ] **[S] Wire DARK_CHAIN house rule** — Chain captures pass through face-down squares; auto-reveal as chain progresses. Requires changing ChainHop.captured to Option<Piece> and updating sanitize_for_observer for the network ABI. See docs/rules/banqi-house.md.
+26	- [ ] **[S] Wire HORSE_DIAGONAL house rule** — Banqi horse moves like xiangqi horse (L-shape with 馬腿 leg block) when flag enabled. Reuse pattern from rules/xiangqi.rs::gen_horse.
+27	- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+28	- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+29	
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+35	- [ ] **[M] chess-net: multi-room lobby + optional password** — Today the server hosts a single hard-coded room; two clients connect to the same `ws://host:port` and that's the game. Move to: route `GET /ws/<room-id>` upgrades into room `<room-id>` (auto-created if absent), `GET /rooms` returns a JSON list `[{id, variant, seats, has_password}]`, optional `?password=<secret>` query param locked in on first join (subsequent joiners with wrong password get `Error{"bad password"}` and are dropped). chess-tui flag: `--connect ws://host/ws/<id>` plus `--password <pw>`. Replaces the current "Slack the IP, count seats by hand" coordination.
+36	- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+37	- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+38	- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+39	- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+40	
+41	## P3
+42	
+43	Someday / nice-to-have.
+44	
+45	- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+46	- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+47	- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+48	
+49	## P?
+50	
+51	Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
+52	
+53	- [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
+54	- [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
+55	
+56	## Done
+57	
+58	- ✅ [2026-05-06] [P2/M] chess-net MVP: single-room websocket server + chess-tui --connect + tmux launcher — `crates/chess-net` ships an axum-ws server (`chess-net-server`) hosting one game/room. Wire schema: tagged JSON enums `ServerMsg` (Hello/Update/Error) and `ClientMsg` (Move/Resign), `Move::Reveal` stays `revealed: None` end-to-end. First connection = Red, second = Black, third gets "room full". `chess-tui --connect ws://...` runs a sync `tungstenite` worker thread + `std::sync::mpsc` channels (no tokio in TUI). `make play-local` / `scripts/play-local.sh` opens a tmux session with two clients in window 0 and the server in window 1. 8 new tests (6 protocol round-trip + 2 end-to-end smoke). Lobby / reconnect / time controls / takeback still deferred (kept as separate TODO items).
+59	
+60	- ✅ [2026-05-06] [P2/M] chess-tui: ratatui frontend — interactive TUI for xiangqi + banqi. Vim cursor (hjkl) + arrows + mouse, Enter/Space select-or-commit, `u` undo, `f` flip (banqi). Two render styles: CJK glyphs (帥仕相俥傌炮兵 / 將士象車馬砲卒, default with color) and ASCII (--style ascii). Banqi displays in traditional 8×4 layout (transposed from 4×8 model). Variant picker on bare invocation; --as black flips xiangqi orientation for net-readiness. Engine stays presentation-free — orient.rs + glyph.rs live in the client.
+61	
+62	- ✅ [2026-05-06] [P1/S] End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress) — tests/end_conditions.rs verifies refresh_status produces Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} from .pos fixtures. Pattern reusable for endgame puzzles.
+63	
+64	Recently shipped. When implementing an active item, in the same commit run:
+65	
+66	```
+67	scripts/promote-todo.sh --title "<substring>" --summary "<one-line shipped summary>"
+68	```
+69	
+70	This moves the entry here using the dated `Done` syntax and re-validates.
+71	
+72	- ✅ [2026-05-06] [P1/L] Foundational chess-core + workspace scaffolding — full xiangqi (perft-validated 1=44, 2=1920, 3=79666) + base banqi + CHAIN_CAPTURE/CHARIOT_RUSH house rules + PlayerView projection (no-leak proptest) + ICCS notation + chess-cli REPL. 8-crate workspace + WASM cleanliness in CI. 71 tests passing.
+73	
+74	<!-- Prune older entries into CHANGELOG.md once prior-year items appear here
+75	     or this section grows past ~20 entries. -->
+76
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:52Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List ADRs and backlog dirs
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog 2>/dev/null`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs:
+ **adr
+ **rules
+ architecture.md
+ notation.md
+ snapshot-format.md
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog:
+ chess-ai-search.md
+ chess-net-protocol.md
+ inbox.md
+󰂺 README.md
+ three-kingdoms-banqi.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List ADRs and chess-net tests
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests 2>/dev/null`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr:
+ 0001-rust-workspace-layout.md
+ 0002-square-as-u16.md
+ 0003-ruleset-as-data-not-trait.md
+ 0004-player-view-projection.md
+󰂺 README.md
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests:
+ **protocol_roundtrip.rs
+ **server_smoke.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:57Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./backlog/chess-net-protocol.md`
+
+```text
+1	# chess-net: server-authoritative websocket protocol
+2	
+3	**Status**: shipped (2026-05-06, MVP — single room, no lobby/reconnect/time controls)
+4	**Effort**: M (matched estimate)
+5	**Related**: `TODO.md` · `crates/chess-net/src/{protocol,server}.rs` · `crates/chess-net/src/bin/server.rs` · `clients/chess-tui/src/net.rs` · `Makefile` + `scripts/play-local.sh`
+6	
+7	## What shipped
+8	
+9	- `axum 0.7` + `tokio` server on `127.0.0.1:<port>`. Single room; first 2 ws clients seat as Red / Black, third gets `Error{"room full"}`. JSON over text frames, tagged enums (`{"type": ...}`).
+10	- `ServerMsg::{Hello{protocol, observer, rules, view}, Update{view}, Error{message}}` and `ClientMsg::{Move{mv}, Resign}`. `Move::Reveal { revealed: None }` stays None on the wire — server fills `Some(piece)` only inside its local `GameState`.
+11	- `chess-tui --connect ws://host:port` runs a sync `tungstenite` worker on a background OS thread; talks to the TUI via `std::sync::mpsc`. No tokio in the TUI binary. `--as` flag is overridden by the server's seat assignment.
+12	- `make play-local` / `scripts/play-local.sh` boots one server + two clients in a single tmux session for fast manual smoke.
+13	- 8 new tests: 6 protocol roundtrip (covers `Hello`/`Update`/`Error`/`Move(Step)`/`Move(Reveal None)`/`Resign`) + 2 end-to-end smoke (two clients exchange a real move; third connect gets "room full"). All pass under `cargo test -p chess-net`.
+14	
+15	## Out of scope (separate TODO items)
+16	
+17	- Lobby / matchmaking / multiple concurrent games.
+18	- Reconnect (transient disconnect today drops the player; opponent gets `Error{"opponent disconnected"}`).
+19	- Time controls (TODO entry retained; `WinReason::Timeout` already exists).
+20	- Takeback / 悔棋 (TODO entry retained; needs opponent-approval protocol).
+21	- TLS / wss / auth.
+22	- chess-web frontend (separate TODO).
+23	
+24	## Context
+25	
+26	Why this surfaced. Trigger (conversation, bug, new tool, recurring annoyance).
+27	Date helps — "2026-04, came up while reviewing X".
+28	
+29	## Investigation
+30	
+31	What's already been tried / read / measured. **This is the section that saves
+32	future-you time.** Be specific:
+33	
+34	- Commands run + relevant output
+35	- Docs/issue/SO links read
+36	- Benchmark numbers
+37	- Error messages copy-pasted in full (not paraphrased)
+38	
+39	## Options considered
+40	
+41	| Option | Pros | Cons |
+42	|---|---|---|
+43	| A. … | … | … |
+44	| B. … | … | … |
+45	
+46	## Current blocker / open questions
+47	
+48	Why this is still on the backlog. One of:
+49	
+50	- Waiting on upstream X (link)
+51	- Need host/data Y to verify
+52	- Trade-offs unclear, need user preference
+53	- Effort estimate exceeds current budget
+54	
+55	## Decision (if any)
+56	
+57	`2026-04 deferred — waiting for X release` or
+58	`2026-04 chose option B because …`
+59	
+60	Dates matter. A 6-month-old "decided to use mise" needs re-validation.
+61	
+62	## References
+63	
+64	Issues, PRs, SO links, related discussions.
+65
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:07:57Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+1	//! ratatui draw layer. Stateless — reads `AppState` and draws.
+2	
+3	use chess_core::board::BoardShape;
+4	use chess_core::coord::Square;
+5	use chess_core::piece::{PieceKind, Side};
+6	use chess_core::state::{GameStatus, WinReason};
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	
+9	use ratatui::layout::{Constraint, Direction, Layout, Rect};
+10	use ratatui::style::{Color, Modifier, Style as TuiStyle};
+11	use ratatui::text::{Line, Span};
+12	use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+13	use ratatui::Frame;
+14	
+15	use crate::app::{AppState, GameView, NetView, PickerEntry, PickerView, RectPx, Screen};
+16	use crate::glyph::{self, Style};
+17	use crate::orient;
+18	
+19	const CELL_COLS: u16 = 4;
+20	const CELL_ROWS: u16 = 2;
+21	const RANK_LABEL_COLS: u16 = 3;
+22	
+23	pub fn draw(frame: &mut Frame, app: &mut AppState) {
+24	    let area = frame.area();
+25	    match &app.screen {
+26	        Screen::Picker(p) => draw_picker(frame, area, p),
+27	        Screen::Game(_) => draw_game(frame, area, app),
+28	        Screen::Net(_) => draw_net(frame, area, app),
+29	    }
+30	
+31	    if app.rules_open {
+32	        draw_rules_overlay(frame, area, app.style);
+33	    }
+34	    if app.quit_confirm_open {
+35	        draw_quit_confirm_overlay(frame, area);
+36	    }
+37	}
+38	
+39	fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+40	    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+41	    let mut lines = vec![
+42	        Line::from(title),
+43	        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+44	        Line::from(""),
+45	    ];
+46	    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+47	        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+48	        let style = if i == picker.cursor {
+49	            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+50	        } else {
+51	            TuiStyle::default()
+52	        };
+53	        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+54	    }
+55	    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+56	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+57	    frame.render_widget(para, area);
+58	}
+59	
+60	fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+61	    let chunks = Layout::default()
+62	        .direction(Direction::Horizontal)
+63	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+64	        .split(area);
+65	
+66	    let Screen::Game(g) = &app.screen else {
+67	        return;
+68	    };
+69	    let g_ref: &GameView = g.as_ref();
+70	    let observer = app.observer;
+71	    let style = app.style;
+72	    let use_color = app.use_color;
+73	    let help_open = app.help_open;
+74	
+75	    let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
+76	    let mut rect = app.board_rect;
+77	    draw_board(
+78	        frame,
+79	        chunks[0],
+80	        observer,
+81	        style,
+82	        use_color,
+83	        &view,
+84	        g_ref.cursor,
+85	        g_ref.selected,
+86	        &mut rect,
+87	    );
+88	    app.board_rect = rect;
+89	    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open);
+90	}
+91	
+92	fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
+93	    let chunks = Layout::default()
+94	        .direction(Direction::Horizontal)
+95	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+96	        .split(area);
+97	
+98	    let Screen::Net(n) = &app.screen else {
+99	        return;
+100	    };
+101	    let n_ref: &NetView = n.as_ref();
+102	    let style = app.style;
+103	    let use_color = app.use_color;
+104	    let help_open = app.help_open;
+105	    let observer = n_ref.observer.unwrap_or(app.observer);
+106	
+107	    match n_ref.last_view.as_ref() {
+108	        Some(view) => {
+109	            let mut rect = app.board_rect;
+110	            draw_board(
+111	                frame,
+112	                chunks[0],
+113	                observer,
+114	                style,
+115	                use_color,
+116	                view,
+117	                n_ref.cursor,
+118	                n_ref.selected,
+119	                &mut rect,
+120	            );
+121	            app.board_rect = rect;
+122	            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open);
+123	        }
+124	        None => {
+125	            draw_connecting_placeholder(frame, chunks[0], n_ref);
+126	            draw_sidebar_net_idle(frame, chunks[1], n_ref);
+127	        }
+128	    }
+129	}
+130	
+131	fn draw_connecting_placeholder(frame: &mut Frame, area: Rect, n: &NetView) {
+132	    let block = Block::default().borders(Borders::ALL).title(" Net ");
+133	    let lines = vec![
+134	        Line::from(""),
+135	        Line::from(Span::styled("  Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+136	        Line::from(Span::styled(format!("  → {}", n.url), TuiStyle::default().fg(Color::Gray))),
+137	        Line::from(""),
+138	        Line::from(Span::styled(
+139	            n.last_msg.clone().unwrap_or_else(|| "  (waiting for server hello)".into()),
+140	            TuiStyle::default().fg(Color::Yellow),
+141	        )),
+142	    ];
+143	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+144	    frame.render_widget(para, area);
+145	}
+146	
+147	fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
+148	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+149	    let lines = vec![
+150	        Line::from(Span::styled("Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+151	        Line::from(format!("URL: {}", n.url)),
+152	        Line::from(""),
+153	        Line::from(Span::styled("Press q to give up.", TuiStyle::default().fg(Color::DarkGray))),
+154	    ];
+155	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+156	    frame.render_widget(para, area);
+157	}
+158	
+159	#[allow(clippy::too_many_arguments)]
+160	fn draw_board(
+161	    frame: &mut Frame,
+162	    area: Rect,
+163	    observer: Side,
+164	    style: Style,
+165	    use_color: bool,
+166	    view: &PlayerView,
+167	    cursor: (u8, u8),
+168	    selected: Option<Square>,
+169	    board_rect: &mut Option<RectPx>,
+170	) {
+171	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+172	    let inner = block.inner(area);
+173	    frame.render_widget(block, area);
+174	
+175	    let shape = view.shape;
+176	    let (rows, cols) = orient::display_dims(shape);
+177	    let model_w = shape.dimensions().0;
+178	
+179	    // Build legal-target highlight set when a piece is selected.
+180	    let highlight: std::collections::HashSet<Square> = match selected {
+181	        Some(from) => view
+182	            .legal_moves
+183	            .iter()
+184	            .filter(|m| m.origin_square() == from)
+185	            .filter_map(|m| m.to_square())
+186	            .collect(),
+187	        None => std::collections::HashSet::new(),
+188	    };
+189	
+190	    let border_style = TuiStyle::default().fg(Color::DarkGray);
+191	    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 2);
+192	
+193	    // File header (top)
+194	    lines.push(file_header_line(observer, shape));
+195	
+196	    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
+197	
+198	    for display_row in 0..rows {
+199	        lines.push(rank_row(
+200	            view,
+201	            observer,
+202	            shape,
+203	            display_row,
+204	            cols,
+205	            model_w,
+206	            &highlight,
+207	            cursor,
+208	            selected,
+209	            style,
+210	            use_color,
+211	            border_style,
+212	        ));
+213	
+214	        // Between row (skip after last rank)
+215	        if display_row + 1 == rows {
+216	            // no between row after the final rank
+217	        } else if river_after == Some(display_row) {
+218	            lines.push(river_line(cols, style));
+219	        } else {
+220	            lines.push(between_row(observer, shape, display_row, cols, style, border_style));
+221	        }
+222	    }
+223	
+224	    // File header (bottom)
+225	    lines.push(file_header_line(observer, shape));
+226	
+227	    let para = Paragraph::new(lines);
+228	    frame.render_widget(para, inner);
+229	
+230	    *board_rect = Some(RectPx {
+231	        x: inner.x,
+232	        y: inner.y,
+233	        cell_cols: CELL_COLS,
+234	        cell_rows: CELL_ROWS,
+235	        // file header (1)
+236	        top_pad: 1,
+237	        // rank label (3)
+238	        left_pad: RANK_LABEL_COLS,
+239	    });
+240	}
+241	
+242	#[allow(clippy::too_many_arguments)]
+243	fn rank_row<'a>(
+244	    view: &'a PlayerView,
+245	    observer: Side,
+246	    shape: BoardShape,
+247	    display_row: u8,
+248	    cols: u8,
+249	    model_w: u8,
+250	    highlight: &std::collections::HashSet<Square>,
+251	    cursor: (u8, u8),
+252	    selected: Option<Square>,
+253	    style: Style,
+254	    use_color: bool,
+255	    border_style: TuiStyle,
+256	) -> Line<'a> {
+257	    let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+258	    spans.push(Span::raw(rank_label(observer, shape, display_row)));
+259	
+260	    for display_col in 0..cols {
+261	        let sq = orient::square_at_display(display_row, display_col, observer, shape);
+262	        let (content, st, is_piece_or_glyph) = match sq {
+263	            Some(sq) => intersection_or_piece(
+264	                view,
+265	                sq,
+266	                model_w,
+267	                shape,
+268	                highlight,
+269	                cursor,
+270	                selected,
+271	                style,
+272	                use_color,
+273	                display_row,
+274	                display_col,
+275	            ),
+276	            None => (intersection_glyph(false, style).to_string(), TuiStyle::default(), false),
+277	        };
+278	
+279	        spans.push(Span::styled(content, st));
+280	
+281	        // Connector to next cell or trailing pad on last cell
+282	        if display_col + 1 < cols {
+283	            let connector = horizontal_connector(is_piece_or_glyph, style);
+284	            spans.push(Span::styled(connector, border_style));
+285	        } else if !is_piece_or_glyph {
+286	            // Last cell with 1-col content: pad to 2 cols so all rows have
+287	            // a consistent total width.
+288	            spans.push(Span::raw(" "));
+289	        }
+290	    }
+291	
+292	    Line::from(spans)
+293	}
+294	
+295	/// Per-cell content for a rank row.
+296	/// Returns `(content_str, content_style, content_is_glyph_width_2)`.
+297	/// `content_is_glyph_width_2` is true for revealed pieces and hidden banqi
+298	/// pieces (which use a 2-col glyph); false for empty intersections (1 col).
+299	#[allow(clippy::too_many_arguments)]
+300	fn intersection_or_piece(
+301	    view: &PlayerView,
+302	    sq: Square,
+303	    model_w: u8,
+304	    shape: BoardShape,
+305	    highlight: &std::collections::HashSet<Square>,
+306	    cursor: (u8, u8),
+307	    selected: Option<Square>,
+308	    style: Style,
+309	    use_color: bool,
+310	    display_row: u8,
+311	    display_col: u8,
+312	) -> (String, TuiStyle, bool) {
+313	    let cell = &view.cells[sq.0 as usize];
+314	    let is_cursor = (display_row, display_col) == cursor;
+315	    let is_selected = selected == Some(sq);
+316	    let is_target = highlight.contains(&sq);
+317	
+318	    let (text, is_glyph_w2) = match cell {
+319	        VisibleCell::Empty => {
+320	            let palace_center = is_palace_center(sq, model_w, shape);
+321	            (intersection_glyph(palace_center, style).to_string(), false)
+322	        }
+323	        VisibleCell::Hidden => (glyph::hidden(style).to_string(), true),
+324	        VisibleCell::Revealed(pos) => {
+325	            (glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string(), true)
+326	        }
+327	    };
+328	
+329	    let mut s = TuiStyle::default();
+330	    if use_color {
+331	        if let VisibleCell::Revealed(pos) = cell {
+332	            s = s.fg(side_color(pos.piece.side));
+333	            if !pos.revealed {
+334	                s = s.add_modifier(Modifier::DIM);
+335	            }
+336	            if pos.piece.kind == PieceKind::General {
+337	                s = s.add_modifier(Modifier::BOLD);
+338	            }
+339	        } else if matches!(cell, VisibleCell::Hidden) {
+340	            s = s.fg(Color::DarkGray);
+341	        } else if is_palace_center(sq, model_w, shape) {
+342	            s = s.fg(Color::Yellow);
+343	        } else {
+344	            s = s.fg(Color::DarkGray);
+345	        }
+346	    }
+347	    if is_target {
+348	        s = s.bg(Color::Rgb(40, 80, 40));
+349	    }
+350	    if is_selected {
+351	        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+352	    }
+353	    if is_cursor {
+354	        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+355	    }
+356	    (text, s, is_glyph_w2)
+357	}
+358	
+359	fn is_palace_center(sq: Square, model_w: u8, shape: BoardShape) -> bool {
+360	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+361	        return false;
+362	    }
+363	    let f = (sq.0 % model_w as u16) as u8;
+364	    let r = (sq.0 / model_w as u16) as u8;
+365	    f == 4 && (r == 1 || r == 8)
+366	}
+367	
+368	fn intersection_glyph(palace_center: bool, style: Style) -> &'static str {
+369	    match (palace_center, style) {
+370	        (true, Style::Cjk) => "╳",
+371	        (true, Style::Ascii) => "X",
+372	        (false, Style::Cjk) => "┼",
+373	        (false, Style::Ascii) => "+",
+374	    }
+375	}
+376	
+377	fn horizontal_connector(content_is_w2: bool, style: Style) -> &'static str {
+378	    let dash: char = match style {
+379	        Style::Cjk => '─',
+380	        Style::Ascii => '-',
+381	    };
+382	    if content_is_w2 {
+383	        // 2-col content (piece) leaves 2 cols for connector.
+384	        match dash {
+385	            '─' => "──",
+386	            _ => "--",
+387	        }
+388	    } else {
+389	        // 1-col content (intersection) leaves 3 cols for connector.
+390	        match dash {
+391	            '─' => "───",
+392	            _ => "---",
+393	        }
+394	    }
+395	}
+396	
+397	fn between_row(
+398	    observer: Side,
+399	    shape: BoardShape,
+400	    display_row_above: u8,
+401	    cols: u8,
+402	    style: Style,
+403	    border_style: TuiStyle,
+404	) -> Line<'static> {
+405	    let vbar: char = match style {
+406	        Style::Cjk => '│',
+407	        Style::Ascii => '|',
+408	    };
+409	    let diagonals = palace_diagonals(display_row_above, observer, shape, style);
+410	
+411	    let mut s = String::from("   "); // rank label
+412	    for cell_idx in 0..cols {
+413	        s.push(vbar);
+414	        if cell_idx + 1 < cols {
+415	            // 3-space gap, possibly with a diagonal char in the middle
+416	            // for palace between-rows. cell_idx is the index of the LEFT
+417	            // cell of the gap. Diagonals appear between cells (3, 4) and (4, 5).
+418	            let diag_char = match (diagonals, cell_idx) {
+419	                (Some((left_diag, _)), 3) => Some(left_diag),
+420	                (Some((_, right_diag)), 4) => Some(right_diag),
+421	                _ => None,
+422	            };
+423	            match diag_char {
+424	                Some(c) => {
+425	                    s.push(' ');
+426	                    s.push(c);
+427	                    s.push(' ');
+428	                }
+429	                None => s.push_str("   "),
+430	            }
+431	        }
+432	    }
+433	    // Trailing space so the row width matches rank rows (34 cols of content
+434	    // + 3 of rank label).
+435	    s.push(' ');
+436	    Line::from(Span::styled(s, border_style))
+437	}
+438	
+439	/// For a between-row sitting between display rows N and N+1, returns the
+440	/// (left, right) diagonal characters if this between-row crosses a palace.
+441	/// Otherwise None.
+442	fn palace_diagonals(
+443	    display_row_above: u8,
+444	    observer: Side,
+445	    shape: BoardShape,
+446	    style: Style,
+447	) -> Option<(char, char)> {
+448	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+449	        return None;
+450	    }
+451	    let top_sq = orient::square_at_display(display_row_above, 4, observer, shape)?;
+452	    let bot_sq = orient::square_at_display(display_row_above + 1, 4, observer, shape)?;
+453	    let top_rank = (top_sq.0 / 9) as u8;
+454	    let bot_rank = (bot_sq.0 / 9) as u8;
+455	    let (low, high) = if top_rank < bot_rank { (top_rank, bot_rank) } else { (bot_rank, top_rank) };
+456	
+457	    let center_rank = match (low, high) {
+458	        (0, 1) | (1, 2) => 1u8,
+459	        (7, 8) | (8, 9) => 8u8,
+460	        _ => return None,
+461	    };
+462	
+463	    let top_dist = (top_rank as i32 - center_rank as i32).abs();
+464	    let bot_dist = (bot_rank as i32 - center_rank as i32).abs();
+465	    let converging = bot_dist < top_dist;
+466	
+467	    let (left_cjk, right_cjk) = if converging { ('╲', '╱') } else { ('╱', '╲') };
+468	    let (left, right) = match style {
+469	        Style::Cjk => (left_cjk, right_cjk),
+470	        Style::Ascii => (if converging { '\\' } else { '/' }, if converging { '/' } else { '\\' }),
+471	    };
+472	    Some((left, right))
+473	}
+474	
+475	fn river_line(cols: u8, style: Style) -> Line<'static> {
+476	    // The river replaces the between-row entirely; there are no vertical
+477	    // bars connecting through it. Total width must match a rank row:
+478	    //   rank label (3) + grid (cols * 4 - 2) + trailing pad to align.
+479	    let target_width = (cols as usize) * 4 - 2;
+480	    let banner = match style {
+481	        Style::Cjk => "〇 楚 河 ── 漢 界 〇",
+482	        Style::Ascii => "~ river -- river ~",
+483	    };
+484	    let mut s = String::from("   "); // rank label
+485	    let banner_w = visual_width(banner);
+486	    let pad = target_width.saturating_sub(banner_w);
+487	    let left_pad = pad / 2;
+488	    let right_pad = pad - left_pad;
+489	    for _ in 0..left_pad {
+490	        s.push(' ');
+491	    }
+492	    s.push_str(banner);
+493	    for _ in 0..right_pad {
+494	        s.push(' ');
+495	    }
+496	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::Cyan).add_modifier(Modifier::DIM)))
+497	}
+498	
+499	/// Approximate display width: CJK chars count as 2 cols, others as 1.
+500	fn visual_width(s: &str) -> usize {
+501	    s.chars()
+502	        .map(|c| {
+503	            let cp = c as u32;
+504	            // East Asian Wide ranges (rough). Covers CJK Unified, Hangul,
+505	            // box-drawing isn't wide. This is "good enough" — a real fix
+506	            // would pull in unicode-width.
+507	            if (0x1100..=0x115F).contains(&cp)
+508	                || (0x2E80..=0x303E).contains(&cp)
+509	                || (0x3041..=0x33FF).contains(&cp)
+510	                || (0x3400..=0x4DBF).contains(&cp)
+511	                || (0x4E00..=0x9FFF).contains(&cp)
+512	                || (0xA000..=0xA4CF).contains(&cp)
+513	                || (0xAC00..=0xD7A3).contains(&cp)
+514	                || (0xF900..=0xFAFF).contains(&cp)
+515	                || (0xFE30..=0xFE4F).contains(&cp)
+516	                || (0xFF00..=0xFF60).contains(&cp)
+517	                || (0xFFE0..=0xFFE6).contains(&cp)
+518	            {
+519	                2
+520	            } else {
+521	                1
+522	            }
+523	        })
+524	        .sum()
+525	}
+526	
+527	fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+528	    let (w, _) = shape.dimensions();
+529	    let (_, cols) = orient::display_dims(shape);
+530	    // Each cell takes 4 cols (label at col 0, then 3 spaces). Last cell
+531	    // has just the label + 1 trailing space to match rank-row width.
+532	    let mut s = String::from("   "); // rank label
+533	    for display_col in 0..cols {
+534	        let label = file_label_for_col(display_col, w, shape, observer);
+535	        s.push(label);
+536	        if display_col + 1 < cols {
+537	            s.push_str("   ");
+538	        } else {
+539	            s.push(' '); // trailing pad
+540	        }
+541	    }
+542	    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+543	}
+544	
+545	fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+546	    let sq = orient::square_at_display(0, col, observer, shape);
+547	    match (shape, sq) {
+548	        // Banqi displays transposed (8 cols × 4 rows). Display columns
+549	        // therefore correspond to model RANKS (0–7), and rows to files (a–d).
+550	        (BoardShape::Banqi4x8, Some(sq)) => {
+551	            let r = (sq.0 / model_w as u16) as u8;
+552	            (b'0' + r) as char
+553	        }
+554	        (_, Some(sq)) => {
+555	            let f = (sq.0 % model_w as u16) as u8;
+556	            (b'a' + f) as char
+557	        }
+558	        _ => '?',
+559	    }
+560	}
+561	
+562	fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+563	    let sq = orient::square_at_display(display_row, 0, observer, shape);
+564	    let model_w = shape.dimensions().0;
+565	    match (shape, sq) {
+566	        (BoardShape::Banqi4x8, Some(sq)) => {
+567	            // Banqi rows = model files; show as a–d.
+568	            let f = (sq.0 % model_w as u16) as u8;
+569	            format!(" {} ", (b'a' + f) as char)
+570	        }
+571	        (_, Some(sq)) => {
+572	            let r = (sq.0 / model_w as u16) as u8;
+573	            format!(" {} ", r)
+574	        }
+575	        _ => "   ".to_string(),
+576	    }
+577	}
+578	
+579	fn side_color(side: Side) -> Color {
+580	    match side {
+581	        Side::RED => Color::Red,
+582	        Side::BLACK => Color::White,
+583	        _ => Color::Green,
+584	    }
+585	}
+586	
+587	fn draw_sidebar(
+588	    frame: &mut Frame,
+589	    area: Rect,
+590	    g: &GameView,
+591	    view: &PlayerView,
+592	    style: Style,
+593	    help_open: bool,
+594	) {
+595	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+596	    let inner = block.inner(area);
+597	    frame.render_widget(block, area);
+598	
+599	    let mut lines: Vec<Line> = Vec::new();
+600	
+601	    // Game-over banner (takes priority).
+602	    if let Some(banner) = game_over_banner(&view.status, style) {
+603	        for l in banner {
+604	            lines.push(l);
+605	        }
+606	        lines.push(Line::from(""));
+607	    }
+608	
+609	    let variant_label = match view.shape {
+610	        BoardShape::Xiangqi9x10 => {
+611	            // Casual is the TUI default; strict is the alternative.
+612	            if g.state.rules.xiangqi_allow_self_check {
+613	                "Xiangqi (象棋)"
+614	            } else {
+615	                "Xiangqi (象棋, strict)"
+616	            }
+617	        }
+618	        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+619	        BoardShape::ThreeKingdom => "三國暗棋",
+620	        BoardShape::Custom { .. } => "Custom",
+621	    };
+622	    lines.push(line_label_value("Variant:", variant_label));
+623	
+624	    // Side-to-move only makes sense while the game is ongoing; once it's
+625	    // Won/Drawn the banner above already shows the winner.
+626	    if matches!(view.status, GameStatus::Ongoing) {
+627	        let stm_color = side_color(view.side_to_move);
+628	        lines.push(Line::from(vec![
+629	            Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+630	            Span::raw(" "),
+631	            Span::styled(
+632	                glyph::side_name(view.side_to_move, style),
+633	                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+634	            ),
+635	        ]));
+636	
+637	        if matches!(view.shape, BoardShape::Xiangqi9x10) && g.state.is_in_check(view.side_to_move) {
+638	            lines.push(Line::from(Span::styled(
+639	                "  ⚠ CHECK 將軍 — your general is under attack",
+640	                TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+641	            )));
+642	        }
+643	    }
+644	
+645	    let (status_text, status_color) = format_status_short(view.status, style);
+646	    lines.push(Line::from(vec![
+647	        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+648	        Span::raw(" "),
+649	        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+650	    ]));
+651	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+652	    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+653	
+654	    let selected_label = match g.selected {
+655	        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+656	        None => "—".into(),
+657	    };
+658	    lines.push(line_label_value("Selected:", &selected_label));
+659	
+660	    lines.push(Line::from(""));
+661	    if let Some(msg) = &g.last_msg {
+662	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+663	    }
+664	
+665	    if help_open {
+666	        lines.push(Line::from(""));
+667	        lines.push(Line::from(Span::styled(
+668	            "Help",
+669	            TuiStyle::default().add_modifier(Modifier::BOLD),
+670	        )));
+671	        for ln in HELP_LINES {
+672	            lines.push(Line::from(Span::raw(*ln)));
+673	        }
+674	    } else {
+675	        lines.push(Line::from(""));
+676	        lines.push(Line::from(Span::styled(
+677	            "?=help, r=rules, n=new, q=quit",
+678	            TuiStyle::default().fg(Color::DarkGray),
+679	        )));
+680	    }
+681	
+682	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+683	    frame.render_widget(para, inner);
+684	}
+685	
+686	fn draw_sidebar_net(
+687	    frame: &mut Frame,
+688	    area: Rect,
+689	    n: &NetView,
+690	    view: &PlayerView,
+691	    style: Style,
+692	    help_open: bool,
+693	) {
+694	    let block = Block::default().borders(Borders::ALL).title(" Status (net) ");
+695	    let inner = block.inner(area);
+696	    frame.render_widget(block, area);
+697	
+698	    let mut lines: Vec<Line> = Vec::new();
+699	
+700	    if let Some(banner) = game_over_banner(&view.status, style) {
+701	        for l in banner {
+702	            lines.push(l);
+703	        }
+704	        lines.push(Line::from(""));
+705	    }
+706	
+707	    let variant_label = match (view.shape, n.rules.as_ref()) {
+708	        (BoardShape::Xiangqi9x10, Some(r)) => {
+709	            if r.xiangqi_allow_self_check {
+710	                "Xiangqi (象棋)"
+711	            } else {
+712	                "Xiangqi (象棋, strict)"
+713	            }
+714	        }
+715	        (BoardShape::Xiangqi9x10, None) => "Xiangqi (象棋)",
+716	        (BoardShape::Banqi4x8, _) => "Banqi (暗棋)",
+717	        (BoardShape::ThreeKingdom, _) => "三國暗棋",
+718	        (BoardShape::Custom { .. }, _) => "Custom",
+719	    };
+720	    lines.push(line_label_value("Variant:", variant_label));
+721	
+722	    if let Some(side) = n.observer {
+723	        let c = side_color(side);
+724	        lines.push(Line::from(vec![
+725	            Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
+726	            Span::raw(" "),
+727	            Span::styled(
+728	                glyph::side_name(side, style),
+729	                TuiStyle::default().fg(c).add_modifier(Modifier::BOLD),
+730	            ),
+731	        ]));
+732	    }
+733	
+734	    if matches!(view.status, GameStatus::Ongoing) {
+735	        let stm_color = side_color(view.side_to_move);
+736	        let label = if Some(view.side_to_move) == n.observer { "Your turn:" } else { "Opponent:" };
+737	        lines.push(Line::from(vec![
+738	            Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+739	            Span::raw(" "),
+740	            Span::styled(
+741	                glyph::side_name(view.side_to_move, style),
+742	                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+743	            ),
+744	        ]));
+745	    }
+746	
+747	    let (status_text, status_color) = format_status_short(view.status, style);
+748	    lines.push(Line::from(vec![
+749	        Span::styled("Status:", TuiStyle::default().fg(Color::DarkGray)),
+750	        Span::raw(" "),
+751	        Span::styled(status_text, TuiStyle::default().fg(status_color)),
+752	    ]));
+753	    lines.push(line_label_value("Legal moves:", &view.legal_moves.len().to_string()));
+754	
+755	    let selected_label = match n.selected {
+756	        Some(sq) => format!("sq {}", sq.0),
+757	        None => "—".into(),
+758	    };
+759	    lines.push(line_label_value("Selected:", &selected_label));
+760	
+761	    lines.push(line_label_value("Server:", &n.url));
+762	    lines.push(line_label_value("Connection:", if n.connected { "live" } else { "disconnected" }));
+763	
+764	    lines.push(Line::from(""));
+765	    if let Some(msg) = &n.last_msg {
+766	        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+767	    }
+768	
+769	    if help_open {
+770	        lines.push(Line::from(""));
+771	        lines.push(Line::from(Span::styled(
+772	            "Help",
+773	            TuiStyle::default().add_modifier(Modifier::BOLD),
+774	        )));
+775	        for ln in HELP_LINES_NET {
+776	            lines.push(Line::from(Span::raw(*ln)));
+777	        }
+778	    } else {
+779	        lines.push(Line::from(""));
+780	        lines.push(Line::from(Span::styled(
+781	            "?=help, r=rules, q=quit",
+782	            TuiStyle::default().fg(Color::DarkGray),
+783	        )));
+784	    }
+785	
+786	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+787	    frame.render_widget(para, inner);
+788	}
+789	
+790	const HELP_LINES_NET: &[&str] = &[
+791	    "h j k l / ←↓↑→  move cursor",
+792	    "Enter / Space   select / commit (sends Move to server)",
+793	    "Esc             cancel selection",
+794	    "f               flip (banqi)",
+795	    "n               request rematch (after game over; needs both sides)",
+796	    "r               toggle rules overlay",
+797	    "?               toggle this help",
+798	    "Click           select / commit",
+799	    "q / Ctrl-C      quit (closes the connection)",
+800	    "(undo not supported online yet)",
+801	];
+802	
+803	fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+804	    match status {
+805	        GameStatus::Ongoing => None,
+806	        GameStatus::Won { winner, reason } => {
+807	            let header = Line::from(Span::styled(
+808	                "★  GAME OVER  ★",
+809	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+810	            ));
+811	            let winner_line = Line::from(vec![
+812	                Span::raw("Winner: "),
+813	                Span::styled(
+814	                    glyph::side_name(*winner, style),
+815	                    TuiStyle::default().fg(side_color(*winner)).add_modifier(Modifier::BOLD),
+816	                ),
+817	            ]);
+818	            let reason_line = Line::from(vec![
+819	                Span::raw("Reason: "),
+820	                Span::styled(
+821	                    win_reason_label(*reason),
+822	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+823	                ),
+824	            ]);
+825	            let footer = Line::from(Span::styled(
+826	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+827	                TuiStyle::default().fg(Color::Cyan),
+828	            ));
+829	            Some(vec![header, winner_line, reason_line, footer])
+830	        }
+831	        GameStatus::Drawn { reason } => {
+832	            let header = Line::from(Span::styled(
+833	                "—  DRAW  —",
+834	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+835	            ));
+836	            let reason_line = Line::from(vec![
+837	                Span::raw("Reason: "),
+838	                Span::styled(
+839	                    format!("{:?}", reason),
+840	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+841	                ),
+842	            ]);
+843	            let footer = Line::from(Span::styled(
+844	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+845	                TuiStyle::default().fg(Color::Cyan),
+846	            ));
+847	            Some(vec![header, reason_line, footer])
+848	        }
+849	    }
+850	}
+851	
+852	fn win_reason_label(reason: WinReason) -> &'static str {
+853	    match reason {
+854	        WinReason::Checkmate => "Checkmate (將死)",
+855	        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+856	        WinReason::Resignation => "Resignation",
+857	        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+858	        WinReason::Timeout => "Time forfeit",
+859	        WinReason::GeneralCaptured => "General captured (將被吃)",
+860	    }
+861	}
+862	
+863	/// Compact, human-readable rendering of `GameStatus` for the sidebar's
+864	/// `Status:` line. Returns `(text, color)`. Engine `Debug` repr leaks
+865	/// `Side(0)` etc. and reads as noise to a player.
+866	fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+867	    match status {
+868	        GameStatus::Ongoing => ("Ongoing".to_string(), Color::Gray),
+869	        GameStatus::Won { winner, reason } => (
+870	            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+871	            side_color(winner),
+872	        ),
+873	        GameStatus::Drawn { reason } => (format!("Draw — {:?}", reason), Color::Gray),
+874	    }
+875	}
+876	
+877	fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+878	    Line::from(vec![
+879	        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+880	        Span::raw(" "),
+881	        Span::raw(value.to_string()),
+882	    ])
+883	}
+884	
+885	fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
+886	    // Center an overlay roughly 70 cols × 24 rows over the screen.
+887	    let pad_x = area.width.saturating_sub(72) / 2;
+888	    let pad_y = area.height.saturating_sub(26) / 2;
+889	    let overlay = Rect {
+890	        x: area.x + pad_x,
+891	        y: area.y + pad_y,
+892	        width: area.width.min(72),
+893	        height: area.height.min(26),
+894	    };
+895	    frame.render_widget(Clear, overlay);
+896	    let block =
+897	        Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
+898	    let lines: Vec<Line> = RULES_LINES
+899	        .iter()
+900	        .map(|(s, accent)| {
+901	            let style = if *accent {
+902	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+903	            } else {
+904	                TuiStyle::default()
+905	            };
+906	            Line::from(Span::styled(*s, style))
+907	        })
+908	        .collect();
+909	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+910	    frame.render_widget(para, overlay);
+911	}
+912	
+913	fn draw_quit_confirm_overlay(frame: &mut Frame, area: Rect) {
+914	    // Small modal centered over the screen.
+915	    let w = 48u16;
+916	    let h = 7u16;
+917	    let pad_x = area.width.saturating_sub(w) / 2;
+918	    let pad_y = area.height.saturating_sub(h) / 2;
+919	    let overlay = Rect {
+920	        x: area.x + pad_x,
+921	        y: area.y + pad_y,
+922	        width: area.width.min(w),
+923	        height: area.height.min(h),
+924	    };
+925	    frame.render_widget(Clear, overlay);
+926	    let block = Block::default()
+927	        .borders(Borders::ALL)
+928	        .title(" Quit? ")
+929	        .border_style(TuiStyle::default().fg(Color::Yellow));
+930	    let lines = vec![
+931	        Line::from(""),
+932	        Line::from(Span::styled(
+933	            "  End the in-progress game?",
+934	            TuiStyle::default().add_modifier(Modifier::BOLD),
+935	        )),
+936	        Line::from(Span::styled(
+937	            "  Press y to quit, anything else to keep playing.",
+938	            TuiStyle::default().fg(Color::Gray),
+939	        )),
+940	    ];
+941	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+942	    frame.render_widget(para, overlay);
+943	}
+944	
+945	const HELP_LINES: &[&str] = &[
+946	    "h j k l / ←↓↑→  move cursor",
+947	    "Enter / Space   select / commit",
+948	    "Esc             cancel selection",
+949	    "u               undo last move",
+950	    "f               flip (banqi)",
+951	    "n               new game (back to picker)",
+952	    "r               toggle rules overlay",
+953	    "?               toggle this help",
+954	    "Click           select / commit",
+955	    "q / Ctrl-C      quit",
+956	];
+957	
+958	const RULES_LINES: &[(&str, bool)] = &[
+959	    ("Xiangqi 象棋", true),
+960	    ("", false),
+961	    ("• Red (帥仕相俥傌炮兵) moves first; Black (將士象車馬砲卒) replies.", false),
+962	    ("• General/Advisor stay inside the 3×3 palace (files d–f).", false),
+963	    ("• Elephants stay on their own side of the river (ranks 0–4 / 5–9).", false),
+964	    ("• Horses are blocked by 馬腿 — the orthogonal step in the move's direction.", false),
+965	    ("• Cannon non-capturing slide is like a chariot; capture requires jumping", false),
+966	    ("  exactly one piece (the screen 砲架) in a straight line.", false),
+967	    ("• Soldiers move forward one square; after crossing the river they can also", false),
+968	    ("  move sideways (but never backward).", false),
+969	    ("• Generals cannot face each other on a clear file (飛將 rule).", false),
+970	    ("• Standard: any move that leaves your general capturable is illegal.", false),
+971	    ("  Casual mode (--allow-self-check / picker entry) lifts that filter;", false),
+972	    ("  the game ends when the general is physically captured.", false),
+973	    ("", false),
+974	    ("Banqi 暗棋", true),
+975	    ("", false),
+976	    ("• 4×8 half-board, 32 pieces face-down. Pick a hidden piece to flip;", false),
+977	    ("  the FIRST flip locks the colors (flipper plays the revealed color).", false),
+978	    ("• Capture by piece rank: General > Advisor > Elephant > Chariot >", false),
+979	    ("  Horse > Cannon > Soldier. Soldier captures General (民推翻王).", false),
+980	    ("• Cannon captures by jumping over exactly one piece (any rank).", false),
+981	    ("• House rules (toggleable presets): chain-capture (連吃), chariot-rush", false),
+982	    ("  (車衝). Other house rules are P1 TODO.", false),
+983	    ("", false),
+984	    ("Press r or Esc to close. Default keys: hjkl/arrows · Enter · u · f · n · q", true),
+985	];
+986
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/server_smoke.rs`
+
+```text
+1	//! End-to-end smoke: boot a server on an ephemeral port, two sync
+2	//! `tungstenite` clients connect, exchange Hello, Red plays a legal move,
+3	//! both clients next read an Update. Validates the full loop.
+4	
+5	use std::time::Duration;
+6	
+7	use anyhow::Result;
+8	use chess_core::piece::Side;
+9	use chess_core::rules::RuleSet;
+10	use chess_net::{ClientMsg, ServerMsg};
+11	use tungstenite::Message;
+12	
+13	fn read_json<S: std::io::Read + std::io::Write>(
+14	    ws: &mut tungstenite::WebSocket<S>,
+15	) -> Result<ServerMsg> {
+16	    let m = ws.read()?;
+17	    let text = m.to_text()?;
+18	    Ok(serde_json::from_str(text)?)
+19	}
+20	
+21	#[tokio::test(flavor = "multi_thread")]
+22	async fn two_clients_play_one_move() -> Result<()> {
+23	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+24	    let addr = listener.local_addr()?;
+25	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+26	
+27	    // Tiny grace period to get past the bind→accept warm-up.
+28	    tokio::time::sleep(Duration::from_millis(50)).await;
+29	
+30	    let url = format!("ws://{addr}/ws");
+31	    tokio::task::spawn_blocking(move || -> Result<()> {
+32	        let (mut red, _) = tungstenite::connect(&url)?;
+33	        let red_hello = read_json(&mut red)?;
+34	        let mv = match &red_hello {
+35	            ServerMsg::Hello { observer, view, .. } => {
+36	                assert_eq!(*observer, Side::RED, "first connect must be RED");
+37	                assert!(!view.legal_moves.is_empty(), "Red should have legal moves");
+38	                view.legal_moves[0].clone()
+39	            }
+40	            other => panic!("expected Hello, got {other:?}"),
+41	        };
+42	
+43	        let (mut black, _) = tungstenite::connect(&url)?;
+44	        let black_hello = read_json(&mut black)?;
+45	        match &black_hello {
+46	            ServerMsg::Hello { observer, .. } => {
+47	                assert_eq!(*observer, Side::BLACK, "second connect must be BLACK");
+48	            }
+49	            other => panic!("expected Hello, got {other:?}"),
+50	        }
+51	
+52	        // Red plays a legal move; both clients should read an Update next.
+53	        let payload = serde_json::to_string(&ClientMsg::Move { mv })?;
+54	        red.send(Message::Text(payload))?;
+55	
+56	        let red_update = read_json(&mut red)?;
+57	        let black_update = read_json(&mut black)?;
+58	        assert!(matches!(red_update, ServerMsg::Update { .. }), "got {red_update:?}");
+59	        assert!(matches!(black_update, ServerMsg::Update { .. }), "got {black_update:?}");
+60	        Ok(())
+61	    })
+62	    .await??;
+63	
+64	    server.abort();
+65	    Ok(())
+66	}
+67	
+68	#[tokio::test(flavor = "multi_thread")]
+69	async fn rematch_resets_after_both_request() -> Result<()> {
+70	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+71	    let addr = listener.local_addr()?;
+72	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+73	    tokio::time::sleep(Duration::from_millis(50)).await;
+74	    let url = format!("ws://{addr}/ws");
+75	
+76	    tokio::task::spawn_blocking(move || -> Result<()> {
+77	        let (mut red, _) = tungstenite::connect(&url)?;
+78	        let _ = read_json(&mut red)?; // Hello
+79	        let (mut black, _) = tungstenite::connect(&url)?;
+80	        let _ = read_json(&mut black)?; // Hello
+81	
+82	        // Red resigns → game over (Black wins).
+83	        red.send(Message::Text(serde_json::to_string(&ClientMsg::Resign)?))?;
+84	        // Both see the resignation update.
+85	        assert!(matches!(read_json(&mut red)?, ServerMsg::Update { .. }));
+86	        assert!(matches!(read_json(&mut black)?, ServerMsg::Update { .. }));
+87	
+88	        // Red asks for a rematch — server should notify both sides
+89	        // (informational Error: requester waiting / opponent prompted).
+90	        red.send(Message::Text(serde_json::to_string(&ClientMsg::Rematch)?))?;
+91	        match read_json(&mut red)? {
+92	            ServerMsg::Error { message } => {
+93	                assert!(message.contains("Waiting"), "got: {message}")
+94	            }
+95	            other => panic!("expected Error, got {other:?}"),
+96	        }
+97	        match read_json(&mut black)? {
+98	            ServerMsg::Error { message } => {
+99	                assert!(message.contains("Opponent wants"), "got: {message}")
+100	            }
+101	            other => panic!("expected Error, got {other:?}"),
+102	        }
+103	
+104	        // Black accepts → both receive a fresh Hello with a new GameState.
+105	        black.send(Message::Text(serde_json::to_string(&ClientMsg::Rematch)?))?;
+106	        let red_hello = read_json(&mut red)?;
+107	        let black_hello = read_json(&mut black)?;
+108	        let mv = match red_hello {
+109	            ServerMsg::Hello { observer, view, .. } => {
+110	                assert_eq!(observer, Side::RED);
+111	                assert!(!view.legal_moves.is_empty(), "fresh game should have legal moves");
+112	                view.legal_moves[0].clone()
+113	            }
+114	            other => panic!("expected Hello, got {other:?}"),
+115	        };
+116	        assert!(matches!(black_hello, ServerMsg::Hello { .. }));
+117	
+118	        // Sanity: Red can play a move on the fresh game.
+119	        red.send(Message::Text(serde_json::to_string(&ClientMsg::Move { mv })?))?;
+120	        assert!(matches!(read_json(&mut red)?, ServerMsg::Update { .. }));
+121	        assert!(matches!(read_json(&mut black)?, ServerMsg::Update { .. }));
+122	        Ok(())
+123	    })
+124	    .await??;
+125	
+126	    server.abort();
+127	    Ok(())
+128	}
+129	
+130	#[tokio::test(flavor = "multi_thread")]
+131	async fn rematch_rejected_while_game_in_progress() -> Result<()> {
+132	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+133	    let addr = listener.local_addr()?;
+134	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+135	    tokio::time::sleep(Duration::from_millis(50)).await;
+136	    let url = format!("ws://{addr}/ws");
+137	
+138	    tokio::task::spawn_blocking(move || -> Result<()> {
+139	        let (mut red, _) = tungstenite::connect(&url)?;
+140	        let _ = read_json(&mut red)?;
+141	        let (mut black, _) = tungstenite::connect(&url)?;
+142	        let _ = read_json(&mut black)?;
+143	
+144	        red.send(Message::Text(serde_json::to_string(&ClientMsg::Rematch)?))?;
+145	        match read_json(&mut red)? {
+146	            ServerMsg::Error { message } => {
+147	                assert!(message.contains("still in progress"), "got: {message}")
+148	            }
+149	            other => panic!("expected Error, got {other:?}"),
+150	        }
+151	        Ok(())
+152	    })
+153	    .await??;
+154	
+155	    server.abort();
+156	    Ok(())
+157	}
+158	
+159	#[tokio::test(flavor = "multi_thread")]
+160	async fn third_client_gets_room_full() -> Result<()> {
+161	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+162	    let addr = listener.local_addr()?;
+163	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+164	
+165	    tokio::time::sleep(Duration::from_millis(50)).await;
+166	    let url = format!("ws://{addr}/ws");
+167	
+168	    tokio::task::spawn_blocking(move || -> Result<()> {
+169	        let (mut a, _) = tungstenite::connect(&url)?;
+170	        let _ = read_json(&mut a)?;
+171	        let (mut b, _) = tungstenite::connect(&url)?;
+172	        let _ = read_json(&mut b)?;
+173	        let (mut c, _) = tungstenite::connect(&url)?;
+174	        match read_json(&mut c)? {
+175	            ServerMsg::Error { message } => {
+176	                assert!(message.contains("room full"), "expected room-full error, got {message:?}")
+177	            }
+178	            other => panic!("expected Error, got {other:?}"),
+179	        }
+180	        Ok(())
+181	    })
+182	    .await??;
+183	
+184	    server.abort();
+185	    Ok(())
+186	}
+187
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/input.rs`
+
+```text
+1	//! Keyboard / mouse events → `Action`. Pure mapping; no state mutation.
+2	
+3	use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+4	
+5	#[derive(Clone, Debug)]
+6	pub enum Action {
+7	    None,
+8	    Quit,
+9	    /// Confirm an open quit-confirm dialog (user pressed y/Y).
+10	    ConfirmYes,
+11	    /// Cancel an open quit-confirm dialog (user pressed anything else).
+12	    ConfirmNo,
+13	    HelpToggle,
+14	    RulesToggle,
+15	    NewGame,
+16	    // Picker
+17	    PickerUp,
+18	    PickerDown,
+19	    PickerSelect,
+20	    // Game
+21	    CursorUp,
+22	    CursorDown,
+23	    CursorLeft,
+24	    CursorRight,
+25	    SelectOrCommit,
+26	    Cancel,
+27	    Undo,
+28	    Flip,
+29	    /// Mouse click in terminal coords. The app resolves it against the board
+30	    /// rect captured by the most recent draw().
+31	    Click {
+32	        term_col: u16,
+33	        term_row: u16,
+34	    },
+35	}
+36	
+37	pub fn from_key(ev: KeyEvent, in_picker: bool, quit_confirm_open: bool) -> Action {
+38	    // Quit-confirm dialog hijacks input: y/Y confirms, anything else cancels.
+39	    if quit_confirm_open {
+40	        return match ev.code {
+41	            KeyCode::Char('y') | KeyCode::Char('Y') => Action::ConfirmYes,
+42	            _ => Action::ConfirmNo,
+43	        };
+44	    }
+45	    if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
+46	        return Action::Quit;
+47	    }
+48	    match ev.code {
+49	        KeyCode::Char('q') => Action::Quit,
+50	        KeyCode::Char('?') => Action::HelpToggle,
+51	        KeyCode::Char('r') if !in_picker => Action::RulesToggle,
+52	        _ if in_picker => match ev.code {
+53	            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+54	            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+55	            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+56	            KeyCode::Esc => Action::Quit,
+57	            _ => Action::None,
+58	        },
+59	        _ => match ev.code {
+60	            KeyCode::Up | KeyCode::Char('k') => Action::CursorUp,
+61	            KeyCode::Down | KeyCode::Char('j') => Action::CursorDown,
+62	            KeyCode::Left | KeyCode::Char('h') => Action::CursorLeft,
+63	            KeyCode::Right | KeyCode::Char('l') => Action::CursorRight,
+64	            KeyCode::Enter | KeyCode::Char(' ') => Action::SelectOrCommit,
+65	            KeyCode::Esc => Action::Cancel,
+66	            KeyCode::Char('u') => Action::Undo,
+67	            KeyCode::Char('f') => Action::Flip,
+68	            KeyCode::Char('n') => Action::NewGame,
+69	            _ => Action::None,
+70	        },
+71	    }
+72	}
+73	
+74	pub fn from_mouse(ev: MouseEvent) -> Action {
+75	    match ev.kind {
+76	        MouseEventKind::Down(MouseButton::Left) => {
+77	            Action::Click { term_col: ev.column, term_row: ev.row }
+78	        }
+79	        _ => Action::None,
+80	    }
+81	}
+82
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/lib.rs`
+
+```text
+1	//! `chess-net` — websocket server + wire protocol for chess-core.
+2	//!
+3	//! MVP: a single binary (`chess-net-server`) hosts one room with one game,
+4	//! accepts the first two ws clients (Red then Black), validates moves
+5	//! against `state.legal_moves()`, and broadcasts per-side `PlayerView` after
+6	//! every committed move. Lobby / matchmaking / time controls / takeback /
+7	//! reconnect / TLS are deferred — see `TODO.md`.
+8	
+9	pub mod protocol;
+10	pub mod server;
+11	
+12	pub use protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+13	pub use server::{run, serve};
+14
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:06Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./Makefile`
+
+```text
+1	# Convenience targets for local development. The canonical build/test
+2	# flow is plain `cargo`; this just wraps the multi-process net launcher.
+3	
+4	SESSION ?= chess-local
+5	PORT    ?= 7878
+6	VARIANT ?= xiangqi
+7	
+8	.PHONY: help build server play-local stop-local check fmt clippy test wasm
+9	
+10	help:
+11		@echo "Targets:"
+12		@echo "  build         build chess-net-server + chess-tui (debug)"
+13		@echo "  server        run a single chess-net-server on :$(PORT)"
+14		@echo "  play-local    tmux: window0=2 chess-tui clients, window1=server"
+15		@echo "  stop-local    kill the tmux session created by play-local"
+16		@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+17		@echo "  fmt | clippy | test | wasm   individual gates"
+18		@echo ""
+19		@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) VARIANT=$(VARIANT)"
+20		@echo "Banqi example: make play-local VARIANT=banqi"
+21	
+22	build:
+23		cargo build -p chess-net -p chess-tui
+24	
+25	server: build
+26		./target/debug/chess-net-server --port $(PORT) $(VARIANT)
+27	
+28	play-local:
+29		@scripts/play-local.sh $(SESSION) $(PORT) $(VARIANT)
+30	
+31	stop-local:
+32		-tmux kill-session -t $(SESSION) 2>/dev/null
+33	
+34	# Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
+35	check: fmt clippy test wasm
+36	
+37	fmt:
+38		cargo fmt --check
+39	
+40	clippy:
+41		cargo clippy --workspace --all-targets -- -D warnings
+42	
+43	test:
+44		cargo test --workspace
+45	
+46	wasm:
+47		cargo build --target wasm32-unknown-unknown -p chess-core
+48
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:07Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./scripts/play-local.sh`
+
+```text
+1	#!/usr/bin/env bash
+2	# Launch one chess-net-server + two chess-tui --connect clients in a
+3	# single tmux session. The first window ("clients") holds two client panes
+4	# in a horizontal split; the second window ("server") shows the server log.
+5	#
+6	# Windows are addressed by NAME, not index — this is robust against any
+7	# `base-index` / `pane-base-index` you set in ~/.tmux.conf.
+8	#
+9	# Usage:
+10	#   scripts/play-local.sh [SESSION] [PORT] [VARIANT] [SERVER_ARGS...]
+11	#
+12	# Examples:
+13	#   scripts/play-local.sh                          # xiangqi casual on :7878
+14	#   scripts/play-local.sh chess-local 9000 banqi --preset taiwan --seed 42
+15	#   scripts/play-local.sh chess-strict 7878 xiangqi --strict
+16	#
+17	# Detach with Ctrl-b d. Kill with `make stop-local` or
+18	# `tmux kill-session -t SESSION`.
+19	
+20	set -euo pipefail
+21	
+22	SESSION="${1:-chess-local}"
+23	PORT="${2:-7878}"
+24	VARIANT="${3:-xiangqi}"
+25	shift 3 2>/dev/null || true
+26	SERVER_EXTRA=("$@")
+27	
+28	if ! command -v tmux >/dev/null 2>&1; then
+29	  echo "tmux not found on PATH. Install tmux to use this launcher." >&2
+30	  exit 1
+31	fi
+32	
+33	REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+34	cd "$REPO_ROOT"
+35	
+36	# Pre-build so the panes don't all race-compile on first launch and the
+37	# server bind doesn't lag the client connect.
+38	echo "==> building chess-net-server + chess-tui (debug)..."
+39	cargo build -p chess-net -p chess-tui
+40	
+41	SERVER_BIN="$REPO_ROOT/target/debug/chess-net-server"
+42	CLIENT_BIN="$REPO_ROOT/target/debug/chess-tui"
+43	
+44	if [[ ! -x "$SERVER_BIN" || ! -x "$CLIENT_BIN" ]]; then
+45	  echo "build did not produce expected binaries:" >&2
+46	  echo "  $SERVER_BIN" >&2
+47	  echo "  $CLIENT_BIN" >&2
+48	  exit 1
+49	fi
+50	
+51	# Reset stale session, if any.
+52	tmux kill-session -t "$SESSION" 2>/dev/null || true
+53	
+54	CLIENT_CMD="$CLIENT_BIN --connect ws://127.0.0.1:$PORT"
+55	SERVER_CMD="$SERVER_BIN --port $PORT $VARIANT ${SERVER_EXTRA[*]:-}"
+56	
+57	# Two windows: "clients" (split into two client panes) and "server".
+58	# Address windows by NAME — `tmux new-session -n` honors `base-index`, so
+59	# letting tmux pick the index avoids "index 1 in use" when the user has
+60	# `set -g base-index 1` in ~/.tmux.conf.
+61	tmux new-session  -d -s "$SESSION" -n clients
+62	tmux new-window   -t "$SESSION" -n server "$SERVER_CMD"
+63	
+64	# Tiny grace period so the server has bound :$PORT before clients try
+65	# to connect. The clients also retry on failure, so this is just to
+66	# avoid the first try wasting a backoff.
+67	sleep 0.5
+68	
+69	tmux send-keys    -t "${SESSION}:clients" "$CLIENT_CMD" C-m
+70	tmux split-window -h -t "${SESSION}:clients" "$CLIENT_CMD"
+71	tmux select-layout -t "${SESSION}:clients" even-horizontal
+72	tmux select-window -t "${SESSION}:clients"
+73	
+74	# If we're already inside tmux, plain `attach` would error with
+75	# "sessions should be nested with care" (and won't help anyway —
+76	# you can't view two tmux sessions at once from one client). Switch
+77	# the current client to the new session instead; press the prefix
+78	# + L (last-window) or prefix + s (session picker) to switch back.
+79	if [[ -n "${TMUX:-}" ]]; then
+80	  echo
+81	  echo "Already inside tmux — switching this client to '$SESSION'."
+82	  echo "  - prefix + d  detach back to your shell"
+83	  echo "  - prefix + s  pick another session (your previous one is still alive)"
+84	  exec tmux switch-client -t "$SESSION"
+85	else
+86	  exec tmux attach -t "$SESSION"
+87	fi
+88
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:08:07Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships an MVP single-room websocket server (`chess-net-server`) that two `chess-tui --connect` clients can play on. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+16	
+17	# Format + lint (CI requires both clean; clippy uses -D warnings)
+18	cargo fmt --check
+19	cargo clippy --workspace --all-targets -- -D warnings
+20	
+21	# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+22	cargo test -p chess-core
+23	
+24	# Run a single test
+25	cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+26	
+27	# Slow xiangqi perft depth-3 — runs in release for speed
+28	cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+29	
+30	# WASM cleanliness — proves chess-core has no platform deps
+31	cargo build --target wasm32-unknown-unknown -p chess-core
+32	
+33	# Run the REPL test harness (proves the engine end-to-end)
+34	cargo run -p chess-cli
+35	> xiangqi
+36	> moves
+37	> play h2e2
+38	> banqi --preset taiwan --seed 42
+39	> view 0
+40	> quit
+41	
+42	# Interactive TUI (default render: CJK glyphs + color)
+43	cargo run -p chess-tui                                    # variant picker
+44	cargo run -p chess-tui -- xiangqi                         # casual mode (default)
+45	cargo run -p chess-tui -- xiangqi --strict                # standard self-check rules
+46	cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+47	cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+48	cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+49	cargo run -p chess-tui -- --as black xiangqi              # render as Black
+50	
+51	# Networked play (MVP: single room, no lobby / reconnect / time controls)
+52	cargo run -p chess-net -- --port 7878 xiangqi             # server
+53	cargo run -p chess-net -- --port 7878 xiangqi --strict    # ditto, strict self-check
+54	cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+55	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878   # client (server picks variant + side)
+56	
+57	# One-shot local 2-client harness (tmux: window 0 = clients, window 1 = server)
+58	make play-local                                           # xiangqi casual on :7878
+59	make play-local VARIANT=banqi                             # banqi
+60	make play-local PORT=9000 VARIANT=xiangqi                 # custom port
+61	make stop-local                                           # tear down the tmux session
+62	```
+63	
+64	TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
+65	`Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
+66	`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit.
+67	Mouse left-click selects or commits. When the game ends, a banner appears in
+68	the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
+69	back the losing move.
+70	
+71	`rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
+72	
+73	## Architecture quick reference
+74	
+75	The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, `chess-web`, and `xtask` are still stubs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+76	
+77	1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+78	2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+79	3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+80	4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+81	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+82	
+83	Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+84	
+85	## Gotchas worth knowing
+86	
+87	- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+88	
+89	- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+90	
+91	- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+92	
+93	- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+94	
+95	- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+96	
+97	- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+98	
+99	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+100	
+101	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+102	
+103	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+104	
+105	- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+106	
+107	- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+108	
+109	- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+110	
+111	- **`chess-net` MVP is single-room, single-game.** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds the authoritative `GameState` and broadcasts per-side `PlayerView` after every committed move. First connection = Red, second = Black, third+ gets `Error{"room full"}` and is dropped. `chess-tui` joins via `--connect` and runs a sync `tungstenite` worker thread (`clients/chess-tui/src/net.rs`) that talks to the TUI over `std::sync::mpsc` — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / lobby / time controls / takeback are deferred (see `TODO.md`).
+112	
+113	## Where to put new work
+114	
+115	| Kind | Where |
+116	|---|---|
+117	| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+118	| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+119	| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+120	| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+121	| Game rules reference | `docs/rules/<variant>.md` |
+122	| Architectural overview / tech analysis | `docs/architecture.md` |
+123	
+124	[`AGENTS.md`](AGENTS.md) describes the full backlog/pitfalls workflow with examples. Do **not** create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index, validated by `scripts/todo-kanban.sh`.
+125	
+126	When implementing a `TODO.md` item, in the same commit run:
+127	
+128	```bash
+129	scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+130	```
+131	
+132	## Pre-push checklist
+133	
+134	CI runs all four. Run them locally before pushing:
+135	
+136	```bash
+137	cargo fmt --check
+138	cargo clippy --workspace --all-targets -- -D warnings
+139	cargo test --workspace
+140	cargo build --target wasm32-unknown-unknown -p chess-core
+141	```
+142	
+143	The depth-3 perft (`cargo test --release -p chess-core --test xiangqi_perft -- --ignored`) also runs in CI.
+144
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-opus-4-7 2026-05-06 09:10:29Z)**_
+
+I have enough grounding now. I have everything I need to produce a comprehensive plan. Per my read-only system constraint, I cannot create files — I'll deliver the markdown plan directly as my response (the parent agent reads this output, which the user has confirmed elsewhere is the intended behavior).
+
+---
+
+# chess-net: multi-room lobby + optional password
+
+**Effort**: M · **Status**: planned, scope discipline locked at one PR
+**Touches**: `crates/chess-net/{lib.rs,protocol.rs,server.rs,bin/server.rs}`, `crates/chess-net/tests/*`, `clients/chess-tui/src/{app.rs,input.rs,main.rs,net.rs,ui.rs}`, `Makefile`, `scripts/play-local.sh`, `TODO.md`, `CLAUDE.md`, `docs/adr/0005-multi-room-lobby.md` (new ADR following the existing 0001–0004 numbering).
+
+## Context
+
+The MVP shipped 2026-05-06: one server boot = one room = one game; first two ws clients seat Red/Black, third gets `Error{"room full"}`; `chess-tui --connect ws://host:7878` is the only client entry point. Coordination is "Slack the IP, count seats by hand." This PR adds many concurrent rooms on one server plus an optional per-room password, exposed through a lobby browser inside chess-tui so players don't copy-paste room URLs out of band.
+
+The core design constraint from the existing stack: chess-tui has no tokio (sync `tungstenite` worker + `std::sync::mpsc`, see `clients/chess-tui/src/net.rs`), and the server already does all per-room I/O through `tokio::sync::mpsc::UnboundedSender<ServerMsg>` to per-socket write tasks. Both shapes survive untouched into multi-room.
+
+## Recommendation: Option A (in-process `Screen::Lobby`)
+
+Pick A. The lobby is one extra `Screen` variant reusing `PickerView`'s cursor model and an additional `NetClient` instance — neither is a structural change. **B (separate `chess-tui-lobby` binary)** would force users to launch two processes and somehow hand off the room URL between them, which is exactly the "copy-paste room URLs out of band" problem this PR exists to fix. **C (russh)** is a separate parallel transport stack worth ~1500 LOC of `russh` glue plus PTY rendering, conflicts with the chess-web roadmap, and is already tracked as the `[?/L] Wish/SSH multiplayer alternative` P? spike — it must not be absorbed into this PR.
+
+## Scope
+
+**In**: many rooms per server, named room ids, lobby ws subscription with live push, optional plain-text password per room (friend-list lock, not security), `Screen::Lobby` + `Screen::HostPrompt` + `Screen::CreateRoom` in chess-tui, `--lobby <host>` and `--password <pw>` CLI flags, `/rooms` JSON snapshot for `curl` debugging, two new wire messages each direction, backwards-compat default room "main".
+
+**Out** (each gets a new `TODO.md` entry, P2 unless noted; pre-existing TODOs that stay deferred are reused, not duplicated):
+- chat / spectators (>2 connections per room) — defer.
+- reconnect / resume on transient disconnect — already TODO, stays.
+- WSS / TLS / oauth — keeps "loopback only" posture; stays out.
+- Mixed-variant servers (one server hosting xiangqi room *and* banqi room concurrently) — adds one server-side `RuleSet` per room and a "default variant" knob; doable, but expands the picker UX and admin story. Defer.
+- Server-wide kick / admin / persistent room storage — defer.
+- `/` filter inside the lobby — defer (write the keybind reservation but no impl).
+- Separate lobby binary or russh transport — deliberately not chosen.
+
+## Wire schema
+
+`crates/chess-net/src/protocol.rs`. `PROTOCOL_VERSION` bumps to **2**. Old (v1) clients connecting to the new server still work for the default-room case — the additions are strictly new variants, so v1 message shapes deserialize unchanged.
+
+```rust
+pub const PROTOCOL_VERSION: u16 = 2;
+
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    Update { view: PlayerView },
+    Error { message: String },
+    // NEW: lobby push. Sent on `/lobby` connection (snapshot) and again on
+    // every room state change (debounced ≥250ms). Never sent to game sockets.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    Move { mv: Move },
+    Resign,
+    Rematch,
+    // NEW: lobby pull. Forces a fresh Rooms push to the requester only.
+    // Useful after the lobby tab regains focus or to manually refresh.
+    ListRooms,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RoomSummary {
+    pub id: String,            // url-safe, see validation below
+    pub variant: String,       // "xiangqi" | "xiangqi-strict" | "banqi" | …
+    pub seats: u8,             // 0|1|2
+    pub has_password: bool,
+    pub status: RoomStatus,    // Lobby | Playing | Finished
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus { Lobby, Playing, Finished }
+```
+
+Versioning behavior:
+- **New server + old (v1) client**: old client connects to `/ws` → default room "main", unchanged path through `handle_socket`. Sees `Hello{protocol: 2, ...}` — the field is `u16`, no parse error. The old client's `Hello` arm in `apply_net_event` ignores `protocol` (verified at `clients/chess-tui/src/app.rs:605`), so it works. Document this; no code change to the old client is needed for it to keep functioning against the new server in the default room.
+- **Old (v1) server + new client**: if the user typed `--lobby ws://oldhost`, the old server has no `/lobby` route and returns 404 on the upgrade. Surface in the TUI as "Server doesn't support lobby (try --connect ws://host/ws)". For `ListRooms` sent into a v1 game socket: the v1 server's `serde_json::from_str::<ClientMsg>` fails and replies `Error{"malformed message: ..."}`. New client doesn't send `ListRooms` over a game socket (lobby uses a separate `NetClient`), so this path is dead in practice — it's only a concern if a test or stray CLI explicitly does it.
+
+## Server architecture
+
+`crates/chess-net/src/server.rs` — three-layer split:
+
+```rust
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+
+struct AppState {
+    rooms: RoomMap,
+    /// Outbound senders for every connected lobby socket. Cleaned up on
+    /// disconnect by the lobby write task draining its mpsc and exiting.
+    lobby_subs: Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>,
+    /// Server-wide variant for MVP (matches today's `--variant` CLI). Every
+    /// auto-created room copies this. Mixed-variant servers are a separate
+    /// TODO.
+    default_rules: RuleSet,
+}
+```
+
+**Why two locks, not `DashMap` or nested-only**: the outer `RoomMap` lock is held only for HashMap entry / removal / iteration to build a `Vec<RoomSummary>` snapshot — never across an `await`, never across a per-room `send`. The inner `Mutex<RoomState>` is per-room as before. Splitting them avoids the head-of-line block where one slow room would freeze new joins. `DashMap` would also work, but `tokio::sync::Mutex<HashMap>` keeps the dep graph identical and the lock ordering trivial to reason about (always outer → inner; never the reverse).
+
+**Avoiding lock-while-send**: the existing pattern (write task drains an `UnboundedSender` and does the actual `ws.send`) already enforces this. Per-move broadcast continues to call `tx.send(ServerMsg::Update {...})` while holding the inner lock; that's fire-and-forget into an unbounded channel, no I/O. The lobby push uses the same pattern: snapshot under the outer lock, drop the lock, then iterate `lobby_subs` and `tx.send(rooms_msg)`.
+
+**Empty-room GC**: when the last seat in a room disconnects (existing `g.seats.retain` block in `handle_socket`), check `g.seats.is_empty()` after retain and, if true, drop the inner lock, re-acquire the outer `RoomMap`, and remove the entry. Special-case: room "main" is never GC'd (so the default-room URL stays stable). This avoids leaking memory for spectator-style room churn.
+
+**Lobby push triggers**: a single helper `notify_lobby(state: &AppState)` snapshots all rooms (outer lock, build `Vec<RoomSummary>`, drop), then iterates `lobby_subs` outside the lock. Called from:
+1. After seat insertion (room appearing or filling).
+2. After seat removal (room emptying or being GC'd).
+3. After `process_client_msg` commits a move that flips status to `Won`/`Drawn` (room → `Finished`).
+4. On explicit `ClientMsg::ListRooms` (sends only to the requester, not all subs).
+
+To prevent a flurry during normal play (every move flips no status), trigger #3 fires only on actual status transition, not on every Update. Trigger #1+#2 are infrequent. No debounce timer needed at MVP scale; document a 250ms debounce as a follow-up if room churn ever becomes a problem.
+
+**Room creation**: implicit on first arrival at `/ws/<id>`. If `<id>` doesn't exist, create with `default_rules` and the password from the `?password=` query (binding it as the room's password forever — first joiner sets the lock). Subsequent joiners must present the same `?password=` or get rejected before `Hello`. Validation: room id must match `^[a-zA-Z0-9_-]{1,32}$` (rejects path traversal, whitespace, NULs); password is `String`, max 64 chars, accepted as-is.
+
+**Routes** (axum):
+```rust
+Router::new()
+    .route("/", get(upgrade_default))                  // back-compat: room "main"
+    .route("/ws", get(upgrade_default))                //   "
+    .route("/ws/:room_id", get(upgrade_room))
+    .route("/lobby", get(upgrade_lobby))
+    .route("/rooms", get(rooms_snapshot_json))         // curl/debug only
+    .with_state(app_state)
+```
+
+`upgrade_room` extracts `Path(room_id): Path<String>` and `Query(q): Query<AuthQuery>` where `AuthQuery { password: Option<String> }`. Validation happens in the upgrade handler **before** `ws.on_upgrade`: invalid room id → 400; valid → upgrade, then on the resulting socket either send `Hello` or `Error{"bad password"}` + close. Choosing post-upgrade for password validation (not handshake-level reject) keeps the failure mode visible in the client's NetClient as a normal `ServerMsg::Error` instead of a confusing `tungstenite::Error::Http`.
+
+`/rooms` is a plain `axum::Json<Vec<RoomSummary>>` for `curl` debugging. The TUI does **not** use it; the TUI subscribes to `/lobby`.
+
+**Mixed-variant note**: the MVP keeps one `RuleSet` for the whole server. Document explicitly that `--variant` on the server CLI is the variant for every auto-created room, and creating a room with a different variant is out of scope. The `RoomSummary.variant` field is therefore always the same for every room on a given server today; it's already future-proofed for the mixed-variant follow-up.
+
+## Client architecture
+
+**`clients/chess-tui/src/net.rs`** stays mostly unchanged. Two notes:
+- `NetEvent::Server(Box<ServerMsg>)` already boxes the payload, so growing `ServerMsg` to include `Rooms { ... }` is a one-line addition with no size cliff.
+- A second `NetClient::spawn` is fine — each spawns its own OS thread + mpsc pair. The lobby connection lives in the new `Screen::Lobby` and is dropped (closing the ws via `_handle` cleanup) when the user picks a room and transitions into `Screen::Net`.
+
+**`clients/chess-tui/src/app.rs`** — new `Screen` variants:
+
+```rust
+pub enum Screen {
+    Picker(PickerView),
+    Game(Box<GameView>),
+    Net(Box<NetView>),
+    HostPrompt(HostPromptView),     // "Server URL: ws://___"
+    Lobby(Box<LobbyView>),          // browser
+    CreateRoom(CreateRoomView),     // name + password input
+}
+
+pub struct HostPromptView {
+    pub buf: String,                // free-text input
+    pub error: Option<String>,
+}
+
+pub struct LobbyView {
+    pub client: NetClient,          // ws to /lobby
+    pub host: String,               // "ws://host:port" (no /lobby suffix kept)
+    pub rooms: Vec<RoomSummary>,    // last Rooms push
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    pub password_buf: Option<String>, // when joining a password-locked room,
+                                      // mid-prompt buffer
+}
+
+pub struct CreateRoomView {
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,     // Id | Password | Submit
+    pub error: Option<String>,
+}
+```
+
+`PickerEntry` gets a new variant `ConnectToServer` inserted before `Quit`. Selecting it transitions to `Screen::HostPrompt` (preserving the existing `dispatch_picker` shape — just one more match arm). The variant picker is now a one-time choice (still local-only); to enter networked play the user selects the new "Connect to server…" entry, types a host, lands in `Screen::Lobby`, picks or creates a room. The variant is server-determined, so the pre-Hello local picker doesn't apply to net mode (already true in the current MVP).
+
+**Screen flow** (state machine):
+```
+chess-tui                              → Picker
+  └ "Connect to server..."             → HostPrompt
+      └ Enter ws://host:7878           → Lobby (spawns 2nd NetClient → /lobby)
+          ├ Enter on a row             → Net  (spawns 1st NetClient → /ws/<id>?pw=…)
+          ├ 'c'                        → CreateRoom
+          │   └ submit                 → Net  (server auto-creates on first join)
+          └ Esc                        → HostPrompt
+chess-tui --connect ws://host/ws/X     → Net directly (with --password forwarded)
+chess-tui --connect ws://host          → Net default room "main" (unchanged)
+chess-tui --lobby ws://host            → Lobby directly
+```
+
+**Esc from Lobby** returns to `HostPrompt`; **Esc from HostPrompt** returns to `Picker`. This is a real behavior change vs MVP (which had no re-entry), but it's the natural consequence of multi-screen entry. Implement by storing the previous-screen identity inside the new view structs only when needed — don't add a generic back-stack.
+
+**Keybinds** (`clients/chess-tui/src/input.rs`). Lobby:
+- `j`/`k` or `↓`/`↑` move cursor (reuse `PickerUp`/`PickerDown` action variants — they already mean "list cursor", not "picker-specific").
+- Enter / Space: join (`PickerSelect` reused).
+- `c`: new action `LobbyCreate`.
+- `r`: new action `LobbyRefresh` (sends `ClientMsg::ListRooms`). Note: collides with the existing global `RulesToggle` on `r`. Resolve by gating: in `Screen::Lobby`, `r` is `LobbyRefresh`; everywhere else, unchanged. Cleanest extension of the existing `in_picker` boolean — add `in_lobby`.
+- `/`: parsed and consumed but produces `Action::None` for now; reserves the keybind for the deferred filter.
+- Esc: new action `Back` (currently `Cancel`, but `Cancel` is overloaded with selection-clear in game). Add a distinct `Back` variant to disambiguate.
+
+HostPrompt and CreateRoom: text-input. **Don't add `tui-input` as a dep** — the inputs are simple ASCII strings, and the repo's `pitfalls/` ethos prefers small hand-rolled solutions over dep churn. Implement a 30-line helper that takes a `KeyEvent` and a `&mut String`, handling printable chars, backspace, and `Tab`/`Shift-Tab` for field focus inside `CreateRoom`. Validation regex for room id matches the server's; surface errors inline.
+
+**Client-side variant pre-render**: when the lobby shows `RoomSummary { variant: "banqi", ... }` and the user joins, the client doesn't know the rules until `Hello` arrives — same as today. The connecting-placeholder (`draw_connecting_placeholder` in `ui.rs`) already covers this; no change.
+
+**`clients/chess-tui/src/main.rs`** CLI additions:
+- `--lobby <ws-url>`: skip picker, land in `Screen::Lobby` for that host.
+- `--password <pw>`: forwarded into the `?password=` query when paired with `--connect ws://host/ws/<id>`.
+
+`normalize_ws_url` becomes two helpers: one preserves the existing `/ws` auto-append for `--connect`; the new `normalize_lobby_url` appends `/lobby` similarly.
+
+## Tests
+
+`crates/chess-net/tests/server_smoke.rs` adds (each follows the existing pattern: ephemeral port, `tokio::task::spawn_blocking` for the sync tungstenite client):
+- `lobby_lists_empty_initially` — connect to `/lobby`, expect `Rooms{rooms: []}`.
+- `lobby_sees_room_after_join` — open a `/lobby` socket, then a `/ws/foo` socket; lobby socket reads a second `Rooms` push containing `foo` with `seats: 1, status: Lobby`.
+- `lobby_sees_room_fill_and_finish` — join two clients to `/ws/foo`, lobby sees `seats: 2, status: Playing`; one resigns, lobby sees `Finished`.
+- `password_rejected_on_wrong` — first joiner sets `?password=alpha`, second joins with `?password=beta`, gets `Error{"bad password"}` and the socket closes; verify no Hello was sent.
+- `password_accepted_on_right` — same setup, second joiner uses correct password and gets seated as Black.
+- `two_rooms_isolated_no_crosstalk` — clients in `/ws/foo` play a move; `/ws/bar` clients receive no `Update`.
+- `room_gc_after_last_seat_leaves` — single client joins `/ws/temp`, disconnects; lobby push omits `temp`. The default room `main` is never GC'd — separate assertion.
+- `default_room_back_compat` — a v1-style `tungstenite::connect("ws://host/ws")` (no `/<id>`) lands in room "main" and gets a normal Hello.
+
+`crates/chess-net/tests/protocol_roundtrip.rs` adds one roundtrip test per new message variant (`Rooms`, `ListRooms`, `RoomSummary` with and without password). Mirrors the existing 6 roundtrip cases.
+
+chess-tui has no app-state-machine unit tests today; that's noted explicitly in the original prompt as something to defer beyond a single integration smoke. Defer here too — the server-side tests catch the protocol contract, and the manual `make play-local` pass (extended below) catches the UI flow.
+
+## Verification
+
+Pre-push gates (unchanged):
+```
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+```
+No CI changes needed. `chess-net` is not WASM-targeted today, so the wasm gate is unaffected.
+
+Manual smoke: extend `scripts/play-local.sh` so `make play-local` boots one server with two clients connecting to the same room "main" (default behavior — backwards compat verified). Add `make play-lobby` that boots the server, then opens three TUI panes — two go through the lobby flow into a room called "demo", the third stays in the lobby and watches the room fill. Drop in updated docs in `CLAUDE.md` mirroring the MVP "Networked play" block.
+
+Backwards-compat smoke: build the new server binary, run `./target/debug/chess-net-server xiangqi` (no extra flags), then connect with the **previous** chess-tui binary (rebuild from `git stash` before client changes if needed). Verify it lands in the default room and plays normally.
+
+## Out-of-scope follow-ups (TODO.md additions)
+
+Add as P2 entries in `TODO.md` under the existing P2 block, each with a one-line rationale per the repo's `add-todo.sh` convention:
+
+- **[S] chess-net: lobby filter + sort** — `/` filter inside the lobby, sort by recency / seat count / variant. Defer until ≥10 concurrent rooms is a real workflow.
+- **[M] chess-net: mixed-variant rooms** — per-room `RuleSet` instead of server-wide. Adds a variant chooser in `CreateRoom`. Architecture supports it (`RoomState` already owns its `GameState`); blocked on UX for "what variant filter applies in the lobby."
+- **[S] chess-net: lobby push debouncing** — ≥250ms coalesce on rapid status flips. Premature today; revisit if room churn is observable.
+- **[M] chess-net: spectator slots** — third+ connection joins as observer (read-only, gets `Update` but `Move` returns `Error{"spectators can't move"}`). Replaces today's "room full" dead-end.
+- **[S] chess-net: server-side kick / admin token** — close stuck rooms or force-disconnect a misbehaving client. Wants an admin-only ws path or signed token.
+- The existing P2 entry **chess-net: multi-room lobby + optional password** gets promoted via `scripts/promote-todo.sh` in the implementing commit, summary line: "Multi-room server (`/ws/<id>`), optional `?password=` lock, in-TUI `Screen::Lobby` browser with live ws push, `/rooms` JSON snapshot, default room 'main' preserved for v1 client back-compat."
+
+The pre-existing P? entry for SSH multiplayer (`russh`) is **not** touched by this PR; it remains a separate spike.
+
+### Critical Files for Implementation
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/net.rs
+- /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:39Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:39Z)**_
+
+Phase 3 — verifying the design matches reality on a few critical surfaces before finalizing.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:40Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/bin/server.rs`
+
+```text
+1	//! `chess-net-server` — single-room ws host for chess-core.
+2	//!
+3	//! Examples:
+4	//!   chess-net-server xiangqi --port 7878
+5	//!   chess-net-server xiangqi --port 7878 --strict
+6	//!   chess-net-server banqi --port 7878 --preset taiwan --seed 42
+7	
+8	use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+9	
+10	use anyhow::{anyhow, Result};
+11	use chess_core::rules::{HouseRules, RuleSet};
+12	use clap::{Parser, Subcommand, ValueEnum};
+13	
+14	#[derive(Parser, Debug)]
+15	#[command(name = "chess-net-server", about = "ws server for chess-core (single room MVP)")]
+16	struct Cli {
+17	    /// Listen port (loopback only).
+18	    #[arg(long, default_value_t = 7878)]
+19	    port: u16,
+20	
+21	    /// Override bind address. Defaults to 127.0.0.1:<port>.
+22	    #[arg(long)]
+23	    addr: Option<SocketAddr>,
+24	
+25	    #[command(subcommand)]
+26	    variant: VariantCmd,
+27	}
+28	
+29	#[derive(Subcommand, Debug)]
+30	enum VariantCmd {
+31	    /// Xiangqi (9×10). Casual rules by default; pass `--strict` for the
+32	    /// standard self-check filter.
+33	    Xiangqi {
+34	        #[arg(long)]
+35	        strict: bool,
+36	    },
+37	    /// Banqi (4×8 face-down).
+38	    Banqi {
+39	        #[arg(long, value_enum)]
+40	        preset: Option<PresetArg>,
+41	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+42	        #[arg(long)]
+43	        house: Option<String>,
+44	        #[arg(long)]
+45	        seed: Option<u64>,
+46	    },
+47	}
+48	
+49	#[derive(Copy, Clone, Debug, ValueEnum)]
+50	enum PresetArg {
+51	    Purist,
+52	    Taiwan,
+53	    Aggressive,
+54	}
+55	
+56	#[tokio::main]
+57	async fn main() -> Result<()> {
+58	    let cli = Cli::parse();
+59	    let addr = cli
+60	        .addr
+61	        .unwrap_or_else(|| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), cli.port));
+62	
+63	    let rules = match cli.variant {
+64	        VariantCmd::Xiangqi { strict } => {
+65	            if strict {
+66	                RuleSet::xiangqi()
+67	            } else {
+68	                RuleSet::xiangqi_casual()
+69	            }
+70	        }
+71	        VariantCmd::Banqi { preset, house, seed } => {
+72	            build_banqi_rules(preset.as_ref(), house.as_deref(), seed)?
+73	        }
+74	    };
+75	
+76	    chess_net::run(addr, rules).await
+77	}
+78	
+79	fn build_banqi_rules(
+80	    preset: Option<&PresetArg>,
+81	    house: Option<&str>,
+82	    seed: Option<u64>,
+83	) -> Result<RuleSet> {
+84	    let mut flags = HouseRules::empty();
+85	    if let Some(p) = preset {
+86	        flags |= match p {
+87	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+88	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+89	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+90	        };
+91	    }
+92	    if let Some(s) = house {
+93	        for tok in s.split(',') {
+94	            flags |= match tok.trim() {
+95	                "chain" => HouseRules::CHAIN_CAPTURE,
+96	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+97	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+98	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+99	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+100	                other => return Err(anyhow!("unknown house rule: {other}")),
+101	            };
+102	        }
+103	    }
+104	    let flags = chess_core::rules::house::normalize(flags);
+105	    Ok(match seed {
+106	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+107	        None => RuleSet::banqi(flags),
+108	    })
+109	}
+110
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:40Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend for chess-core.
+2	//!
+3	//! Run modes:
+4	//!   chess-tui                                       # variant picker
+5	//!   chess-tui xiangqi
+6	//!   chess-tui banqi --preset taiwan --seed 42
+7	//!   chess-tui --style ascii xiangqi
+8	//!   chess-tui --no-color xiangqi
+9	//!   chess-tui --as black xiangqi                    # debug: render as Black
+10	
+11	mod app;
+12	mod glyph;
+13	mod input;
+14	mod net;
+15	mod orient;
+16	mod ui;
+17	
+18	use std::io::{self, Stdout};
+19	use std::time::Duration;
+20	
+21	use anyhow::{anyhow, Context, Result};
+22	use chess_core::piece::Side;
+23	use chess_core::rules::{HouseRules, RuleSet};
+24	use clap::{Parser, Subcommand, ValueEnum};
+25	use crossterm::event::{self, Event};
+26	use crossterm::execute;
+27	use crossterm::terminal::{
+28	    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+29	};
+30	use ratatui::backend::CrosstermBackend;
+31	use ratatui::Terminal;
+32	
+33	use crate::app::AppState;
+34	use crate::glyph::Style;
+35	use crate::input::{from_key, from_mouse, Action};
+36	
+37	#[derive(Parser, Debug)]
+38	#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+39	struct Cli {
+40	    /// Render style.
+41	    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+42	    style: StyleArg,
+43	
+44	    /// Disable ANSI color (keeps the chosen glyph set).
+45	    #[arg(long)]
+46	    no_color: bool,
+47	
+48	    /// Render from this side's perspective (debug; default RED). Ignored
+49	    /// when `--connect` is set — the server assigns a side on join.
+50	    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+51	    observer: SideArg,
+52	
+53	    /// Connect to a chess-net-server instead of starting a local game.
+54	    /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
+55	    /// automatically if missing).
+56	    #[arg(long)]
+57	    connect: Option<String>,
+58	
+59	    #[command(subcommand)]
+60	    cmd: Option<Cmd>,
+61	}
+62	
+63	#[derive(Subcommand, Debug)]
+64	enum Cmd {
+65	    /// Xiangqi (9×10). Casual rules by default — moves that leave your own
+66	    /// general capturable are allowed; the game ends when the general is
+67	    /// actually captured. Pass `--strict` for the standard self-check filter.
+68	    Xiangqi {
+69	        /// Strict mode: standard rules. Moves that would leave your own
+70	        /// general in check are rejected.
+71	        #[arg(long)]
+72	        strict: bool,
+73	    },
+74	    /// Banqi (4×8 face-down).
+75	    Banqi {
+76	        /// Preset bundle of house rules.
+77	        #[arg(long, value_enum)]
+78	        preset: Option<PresetArg>,
+79	        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+80	        #[arg(long)]
+81	        house: Option<String>,
+82	        /// Deterministic shuffle seed.
+83	        #[arg(long)]
+84	        seed: Option<u64>,
+85	    },
+86	}
+87	
+88	#[derive(Copy, Clone, Debug, ValueEnum)]
+89	enum StyleArg {
+90	    Cjk,
+91	    Ascii,
+92	}
+93	
+94	#[derive(Copy, Clone, Debug, ValueEnum)]
+95	enum SideArg {
+96	    Red,
+97	    Black,
+98	}
+99	
+100	#[derive(Copy, Clone, Debug, ValueEnum)]
+101	enum PresetArg {
+102	    Purist,
+103	    Taiwan,
+104	    Aggressive,
+105	}
+106	
+107	fn main() -> Result<()> {
+108	    let cli = Cli::parse();
+109	
+110	    let style = match cli.style {
+111	        StyleArg::Cjk => Style::Cjk,
+112	        StyleArg::Ascii => Style::Ascii,
+113	    };
+114	    let observer = match cli.observer {
+115	        SideArg::Red => Side::RED,
+116	        SideArg::Black => Side::BLACK,
+117	    };
+118	    let use_color = !cli.no_color;
+119	
+120	    let app = if let Some(url) = cli.connect.as_deref() {
+121	        let url = normalize_ws_url(url);
+122	        AppState::new_net(url, style, use_color)
+123	    } else {
+124	        match &cli.cmd {
+125	            None => AppState::new_picker(style, use_color, observer),
+126	            Some(Cmd::Xiangqi { strict }) => {
+127	                let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
+128	                AppState::new_game(rules, style, use_color, observer)
+129	            }
+130	            Some(Cmd::Banqi { preset, house, seed }) => {
+131	                let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+132	                AppState::new_game(rules, style, use_color, observer)
+133	            }
+134	        }
+135	    };
+136	
+137	    run(app)
+138	}
+139	
+140	fn normalize_ws_url(url: &str) -> String {
+141	    if url.contains("/ws") || url.ends_with('/') {
+142	        url.to_string()
+143	    } else {
+144	        format!("{url}/ws")
+145	    }
+146	}
+147	
+148	fn build_banqi_rules(
+149	    preset: Option<&PresetArg>,
+150	    house: Option<&str>,
+151	    seed: Option<u64>,
+152	) -> Result<RuleSet> {
+153	    let mut flags = HouseRules::empty();
+154	    if let Some(p) = preset {
+155	        flags |= match p {
+156	            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+157	            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+158	            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+159	        };
+160	    }
+161	    if let Some(s) = house {
+162	        for tok in s.split(',') {
+163	            flags |= match tok.trim() {
+164	                "chain" => HouseRules::CHAIN_CAPTURE,
+165	                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+166	                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+167	                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+168	                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+169	                other => return Err(anyhow!("unknown house rule: {other}")),
+170	            };
+171	        }
+172	    }
+173	    let flags = chess_core::rules::house::normalize(flags);
+174	    Ok(match seed {
+175	        Some(s) => RuleSet::banqi_with_seed(flags, s),
+176	        None => RuleSet::banqi(flags),
+177	    })
+178	}
+179	
+180	fn run(mut app: AppState) -> Result<()> {
+181	    let mut terminal = setup_terminal()?;
+182	    let result = run_loop(&mut terminal, &mut app);
+183	    teardown_terminal(&mut terminal).ok();
+184	    result
+185	}
+186	
+187	fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+188	    enable_raw_mode().context("enable raw mode")?;
+189	    let mut stdout = io::stdout();
+190	    execute!(stdout, EnterAlternateScreen, crossterm::event::EnableMouseCapture)
+191	        .context("enter alt screen")?;
+192	    let backend = CrosstermBackend::new(stdout);
+193	    let terminal = Terminal::new(backend).context("init terminal")?;
+194	    Ok(terminal)
+195	}
+196	
+197	fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+198	    disable_raw_mode().ok();
+199	    execute!(terminal.backend_mut(), LeaveAlternateScreen, crossterm::event::DisableMouseCapture)
+200	        .ok();
+201	    terminal.show_cursor().ok();
+202	    Ok(())
+203	}
+204	
+205	fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppState) -> Result<()> {
+206	    loop {
+207	        // Drain ws events first so the next draw shows server-pushed state.
+208	        // No-op outside Net mode.
+209	        app.tick_net();
+210	
+211	        terminal.draw(|frame| ui::draw(frame, app))?;
+212	        if app.should_quit {
+213	            return Ok(());
+214	        }
+215	
+216	        // Shorter poll in Net mode keeps server pushes feeling snappy
+217	        // (we redraw at most every poll interval). 200ms in single-process
+218	        // mode is fine — there's no async source to drain.
+219	        let poll_ms = if matches!(app.screen, app::Screen::Net(_)) { 60 } else { 200 };
+220	        if event::poll(Duration::from_millis(poll_ms))? {
+221	            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+222	            let quit_confirm = app.quit_confirm_open;
+223	            let action = match event::read()? {
+224	                Event::Key(k) if k.kind == event::KeyEventKind::Press => {
+225	                    from_key(k, in_picker, quit_confirm)
+226	                }
+227	                Event::Mouse(m) => from_mouse(m),
+228	                Event::Resize(_, _) => Action::None,
+229	                _ => Action::None,
+230	            };
+231	            app.dispatch(action);
+232	        }
+233	    }
+234	}
+235
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:10:41Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/net.rs`
+
+```text
+1	//! Sync `tungstenite` ws client driven from a background OS thread, with
+2	//! `std::sync::mpsc` channels to/from the (sync) TUI loop. We deliberately
+3	//! keep tokio out of the TUI binary — `crossterm::event::poll` is sync, and
+4	//! mixing in a runtime would force a refactor.
+5	//!
+6	//! The thread does a non-blocking poll cycle: try one ws read, drain pending
+7	//! outbound `ClientMsg`s, sleep ~20ms. Every parsed `ServerMsg` (or fatal
+8	//! error) is shipped to the TUI as a `NetEvent`.
+9	
+10	use std::io::ErrorKind;
+11	use std::net::TcpStream;
+12	use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+13	use std::thread::{self, JoinHandle};
+14	use std::time::Duration;
+15	
+16	use anyhow::{anyhow, Result};
+17	use chess_net::{ClientMsg, ServerMsg};
+18	use tungstenite::stream::MaybeTlsStream;
+19	use tungstenite::{Message, WebSocket};
+20	
+21	const POLL_INTERVAL: Duration = Duration::from_millis(20);
+22	const CONNECT_ATTEMPTS: u32 = 8;
+23	const CONNECT_BACKOFF: Duration = Duration::from_millis(200);
+24	
+25	#[derive(Debug)]
+26	pub enum NetEvent {
+27	    Connected,
+28	    Server(Box<ServerMsg>),
+29	    Disconnected(String),
+30	}
+31	
+32	pub struct NetClient {
+33	    pub cmd_tx: Sender<ClientMsg>,
+34	    pub evt_rx: Receiver<NetEvent>,
+35	    _handle: JoinHandle<()>,
+36	}
+37	
+38	impl NetClient {
+39	    /// Spawns the worker thread and returns immediately. The caller polls
+40	    /// `evt_rx` each frame (use `try_recv`, never `recv` — the TUI loop must
+41	    /// not block) and pushes outbound moves via `cmd_tx`.
+42	    pub fn spawn(url: String) -> Self {
+43	        let (cmd_tx, cmd_rx) = mpsc::channel::<ClientMsg>();
+44	        let (evt_tx, evt_rx) = mpsc::channel::<NetEvent>();
+45	        let handle = thread::spawn(move || run(url, cmd_rx, evt_tx));
+46	        Self { cmd_tx, evt_rx, _handle: handle }
+47	    }
+48	}
+49	
+50	fn run(url: String, cmd_rx: Receiver<ClientMsg>, evt_tx: Sender<NetEvent>) {
+51	    let mut ws = match connect_with_retry(&url) {
+52	        Ok(ws) => ws,
+53	        Err(e) => {
+54	            let _ = evt_tx.send(NetEvent::Disconnected(format!("connect failed: {e}")));
+55	            return;
+56	        }
+57	    };
+58	    if let Err(e) = set_nonblocking(&mut ws) {
+59	        let _ = evt_tx.send(NetEvent::Disconnected(format!("set_nonblocking: {e}")));
+60	        return;
+61	    }
+62	    let _ = evt_tx.send(NetEvent::Connected);
+63	
+64	    loop {
+65	        // Inbound: try to read one frame.
+66	        match ws.read() {
+67	            Ok(Message::Text(t)) => match serde_json::from_str::<ServerMsg>(t.as_str()) {
+68	                Ok(msg) => {
+69	                    if evt_tx.send(NetEvent::Server(Box::new(msg))).is_err() {
+70	                        return; // TUI dropped the receiver
+71	                    }
+72	                }
+73	                Err(e) => {
+74	                    let _ = evt_tx.send(NetEvent::Disconnected(format!("decode ServerMsg: {e}")));
+75	                    return;
+76	                }
+77	            },
+78	            Ok(Message::Close(_)) => {
+79	                let _ = evt_tx.send(NetEvent::Disconnected("server closed".into()));
+80	                return;
+81	            }
+82	            Ok(_) => {} // ping/pong/binary — ignore, tungstenite handles ping/pong itself
+83	            Err(tungstenite::Error::Io(e)) if e.kind() == ErrorKind::WouldBlock => {}
+84	            Err(e) => {
+85	                let _ = evt_tx.send(NetEvent::Disconnected(format!("read: {e}")));
+86	                return;
+87	            }
+88	        }
+89	
+90	        // Outbound: drain whatever's queued.
+91	        loop {
+92	            match cmd_rx.try_recv() {
+93	                Ok(msg) => {
+94	                    let json = match serde_json::to_string(&msg) {
+95	                        Ok(j) => j,
+96	                        Err(e) => {
+97	                            let _ = evt_tx.send(NetEvent::Disconnected(format!("encode: {e}")));
+98	                            return;
+99	                        }
+100	                    };
+101	                    if let Err(e) = ws.send(Message::Text(json)) {
+102	                        let _ = evt_tx.send(NetEvent::Disconnected(format!("send: {e}")));
+103	                        return;
+104	                    }
+105	                }
+106	                Err(TryRecvError::Empty) => break,
+107	                Err(TryRecvError::Disconnected) => {
+108	                    let _ = ws.close(None);
+109	                    return;
+110	                }
+111	            }
+112	        }
+113	
+114	        thread::sleep(POLL_INTERVAL);
+115	    }
+116	}
+117	
+118	fn connect_with_retry(url: &str) -> Result<WebSocket<MaybeTlsStream<TcpStream>>> {
+119	    let mut last_err: Option<tungstenite::Error> = None;
+120	    for _ in 0..CONNECT_ATTEMPTS {
+121	        match tungstenite::connect(url) {
+122	            Ok((ws, _resp)) => return Ok(ws),
+123	            Err(e) => {
+124	                last_err = Some(e);
+125	                thread::sleep(CONNECT_BACKOFF);
+126	            }
+127	        }
+128	    }
+129	    Err(anyhow!(
+130	        "could not reach {url} after {} attempts: {}",
+131	        CONNECT_ATTEMPTS,
+132	        last_err.map(|e| e.to_string()).unwrap_or_default()
+133	    ))
+134	}
+135	
+136	fn set_nonblocking(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> std::io::Result<()> {
+137	    match ws.get_mut() {
+138	        MaybeTlsStream::Plain(tcp) => tcp.set_nonblocking(true),
+139	        // Other MaybeTlsStream variants (rustls/native-tls) only appear when
+140	        // those features are enabled; we don't enable them.
+141	        _ => Ok(()),
+142	    }
+143	}
+144
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:11:02Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:11:04Z)**_
+
+Verified — the design lines up cleanly with the actual code. `normalize_ws_url` already preserves `/ws` in path, `NetEvent::Server` already boxes its payload, the server CLI shape needs no changes (room id is a path param, not a flag), and `--connect`/`--lobby`/`--password` slot in next to existing `Option<String>` flags. Now writing the final plan.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:13:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# chess-net: multi-room lobby + optional password
+
+## Context
+
+The chess-net MVP shipped 2026-05-06: one server boot = one hard-coded room = one game; the first two ws clients seat Red/Black, the third gets `Error{"room full"}`. Coordination is "Slack the IP, count seats by hand." This PR turns chess-net into a real multi-room server with an in-TUI lobby browser, plus an optional per-room password for the friend-list-lock case (not security).
+
+The MVP retrospective surfaced three integration paths the user explicitly asked about: (A) extend `chess-tui` with a `Screen::Lobby`, (B) ship a separate `chess-tui-lobby` binary or subcommand, (C) replace/parallel the transport with `russh` for `ssh chess.you.dev`. Path A wins — see Recommendation. The SSH path is already filed as the separate `[?/L] Wish/SSH multiplayer alternative to chess-net` P? spike in `TODO.md` and is **not** absorbed here.
+
+The hard structural constraints from the existing stack:
+- `clients/chess-tui/src/net.rs` is sync `tungstenite` + `std::sync::mpsc` — no tokio in the TUI binary. The lobby connection must reuse this exact shape.
+- `clients/chess-tui/src/main.rs::normalize_ws_url` (line 140) already preserves any URL containing `/ws`, so `ws://host/ws/<id>` works today with zero changes.
+- `crates/chess-net/src/server.rs::RoomState` (line 26) is held in `Arc<Mutex<RoomState>>` and broadcasts via per-socket `mpsc::UnboundedSender<ServerMsg>` write tasks — that pattern survives untouched into multi-room.
+- `NetEvent::Server(Box<ServerMsg>)` already boxes the payload (net.rs:28); growing `ServerMsg` doesn't trigger a `clippy::large_enum_variant` regression.
+
+## Recommendation: Option A (in-process `Screen::Lobby`)
+
+Extend chess-tui in-process with a new `Screen::Lobby` that subscribes to a server-side **lobby ws channel** (`ws://host/lobby`), which pushes a live `Rooms` snapshot whenever any room's state changes. Joining a room spawns a second `NetClient` against `ws://host/ws/<id>?password=…` — the existing connect path. This keeps users inside one terminal and gives live "room appeared / filled / finished" updates with no polling.
+
+**Rejected — B (separate `chess-tui-lobby` binary)**: forces a two-process workflow and re-introduces the room-URL-copy-paste problem this PR exists to fix. Also doubles the deploy surface for one feature.
+
+**Rejected — C (russh)**: ~1500 LOC of `russh` glue + PTY/SIGWINCH plumbing + SSH key management, locks the canonical transport to SSH, and conflicts with the chess-web roadmap (P2). Worth a spike later, not in this PR.
+
+**Why ws push, not REST `GET /rooms` polling**: the existing `NetClient` is wire-shaped for streaming; a REST endpoint would force adding an HTTP client (`reqwest`) or hand-rolling HTTP over `TcpStream`. A `/rooms` JSON endpoint is added anyway as a small `axum::Json` handler for `curl` debugging, but the TUI uses the ws.
+
+## Scope
+
+**In:**
+- Multi-room server: `HashMap<RoomId, Arc<Mutex<RoomState>>>`, room auto-created on first connect to `/ws/<id>`, GC'd when last seat leaves (except room `main`, which is permanent for backwards compat).
+- Lobby ws channel `/lobby` with subscriber set; live `Rooms` push on every state change.
+- Per-room optional password set by the first joiner, stored plain-text (friend-lock not security; documented).
+- chess-tui `Screen::Lobby`, `Screen::HostPrompt`, `Screen::CreateRoom` (plus growing `Screen::Picker` by one entry).
+- chess-tui CLI: new `--lobby <ws-url>` flag (skip picker → land in lobby), new `--password <pw>` flag (paired with `--connect ws://host/ws/<id>`).
+- `/rooms` JSON snapshot endpoint for `curl`/debugging.
+- Backwards compat: `ws://host` and `ws://host/ws` (no room id) land in room `main`. v1 clients keep working unchanged.
+- `make play-lobby` Makefile target + `scripts/play-lobby.sh` (server + 3 panes: 2 lobby-flow joiners + 1 lobby watcher).
+
+**Out (each gets a TODO.md entry, P2 unless noted):**
+- Mixed-variant servers (one server, different variants per room).
+- Spectator slots (3+ connections per room).
+- Reconnect / resume on transient disconnect (already a TODO).
+- Lobby filter (`/`) and sort.
+- Lobby-push debouncing (≥250ms coalesce) — premature today.
+- Server-side admin / kick / signed token.
+- WSS / TLS / oauth (loopback-only posture preserved).
+- Persistent room storage (rooms are in-memory; restart = wipe).
+
+## Wire schema (`crates/chess-net/src/protocol.rs`)
+
+`PROTOCOL_VERSION` bumps to **2**. Old messages serialize unchanged; we only add new variants.
+
+\```rust
+pub const PROTOCOL_VERSION: u16 = 2;
+
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    Update { view: PlayerView },
+    Error { message: String },
+    // NEW: pushed on the lobby socket only — initial snapshot on connect,
+    // then again whenever any room's state changes.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    Move { mv: Move },
+    Resign,
+    Rematch,
+    // NEW: lobby-only. Forces a fresh Rooms push to the requester.
+    ListRooms,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RoomSummary {
+    pub id: String,
+    pub variant: String,        // "xiangqi" | "xiangqi-strict" | "banqi"
+    pub seats: u8,              // 0|1|2
+    pub has_password: bool,
+    pub status: RoomStatus,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus { Lobby, Playing, Finished }
+\```
+
+Backwards compat:
+- **New server + v1 client**: v1 client connects to `/ws` → default room `main` → Hello with `protocol: 2` (v1 ignores the field). Works.
+- **v1 server + new client using `--lobby`**: v1 server returns 404 on `/lobby` upgrade → tungstenite errors → `NetEvent::Disconnected("connect failed: ...")`. Surface as `"server doesn't support lobby; try --connect ws://host/ws"` in the TUI.
+
+## Server architecture (`crates/chess-net/src/server.rs`)
+
+\```rust
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+
+struct AppState {
+    rooms: RoomMap,
+    /// Outbound senders for every connected lobby socket.
+    /// Cleaned by lobby write tasks draining their mpsc and exiting.
+    lobby_subs: Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>,
+    /// Server-wide variant for MVP (matches `chess-net-server <variant>`).
+    /// Every auto-created room copies this.
+    default_rules: RuleSet,
+}
+
+struct RoomState {
+    state: GameState,
+    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    rematch: Vec<Side>,
+    password: Option<String>,   // NEW: set by first joiner, immutable thereafter
+}
+\```
+
+**Locking discipline (load-bearing)**: outer `RoomMap` lock is held only for HashMap insert / remove / iterate-to-snapshot — never across `await`, never across a per-room `tx.send`. Inner `Mutex<RoomState>` per-room is acquired separately. Lock order: outer → inner, never reverse. Avoids head-of-line block: a slow room's inner lock can't freeze new joins or lobby pushes. (`DashMap` would also work but doubles the dep tree for marginal gain.)
+
+**Routes (axum)**:
+\```rust
+Router::new()
+    .route("/",            get(upgrade_default))   // back-compat → "main"
+    .route("/ws",          get(upgrade_default))   //   "
+    .route("/ws/:room_id", get(upgrade_room))      // join named room
+    .route("/lobby",       get(upgrade_lobby))     // subscribe to room list
+    .route("/rooms",       get(rooms_snapshot_json)) // curl/debug
+    .with_state(app_state)
+\```
+
+**Validation** (in `upgrade_room`, before `ws.on_upgrade`):
+- Room id: regex `^[a-zA-Z0-9_-]{1,32}$`. Rejects path traversal, whitespace, NUL. Invalid → HTTP 400.
+- `?password=` query: max 64 chars, any printable. Stored as-is.
+- Wrong password: upgrade succeeds, server immediately sends `Error{"bad password"}` and closes. Visible in client as a normal `ServerMsg::Error` (not `tungstenite::Error::Http`).
+
+**Lobby push triggers** (`notify_lobby(state: &AppState)` — snapshot under outer lock, drop, then iterate `lobby_subs` outside any lock):
+1. Seat insertion (room appearing or filling).
+2. Seat removal (room emptying / GC'd).
+3. `process_client_msg` move that flips `GameStatus::Ongoing` → `Won`/`Drawn`.
+4. Explicit `ClientMsg::ListRooms` (sends only to the requester).
+
+Triggers 1–3 are infrequent per game; no debounce needed at MVP scale (filed as P2 if churn observed).
+
+**Empty-room GC**: after `g.seats.retain(|(s, _)| *s != seat)` in the disconnect path, if `g.seats.is_empty()` and `room_id != "main"`, drop the inner lock, re-acquire the outer `RoomMap`, and remove the entry. Stops memory leaks from spectator-style room churn.
+
+## Client architecture
+
+**`clients/chess-tui/src/net.rs`** — unchanged. The lobby spawns a second `NetClient::spawn(format!("ws://{host}/lobby"))`. Each `NetClient` is its own OS thread + mpsc pair; they don't interact.
+
+**`clients/chess-tui/src/app.rs`** — three new `Screen` variants:
+
+\```rust
+pub enum Screen {
+    Picker(PickerView),       // existing — gets one new entry
+    Game(Box<GameView>),
+    Net(Box<NetView>),
+    HostPrompt(HostPromptView),  // NEW: "Server URL: ws://___"
+    Lobby(Box<LobbyView>),       // NEW: room browser
+    CreateRoom(CreateRoomView),  // NEW: room id + optional password
+}
+
+pub struct HostPromptView { pub buf: String, pub error: Option<String> }
+
+pub struct LobbyView {
+    pub client: NetClient,
+    pub host: String,                  // "ws://host:port"
+    pub rooms: Vec<RoomSummary>,
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    pub password_buf: Option<String>,  // mid-prompt buffer when joining locked room
+    pub style: Style,                  // forwarded to Screen::Net on join
+    pub use_color: bool,
+}
+
+pub struct CreateRoomView {
+    pub host: String,
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,        // Id | Password | Submit
+    pub error: Option<String>,
+    pub style: Style,
+    pub use_color: bool,
+}
+\```
+
+`PickerEntry::ALL` gets a new variant `ConnectToServer` inserted before `Quit`. `dispatch_picker` adds one match arm: transition to `Screen::HostPrompt`.
+
+**Esc semantics** (real change vs MVP, which had no re-entry): Esc from Lobby → HostPrompt; Esc from HostPrompt → Picker; Esc from CreateRoom → Lobby. Implement by storing previous-screen identity inline in each new view struct only where needed — don't add a generic back-stack.
+
+**Keybinds (`clients/chess-tui/src/input.rs`)**:
+- Lobby: `j/k` or `↓/↑` move cursor (reuse `PickerUp`/`PickerDown`); Enter/Space joins; `c` = `LobbyCreate`; `r` = `LobbyRefresh` (sends `ClientMsg::ListRooms`); Esc = `Back`; `/` reserved for filter (parsed but `Action::None` for now).
+- HostPrompt / CreateRoom: text input. **Don't add `tui-input` crate** — write a 30-line helper for printable chars + backspace + `Tab`/`Shift-Tab` for field focus.
+- Collision: `r` is `RulesToggle` globally today. Resolve by gating: in `Screen::Lobby`, `r` is `LobbyRefresh`; everywhere else, unchanged. Add `in_lobby: bool` next to the existing `in_picker: bool` plumbed into `from_key`.
+- New `Action` variants: `Back`, `LobbyCreate`, `LobbyRefresh`, `TextInput(char)`, `TextBackspace`, `FocusNext`, `FocusPrev`.
+
+**`clients/chess-tui/src/main.rs`** CLI additions:
+\```rust
+#[arg(long)] connect: Option<String>,   // existing
+#[arg(long)] lobby: Option<String>,     // NEW
+#[arg(long)] password: Option<String>,  // NEW: pairs with --connect
+\```
+
+Branch in `main()` (in this priority order):
+1. `--lobby <url>` set → `AppState::new_lobby(url)`.
+2. `--connect <url>` set → `AppState::new_net(url, password)` (forwards `?password=` if set).
+3. Variant subcommand → existing local game.
+4. Bare → existing picker.
+
+`normalize_ws_url` already covers `/ws/<id>` (it preserves anything containing `/ws`). Add `normalize_lobby_url` that auto-appends `/lobby` if absent.
+
+## UX flow
+
+\```
+chess-tui                                  → Picker
+  └ Connect to server…                     → HostPrompt
+      └ enter "ws://host:7878"             → Lobby (ws://host/lobby)
+          ├ ↑/↓ on a row, Enter            → Net (ws://host/ws/<id>?pw=…)
+          │   └ if has_password: prompt    →   "
+          ├ c                              → CreateRoom
+          │   └ submit                     → Net (server auto-creates)
+          ├ r                              → manual ListRooms
+          └ Esc                            → HostPrompt
+chess-tui --connect ws://host/ws/foo --password bar  → Net directly
+chess-tui --connect ws://host                        → Net default room (unchanged MVP)
+chess-tui --lobby ws://host                          → Lobby directly
+\```
+
+Pre-Hello rendering inside `Screen::Net` already covered by `draw_connecting_placeholder` (`ui.rs:131`); for `Screen::Lobby`, mirror that with `draw_lobby_connecting` until first `Rooms` push lands.
+
+## Critical files
+
+### New
+- `crates/chess-net/tests/lobby_smoke.rs` (or extend existing `server_smoke.rs`).
+- `clients/chess-tui/src/text_input.rs` — 30-line ASCII text-input helper (printable chars, backspace, Tab focus).
+- `docs/adr/0005-multi-room-lobby.md` — ADR continuing the 0001–0004 sequence.
+- `scripts/play-lobby.sh` + `make play-lobby` target.
+
+### Modified
+- `crates/chess-net/src/protocol.rs` — `PROTOCOL_VERSION` → 2; add `ServerMsg::Rooms`, `ClientMsg::ListRooms`, `RoomSummary`, `RoomStatus`.
+- `crates/chess-net/src/server.rs` — `AppState`, `RoomMap`, `notify_lobby`, route handlers `upgrade_room`/`upgrade_lobby`/`rooms_snapshot_json`, room id validation regex, GC on last-seat-leave, password field on `RoomState`.
+- `crates/chess-net/src/lib.rs` — re-export new protocol types.
+- `crates/chess-net/src/bin/server.rs` — no functional change; help text mentions multi-room.
+- `clients/chess-tui/src/app.rs` — three new `Screen` variants, `dispatch_lobby`/`dispatch_host_prompt`/`dispatch_create_room`, `tick_net` extended to also drain lobby `NetClient` events, `apply_lobby_event`.
+- `clients/chess-tui/src/input.rs` — new `Action` variants, `in_lobby` gate, text-input action wiring.
+- `clients/chess-tui/src/ui.rs` — `draw_host_prompt`, `draw_lobby`, `draw_create_room`, `HELP_LINES_LOBBY`.
+- `clients/chess-tui/src/main.rs` — `--lobby`, `--password`, `normalize_lobby_url`, branch order in `main()`.
+- `Makefile` — `play-lobby` target.
+- `CLAUDE.md` — Common commands: `--lobby`, `--password`, `make play-lobby`. Architecture quick-reference: chess-net is now multi-room. Gotchas: lobby push semantics, password is plain-text friend-lock not security, default room `main` is permanent.
+- `TODO.md` — promote `chess-net: multi-room lobby + optional password` to Done; add five P2 follow-ups (mixed-variant, spectators, lobby filter, debouncing, admin/kick).
+
+## Tests
+
+`crates/chess-net/tests/server_smoke.rs` (extend; current has 4 tests):
+- `lobby_lists_empty_initially` — connect to `/lobby`, expect `Rooms{rooms: []}` snapshot.
+- `lobby_sees_room_after_join` — `/lobby` socket open; client joins `/ws/foo`; `/lobby` reads a second `Rooms` push containing `foo`.
+- `lobby_sees_seat_fill_and_finish` — 2 clients join `foo`, lobby sees `seats: 2, status: Playing`; one resigns, lobby sees `Finished`.
+- `password_rejected_on_wrong` — first joiner sets `?password=alpha`; second joiner uses `?password=beta`; gets `Error{"bad password"}`, no Hello, socket closed.
+- `password_accepted_on_right` — second joiner with correct password gets seated as Black + Hello.
+- `two_rooms_isolated_no_crosstalk` — `/ws/foo` clients play a move; `/ws/bar` clients receive no Update.
+- `room_gc_after_last_seat_leaves` — lone joiner to `/ws/temp` disconnects; `/lobby` push omits `temp`.
+- `default_room_main_persists_after_empty` — assert `main` is **not** GC'd.
+- `default_room_back_compat` — connect to `/ws` (no id) → seated in `main`.
+
+`crates/chess-net/tests/protocol_roundtrip.rs` (extend):
+- `server_rooms_roundtrips` — `ServerMsg::Rooms{...}` JSON encode/decode, including a `RoomSummary` with and without `has_password`.
+- `client_list_rooms_roundtrips` — `ClientMsg::ListRooms`.
+
+chess-tui app-state tests are deferred (no harness exists today; manual `make play-lobby` covers UI flow).
+
+## Verification
+
+Pre-push gates (unchanged):
+\```
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+\```
+
+Manual smoke (`make play-lobby`):
+1. Server boots on `:7878`. tmux window 0 has 3 panes: pane A goes through Picker → HostPrompt → Lobby; pane B same; pane C lands in lobby via `--lobby`.
+2. Pane A presses `c`, types `demo`, leaves password empty, submits → enters `demo` as Red.
+3. Pane B in Lobby sees `demo (xiangqi, seats: 1, lobby)` row appear within ~50ms (server push, no polling). Picks it with Enter → joined as Black.
+4. Pane C (still in Lobby) sees row update to `seats: 2, playing`.
+5. Pane A makes a move; Pane B board updates; Pane C lobby unchanged (move doesn't flip status).
+6. Pane A resigns; Pane C lobby row flips to `finished`.
+7. Both A and B exit via `q`; Pane C lobby row disappears (room GC'd).
+
+Backwards-compat smoke:
+- Build new server, run `chess-net-server xiangqi`.
+- Run **previous** `chess-tui` binary (rebuild after `git stash` of the client changes) with `--connect ws://127.0.0.1:7878` → seated in `main`, plays normally. Verifies no v1-client regression.
+
+Password smoke:
+- Pane A creates room `locked` with password `secret`. Pane B picks `locked` from lobby → prompted for password. Wrong password → `Error{"bad password"}` shown in `last_msg`, stays in lobby. Right password → seated.
+
+## Out-of-scope follow-ups (TODO.md additions)
+
+Run `scripts/add-todo.sh` for each in the implementing commit. The current P2 entry **chess-net: multi-room lobby + optional password** is promoted to Done by `scripts/promote-todo.sh --title "multi-room lobby" --summary "Multi-room ws server (/ws/<id>), optional ?password= lock, in-TUI Screen::Lobby with live ws push, /rooms JSON snapshot, default room 'main' preserved for v1 client back-compat."`
+
+New P2 entries:
+- `[M] chess-net: mixed-variant rooms` — per-room `RuleSet` instead of server-wide. Architecture supports it; blocked on UX for "what variant filter applies in lobby".
+- `[M] chess-net: spectator slots` — third+ connection joins read-only; gets `Update`, `Move` errors back. Replaces today's "room full" dead-end.
+- `[S] chess-net: lobby filter + sort` — `/` filter inside lobby; sort by recency / seat count / variant. Defer until ≥10 concurrent rooms is a real workflow.
+- `[S] chess-net: lobby push debouncing` — ≥250ms coalesce on rapid status flips. Premature today; revisit if churn observable.
+- `[S] chess-net: server-side admin / kick / signed token` — close stuck rooms or force-disconnect a misbehaving client. Wants admin-only ws path or signed token.
+
+The pre-existing `[?/L] Wish/SSH multiplayer alternative to chess-net` P? entry is **not** touched — remains a separate spike for after chess-web ships.
+
+```
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:13:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `/Users/daviddwlee84/.claude/plans/magical-honking-book.md`
+
+```text
+1	# chess-net MVP + local tmux launcher
+2	
+3	## Context
+4	
+5	`chess-net` and `chess-web` are still one-line stubs; only single-process hot-seat play works today. The user wants a minimal end-to-end "two clients connect to one server, play one game" loop so the existing engine + TUI prove out over the wire, plus a one-command tmux launcher (Makefile target) that boots a server and two `chess-tui` clients in a single tmux session for fast local playtesting.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:15:43Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# chess-net: multi-room lobby + optional password
+
+## Context
+
+The chess-net MVP shipped 2026-05-06: one server boot = one hard-coded room = one game; the first two ws clients seat Red/Black, the third gets `Error{"room full"}`. Coordination is "Slack the IP, count seats by hand." This PR turns chess-net into a real multi-room server with an in-TUI lobby browser, plus an optional per-room password for the friend-list-lock case (not security).
+
+The MVP retrospective surfaced three integration paths the user explicitly asked about: (A) extend `chess-tui` with a `Screen::Lobby`, (B) ship a separate `chess-tui-lobby` binary or subcommand, (C) replace/parallel the transport with `russh` for `ssh chess.you.dev`. Path A wins — see Recommendation. The SSH path is already filed as the separate `[?/L] Wish/SSH multiplayer alternative to chess-net` P? spike in `TODO.md` and is **not** absorbed here.
+
+The hard structural constraints from the existing stack:
+- `clients/chess-tui/src/net.rs` is sync `tungstenite` + `std::sync::mpsc` — no tokio in the TUI binary. The lobby connection must reuse this exact shape.
+- `clients/chess-tui/src/main.rs::normalize_ws_url` (line 140) already preserves any URL containing `/ws`, so `ws://host/ws/<id>` works today with zero changes.
+- `crates/chess-net/src/server.rs::RoomState` (line 26) is held in `Arc<Mutex<RoomState>>` and broadcasts via per-socket `mpsc::UnboundedSender<ServerMsg>` write tasks — that pattern survives untouched into multi-room.
+- `NetEvent::Server(Box<ServerMsg>)` already boxes the payload (net.rs:28); growing `ServerMsg` doesn't trigger a `clippy::large_enum_variant` regression.
+
+## Recommendation: Option A (in-process `Screen::Lobby`)
+
+Extend chess-tui in-process with a new `Screen::Lobby` that subscribes to a server-side **lobby ws channel** (`ws://host/lobby`), which pushes a live `Rooms` snapshot whenever any room's state changes. Joining a room spawns a second `NetClient` against `ws://host/ws/<id>?password=…` — the existing connect path. This keeps users inside one terminal and gives live "room appeared / filled / finished" updates with no polling.
+
+**Rejected — B (separate `chess-tui-lobby` binary)**: forces a two-process workflow and re-introduces the room-URL-copy-paste problem this PR exists to fix. Also doubles the deploy surface for one feature.
+
+**Rejected — C (russh)**: ~1500 LOC of `russh` glue + PTY/SIGWINCH plumbing + SSH key management, locks the canonical transport to SSH, and conflicts with the chess-web roadmap (P2). Worth a spike later, not in this PR.
+
+**Why ws push, not REST `GET /rooms` polling**: the existing `NetClient` is wire-shaped for streaming; a REST endpoint would force adding an HTTP client (`reqwest`) or hand-rolling HTTP over `TcpStream`. A `/rooms` JSON endpoint is added anyway as a small `axum::Json` handler for `curl` debugging, but the TUI uses the ws.
+
+## Scope
+
+**In:**
+- Multi-room server: `HashMap<RoomId, Arc<Mutex<RoomState>>>`, room auto-created on first connect to `/ws/<id>`, GC'd when last seat leaves (except room `main`, which is permanent for backwards compat).
+- Lobby ws channel `/lobby` with subscriber set; live `Rooms` push on every state change.
+- Per-room optional password set by the first joiner, stored plain-text (friend-lock not security; documented).
+- chess-tui `Screen::Lobby`, `Screen::HostPrompt`, `Screen::CreateRoom` (plus growing `Screen::Picker` by one entry).
+- chess-tui CLI: new `--lobby <ws-url>` flag (skip picker → land in lobby), new `--password <pw>` flag (paired with `--connect ws://host/ws/<id>`).
+- `/rooms` JSON snapshot endpoint for `curl`/debugging.
+- Backwards compat: `ws://host` and `ws://host/ws` (no room id) land in room `main`. v1 clients keep working unchanged.
+- `make play-lobby` Makefile target + `scripts/play-lobby.sh` (server + 3 panes: 2 lobby-flow joiners + 1 lobby watcher).
+
+**Out (each gets a TODO.md entry, P2 unless noted):**
+- Mixed-variant servers (one server, different variants per room).
+- Spectator slots (3+ connections per room).
+- Reconnect / resume on transient disconnect (already a TODO).
+- Lobby filter (`/`) and sort.
+- Lobby-push debouncing (≥250ms coalesce) — premature today.
+- Server-side admin / kick / signed token.
+- WSS / TLS / oauth (loopback-only posture preserved).
+- Persistent room storage (rooms are in-memory; restart = wipe).
+
+## Wire schema (`crates/chess-net/src/protocol.rs`)
+
+`PROTOCOL_VERSION` bumps to **2**. Old messages serialize unchanged; we only add new variants.
+
+\```rust
+pub const PROTOCOL_VERSION: u16 = 2;
+
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    Update { view: PlayerView },
+    Error { message: String },
+    // NEW: pushed on the lobby socket only — initial snapshot on connect,
+    // then again whenever any room's state changes.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    Move { mv: Move },
+    Resign,
+    Rematch,
+    // NEW: lobby-only. Forces a fresh Rooms push to the requester.
+    ListRooms,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RoomSummary {
+    pub id: String,
+    pub variant: String,        // "xiangqi" | "xiangqi-strict" | "banqi"
+    pub seats: u8,              // 0|1|2
+    pub has_password: bool,
+    pub status: RoomStatus,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus { Lobby, Playing, Finished }
+\```
+
+Backwards compat:
+- **New server + v1 client**: v1 client connects to `/ws` → default room `main` → Hello with `protocol: 2` (v1 ignores the field). Works.
+- **v1 server + new client using `--lobby`**: v1 server returns 404 on `/lobby` upgrade → tungstenite errors → `NetEvent::Disconnected("connect failed: ...")`. Surface as `"server doesn't support lobby; try --connect ws://host/ws"` in the TUI.
+
+## Server architecture (`crates/chess-net/src/server.rs`)
+
+\```rust
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+
+struct AppState {
+    rooms: RoomMap,
+    /// Outbound senders for every connected lobby socket.
+    /// Cleaned by lobby write tasks draining their mpsc and exiting.
+    lobby_subs: Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>,
+    /// Server-wide variant for MVP (matches `chess-net-server <variant>`).
+    /// Every auto-created room copies this.
+    default_rules: RuleSet,
+}
+
+struct RoomState {
+    state: GameState,
+    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    rematch: Vec<Side>,
+    password: Option<String>,   // NEW: set by first joiner, immutable thereafter
+}
+\```
+
+**Locking discipline (load-bearing)**: outer `RoomMap` lock is held only for HashMap insert / remove / iterate-to-snapshot — never across `await`, never across a per-room `tx.send`. Inner `Mutex<RoomState>` per-room is acquired separately. Lock order: outer → inner, never reverse. Avoids head-of-line block: a slow room's inner lock can't freeze new joins or lobby pushes. (`DashMap` would also work but doubles the dep tree for marginal gain.)
+
+**Routes (axum)**:
+\```rust
+Router::new()
+    .route("/",            get(upgrade_default))   // back-compat → "main"
+    .route("/ws",          get(upgrade_default))   //   "
+    .route("/ws/:room_id", get(upgrade_room))      // join named room
+    .route("/lobby",       get(upgrade_lobby))     // subscribe to room list
+    .route("/rooms",       get(rooms_snapshot_json)) // curl/debug
+    .with_state(app_state)
+\```
+
+**Validation** (in `upgrade_room`, before `ws.on_upgrade`):
+- Room id: regex `^[a-zA-Z0-9_-]{1,32}$`. Rejects path traversal, whitespace, NUL. Invalid → HTTP 400.
+- `?password=` query: max 64 chars, any printable. Stored as-is.
+- Wrong password: upgrade succeeds, server immediately sends `Error{"bad password"}` and closes. Visible in client as a normal `ServerMsg::Error` (not `tungstenite::Error::Http`).
+
+**Lobby push triggers** (`notify_lobby(state: &AppState)` — snapshot under outer lock, drop, then iterate `lobby_subs` outside any lock):
+1. Seat insertion (room appearing or filling).
+2. Seat removal (room emptying / GC'd).
+3. `process_client_msg` move that flips `GameStatus::Ongoing` → `Won`/`Drawn`.
+4. Explicit `ClientMsg::ListRooms` (sends only to the requester).
+
+Triggers 1–3 are infrequent per game; no debounce needed at MVP scale (filed as P2 if churn observed).
+
+**Empty-room GC**: after `g.seats.retain(|(s, _)| *s != seat)` in the disconnect path, if `g.seats.is_empty()` and `room_id != "main"`, drop the inner lock, re-acquire the outer `RoomMap`, and remove the entry. Stops memory leaks from spectator-style room churn.
+
+## Client architecture
+
+**`clients/chess-tui/src/net.rs`** — unchanged. The lobby spawns a second `NetClient::spawn(format!("ws://{host}/lobby"))`. Each `NetClient` is its own OS thread + mpsc pair; they don't interact.
+
+**`clients/chess-tui/src/app.rs`** — three new `Screen` variants:
+
+\```rust
+pub enum Screen {
+    Picker(PickerView),       // existing — gets one new entry
+    Game(Box<GameView>),
+    Net(Box<NetView>),
+    HostPrompt(HostPromptView),  // NEW: "Server URL: ws://___"
+    Lobby(Box<LobbyView>),       // NEW: room browser
+    CreateRoom(CreateRoomView),  // NEW: room id + optional password
+}
+
+pub struct HostPromptView { pub buf: String, pub error: Option<String> }
+
+pub struct LobbyView {
+    pub client: NetClient,
+    pub host: String,                  // "ws://host:port"
+    pub rooms: Vec<RoomSummary>,
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    pub password_buf: Option<String>,  // mid-prompt buffer when joining locked room
+    pub style: Style,                  // forwarded to Screen::Net on join
+    pub use_color: bool,
+}
+
+pub struct CreateRoomView {
+    pub host: String,
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,        // Id | Password | Submit
+    pub error: Option<String>,
+    pub style: Style,
+    pub use_color: bool,
+}
+\```
+
+`PickerEntry::ALL` gets a new variant `ConnectToServer` inserted before `Quit`. `dispatch_picker` adds one match arm: transition to `Screen::HostPrompt`.
+
+**Esc semantics** (real change vs MVP, which had no re-entry): Esc from Lobby → HostPrompt; Esc from HostPrompt → Picker; Esc from CreateRoom → Lobby. Implement by storing previous-screen identity inline in each new view struct only where needed — don't add a generic back-stack.
+
+**Keybinds (`clients/chess-tui/src/input.rs`)**:
+- Lobby: `j/k` or `↓/↑` move cursor (reuse `PickerUp`/`PickerDown`); Enter/Space joins; `c` = `LobbyCreate`; `r` = `LobbyRefresh` (sends `ClientMsg::ListRooms`); Esc = `Back`; `/` reserved for filter (parsed but `Action::None` for now).
+- HostPrompt / CreateRoom: text input. **Don't add `tui-input` crate** — write a 30-line helper for printable chars + backspace + `Tab`/`Shift-Tab` for field focus.
+- Collision: `r` is `RulesToggle` globally today. Resolve by gating: in `Screen::Lobby`, `r` is `LobbyRefresh`; everywhere else, unchanged. Add `in_lobby: bool` next to the existing `in_picker: bool` plumbed into `from_key`.
+- New `Action` variants: `Back`, `LobbyCreate`, `LobbyRefresh`, `TextInput(char)`, `TextBackspace`, `FocusNext`, `FocusPrev`.
+
+**`clients/chess-tui/src/main.rs`** CLI additions:
+\```rust
+#[arg(long)] connect: Option<String>,   // existing
+#[arg(long)] lobby: Option<String>,     // NEW
+#[arg(long)] password: Option<String>,  // NEW: pairs with --connect
+\```
+
+Branch in `main()` (in this priority order):
+1. `--lobby <url>` set → `AppState::new_lobby(url)`.
+2. `--connect <url>` set → `AppState::new_net(url, password)` (forwards `?password=` if set).
+3. Variant subcommand → existing local game.
+4. Bare → existing picker.
+
+`normalize_ws_url` already covers `/ws/<id>` (it preserves anything containing `/ws`). Add `normalize_lobby_url` that auto-appends `/lobby` if absent.
+
+## UX flow
+
+\```
+chess-tui                                  → Picker
+  └ Connect to server…                     → HostPrompt
+      └ enter "ws://host:7878"             → Lobby (ws://host/lobby)
+          ├ ↑/↓ on a row, Enter            → Net (ws://host/ws/<id>?pw=…)
+          │   └ if has_password: prompt    →   "
+          ├ c                              → CreateRoom
+          │   └ submit                     → Net (server auto-creates)
+          ├ r                              → manual ListRooms
+          └ Esc                            → HostPrompt
+chess-tui --connect ws://host/ws/foo --password bar  → Net directly
+chess-tui --connect ws://host                        → Net default room (unchanged MVP)
+chess-tui --lobby ws://host                          → Lobby directly
+\```
+
+Pre-Hello rendering inside `Screen::Net` already covered by `draw_connecting_placeholder` (`ui.rs:131`); for `Screen::Lobby`, mirror that with `draw_lobby_connecting` until first `Rooms` push lands.
+
+## Critical files
+
+### New
+- `crates/chess-net/tests/lobby_smoke.rs` (or extend existing `server_smoke.rs`).
+- `clients/chess-tui/src/text_input.rs` — 30-line ASCII text-input helper (printable chars, backspace, Tab focus).
+- `docs/adr/0005-multi-room-lobby.md` — ADR continuing the 0001–0004 sequence.
+- `scripts/play-lobby.sh` + `make play-lobby` target.
+
+### Modified
+- `crates/chess-net/src/protocol.rs` — `PROTOCOL_VERSION` → 2; add `ServerMsg::Rooms`, `ClientMsg::ListRooms`, `RoomSummary`, `RoomStatus`.
+- `crates/chess-net/src/server.rs` — `AppState`, `RoomMap`, `notify_lobby`, route handlers `upgrade_room`/`upgrade_lobby`/`rooms_snapshot_json`, room id validation regex, GC on last-seat-leave, password field on `RoomState`.
+- `crates/chess-net/src/lib.rs` — re-export new protocol types.
+- `crates/chess-net/src/bin/server.rs` — no functional change; help text mentions multi-room.
+- `clients/chess-tui/src/app.rs` — three new `Screen` variants, `dispatch_lobby`/`dispatch_host_prompt`/`dispatch_create_room`, `tick_net` extended to also drain lobby `NetClient` events, `apply_lobby_event`.
+- `clients/chess-tui/src/input.rs` — new `Action` variants, `in_lobby` gate, text-input action wiring.
+- `clients/chess-tui/src/ui.rs` — `draw_host_prompt`, `draw_lobby`, `draw_create_room`, `HELP_LINES_LOBBY`.
+- `clients/chess-tui/src/main.rs` — `--lobby`, `--password`, `normalize_lobby_url`, branch order in `main()`.
+- `Makefile` — `play-lobby` target.
+- `CLAUDE.md` — Common commands: `--lobby`, `--password`, `make play-lobby`. Architecture quick-reference: chess-net is now multi-room. Gotchas: lobby push semantics, password is plain-text friend-lock not security, default room `main` is permanent.
+- `TODO.md` — promote `chess-net: multi-room lobby + optional password` to Done; add five P2 follow-ups (mixed-variant, spectators, lobby filter, debouncing, admin/kick).
+
+## Tests
+
+`crates/chess-net/tests/server_smoke.rs` (extend; current has 4 tests):
+- `lobby_lists_empty_initially` — connect to `/lobby`, expect `Rooms{rooms: []}` snapshot.
+- `lobby_sees_room_after_join` — `/lobby` socket open; client joins `/ws/foo`; `/lobby` reads a second `Rooms` push containing `foo`.
+- `lobby_sees_seat_fill_and_finish` — 2 clients join `foo`, lobby sees `seats: 2, status: Playing`; one resigns, lobby sees `Finished`.
+- `password_rejected_on_wrong` — first joiner sets `?password=alpha`; second joiner uses `?password=beta`; gets `Error{"bad password"}`, no Hello, socket closed.
+- `password_accepted_on_right` — second joiner with correct password gets seated as Black + Hello.
+- `two_rooms_isolated_no_crosstalk` — `/ws/foo` clients play a move; `/ws/bar` clients receive no Update.
+- `room_gc_after_last_seat_leaves` — lone joiner to `/ws/temp` disconnects; `/lobby` push omits `temp`.
+- `default_room_main_persists_after_empty` — assert `main` is **not** GC'd.
+- `default_room_back_compat` — connect to `/ws` (no id) → seated in `main`.
+
+`crates/chess-net/tests/protocol_roundtrip.rs` (extend):
+- `server_rooms_roundtrips` — `ServerMsg::Rooms{...}` JSON encode/decode, including a `RoomSummary` with and without `has_password`.
+- `client_list_rooms_roundtrips` — `ClientMsg::ListRooms`.
+
+chess-tui app-state tests are deferred (no harness exists today; manual `make play-lobby` covers UI flow).
+
+## Verification
+
+Pre-push gates (unchanged):
+\```
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+\```
+
+Manual smoke (`make play-lobby`):
+1. Server boots on `:7878`. tmux window 0 has 3 panes: pane A goes through Picker → HostPrompt → Lobby; pane B same; pane C lands in lobby via `--lobby`.
+2. Pane A presses `c`, types `demo`, leaves password empty, submits → enters `demo` as Red.
+3. Pane B in Lobby sees `demo (xiangqi, seats: 1, lobby)` row appear within ~50ms (server push, no polling). Picks it with Enter → joined as Black.
+4. Pane C (still in Lobby) sees row update to `seats: 2, playing`.
+5. Pane A makes a move; Pane B board updates; Pane C lobby unchanged (move doesn't flip status).
+6. Pane A resigns; Pane C lobby row flips to `finished`.
+7. Both A and B exit via `q`; Pane C lobby row disappears (room GC'd).
+
+Backwards-compat smoke:
+- Build new server, run `chess-net-server xiangqi`.
+- Run **previous** `chess-tui` binary (rebuild after `git stash` of the client changes) with `--connect ws://127.0.0.1:7878` → seated in `main`, plays normally. Verifies no v1-client regression.
+
+Password smoke:
+- Pane A creates room `locked` with password `secret`. Pane B picks `locked` from lobby → prompted for password. Wrong password → `Error{"bad password"}` shown in `last_msg`, stays in lobby. Right password → seated.
+
+## Out-of-scope follow-ups (TODO.md additions)
+
+Run `scripts/add-todo.sh` for each in the implementing commit. The current P2 entry **chess-net: multi-room lobby + optional password** is promoted to Done by `scripts/promote-todo.sh --title "multi-room lobby" --summary "Multi-room ws server (/ws/<id>), optional ?password= lock, in-TUI Screen::Lobby with live ws push, /rooms JSON snapshot, default room 'main' preserved for v1 client back-compat."`
+
+New P2 entries:
+- `[M] chess-net: mixed-variant rooms` — per-room `RuleSet` instead of server-wide. Architecture supports it; blocked on UX for "what variant filter applies in lobby".
+- `[M] chess-net: spectator slots` — third+ connection joins read-only; gets `Update`, `Move` errors back. Replaces today's "room full" dead-end.
+- `[S] chess-net: lobby filter + sort` — `/` filter inside lobby; sort by recency / seat count / variant. Defer until ≥10 concurrent rooms is a real workflow.
+- `[S] chess-net: lobby push debouncing` — ≥250ms coalesce on rapid status flips. Premature today; revisit if churn observable.
+- `[S] chess-net: server-side admin / kick / signed token` — close stuck rooms or force-disconnect a misbehaving client. Wants admin-only ws path or signed token.
+
+The pre-existing `[?/L] Wish/SSH multiplayer alternative to chess-net` P? entry is **not** touched — remains a separate spike for after chess-web ships.
+
+```
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:15:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:15:48Z)**_
+
+Plan written. Now loading ExitPlanMode to wrap up.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:15:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:17Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/daviddwlee84/.claude/plans/magical-honking-book.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# chess-net: multi-room lobby + optional password
+
+## Context
+
+The chess-net MVP shipped 2026-05-06: one server boot = one hard-coded room = one game; the first two ws clients seat Red/Black, the third gets `Error{"room full"}`. Coordination is "Slack the IP, count seats by hand." This PR turns chess-net into a real multi-room server with an in-TUI lobby browser, plus an optional per-room password for the friend-list-lock case (not security).
+
+The MVP retrospective surfaced three integration paths the user explicitly asked about: (A) extend `chess-tui` with a `Screen::Lobby`, (B) ship a separate `chess-tui-lobby` binary or subcommand, (C) replace/parallel the transport with `russh` for `ssh chess.you.dev`. Path A wins — see Recommendation. The SSH path is already filed as the separate `[?/L] Wish/SSH multiplayer alternative to chess-net` P? spike in `TODO.md` and is **not** absorbed here.
+
+The hard structural constraints from the existing stack:
+- `clients/chess-tui/src/net.rs` is sync `tungstenite` + `std::sync::mpsc` — no tokio in the TUI binary. The lobby connection must reuse this exact shape.
+- `clients/chess-tui/src/main.rs::normalize_ws_url` (line 140) already preserves any URL containing `/ws`, so `ws://host/ws/<id>` works today with zero changes.
+- `crates/chess-net/src/server.rs::RoomState` (line 26) is held in `Arc<Mutex<RoomState>>` and broadcasts via per-socket `mpsc::UnboundedSender<ServerMsg>` write tasks — that pattern survives untouched into multi-room.
+- `NetEvent::Server(Box<ServerMsg>)` already boxes the payload (net.rs:28); growing `ServerMsg` doesn't trigger a `clippy::large_enum_variant` regression.
+
+## Recommendation: Option A (in-process `Screen::Lobby`)
+
+Extend chess-tui in-process with a new `Screen::Lobby` that subscribes to a server-side **lobby ws channel** (`ws://host/lobby`), which pushes a live `Rooms` snapshot whenever any room's state changes. Joining a room spawns a second `NetClient` against `ws://host/ws/<id>?password=…` — the existing connect path. This keeps users inside one terminal and gives live "room appeared / filled / finished" updates with no polling.
+
+**Rejected — B (separate `chess-tui-lobby` binary)**: forces a two-process workflow and re-introduces the room-URL-copy-paste problem this PR exists to fix. Also doubles the deploy surface for one feature.
+
+**Rejected — C (russh)**: ~1500 LOC of `russh` glue + PTY/SIGWINCH plumbing + SSH key management, locks the canonical transport to SSH, and conflicts with the chess-web roadmap (P2). Worth a spike later, not in this PR.
+
+**Why ws push, not REST `GET /rooms` polling**: the existing `NetClient` is wire-shaped for streaming; a REST endpoint would force adding an HTTP client (`reqwest`) or hand-rolling HTTP over `TcpStream`. A `/rooms` JSON endpoint is added anyway as a small `axum::Json` handler for `curl` debugging, but the TUI uses the ws.
+
+## Scope
+
+**In:**
+- Multi-room server: `HashMap<RoomId, Arc<Mutex<RoomState>>>`, room auto-created on first connect to `/ws/<id>`, GC'd when last seat leaves (except room `main`, which is permanent for backwards compat).
+- Lobby ws channel `/lobby` with subscriber set; live `Rooms` push on every state change.
+- Per-room optional password set by the first joiner, stored plain-text (friend-lock not security; documented).
+- chess-tui `Screen::Lobby`, `Screen::HostPrompt`, `Screen::CreateRoom` (plus growing `Screen::Picker` by one entry).
+- chess-tui CLI: new `--lobby <ws-url>` flag (skip picker → land in lobby), new `--password <pw>` flag (paired with `--connect ws://host/ws/<id>`).
+- `/rooms` JSON snapshot endpoint for `curl`/debugging.
+- Backwards compat: `ws://host` and `ws://host/ws` (no room id) land in room `main`. v1 clients keep working unchanged.
+- `make play-lobby` Makefile target + `scripts/play-lobby.sh` (server + 3 panes: 2 lobby-flow joiners + 1 lobby watcher).
+
+**Out (each gets a TODO.md entry, P2 unless noted):**
+- Mixed-variant servers (one server, different variants per room).
+- Spectator slots (3+ connections per room).
+- Reconnect / resume on transient disconnect (already a TODO).
+- Lobby filter (`/`) and sort.
+- Lobby-push debouncing (≥250ms coalesce) — premature today.
+- Server-side admin / kick / signed token.
+- WSS / TLS / oauth (loopback-only posture preserved).
+- Persistent room storage (rooms are in-memory; restart = wipe).
+
+## Wire schema (`crates/chess-net/src/protocol.rs`)
+
+`PROTOCOL_VERSION` bumps to **2**. Old messages serialize unchanged; we only add new variants.
+
+```rust
+pub const PROTOCOL_VERSION: u16 = 2;
+
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    Update { view: PlayerView },
+    Error { message: String },
+    // NEW: pushed on the lobby socket only — initial snapshot on connect,
+    // then again whenever any room's state changes.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    Move { mv: Move },
+    Resign,
+    Rematch,
+    // NEW: lobby-only. Forces a fresh Rooms push to the requester.
+    ListRooms,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RoomSummary {
+    pub id: String,
+    pub variant: String,        // "xiangqi" | "xiangqi-strict" | "banqi"
+    pub seats: u8,              // 0|1|2
+    pub has_password: bool,
+    pub status: RoomStatus,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus { Lobby, Playing, Finished }
+```
+
+Backwards compat:
+- **New server + v1 client**: v1 client connects to `/ws` → default room `main` → Hello with `protocol: 2` (v1 ignores the field). Works.
+- **v1 server + new client using `--lobby`**: v1 server returns 404 on `/lobby` upgrade → tungstenite errors → `NetEvent::Disconnected("connect failed: ...")`. Surface as `"server doesn't support lobby; try --connect ws://host/ws"` in the TUI.
+
+## Server architecture (`crates/chess-net/src/server.rs`)
+
+```rust
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+
+struct AppState {
+    rooms: RoomMap,
+    /// Outbound senders for every connected lobby socket.
+    /// Cleaned by lobby write tasks draining their mpsc and exiting.
+    lobby_subs: Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>,
+    /// Server-wide variant for MVP (matches `chess-net-server <variant>`).
+    /// Every auto-created room copies this.
+    default_rules: RuleSet,
+}
+
+struct RoomState {
+    state: GameState,
+    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    rematch: Vec<Side>,
+    password: Option<String>,   // NEW: set by first joiner, immutable thereafter
+}
+```
+
+**Locking discipline (load-bearing)**: outer `RoomMap` lock is held only for HashMap insert / remove / iterate-to-snapshot — never across `await`, never across a per-room `tx.send`. Inner `Mutex<RoomState>` per-room is acquired separately. Lock order: outer → inner, never reverse. Avoids head-of-line block: a slow room's inner lock can't freeze new joins or lobby pushes. (`DashMap` would also work but doubles the dep tree for marginal gain.)
+
+**Routes (axum)**:
+```rust
+Router::new()
+    .route("/",            get(upgrade_default))   // back-compat → "main"
+    .route("/ws",          get(upgrade_default))   //   "
+    .route("/ws/:room_id", get(upgrade_room))      // join named room
+    .route("/lobby",       get(upgrade_lobby))     // subscribe to room list
+    .route("/rooms",       get(rooms_snapshot_json)) // curl/debug
+    .with_state(app_state)
+```
+
+**Validation** (in `upgrade_room`, before `ws.on_upgrade`):
+- Room id: regex `^[a-zA-Z0-9_-]{1,32}$`. Rejects path traversal, whitespace, NUL. Invalid → HTTP 400.
+- `?password=` query: max 64 chars, any printable. Stored as-is.
+- Wrong password: upgrade succeeds, server immediately sends `Error{"bad password"}` and closes. Visible in client as a normal `ServerMsg::Error` (not `tungstenite::Error::Http`).
+
+**Lobby push triggers** (`notify_lobby(state: &AppState)` — snapshot under outer lock, drop, then iterate `lobby_subs` outside any lock):
+1. Seat insertion (room appearing or filling).
+2. Seat removal (room emptying / GC'd).
+3. `process_client_msg` move that flips `GameStatus::Ongoing` → `Won`/`Drawn`.
+4. Explicit `ClientMsg::ListRooms` (sends only to the requester).
+
+Triggers 1–3 are infrequent per game; no debounce needed at MVP scale (filed as P2 if churn observed).
+
+**Empty-room GC**: after `g.seats.retain(|(s, _)| *s != seat)` in the disconnect path, if `g.seats.is_empty()` and `room_id != "main"`, drop the inner lock, re-acquire the outer `RoomMap`, and remove the entry. Stops memory leaks from spectator-style room churn.
+
+## Client architecture
+
+**`clients/chess-tui/src/net.rs`** — unchanged. The lobby spawns a second `NetClient::spawn(format!("ws://{host}/lobby"))`. Each `NetClient` is its own OS thread + mpsc pair; they don't interact.
+
+**`clients/chess-tui/src/app.rs`** — three new `Screen` variants:
+
+```rust
+pub enum Screen {
+    Picker(PickerView),       // existing — gets one new entry
+    Game(Box<GameView>),
+    Net(Box<NetView>),
+    HostPrompt(HostPromptView),  // NEW: "Server URL: ws://___"
+    Lobby(Box<LobbyView>),       // NEW: room browser
+    CreateRoom(CreateRoomView),  // NEW: room id + optional password
+}
+
+pub struct HostPromptView { pub buf: String, pub error: Option<String> }
+
+pub struct LobbyView {
+    pub client: NetClient,
+    pub host: String,                  // "ws://host:port"
+    pub rooms: Vec<RoomSummary>,
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    pub password_buf: Option<String>,  // mid-prompt buffer when joining locked room
+    pub style: Style,                  // forwarded to Screen::Net on join
+    pub use_color: bool,
+}
+
+pub struct CreateRoomView {
+    pub host: String,
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,        // Id | Password | Submit
+    pub error: Option<String>,
+    pub style: Style,
+    pub use_color: bool,
+}
+```
+
+`PickerEntry::ALL` gets a new variant `ConnectToServer` inserted before `Quit`. `dispatch_picker` adds one match arm: transition to `Screen::HostPrompt`.
+
+**Esc semantics** (real change vs MVP, which had no re-entry): Esc from Lobby → HostPrompt; Esc from HostPrompt → Picker; Esc from CreateRoom → Lobby. Implement by storing previous-screen identity inline in each new view struct only where needed — don't add a generic back-stack.
+
+**Keybinds (`clients/chess-tui/src/input.rs`)**:
+- Lobby: `j/k` or `↓/↑` move cursor (reuse `PickerUp`/`PickerDown`); Enter/Space joins; `c` = `LobbyCreate`; `r` = `LobbyRefresh` (sends `ClientMsg::ListRooms`); Esc = `Back`; `/` reserved for filter (parsed but `Action::None` for now).
+- HostPrompt / CreateRoom: text input. **Don't add `tui-input` crate** — write a 30-line helper for printable chars + backspace + `Tab`/`Shift-Tab` for field focus.
+- Collision: `r` is `RulesToggle` globally today. Resolve by gating: in `Screen::Lobby`, `r` is `LobbyRefresh`; everywhere else, unchanged. Add `in_lobby: bool` next to the existing `in_picker: bool` plumbed into `from_key`.
+- New `Action` variants: `Back`, `LobbyCreate`, `LobbyRefresh`, `TextInput(char)`, `TextBackspace`, `FocusNext`, `FocusPrev`.
+
+**`clients/chess-tui/src/main.rs`** CLI additions:
+```rust
+#[arg(long)] connect: Option<String>,   // existing
+#[arg(long)] lobby: Option<String>,     // NEW
+#[arg(long)] password: Option<String>,  // NEW: pairs with --connect
+```
+
+Branch in `main()` (in this priority order):
+1. `--lobby <url>` set → `AppState::new_lobby(url)`.
+2. `--connect <url>` set → `AppState::new_net(url, password)` (forwards `?password=` if set).
+3. Variant subcommand → existing local game.
+4. Bare → existing picker.
+
+`normalize_ws_url` already covers `/ws/<id>` (it preserves anything containing `/ws`). Add `normalize_lobby_url` that auto-appends `/lobby` if absent.
+
+## UX flow
+
+```
+chess-tui                                  → Picker
+  └ Connect to server…                     → HostPrompt
+      └ enter "ws://host:7878"             → Lobby (ws://host/lobby)
+          ├ ↑/↓ on a row, Enter            → Net (ws://host/ws/<id>?pw=…)
+          │   └ if has_password: prompt    →   "
+          ├ c                              → CreateRoom
+          │   └ submit                     → Net (server auto-creates)
+          ├ r                              → manual ListRooms
+          └ Esc                            → HostPrompt
+chess-tui --connect ws://host/ws/foo --password bar  → Net directly
+chess-tui --connect ws://host                        → Net default room (unchanged MVP)
+chess-tui --lobby ws://host                          → Lobby directly
+```
+
+Pre-Hello rendering inside `Screen::Net` already covered by `draw_connecting_placeholder` (`ui.rs:131`); for `Screen::Lobby`, mirror that with `draw_lobby_connecting` until first `Rooms` push lands.
+
+## Critical files
+
+### New
+- `crates/chess-net/tests/lobby_smoke.rs` (or extend existing `server_smoke.rs`).
+- `clients/chess-tui/src/text_input.rs` — 30-line ASCII text-input helper (printable chars, backspace, Tab focus).
+- `docs/adr/0005-multi-room-lobby.md` — ADR continuing the 0001–0004 sequence.
+- `scripts/play-lobby.sh` + `make play-lobby` target.
+
+### Modified
+- `crates/chess-net/src/protocol.rs` — `PROTOCOL_VERSION` → 2; add `ServerMsg::Rooms`, `ClientMsg::ListRooms`, `RoomSummary`, `RoomStatus`.
+- `crates/chess-net/src/server.rs` — `AppState`, `RoomMap`, `notify_lobby`, route handlers `upgrade_room`/`upgrade_lobby`/`rooms_snapshot_json`, room id validation regex, GC on last-seat-leave, password field on `RoomState`.
+- `crates/chess-net/src/lib.rs` — re-export new protocol types.
+- `crates/chess-net/src/bin/server.rs` — no functional change; help text mentions multi-room.
+- `clients/chess-tui/src/app.rs` — three new `Screen` variants, `dispatch_lobby`/`dispatch_host_prompt`/`dispatch_create_room`, `tick_net` extended to also drain lobby `NetClient` events, `apply_lobby_event`.
+- `clients/chess-tui/src/input.rs` — new `Action` variants, `in_lobby` gate, text-input action wiring.
+- `clients/chess-tui/src/ui.rs` — `draw_host_prompt`, `draw_lobby`, `draw_create_room`, `HELP_LINES_LOBBY`.
+- `clients/chess-tui/src/main.rs` — `--lobby`, `--password`, `normalize_lobby_url`, branch order in `main()`.
+- `Makefile` — `play-lobby` target.
+- `CLAUDE.md` — Common commands: `--lobby`, `--password`, `make play-lobby`. Architecture quick-reference: chess-net is now multi-room. Gotchas: lobby push semantics, password is plain-text friend-lock not security, default room `main` is permanent.
+- `TODO.md` — promote `chess-net: multi-room lobby + optional password` to Done; add five P2 follow-ups (mixed-variant, spectators, lobby filter, debouncing, admin/kick).
+
+## Tests
+
+`crates/chess-net/tests/server_smoke.rs` (extend; current has 4 tests):
+- `lobby_lists_empty_initially` — connect to `/lobby`, expect `Rooms{rooms: []}` snapshot.
+- `lobby_sees_room_after_join` — `/lobby` socket open; client joins `/ws/foo`; `/lobby` reads a second `Rooms` push containing `foo`.
+- `lobby_sees_seat_fill_and_finish` — 2 clients join `foo`, lobby sees `seats: 2, status: Playing`; one resigns, lobby sees `Finished`.
+- `password_rejected_on_wrong` — first joiner sets `?password=alpha`; second joiner uses `?password=beta`; gets `Error{"bad password"}`, no Hello, socket closed.
+- `password_accepted_on_right` — second joiner with correct password gets seated as Black + Hello.
+- `two_rooms_isolated_no_crosstalk` — `/ws/foo` clients play a move; `/ws/bar` clients receive no Update.
+- `room_gc_after_last_seat_leaves` — lone joiner to `/ws/temp` disconnects; `/lobby` push omits `temp`.
+- `default_room_main_persists_after_empty` — assert `main` is **not** GC'd.
+- `default_room_back_compat` — connect to `/ws` (no id) → seated in `main`.
+
+`crates/chess-net/tests/protocol_roundtrip.rs` (extend):
+- `server_rooms_roundtrips` — `ServerMsg::Rooms{...}` JSON encode/decode, including a `RoomSummary` with and without `has_password`.
+- `client_list_rooms_roundtrips` — `ClientMsg::ListRooms`.
+
+chess-tui app-state tests are deferred (no harness exists today; manual `make play-lobby` covers UI flow).
+
+## Verification
+
+Pre-push gates (unchanged):
+```
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+```
+
+Manual smoke (`make play-lobby`):
+1. Server boots on `:7878`. tmux window 0 has 3 panes: pane A goes through Picker → HostPrompt → Lobby; pane B same; pane C lands in lobby via `--lobby`.
+2. Pane A presses `c`, types `demo`, leaves password empty, submits → enters `demo` as Red.
+3. Pane B in Lobby sees `demo (xiangqi, seats: 1, lobby)` row appear within ~50ms (server push, no polling). Picks it with Enter → joined as Black.
+4. Pane C (still in Lobby) sees row update to `seats: 2, playing`.
+5. Pane A makes a move; Pane B board updates; Pane C lobby unchanged (move doesn't flip status).
+6. Pane A resigns; Pane C lobby row flips to `finished`.
+7. Both A and B exit via `q`; Pane C lobby row disappears (room GC'd).
+
+Backwards-compat smoke:
+- Build new server, run `chess-net-server xiangqi`.
+- Run **previous** `chess-tui` binary (rebuild after `git stash` of the client changes) with `--connect ws://127.0.0.1:7878` → seated in `main`, plays normally. Verifies no v1-client regression.
+
+Password smoke:
+- Pane A creates room `locked` with password `secret`. Pane B picks `locked` from lobby → prompted for password. Wrong password → `Error{"bad password"}` shown in `last_msg`, stays in lobby. Right password → seated.
+
+## Out-of-scope follow-ups (TODO.md additions)
+
+Run `scripts/add-todo.sh` for each in the implementing commit. The current P2 entry **chess-net: multi-room lobby + optional password** is promoted to Done by `scripts/promote-todo.sh --title "multi-room lobby" --summary "Multi-room ws server (/ws/<id>), optional ?password= lock, in-TUI Screen::Lobby with live ws push, /rooms JSON snapshot, default room 'main' preserved for v1 client back-compat."`
+
+New P2 entries:
+- `[M] chess-net: mixed-variant rooms` — per-room `RuleSet` instead of server-wide. Architecture supports it; blocked on UX for "what variant filter applies in lobby".
+- `[M] chess-net: spectator slots` — third+ connection joins read-only; gets `Update`, `Move` errors back. Replaces today's "room full" dead-end.
+- `[S] chess-net: lobby filter + sort` — `/` filter inside lobby; sort by recency / seat count / variant. Defer until ≥10 concurrent rooms is a real workflow.
+- `[S] chess-net: lobby push debouncing` — ≥250ms coalesce on rapid status flips. Premature today; revisit if churn observable.
+- `[S] chess-net: server-side admin / kick / signed token` — close stuck rooms or force-disconnect a misbehaving client. Wants admin-only ws path or signed token.
+
+The pre-existing `[?/L] Wish/SSH multiplayer alternative to chess-net` P? entry is **not** touched — remains a separate spike for after chess-web ships.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:31Z)**_
+
+Plan approved. Loading task tools and getting started.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:31Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `3`
+- query: `select:TaskCreate,TaskUpdate,TaskList`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check working tree before implementation
+
+`git -C /Volumes/Data/Program/tries/2026-05-06-chinese-chess status --short`
+
+```text
+ M .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:43Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Bump PROTOCOL_VERSION to 2, add ServerMsg::Rooms{rooms: Vec<RoomSummary>}, ClientMsg::ListRooms, RoomSummary struct (id, variant, seats, has_password, status), RoomStatus enum (Lobby/Playing/Finished). Roundtrip tests in protocol_roundtrip.rs.
+
+```text
+Task #59 created successfully: Extend protocol.rs with Rooms/ListRooms/RoomSummary
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:46Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+AppState{rooms: HashMap<String, Arc<Mutex<RoomState>>>, lobby_subs, default_rules}. Routes: /, /ws, /ws/:room_id, /lobby, /rooms (JSON snapshot). RoomState gains password field. notify_lobby helper. Empty-room GC except 'main'. Path/query validation. Wrong-password handler.
+
+```text
+Task #60 created successfully: Rewrite server.rs for multi-room + lobby + password
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:50Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Extend tests/server_smoke.rs: lobby_lists_empty_initially, lobby_sees_room_after_join, lobby_sees_seat_fill_and_finish, password_rejected_on_wrong, password_accepted_on_right, two_rooms_isolated_no_crosstalk, room_gc_after_last_seat_leaves, default_room_main_persists_after_empty, default_room_back_compat.
+
+```text
+Task #61 created successfully: Add server_smoke tests for lobby + multi-room + password
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:52Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+New module clients/chess-tui/src/text_input.rs with ~30-line helper handling printable ASCII chars, backspace, Tab/Shift-Tab focus rotation. Used by HostPrompt and CreateRoom.
+
+```text
+Task #62 created successfully: Add chess-tui text_input helper
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:55Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Three new Screen variants and view structs. PickerEntry::ConnectToServer. Dispatch handlers + apply_lobby_event. tick_net drains the lobby NetClient too. Esc semantics for cross-screen back-navigation.
+
+```text
+Task #63 created successfully: Add Screen::HostPrompt + Screen::Lobby + Screen::CreateRoom in app.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:17:57Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+New Action variants: Back, LobbyCreate, LobbyRefresh, TextInput(char), TextBackspace, FocusNext, FocusPrev. in_lobby gate next to in_picker; r → LobbyRefresh inside lobby, RulesToggle elsewhere.
+
+```text
+Task #64 created successfully: Wire input.rs actions for lobby + text input
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Three new draw functions + HELP_LINES_LOBBY. draw_lobby_connecting placeholder for pre-Hello state. Update top-level draw() dispatch to route Screen::HostPrompt/Lobby/CreateRoom.
+
+```text
+Task #65 created successfully: Add draw_host_prompt / draw_lobby / draw_create_room in ui.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Wire --lobby <ws-url> and --password <pw> flags. Add normalize_lobby_url helper. Branch order: --lobby > --connect > variant subcommand > picker. Forward --password as ?password= query param when paired with --connect.
+
+```text
+Task #66 created successfully: Add --lobby and --password CLI flags in main.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:03Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Server boot + 3 client panes (2 lobby joiners + 1 lobby watcher). Mirror scripts/play-local.sh shape.
+
+```text
+Task #67 created successfully: Add make play-lobby + scripts/play-lobby.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+CLAUDE.md: new commands + multi-room gotcha. ADR-0005-multi-room-lobby.md. TODO.md: promote multi-room-lobby entry to Done; add 5 P2 follow-ups via add-todo.sh.
+
+```text
+Task #68 created successfully: Update CLAUDE.md, TODO.md, ADR-0005
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+cargo fmt --check, clippy -D warnings, test --workspace, wasm32 build. Commit with descriptive message.
+
+```text
+Task #69 created successfully: Run pre-push gates and commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:11Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #59 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/protocol.rs`
+
+```text
+1	//! Wire protocol between `chess-net-server` and clients.
+2	//!
+3	//! Frames are JSON text frames, one message per frame. Tagged enums via
+4	//! `#[serde(tag = "type")]` keep the schema obvious in `wscat`/`jq`.
+5	//!
+6	//! All payload types come straight from `chess-core` and already derive
+7	//! `Serialize/Deserialize`, including the proptest-validated no-leak
+8	//! projection in `PlayerView` (hidden banqi pieces stay opaque on the wire).
+9	
+10	use chess_core::moves::Move;
+11	use chess_core::piece::Side;
+12	use chess_core::rules::RuleSet;
+13	use chess_core::view::PlayerView;
+14	use serde::{Deserialize, Serialize};
+15	
+16	/// Bumped whenever the wire schema changes incompatibly.
+17	pub const PROTOCOL_VERSION: u16 = 1;
+18	
+19	/// Server → client.
+20	#[derive(Clone, Debug, Serialize, Deserialize)]
+21	#[serde(tag = "type")]
+22	pub enum ServerMsg {
+23	    /// Sent once per client right after side assignment. Carries the variant
+24	    /// (so the client knows what to render) plus the initial `PlayerView`.
+25	    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+26	    /// Sent to every seated client after each committed move.
+27	    Update { view: PlayerView },
+28	    /// Illegal move, room full, malformed message, opponent disconnect, etc.
+29	    /// Non-fatal by default — clients should display and keep the connection.
+30	    Error { message: String },
+31	}
+32	
+33	/// Client → server.
+34	#[derive(Clone, Debug, Serialize, Deserialize)]
+35	#[serde(tag = "type")]
+36	pub enum ClientMsg {
+37	    /// Submit a move. For `Move::Reveal`, send `revealed: None` — the server
+38	    /// fills in the piece identity locally; the wire form stays `None`.
+39	    Move { mv: Move },
+40	    /// Resign — ends the game with `WinReason::Resignation` for the opponent.
+41	    Resign,
+42	    /// Request a rematch. Only valid after the current game has ended
+43	    /// (Won / Drawn). Server resets the game when both sides have requested
+44	    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+45	    /// fresh `GameState`.
+46	    Rematch,
+47	}
+48
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:12Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/src/lib.rs`
+
+```text
+1	//! `chess-net` — websocket server + wire protocol for chess-core.
+2	//!
+3	//! MVP: a single binary (`chess-net-server`) hosts one room with one game,
+4	//! accepts the first two ws clients (Red then Black), validates moves
+5	//! against `state.legal_moves()`, and broadcasts per-side `PlayerView` after
+6	//! every committed move. Lobby / matchmaking / time controls / takeback /
+7	//! reconnect / TLS are deferred — see `TODO.md`.
+8	
+9	pub mod protocol;
+10	pub mod server;
+11	
+12	pub use protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+13	pub use server::{run, serve};
+14
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:13Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/protocol_roundtrip.rs`
+
+```text
+1	//! JSON round-trip for the wire enums. Catches stray `#[serde(rename)]`,
+2	//! tag-style drift, or accidental Reveal-canonicalization on the wire.
+3	
+4	use chess_core::coord::Square;
+5	use chess_core::moves::Move;
+6	use chess_core::piece::Side;
+7	use chess_core::rules::RuleSet;
+8	use chess_core::state::GameState;
+9	use chess_core::view::PlayerView;
+10	use chess_net::protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+11	
+12	fn roundtrip_server(msg: &ServerMsg) -> ServerMsg {
+13	    let json = serde_json::to_string(msg).expect("encode");
+14	    serde_json::from_str(&json).expect("decode")
+15	}
+16	
+17	fn roundtrip_client(msg: &ClientMsg) -> ClientMsg {
+18	    let json = serde_json::to_string(msg).expect("encode");
+19	    serde_json::from_str(&json).expect("decode")
+20	}
+21	
+22	#[test]
+23	fn server_hello_roundtrips() {
+24	    let state = GameState::new(RuleSet::xiangqi_casual());
+25	    let view = PlayerView::project(&state, Side::RED);
+26	    let msg = ServerMsg::Hello {
+27	        protocol: PROTOCOL_VERSION,
+28	        observer: Side::RED,
+29	        rules: state.rules.clone(),
+30	        view,
+31	    };
+32	    let back = roundtrip_server(&msg);
+33	    match back {
+34	        ServerMsg::Hello { protocol, observer, .. } => {
+35	            assert_eq!(protocol, PROTOCOL_VERSION);
+36	            assert_eq!(observer, Side::RED);
+37	        }
+38	        _ => panic!("wrong variant"),
+39	    }
+40	}
+41	
+42	#[test]
+43	fn server_update_and_error_roundtrip() {
+44	    let state = GameState::new(RuleSet::xiangqi_casual());
+45	    let view = PlayerView::project(&state, Side::BLACK);
+46	    let upd = ServerMsg::Update { view };
+47	    assert!(matches!(roundtrip_server(&upd), ServerMsg::Update { .. }));
+48	
+49	    let err = ServerMsg::Error { message: "illegal move: foo".into() };
+50	    match roundtrip_server(&err) {
+51	        ServerMsg::Error { message } => assert_eq!(message, "illegal move: foo"),
+52	        _ => panic!("wrong variant"),
+53	    }
+54	}
+55	
+56	#[test]
+57	fn client_move_step_roundtrips() {
+58	    let mv = Move::Step { from: Square(7), to: Square(16) };
+59	    let msg = ClientMsg::Move { mv: mv.clone() };
+60	    match roundtrip_client(&msg) {
+61	        ClientMsg::Move { mv: back } => assert_eq!(mv, back),
+62	        _ => panic!("wrong variant"),
+63	    }
+64	}
+65	
+66	#[test]
+67	fn client_reveal_none_stays_none_on_wire() {
+68	    // The wire ABI: clients send `revealed: None`; the server fills it locally.
+69	    // If anyone ever serializes the engine-canonicalized form by accident,
+70	    // this test breaks before it ships.
+71	    let mv = Move::Reveal { at: Square(5), revealed: None };
+72	    let json = serde_json::to_string(&ClientMsg::Move { mv: mv.clone() }).unwrap();
+73	    assert!(json.contains("\"revealed\":null"), "got: {json}");
+74	
+75	    match roundtrip_client(&ClientMsg::Move { mv: mv.clone() }) {
+76	        ClientMsg::Move { mv: back } => assert_eq!(back, mv),
+77	        _ => panic!("wrong variant"),
+78	    }
+79	}
+80	
+81	#[test]
+82	fn client_resign_roundtrips() {
+83	    let json = serde_json::to_string(&ClientMsg::Resign).unwrap();
+84	    assert!(json.contains("Resign"), "got: {json}");
+85	    assert!(matches!(roundtrip_client(&ClientMsg::Resign), ClientMsg::Resign));
+86	}
+87	
+88	#[test]
+89	fn client_rematch_roundtrips() {
+90	    let json = serde_json::to_string(&ClientMsg::Rematch).unwrap();
+91	    assert!(json.contains("Rematch"), "got: {json}");
+92	    assert!(matches!(roundtrip_client(&ClientMsg::Rematch), ClientMsg::Rematch));
+93	}
+94	
+95	#[test]
+96	fn protocol_uses_type_tag() {
+97	    // Sanity check: the schema uses `"type"` as the tag, matching our docs
+98	    // (so `wscat` users can switch on it directly).
+99	    let json = serde_json::to_string(&ClientMsg::Move {
+100	        mv: Move::Step { from: Square(0), to: Square(1) },
+101	    })
+102	    .unwrap();
+103	    assert!(json.starts_with("{\"type\":\"Move\""), "got: {json}");
+104	}
+105
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate RuleSet and Variant definitions
+
+`grep -rn "pub struct RuleSet\|pub enum Variant" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/ 2>/dev/null | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:19:pub enum Variant {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:40:pub struct RuleSet {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:23Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/mod.rs`
+
+```text
+1	//! Rules.
+2	//!
+3	//! `RuleSet` is plain data; move generation is free functions dispatching
+4	//! on `Variant` and consulting `HouseRules` bitflags. See ADR-0003.
+5	
+6	pub mod banqi;
+7	pub mod house;
+8	pub mod three_kingdom;
+9	pub mod xiangqi;
+10	
+11	pub use house::{HouseRules, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+12	
+13	use serde::{Deserialize, Serialize};
+14	
+15	use crate::moves::MoveList;
+16	use crate::state::GameState;
+17	
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+19	pub enum Variant {
+20	    Xiangqi,
+21	    Banqi,
+22	    /// 三國暗棋. Move-gen lands in PR 2; type exists from PR 1.
+23	    ThreeKingdomBanqi,
+24	}
+25	
+26	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+27	pub struct DrawPolicy {
+28	    /// Plies without progress (capture/reveal) before a draw is forced.
+29	    pub no_progress_plies: u16,
+30	    /// How many position repetitions trigger a draw.
+31	    pub repetition_threshold: u8,
+32	}
+33	
+34	impl DrawPolicy {
+35	    pub const XIANGQI: DrawPolicy = DrawPolicy { no_progress_plies: 60, repetition_threshold: 3 };
+36	    pub const BANQI: DrawPolicy = DrawPolicy { no_progress_plies: 40, repetition_threshold: 3 };
+37	}
+38	
+39	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+40	pub struct RuleSet {
+41	    pub variant: Variant,
+42	    pub house: HouseRules,
+43	    pub draw_policy: DrawPolicy,
+44	    /// Seed for banqi shuffling. `None` = nondeterministic.
+45	    pub banqi_seed: Option<u64>,
+46	    /// Casual / training mode for xiangqi: when true, the legality filter
+47	    /// no longer rejects moves that leave the mover's own general in check.
+48	    /// The game ends only when a general is actually captured
+49	    /// (`WinReason::GeneralCaptured`). Default `false` (standard rules).
+50	    /// `#[serde(default)]` keeps older snapshots loadable.
+51	    #[serde(default)]
+52	    pub xiangqi_allow_self_check: bool,
+53	}
+54	
+55	impl RuleSet {
+56	    pub fn xiangqi() -> Self {
+57	        Self {
+58	            variant: Variant::Xiangqi,
+59	            house: HouseRules::empty(),
+60	            draw_policy: DrawPolicy::XIANGQI,
+61	            banqi_seed: None,
+62	            xiangqi_allow_self_check: false,
+63	        }
+64	    }
+65	
+66	    /// Xiangqi without the self-check legality filter — moves that expose
+67	    /// your own general are permitted; you lose when the general is actually
+68	    /// captured. Useful for casual / "let me lose if I want" play.
+69	    pub fn xiangqi_casual() -> Self {
+70	        Self { xiangqi_allow_self_check: true, ..Self::xiangqi() }
+71	    }
+72	
+73	    pub fn banqi(house: HouseRules) -> Self {
+74	        Self {
+75	            variant: Variant::Banqi,
+76	            house,
+77	            draw_policy: DrawPolicy::BANQI,
+78	            banqi_seed: None,
+79	            xiangqi_allow_self_check: false,
+80	        }
+81	    }
+82	
+83	    pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
+84	        Self {
+85	            variant: Variant::Banqi,
+86	            house,
+87	            draw_policy: DrawPolicy::BANQI,
+88	            banqi_seed: Some(seed),
+89	            xiangqi_allow_self_check: false,
+90	        }
+91	    }
+92	
+93	    pub fn three_kingdom() -> Self {
+94	        Self {
+95	            variant: Variant::ThreeKingdomBanqi,
+96	            house: HouseRules::empty(),
+97	            draw_policy: DrawPolicy::BANQI,
+98	            banqi_seed: None,
+99	            xiangqi_allow_self_check: false,
+100	        }
+101	    }
+102	}
+103	
+104	/// Single dispatch point for move generation. Each variant's `generate`
+105	/// fills `out` with all legal moves for the side to move.
+106	pub fn generate_moves(state: &GameState, out: &mut MoveList) {
+107	    match state.rules.variant {
+108	        Variant::Xiangqi => xiangqi::generate(state, out),
+109	        Variant::Banqi => banqi::generate(state, out),
+110	        Variant::ThreeKingdomBanqi => three_kingdom::generate(state, out),
+111	    }
+112	}
+113	
+114	#[cfg(test)]
+115	mod tests {
+116	    use super::*;
+117	
+118	    #[test]
+119	    fn xiangqi_ruleset_defaults() {
+120	        let r = RuleSet::xiangqi();
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:27Z)**_
+
+Now writing the protocol additions.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:18:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Wire protocol between `chess-net-server` and clients.
+//!
+//! Frames are JSON text frames, one message per frame. Tagged enums via
+//! `#[serde(tag = "type")]` keep the schema obvious in `wscat`/`jq`.
+//!
+//! All payload types come straight from `chess-core` and already derive
+//! `Serialize/Deserialize`, including the proptest-validated no-leak
+//! projection in `PlayerView` (hidden banqi pieces stay opaque on the wire).
+
+use chess_core::moves::Move;
+use chess_core::piece::Side;
+use chess_core::rules::{RuleSet, Variant};
+use chess_core::view::PlayerView;
+use serde::{Deserialize, Serialize};
+
+/// Bumped whenever the wire schema changes incompatibly.
+///
+/// v1 → v2: added `ServerMsg::Rooms` and `ClientMsg::ListRooms` for the
+/// multi-room lobby. Old (v1) clients still work against a v2 server in
+/// the default room "main" — the new message variants are additive.
+pub const PROTOCOL_VERSION: u16 = 2;
+
+/// Server → client.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ServerMsg {
+    /// Sent once per client right after side assignment. Carries the variant
+    /// (so the client knows what to render) plus the initial `PlayerView`.
+    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    /// Sent to every seated client after each committed move.
+    Update { view: PlayerView },
+    /// Illegal move, room full, malformed message, opponent disconnect, etc.
+    /// Non-fatal by default — clients should display and keep the connection.
+    Error { message: String },
+    /// Pushed on the lobby socket only — initial snapshot on connect, then
+    /// again whenever any room's state changes (seat insertion / removal /
+    /// game finish / GC). Game sockets never receive this variant.
+    Rooms { rooms: Vec<RoomSummary> },
+}
+
+/// Client → server.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ClientMsg {
+    /// Submit a move. For `Move::Reveal`, send `revealed: None` — the server
+    /// fills in the piece identity locally; the wire form stays `None`.
+    Move { mv: Move },
+    /// Resign — ends the game with `WinReason::Resignation` for the opponent.
+    Resign,
+    /// Request a rematch. Only valid after the current game has ended
+    /// (Won / Drawn). Server resets the game when both sides have requested
+    /// and re-sends `Hello` to each. Same observer assignment, same rules,
+    /// fresh `GameState`.
+    Rematch,
+    /// Lobby-only: forces a fresh `Rooms` snapshot to the requester. The
+    /// server pushes `Rooms` automatically on state changes; this is the
+    /// manual-refresh button (`r` in the TUI lobby).
+    ListRooms,
+}
+
+/// One row in the lobby browser. Mirrors what's interesting to a player
+/// deciding whether to join: variant for setting expectations, seat count
+/// for "is this room joinable?", `has_password` for the lock icon, and
+/// `status` so finished rooms stand out from active games.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RoomSummary {
+    pub id: String,
+    pub variant: String,
+    pub seats: u8,
+    pub has_password: bool,
+    pub status: RoomStatus,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum RoomStatus {
+    /// Game has not begun (≤1 seat occupied or ongoing with both seats).
+    Lobby,
+    /// Both seats occupied and the game is `Ongoing`.
+    Playing,
+    /// `GameStatus::Won` or `GameStatus::Drawn`. The room still exists but
+    /// requires a rematch (or for both clients to disconnect → GC) to be
+    /// reusable.
+    Finished,
+}
+
+/// Stable variant string for `RoomSummary.variant`. Uses kebab-case so the
+/// JSON looks the same as the chess-tui `--style ascii` / `--style cjk`
+/// arguments and the `--house` token list.
+pub fn variant_label(rules: &RuleSet) -> &'static str {
+    match rules.variant {
+        Variant::Xiangqi => {
+            if rules.xiangqi_allow_self_check {
+                "xiangqi"
+            } else {
+                "xiangqi-strict"
+            }
+        }
+        Variant::Banqi => "banqi",
+        Variant::ThreeKingdomBanqi => "three-kingdom",
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:04Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/lib.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:06Z)**_
+
+Now extend the protocol round-trip tests.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:09Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/protocol_roundtrip.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/protocol_roundtrip.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:24Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify protocol changes compile
+
+`cargo check -p chess-net --tests 2>&1 | tail -30`
+
+```text
+    Checking tungstenite v0.24.0
+    Checking tokio-tungstenite v0.24.0
+    Checking axum v0.7.9
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+error[E0004]: non-exhaustive patterns: `ClientMsg::ListRooms` not covered
+   --> crates/chess-net/src/server.rs:179:11
+    |
+179 |     match msg {
+    |           ^^^ pattern `ClientMsg::ListRooms` not covered
+    |
+note: `ClientMsg` defined here
+   --> crates/chess-net/src/protocol.rs:44:10
+    |
+ 44 | pub enum ClientMsg {
+    |          ^^^^^^^^^
+...
+ 58 |     ListRooms,
+    |     --------- not covered
+    = note: the matched value is of type `ClientMsg`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+202 ~         },
+203 +         ClientMsg::ListRooms => todo!()
+    |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `chess-net` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `chess-net` (lib test) due to 1 previous error
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:33Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #59 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #60 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:19:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-net"
+3	description = "Wire protocol + axum websocket server for chess-core. Hosts a single-room game; clients see only PlayerView."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[lib]
+12	name = "chess_net"
+13	path = "src/lib.rs"
+14	
+15	[[bin]]
+16	name = "chess-net-server"
+17	path = "src/bin/server.rs"
+18	
+19	[dependencies]
+20	chess-core   = { path = "../chess-core" }
+21	serde        = { workspace = true }
+22	serde_json   = { workspace = true }
+23	anyhow       = { workspace = true }
+24	tokio        = { workspace = true }
+25	axum         = { workspace = true }
+26	futures-util = { workspace = true }
+27	clap         = { workspace = true }
+28	
+29	[dev-dependencies]
+30	tungstenite = { workspace = true }
+31
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:20:28Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:20:29Z)**_
+
+Now rewriting server.rs for multi-room.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:21:58Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Multi-room ws server. Routes:
+//!
+//!   GET /             → upgrade into default room "main" (back-compat)
+//!   GET /ws           → upgrade into default room "main" (back-compat)
+//!   GET /ws/:room_id  → upgrade into named room (auto-created on first join)
+//!   GET /lobby        → subscribe to live `Rooms` pushes
+//!   GET /rooms        → JSON snapshot for `curl`/debug
+//!
+//! Optional `?password=<secret>` query param on the game-room routes locks
+//! the room to the first joiner's secret. Wrong password gets
+//! `Error{"bad password"}` + close.
+//!
+//! Empty rooms are GC'd when the last seat disconnects, except `main` which
+//! is permanent so v1 clients always have a stable default to land in.
+//!
+//! Reconnect / mixed-variant rooms / spectators / time controls / TLS still
+//! deferred — see `TODO.md`.
+
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use anyhow::{Context, Result};
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::extract::{Path, Query, State};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::{Json, Router};
+use chess_core::moves::Move;
+use chess_core::piece::Side;
+use chess_core::rules::RuleSet;
+use chess_core::state::{GameState, GameStatus, WinReason};
+use chess_core::view::PlayerView;
+use futures_util::stream::StreamExt;
+use futures_util::SinkExt;
+use serde::Deserialize;
+use tokio::sync::{mpsc, Mutex};
+
+use crate::protocol::{
+    variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+};
+
+const DEFAULT_ROOM: &str = "main";
+const MAX_PASSWORD_LEN: usize = 64;
+const MAX_ROOM_ID_LEN: usize = 32;
+
+struct RoomState {
+    state: GameState,
+    /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
+    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    /// Sides that have requested a rematch since the last reset. Cleared
+    /// every time the game resets; mutual consent triggers reset.
+    rematch: Vec<Side>,
+    /// Friend-list lock. `None` = open. Set by the first joiner from the
+    /// `?password=` query string and never mutated afterwards. **Plain text
+    /// is intentional**: this is a "type the secret to enter the game with
+    /// the right friends" mechanism, not a security boundary. Real auth
+    /// belongs in a follow-up alongside TLS.
+    password: Option<String>,
+}
+
+impl RoomState {
+    fn new(rules: RuleSet, password: Option<String>) -> Self {
+        Self {
+            state: GameState::new(rules),
+            seats: Vec::with_capacity(2),
+            rematch: Vec::with_capacity(2),
+            password,
+        }
+    }
+
+    fn next_seat(&self) -> Option<Side> {
+        match self.seats.len() {
+            0 => Some(Side::RED),
+            1 => {
+                let taken = self.seats[0].0;
+                Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
+            }
+            _ => None,
+        }
+    }
+
+    fn summary(&self, id: &str) -> RoomSummary {
+        let status = match self.state.status {
+            GameStatus::Won { .. } | GameStatus::Drawn { .. } => RoomStatus::Finished,
+            GameStatus::Ongoing => {
+                if self.seats.len() >= 2 {
+                    RoomStatus::Playing
+                } else {
+                    RoomStatus::Lobby
+                }
+            }
+        };
+        RoomSummary {
+            id: id.to_string(),
+            variant: variant_label(&self.state.rules).to_string(),
+            seats: self.seats.len() as u8,
+            has_password: self.password.is_some(),
+            status,
+        }
+    }
+}
+
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+type SummaryMap = Arc<Mutex<HashMap<String, RoomSummary>>>;
+type LobbySubs = Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>;
+
+/// Server-wide state shared across every connection. The three top-level
+/// locks are independent and acquired in a strict order whenever multiple
+/// are needed: `rooms` → `summaries` → `lobby_subs`. Per-room inner locks
+/// (`Arc<Mutex<RoomState>>`) live separately and are never held across an
+/// outer-map lock acquisition.
+pub struct AppState {
+    rooms: RoomMap,
+    /// Lobby-visible projection of every live room. Updated by
+    /// [`refresh_summary`] / [`drop_summary`] after every room mutation, so
+    /// `notify_lobby` can build a `Rooms` push without touching any inner
+    /// `RoomState` lock.
+    summaries: SummaryMap,
+    /// Outbound senders for every connected lobby socket.
+    lobby_subs: LobbySubs,
+    /// Variant for every auto-created room. Mixed-variant servers are a
+    /// separate TODO (`chess-net: mixed-variant rooms`).
+    default_rules: RuleSet,
+}
+
+impl AppState {
+    fn new(default_rules: RuleSet) -> Arc<Self> {
+        Arc::new(Self {
+            rooms: Arc::new(Mutex::new(HashMap::new())),
+            summaries: Arc::new(Mutex::new(HashMap::new())),
+            lobby_subs: Arc::new(Mutex::new(Vec::new())),
+            default_rules,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct AuthQuery {
+    #[serde(default)]
+    password: Option<String>,
+}
+
+/// Bind `addr` and serve until error / SIGINT (caller's choice — we don't
+/// install signal handling here). For tests that need an ephemeral port,
+/// use [`serve`] directly with a pre-bound listener.
+pub async fn run(addr: SocketAddr, rules: RuleSet) -> Result<()> {
+    let listener =
+        tokio::net::TcpListener::bind(addr).await.with_context(|| format!("bind {addr}"))?;
+    eprintln!("[server] listening on ws://{}", listener.local_addr()?);
+    serve(listener, rules).await
+}
+
+/// Serve on a pre-bound listener. The listener owns the port; use
+/// `listener.local_addr()` before passing it in if you need to know it
+/// (e.g. ephemeral ports in tests).
+pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
+    let app_state = AppState::new(rules);
+    let app = Router::new()
+        .route("/", get(upgrade_default))
+        .route("/ws", get(upgrade_default))
+        .route("/ws/:room_id", get(upgrade_room))
+        .route("/lobby", get(upgrade_lobby))
+        .route("/rooms", get(rooms_snapshot_json))
+        .with_state(app_state);
+    axum::serve(listener, app).await.context("axum::serve")?;
+    Ok(())
+}
+
+fn valid_room_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= MAX_ROOM_ID_LEN
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+fn valid_password(pw: &str) -> bool {
+    !pw.is_empty()
+        && pw.len() <= MAX_PASSWORD_LEN
+        && pw.chars().all(|c| !c.is_control())
+}
+
+async fn upgrade_default(
+    State(app): State<Arc<AppState>>,
+    Query(q): Query<AuthQuery>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password))
+}
+
+async fn upgrade_room(
+    State(app): State<Arc<AppState>>,
+    Path(room_id): Path<String>,
+    Query(q): Query<AuthQuery>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    let room_id_clone = room_id.clone();
+    ws.on_upgrade(move |socket| handle_room_socket(socket, app, room_id_clone, q.password))
+}
+
+async fn upgrade_lobby(
+    State(app): State<Arc<AppState>>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_lobby_socket(socket, app))
+}
+
+async fn rooms_snapshot_json(State(app): State<Arc<AppState>>) -> Json<Vec<RoomSummary>> {
+    let summaries = app.summaries.lock().await;
+    let mut rooms: Vec<RoomSummary> = summaries.values().cloned().collect();
+    rooms.sort_by(|a, b| a.id.cmp(&b.id));
+    Json(rooms)
+}
+
+async fn handle_room_socket(
+    socket: WebSocket,
+    app: Arc<AppState>,
+    room_id: String,
+    password_param: Option<String>,
+) {
+    let (mut sender, mut receiver) = socket.split();
+    let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
+
+    if !valid_room_id(&room_id) {
+        let _ = send_close_with(
+            &mut sender,
+            ServerMsg::Error {
+                message: format!(
+                    "invalid room id (allowed: a-z A-Z 0-9 _ -, max {MAX_ROOM_ID_LEN} chars)"
+                ),
+            },
+        )
+        .await;
+        return;
+    }
+    if let Some(pw) = password_param.as_ref() {
+        if !valid_password(pw) {
+            let _ = send_close_with(
+                &mut sender,
+                ServerMsg::Error {
+                    message: format!(
+                        "invalid password (max {MAX_PASSWORD_LEN} chars, no control chars)"
+                    ),
+                },
+            )
+            .await;
+            return;
+        }
+    }
+
+    // Get-or-create room + seat assignment + Hello. Held under one lock per
+    // layer so a concurrent connect can't squeeze between assignment and
+    // seat insertion. Outer-then-inner ordering throughout.
+    let seat: Side = {
+        let room = {
+            let mut rooms = app.rooms.lock().await;
+            rooms
+                .entry(room_id.clone())
+                .or_insert_with(|| {
+                    Arc::new(Mutex::new(RoomState::new(
+                        app.default_rules.clone(),
+                        password_param.clone(),
+                    )))
+                })
+                .clone()
+        };
+        let mut g = room.lock().await;
+        // Existing room: validate password matches what was set on creation.
+        if g.password != password_param {
+            drop(g);
+            let _ = send_close_with(
+                &mut sender,
+                ServerMsg::Error { message: "bad password".into() },
+            )
+            .await;
+            return;
+        }
+        match g.next_seat() {
+            Some(s) => {
+                let view = PlayerView::project(&g.state, s);
+                let hello = ServerMsg::Hello {
+                    protocol: PROTOCOL_VERSION,
+                    observer: s,
+                    rules: g.state.rules.clone(),
+                    view,
+                };
+                if out_tx.send(hello).is_err() {
+                    return;
+                }
+                g.seats.push((s, out_tx.clone()));
+                eprintln!(
+                    "[server][{}] seated {:?} ({}/2)",
+                    room_id,
+                    s,
+                    g.seats.len()
+                );
+                let summary = g.summary(&room_id);
+                drop(g);
+                refresh_summary(&app, &room_id, summary).await;
+                s
+            }
+            None => {
+                drop(g);
+                let _ = send_close_with(
+                    &mut sender,
+                    ServerMsg::Error { message: "room full".into() },
+                )
+                .await;
+                return;
+            }
+        }
+    };
+
+    // Write task: drain mpsc → ws sink. Exits naturally when all senders drop.
+    let write_task = tokio::spawn(async move {
+        while let Some(msg) = out_rx.recv().await {
+            let json = match serde_json::to_string(&msg) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("[server][warn] serialize ServerMsg: {e}");
+                    continue;
+                }
+            };
+            if sender.send(Message::Text(json)).await.is_err() {
+                break;
+            }
+        }
+        let _ = sender.close().await;
+    });
+
+    // Read loop.
+    while let Some(frame) = receiver.next().await {
+        let frame = match frame {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("[server][warn][{}] ws read error ({:?}): {e}", room_id, seat);
+                break;
+            }
+        };
+        let text = match frame {
+            Message::Text(t) => t,
+            Message::Close(_) => break,
+            _ => continue,
+        };
+        let msg: ClientMsg = match serde_json::from_str(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                let _ =
+                    out_tx.send(ServerMsg::Error { message: format!("malformed message: {e}") });
+                continue;
+            }
+        };
+        // Get the room (it might have been GC'd in pathological races, but
+        // since we hold a seat that can only happen after our own retain,
+        // not before — so the lookup is virtually always Some).
+        let room = match get_room(&app, &room_id).await {
+            Some(r) => r,
+            None => break,
+        };
+        let summary_after = {
+            let mut g = room.lock().await;
+            process_client_msg(&mut g, seat, msg, &room_id);
+            g.summary(&room_id)
+        };
+        refresh_summary(&app, &room_id, summary_after).await;
+    }
+
+    // Disconnect: remove seat, notify peer if game was live, GC empty rooms
+    // except "main".
+    eprintln!("[server][{}] {:?} disconnected", room_id, seat);
+    if let Some(room) = get_room(&app, &room_id).await {
+        let (summary_after, room_now_empty) = {
+            let mut g = room.lock().await;
+            g.seats.retain(|(s, _)| *s != seat);
+            // Drop any rematch flag the leaver had set.
+            g.rematch.retain(|s| *s != seat);
+            if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
+                for (_, tx) in &g.seats {
+                    let _ = tx.send(ServerMsg::Error {
+                        message: "opponent disconnected".into(),
+                    });
+                }
+            }
+            let empty = g.seats.is_empty();
+            (g.summary(&room_id), empty)
+        };
+        if room_now_empty && room_id != DEFAULT_ROOM {
+            let mut rooms = app.rooms.lock().await;
+            rooms.remove(&room_id);
+            drop(rooms);
+            drop_summary(&app, &room_id).await;
+        } else {
+            refresh_summary(&app, &room_id, summary_after).await;
+        }
+    }
+
+    drop(out_tx);
+    let _ = write_task.await;
+}
+
+async fn handle_lobby_socket(socket: WebSocket, app: Arc<AppState>) {
+    let (mut sender, mut receiver) = socket.split();
+    let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
+
+    // Snapshot first, then subscribe. Doing it in this order guarantees the
+    // subscriber doesn't miss a push that lands between snapshot and
+    // subscribe — the worst case is they get the same state twice, which
+    // the client treats as idempotent.
+    let snapshot = current_summary_list(&app).await;
+    if out_tx.send(ServerMsg::Rooms { rooms: snapshot }).is_err() {
+        return;
+    }
+
+    {
+        let mut subs = app.lobby_subs.lock().await;
+        subs.push(out_tx.clone());
+    }
+
+    let write_task = tokio::spawn(async move {
+        while let Some(msg) = out_rx.recv().await {
+            let json = match serde_json::to_string(&msg) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("[server][warn] serialize lobby ServerMsg: {e}");
+                    continue;
+                }
+            };
+            if sender.send(Message::Text(json)).await.is_err() {
+                break;
+            }
+        }
+        let _ = sender.close().await;
+    });
+
+    // Lobby read loop: only `ListRooms` is meaningful. Everything else gets
+    // a polite Error (the client may have been confused about which socket
+    // it has open).
+    while let Some(frame) = receiver.next().await {
+        let frame = match frame {
+            Ok(f) => f,
+            Err(_) => break,
+        };
+        let text = match frame {
+            Message::Text(t) => t,
+            Message::Close(_) => break,
+            _ => continue,
+        };
+        match serde_json::from_str::<ClientMsg>(&text) {
+            Ok(ClientMsg::ListRooms) => {
+                let snap = current_summary_list(&app).await;
+                let _ = out_tx.send(ServerMsg::Rooms { rooms: snap });
+            }
+            Ok(_) => {
+                let _ = out_tx.send(ServerMsg::Error {
+                    message: "lobby socket only accepts ListRooms; join /ws/<id> to play".into(),
+                });
+            }
+            Err(e) => {
+                let _ =
+                    out_tx.send(ServerMsg::Error { message: format!("malformed message: {e}") });
+            }
+        }
+    }
+
+    // Cleanup: remove this sub from the broadcast list.
+    {
+        let mut subs = app.lobby_subs.lock().await;
+        subs.retain(|tx| !tx.same_channel(&out_tx));
+    }
+    drop(out_tx);
+    let _ = write_task.await;
+}
+
+async fn get_room(app: &AppState, room_id: &str) -> Option<Arc<Mutex<RoomState>>> {
+    let rooms = app.rooms.lock().await;
+    rooms.get(room_id).cloned()
+}
+
+async fn current_summary_list(app: &AppState) -> Vec<RoomSummary> {
+    let summaries = app.summaries.lock().await;
+    let mut rooms: Vec<RoomSummary> = summaries.values().cloned().collect();
+    rooms.sort_by(|a, b| a.id.cmp(&b.id));
+    rooms
+}
+
+async fn refresh_summary(app: &AppState, room_id: &str, summary: RoomSummary) {
+    {
+        let mut summaries = app.summaries.lock().await;
+        summaries.insert(room_id.to_string(), summary);
+    }
+    notify_lobby(app).await;
+}
+
+async fn drop_summary(app: &AppState, room_id: &str) {
+    {
+        let mut summaries = app.summaries.lock().await;
+        summaries.remove(room_id);
+    }
+    notify_lobby(app).await;
+}
+
+async fn notify_lobby(app: &AppState) {
+    let snapshot = current_summary_list(app).await;
+    let msg = ServerMsg::Rooms { rooms: snapshot };
+    let subs: Vec<_> = {
+        let s = app.lobby_subs.lock().await;
+        s.clone()
+    };
+    for tx in subs {
+        let _ = tx.send(msg.clone());
+    }
+}
+
+async fn send_close_with(
+    sender: &mut futures_util::stream::SplitSink<WebSocket, Message>,
+    msg: ServerMsg,
+) -> Result<(), axum::Error> {
+    let json = serde_json::to_string(&msg).unwrap_or_default();
+    sender.send(Message::Text(json)).await?;
+    sender.close().await
+}
+
+fn process_client_msg(g: &mut RoomState, seat: Side, msg: ClientMsg, room_id: &str) {
+    match msg {
+        ClientMsg::Rematch => process_rematch(g, seat, room_id),
+        ClientMsg::Move { mv } => {
+            if !matches!(g.state.status, GameStatus::Ongoing) {
+                send_to(
+                    g,
+                    seat,
+                    ServerMsg::Error {
+                        message: "game is over — press 'n' to request a rematch".into(),
+                    },
+                );
+                return;
+            }
+            process_move(g, seat, mv, room_id);
+        }
+        ClientMsg::Resign => {
+            if !matches!(g.state.status, GameStatus::Ongoing) {
+                send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
+                return;
+            }
+            let winner = if seat == Side::RED { Side::BLACK } else { Side::RED };
+            g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+            broadcast_update(g);
+        }
+        ClientMsg::ListRooms => {
+            send_to(
+                g,
+                seat,
+                ServerMsg::Error {
+                    message: "ListRooms is a lobby-only message; subscribe via /lobby".into(),
+                },
+            );
+        }
+    }
+}
+
+fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
+    if matches!(g.state.status, GameStatus::Ongoing) {
+        send_to(
+            g,
+            seat,
+            ServerMsg::Error {
+                message: "Game still in progress — finish or resign first.".into(),
+            },
+        );
+        return;
+    }
+    if g.seats.len() < 2 {
+        send_to(
+            g,
+            seat,
+            ServerMsg::Error { message: "No opponent connected — can't start a rematch.".into() },
+        );
+        return;
+    }
+    if !g.rematch.contains(&seat) {
+        g.rematch.push(seat);
+    }
+    let want_seats: Vec<Side> = g.seats.iter().map(|(s, _)| *s).collect();
+    let all_ready = want_seats.iter().all(|s| g.rematch.contains(s));
+    if all_ready {
+        let rules = g.state.rules.clone();
+        g.state = GameState::new(rules);
+        g.rematch.clear();
+        eprintln!("[server][{}] rematch — fresh game", room_id);
+        for (side, tx) in &g.seats {
+            let view = PlayerView::project(&g.state, *side);
+            let _ = tx.send(ServerMsg::Hello {
+                protocol: PROTOCOL_VERSION,
+                observer: *side,
+                rules: g.state.rules.clone(),
+                view,
+            });
+        }
+    } else {
+        for (s, tx) in &g.seats {
+            let msg = if *s == seat {
+                ServerMsg::Error { message: "Rematch requested. Waiting for opponent…".into() }
+            } else {
+                ServerMsg::Error {
+                    message: "Opponent wants a rematch. Press 'n' to accept.".into(),
+                }
+            };
+            let _ = tx.send(msg);
+        }
+    }
+}
+
+fn process_move(g: &mut RoomState, seat: Side, mv: Move, room_id: &str) {
+    if g.state.side_to_move != seat {
+        send_to(g, seat, ServerMsg::Error { message: "not your turn".into() });
+        return;
+    }
+    match g.state.make_move(&mv) {
+        Ok(()) => {
+            g.state.refresh_status();
+            eprintln!("[server][{}] {:?} -> {:?}", room_id, seat, mv);
+            broadcast_update(g);
+        }
+        Err(e) => {
+            send_to(g, seat, ServerMsg::Error { message: format!("illegal move: {e}") });
+        }
+    }
+}
+
+fn send_to(g: &RoomState, seat: Side, msg: ServerMsg) {
+    if let Some((_, tx)) = g.seats.iter().find(|(s, _)| *s == seat) {
+        let _ = tx.send(msg);
+    }
+}
+
+fn broadcast_update(g: &RoomState) {
+    for (side, tx) in &g.seats {
+        let view = PlayerView::project(&g.state, *side);
+        let _ = tx.send(ServerMsg::Update { view });
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/server.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify server.rs compiles
+
+`cargo check -p chess-net --tests 2>&1 | tail -50`
+
+```text
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.27s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:08Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:08Z)**_
+
+Compiles clean. Now adding lobby + multi-room + password tests.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:09Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #60 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:10Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #61 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/server_smoke.rs`
+
+```text
+1	//! End-to-end smoke: boot a server on an ephemeral port, two sync
+2	//! `tungstenite` clients connect, exchange Hello, Red plays a legal move,
+3	//! both clients next read an Update. Validates the full loop.
+4	
+5	use std::time::Duration;
+6	
+7	use anyhow::Result;
+8	use chess_core::piece::Side;
+9	use chess_core::rules::RuleSet;
+10	use chess_net::{ClientMsg, ServerMsg};
+11	use tungstenite::Message;
+12	
+13	fn read_json<S: std::io::Read + std::io::Write>(
+14	    ws: &mut tungstenite::WebSocket<S>,
+15	) -> Result<ServerMsg> {
+16	    let m = ws.read()?;
+17	    let text = m.to_text()?;
+18	    Ok(serde_json::from_str(text)?)
+19	}
+20	
+21	#[tokio::test(flavor = "multi_thread")]
+22	async fn two_clients_play_one_move() -> Result<()> {
+23	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+24	    let addr = listener.local_addr()?;
+25	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:22:30Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/server_smoke.rs`
+
+```text
+175	    tokio::task::spawn_blocking(move || -> Result<()> {
+176	        let (mut red, _) = tungstenite::connect(&url)?;
+177	        let _ = read_json(&mut red)?;
+178	        let (mut black, _) = tungstenite::connect(&url)?;
+179	        let _ = read_json(&mut black)?;
+180	
+181	        red.send(Message::Text(serde_json::to_string(&ClientMsg::Rematch)?))?;
+182	        match read_json(&mut red)? {
+183	            ServerMsg::Error { message } => {
+184	                assert!(message.contains("still in progress"), "got: {message}")
+185	            }
+186	            other => panic!("expected Error, got {other:?}"),
+187	        }
+188	        Ok(())
+189	    })
+190	    .await??;
+191	
+192	    server.abort();
+193	    Ok(())
+194	}
+195	
+196	#[tokio::test(flavor = "multi_thread")]
+197	async fn third_client_gets_room_full() -> Result<()> {
+198	    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+199	    let addr = listener.local_addr()?;
+200	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+201	
+202	    tokio::time::sleep(Duration::from_millis(50)).await;
+203	    let url = format!("ws://{addr}/ws");
+204	
+205	    tokio::task::spawn_blocking(move || -> Result<()> {
+206	        let (mut a, _) = tungstenite::connect(&url)?;
+207	        let _ = read_json(&mut a)?;
+208	        let (mut b, _) = tungstenite::connect(&url)?;
+209	        let _ = read_json(&mut b)?;
+210	        let (mut c, _) = tungstenite::connect(&url)?;
+211	        match read_json(&mut c)? {
+212	            ServerMsg::Error { message } => {
+213	                assert!(message.contains("room full"), "expected room-full error, got {message:?}")
+214	            }
+215	            other => panic!("expected Error, got {other:?}"),
+216	        }
+217	        Ok(())
+218	    })
+219	    .await??;
+220	
+221	    server.abort();
+222	    Ok(())
+223	}
+224
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:23:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:23:42Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chess-net tests
+
+`cargo test -p chess-net 2>&1 | tail -60`
+
+```text
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+error[E0599]: no method named `get_mut` found for mutable reference `&mut MaybeTlsStream<std::net::TcpStream>` in the current scope
+   --> crates/chess-net/tests/server_smoke.rs:400:27
+    |
+400 |         bar_red.get_mut().get_mut().set_nonblocking(true)?;
+    |         -------           ^^^^^^^ method not found in `&mut MaybeTlsStream<std::net::TcpStream>`
+    |         |
+    |         method `get_mut` is available on `&mut WebSocket<MaybeTlsStream<std::net::TcpStream>>`
+
+error[E0599]: no method named `get_mut` found for mutable reference `&mut MaybeTlsStream<std::net::TcpStream>` in the current scope
+   --> crates/chess-net/tests/server_smoke.rs:401:29
+    |
+401 |         bar_black.get_mut().get_mut().set_nonblocking(true)?;
+    |         ---------           ^^^^^^^ method not found in `&mut MaybeTlsStream<std::net::TcpStream>`
+    |         |
+    |         method `get_mut` is available on `&mut WebSocket<MaybeTlsStream<std::net::TcpStream>>`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `chess-net` (test "server_smoke") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:23:45Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:23:52Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chess-net tests
+
+`cargo test -p chess-net 2>&1 | tail -50`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/server.rs (target/debug/deps/chess_net_server-322312d54c7580c9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_roundtrip.rs (target/debug/deps/protocol_roundtrip-c2a3d4f9298b5a41)
+
+running 10 tests
+test client_reveal_none_stays_none_on_wire ... ok
+test client_resign_roundtrips ... ok
+test client_move_step_roundtrips ... ok
+test client_list_rooms_roundtrips ... ok
+test protocol_uses_type_tag ... ok
+test client_rematch_roundtrips ... ok
+test variant_label_covers_all_variants ... ok
+test server_rooms_roundtrips ... ok
+test server_hello_roundtrips ... ok
+test server_update_and_error_roundtrip ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/server_smoke.rs (target/debug/deps/server_smoke-94d230306833e38e)
+
+running 14 tests
+test lobby_lists_empty_initially ... ok
+test password_accepted_on_right ... ok
+test room_gc_after_last_seat_leaves ... ok
+test default_room_back_compat ... ok
+test lobby_sees_room_after_join ... ok
+test lobby_sees_seat_fill_and_finish ... ok
+test password_rejected_on_wrong ... ok
+test rematch_rejected_while_game_in_progress ... ok
+test rematch_resets_after_both_request ... ok
+test rooms_json_endpoint_returns_snapshot ... ok
+test two_clients_play_one_move ... ok
+test third_client_gets_room_full ... ok
+test default_room_main_persists_after_empty ... ok
+test two_rooms_isolated_no_crosstalk ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:15Z)**_
+
+All 14 server tests pass. Moving to the chess-tui side.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:16Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #61 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:17Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #62 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:17Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/app.rs`
+
+```text
+1	//! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
+2	//! short-lived flash message; actions from `input.rs` mutate it.
+3	
+4	use chess_core::coord::Square;
+5	use chess_core::moves::Move;
+6	use chess_core::piece::Side;
+7	use chess_core::rules::{HouseRules, RuleSet};
+8	use chess_core::state::{GameState, GameStatus};
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use chess_net::{ClientMsg, ServerMsg};
+11	
+12	use crate::glyph::Style;
+13	use crate::input::Action;
+14	use crate::net::{NetClient, NetEvent};
+15	use crate::orient;
+16	
+17	/// Variant + preset choices in the picker, in display order.
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+19	pub enum PickerEntry {
+20	    Xiangqi,
+21	    XiangqiStrict,
+22	    BanqiPurist,
+23	    BanqiTaiwan,
+24	    BanqiAggressive,
+25	    Quit,
+26	}
+27	
+28	impl PickerEntry {
+29	    pub const ALL: [PickerEntry; 6] = [
+30	        PickerEntry::Xiangqi,
+31	        PickerEntry::XiangqiStrict,
+32	        PickerEntry::BanqiPurist,
+33	        PickerEntry::BanqiTaiwan,
+34	        PickerEntry::BanqiAggressive,
+35	        PickerEntry::Quit,
+36	    ];
+37	
+38	    pub fn label(self) -> &'static str {
+39	        match self {
+40	            PickerEntry::Xiangqi => "Xiangqi (象棋)",
+41	            PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
+42	            PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
+43	            PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
+44	            PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+45	            PickerEntry::Quit => "Quit",
+46	        }
+47	    }
+48	
+49	    pub fn rules(self) -> Option<RuleSet> {
+50	        match self {
+51	            // Default xiangqi is casual: more permissive, you lose by general
+52	            // capture. Strict (standard rules) is one row down.
+53	            PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
+54	            PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
+55	            PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
+56	            PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
+57	            PickerEntry::BanqiAggressive => {
+58	                Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
+59	            }
+60	            PickerEntry::Quit => None,
+61	        }
+62	    }
+63	}
+64	
+65	pub struct PickerView {
+66	    pub cursor: usize,
+67	}
+68	
+69	pub struct GameView {
+70	    pub state: GameState,
+71	    pub cursor: (u8, u8),
+72	    pub selected: Option<Square>,
+73	    pub last_msg: Option<String>,
+74	}
+75	
+76	pub struct NetView {
+77	    pub client: NetClient,
+78	    pub url: String,
+79	    pub last_view: Option<PlayerView>,
+80	    pub rules: Option<RuleSet>,
+81	    /// Server-assigned side. `None` until `Hello` arrives.
+82	    pub observer: Option<Side>,
+83	    pub cursor: (u8, u8),
+84	    pub selected: Option<Square>,
+85	    pub last_msg: Option<String>,
+86	    /// True between Connected and Disconnected events. Used by the sidebar.
+87	    pub connected: bool,
+88	}
+89	
+90	pub enum Screen {
+91	    Picker(PickerView),
+92	    Game(Box<GameView>),
+93	    Net(Box<NetView>),
+94	}
+95	
+96	pub struct AppState {
+97	    pub screen: Screen,
+98	    pub style: Style,
+99	    pub use_color: bool,
+100	    pub observer: Side,
+101	    pub help_open: bool,
+102	    pub rules_open: bool,
+103	    /// True while the y/N quit-confirm dialog is shown. Set when the user
+104	    /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
+105	    /// at least one move played). Picker / game-over `q` skip the prompt.
+106	    pub quit_confirm_open: bool,
+107	    /// Rect of the board widget last drawn (terminal coords). Used for
+108	    /// mouse-click hit-testing. ui.rs writes this each frame.
+109	    pub board_rect: Option<RectPx>,
+110	    pub should_quit: bool,
+111	}
+112	
+113	/// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
+114	#[derive(Copy, Clone, Debug)]
+115	pub struct RectPx {
+116	    pub x: u16,
+117	    pub y: u16,
+118	    /// Width in terminal cols of one cell (glyph + padding).
+119	    pub cell_cols: u16,
+120	    /// Height in terminal rows of one cell (rank row + between row).
+121	    pub cell_rows: u16,
+122	    /// Offset (cols) of the first cell's start from rect.x.
+123	    pub left_pad: u16,
+124	    /// Offset (rows) of the first row from rect.y.
+125	    pub top_pad: u16,
+126	}
+127	
+128	impl AppState {
+129	    pub fn new_picker(style: Style, use_color: bool, observer: Side) -> Self {
+130	        Self {
+131	            screen: Screen::Picker(PickerView { cursor: 0 }),
+132	            style,
+133	            use_color,
+134	            observer,
+135	            help_open: false,
+136	            rules_open: false,
+137	            quit_confirm_open: false,
+138	            board_rect: None,
+139	            should_quit: false,
+140	        }
+141	    }
+142	
+143	    pub fn new_game(rules: RuleSet, style: Style, use_color: bool, observer: Side) -> Self {
+144	        let state = GameState::new(rules);
+145	        let shape = state.board.shape();
+146	        let (rows, cols) = orient::display_dims(shape);
+147	        let cursor = (rows / 2, cols / 2);
+148	        Self {
+149	            screen: Screen::Game(Box::new(GameView {
+150	                state,
+151	                cursor,
+152	                selected: None,
+153	                last_msg: Some(
+154	                    "Welcome. Arrows/hjkl move cursor. Enter selects. r=rules, ?=help, n=new, q=quit."
+155	                        .into(),
+156	                ),
+157	            })),
+158	            style,
+159	            use_color,
+160	            observer,
+161	            help_open: false,
+162	            rules_open: false,
+163	            quit_confirm_open: false,
+164	            board_rect: None,
+165	            should_quit: false,
+166	        }
+167	    }
+168	
+169	    pub fn new_net(url: String, style: Style, use_color: bool) -> Self {
+170	        let client = NetClient::spawn(url.clone());
+171	        Self {
+172	            screen: Screen::Net(Box::new(NetView {
+173	                client,
+174	                url,
+175	                last_view: None,
+176	                rules: None,
+177	                observer: None,
+178	                cursor: (0, 0),
+179	                selected: None,
+180	                last_msg: Some("Connecting…".into()),
+181	                connected: false,
+182	            })),
+183	            style,
+184	            use_color,
+185	            // Pre-Hello, we render as Red until the server tells us our seat.
+186	            observer: Side::RED,
+187	            help_open: false,
+188	            rules_open: false,
+189	            quit_confirm_open: false,
+190	            board_rect: None,
+191	            should_quit: false,
+192	        }
+193	    }
+194	
+195	    /// Drain ws events from the worker thread and apply them to the
+196	    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+197	    pub fn tick_net(&mut self) {
+198	        let Screen::Net(n) = &mut self.screen else {
+199	            return;
+200	        };
+201	        while let Ok(evt) = n.client.evt_rx.try_recv() {
+202	            apply_net_event(n, evt);
+203	        }
+204	    }
+205	
+206	    pub fn dispatch(&mut self, action: Action) {
+207	        match action {
+208	            Action::None => {}
+209	            Action::ConfirmYes => {
+210	                self.quit_confirm_open = false;
+211	                self.should_quit = true;
+212	            }
+213	            Action::ConfirmNo => self.quit_confirm_open = false,
+214	            Action::Quit => {
+215	                if self.is_game_in_progress() {
+216	                    self.quit_confirm_open = true;
+217	                } else {
+218	                    self.should_quit = true;
+219	                }
+220	            }
+221	            Action::HelpToggle => self.help_open = !self.help_open,
+222	            Action::RulesToggle => self.rules_open = !self.rules_open,
+223	            Action::NewGame => {
+224	                if matches!(self.screen, Screen::Net(_)) {
+225	                    // In Net mode, 'n' requests a rematch via the server
+226	                    // instead of dropping the connection. Game must be over.
+227	                    if let Screen::Net(n) = &mut self.screen {
+228	                        let status = n.last_view.as_ref().map(|v| v.status);
+229	                        match status {
+230	                            Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
+231	                                let _ = n.client.cmd_tx.send(ClientMsg::Rematch);
+232	                                n.last_msg =
+233	                                    Some("Rematch requested. Waiting for opponent…".into());
+234	                            }
+235	                            Some(GameStatus::Ongoing) => {
+236	                                n.last_msg = Some(
+237	                                    "'n' requests a rematch only after the game is over.".into(),
+238	                                );
+239	                            }
+240	                            None => {
+241	                                n.last_msg = Some("Not connected yet.".into());
+242	                            }
+243	                        }
+244	                    }
+245	                } else {
+246	                    let style = self.style;
+247	                    let use_color = self.use_color;
+248	                    let observer = self.observer;
+249	                    *self = AppState::new_picker(style, use_color, observer);
+250	                }
+251	            }
+252	            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
+253	                self.dispatch_picker(action);
+254	            }
+255	            _ => match &self.screen {
+256	                Screen::Net(_) => self.dispatch_net(action),
+257	                Screen::Game(_) => self.dispatch_game(action),
+258	                Screen::Picker(_) => {}
+259	            },
+260	        }
+261	    }
+262	
+263	    fn is_game_in_progress(&self) -> bool {
+264	        match &self.screen {
+265	            Screen::Game(g) => {
+266	                matches!(g.state.status, GameStatus::Ongoing) && !g.state.history.is_empty()
+267	            }
+268	            Screen::Net(n) => match &n.last_view {
+269	                Some(view) => matches!(view.status, GameStatus::Ongoing) && n.connected,
+270	                None => false,
+271	            },
+272	            Screen::Picker(_) => false,
+273	        }
+274	    }
+275	
+276	    fn dispatch_picker(&mut self, action: Action) {
+277	        let Screen::Picker(p) = &mut self.screen else {
+278	            return;
+279	        };
+280	        let n = PickerEntry::ALL.len();
+281	        match action {
+282	            Action::PickerUp => p.cursor = (p.cursor + n - 1) % n,
+283	            Action::PickerDown => p.cursor = (p.cursor + 1) % n,
+284	            Action::PickerSelect => {
+285	                let entry = PickerEntry::ALL[p.cursor];
+286	                match entry.rules() {
+287	                    Some(rules) => {
+288	                        let observer = self.observer;
+289	                        let style = self.style;
+290	                        let use_color = self.use_color;
+291	                        *self = AppState::new_game(rules, style, use_color, observer);
+292	                    }
+293	                    None => self.should_quit = true,
+294	                }
+295	            }
+296	            _ => {}
+297	        }
+298	    }
+299	
+300	    fn dispatch_game(&mut self, action: Action) {
+301	        let Screen::Game(g) = &mut self.screen else {
+302	            return;
+303	        };
+304	        let shape = g.state.board.shape();
+305	        let (rows, cols) = orient::display_dims(shape);
+306	        match action {
+307	            Action::CursorUp => {
+308	                if g.cursor.0 > 0 {
+309	                    g.cursor.0 -= 1;
+310	                }
+311	            }
+312	            Action::CursorDown => {
+313	                if g.cursor.0 + 1 < rows {
+314	                    g.cursor.0 += 1;
+315	                }
+316	            }
+317	            Action::CursorLeft => {
+318	                if g.cursor.1 > 0 {
+319	                    g.cursor.1 -= 1;
+320	                }
+321	            }
+322	            Action::CursorRight => {
+323	                if g.cursor.1 + 1 < cols {
+324	                    g.cursor.1 += 1;
+325	                }
+326	            }
+327	            Action::Cancel => {
+328	                g.selected = None;
+329	                g.last_msg = None;
+330	            }
+331	            Action::SelectOrCommit => {
+332	                let observer = self.observer;
+333	                Self::handle_select_or_commit(g, observer);
+334	            }
+335	            Action::Undo => match g.state.unmake_move() {
+336	                Ok(()) => {
+337	                    g.state.refresh_status();
+338	                    g.selected = None;
+339	                    g.last_msg = Some(format!("Undone. {:?} to move.", g.state.side_to_move));
+340	                }
+341	                Err(e) => {
+342	                    g.last_msg = Some(format!("Cannot undo: {e}"));
+343	                }
+344	            },
+345	            Action::Flip => {
+346	                if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+347	                    g.last_msg = Some(
+348	                        "Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into(),
+349	                    );
+350	                    return;
+351	                }
+352	                let observer = self.observer;
+353	                let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape)
+354	                else {
+355	                    g.last_msg = Some("Cursor not on a playable square.".into());
+356	                    return;
+357	                };
+358	                let m = Move::Reveal { at: sq, revealed: None };
+359	                Self::apply_move(g, m);
+360	            }
+361	            Action::Click { term_col, term_row } => {
+362	                if let Some(rect) = self.board_rect {
+363	                    let observer = self.observer;
+364	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+365	                        g.cursor = (row, col);
+366	                        Self::handle_select_or_commit(g, observer);
+367	                    }
+368	                }
+369	            }
+370	            _ => {}
+371	        }
+372	    }
+373	
+374	    fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+375	        if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
+376	            g.last_msg =
+377	                Some("Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into());
+378	            return;
+379	        }
+380	        let shape = g.state.board.shape();
+381	        let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape) else {
+382	            g.last_msg = Some("Cursor not on a playable square.".into());
+383	            return;
+384	        };
+385	
+386	        let view = PlayerView::project(&g.state, g.state.side_to_move);
+387	
+388	        match g.selected {
+389	            None => {
+390	                // Try to select a piece. Allowed if there's a legal move from this square.
+391	                let any = view.legal_moves.iter().any(|m| m.origin_square() == sq);
+392	                if any {
+393	                    g.selected = Some(sq);
+394	                    g.last_msg = None;
+395	                } else {
+396	                    // Maybe it's a banqi hidden cell — suggest 'f' to flip.
+397	                    match g.state.board.get(sq) {
+398	                        Some(p) if !p.revealed => {
+399	                            g.last_msg = Some("Hidden piece. Press 'f' to flip.".into());
+400	                        }
+401	                        _ => g.last_msg = Some("No legal move from that square.".into()),
+402	                    }
+403	                }
+404	            }
+405	            Some(from) if from == sq => {
+406	                g.selected = None;
+407	                g.last_msg = None;
+408	            }
+409	            Some(from) => {
+410	                // Find a legal move from `from` to `sq`. Prefer Capture / CannonJump
+411	                // over a chain ending at sq (for banqi); take the first match.
+412	                let candidate = view
+413	                    .legal_moves
+414	                    .iter()
+415	                    .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+416	                    .cloned();
+417	                match candidate {
+418	                    Some(m) => Self::apply_move(g, m),
+419	                    None => {
+420	                        g.last_msg = Some("Illegal move.".into());
+421	                        g.selected = None;
+422	                    }
+423	                }
+424	            }
+425	        }
+426	    }
+427	
+428	    fn apply_move(g: &mut GameView, m: Move) {
+429	        match g.state.make_move(&m) {
+430	            Ok(()) => {
+431	                g.state.refresh_status();
+432	                g.selected = None;
+433	                g.last_msg = Some(format!(
+434	                    "Played: {}",
+435	                    chess_core::notation::iccs::encode_move(&g.state.board, &m)
+436	                ));
+437	            }
+438	            Err(e) => {
+439	                g.last_msg = Some(format!("Engine rejected move: {e}"));
+440	                g.selected = None;
+441	            }
+442	        }
+443	    }
+444	
+445	    fn dispatch_net(&mut self, action: Action) {
+446	        let Screen::Net(n) = &mut self.screen else {
+447	            return;
+448	        };
+449	        // Pre-Hello: no view yet, nothing to dispatch on.
+450	        let Some(view) = n.last_view.as_ref() else {
+451	            return;
+452	        };
+453	        let shape = view.shape;
+454	        let (rows, cols) = orient::display_dims(shape);
+455	        let observer = n.observer.unwrap_or(Side::RED);
+456	        match action {
+457	            Action::CursorUp => {
+458	                if n.cursor.0 > 0 {
+459	                    n.cursor.0 -= 1;
+460	                }
+461	            }
+462	            Action::CursorDown => {
+463	                if n.cursor.0 + 1 < rows {
+464	                    n.cursor.0 += 1;
+465	                }
+466	            }
+467	            Action::CursorLeft => {
+468	                if n.cursor.1 > 0 {
+469	                    n.cursor.1 -= 1;
+470	                }
+471	            }
+472	            Action::CursorRight => {
+473	                if n.cursor.1 + 1 < cols {
+474	                    n.cursor.1 += 1;
+475	                }
+476	            }
+477	            Action::Cancel => {
+478	                n.selected = None;
+479	                n.last_msg = None;
+480	            }
+481	            Action::SelectOrCommit => {
+482	                let outcome = compute_select_outcome(n, observer);
+483	                apply_select_outcome(n, outcome);
+484	            }
+485	            Action::Flip => {
+486	                if !matches!(view.status, GameStatus::Ongoing) {
+487	                    n.last_msg = Some("Game over.".into());
+488	                    return;
+489	                }
+490	                if view.side_to_move != observer {
+491	                    n.last_msg = Some("Not your turn.".into());
+492	                    return;
+493	                }
+494	                let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape)
+495	                else {
+496	                    n.last_msg = Some("Cursor not on a playable square.".into());
+497	                    return;
+498	                };
+499	                let _ = n
+500	                    .client
+501	                    .cmd_tx
+502	                    .send(ClientMsg::Move { mv: Move::Reveal { at: sq, revealed: None } });
+503	                n.last_msg = Some("Reveal sent.".into());
+504	            }
+505	            Action::Undo => {
+506	                n.last_msg = Some("Undo not supported in online mode yet.".into());
+507	            }
+508	            Action::Click { term_col, term_row } => {
+509	                if let Some(rect) = self.board_rect {
+510	                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+511	                        let n = match &mut self.screen {
+512	                            Screen::Net(b) => b,
+513	                            _ => return,
+514	                        };
+515	                        n.cursor = (row, col);
+516	                        let outcome = compute_select_outcome(n, observer);
+517	                        apply_select_outcome(n, outcome);
+518	                    }
+519	                }
+520	            }
+521	            _ => {}
+522	        }
+523	    }
+524	}
+525	
+526	enum SelectOutcome {
+527	    Ignore,
+528	    Msg(String),
+529	    ClearAndMsg(String),
+530	    Select(Square),
+531	    Deselect,
+532	    Commit(Move),
+533	}
+534	
+535	fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
+536	    let Some(view) = n.last_view.as_ref() else {
+537	        return SelectOutcome::Ignore;
+538	    };
+539	    if !matches!(view.status, GameStatus::Ongoing) {
+540	        return SelectOutcome::Msg("Game over.".into());
+541	    }
+542	    let shape = view.shape;
+543	    let Some(sq) = orient::square_at_display(n.cursor.0, n.cursor.1, observer, shape) else {
+544	        return SelectOutcome::Msg("Cursor not on a playable square.".into());
+545	    };
+546	    if view.side_to_move != observer {
+547	        return SelectOutcome::Msg("Not your turn.".into());
+548	    }
+549	    match n.selected {
+550	        None => {
+551	            if view.legal_moves.iter().any(|m| m.origin_square() == sq) {
+552	                SelectOutcome::Select(sq)
+553	            } else if matches!(view.cells[sq.0 as usize], VisibleCell::Hidden) {
+554	                SelectOutcome::Msg("Hidden piece. Press 'f' to flip.".into())
+555	            } else {
+556	                SelectOutcome::Msg("No legal move from that square.".into())
+557	            }
+558	        }
+559	        Some(from) if from == sq => SelectOutcome::Deselect,
+560	        Some(from) => {
+561	            let candidate = view
+562	                .legal_moves
+563	                .iter()
+564	                .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
+565	                .cloned();
+566	            match candidate {
+567	                Some(mv) => SelectOutcome::Commit(mv),
+568	                None => SelectOutcome::ClearAndMsg("Illegal move.".into()),
+569	            }
+570	        }
+571	    }
+572	}
+573	
+574	fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
+575	    match outcome {
+576	        SelectOutcome::Ignore => {}
+577	        SelectOutcome::Msg(m) => n.last_msg = Some(m),
+578	        SelectOutcome::ClearAndMsg(m) => {
+579	            n.selected = None;
+580	            n.last_msg = Some(m);
+581	        }
+582	        SelectOutcome::Select(sq) => {
+583	            n.selected = Some(sq);
+584	            n.last_msg = None;
+585	        }
+586	        SelectOutcome::Deselect => {
+587	            n.selected = None;
+588	            n.last_msg = None;
+589	        }
+590	        SelectOutcome::Commit(mv) => {
+591	            let _ = n.client.cmd_tx.send(ClientMsg::Move { mv });
+592	            n.selected = None;
+593	            n.last_msg = Some("Sent.".into());
+594	        }
+595	    }
+596	}
+597	
+598	fn apply_net_event(n: &mut NetView, evt: NetEvent) {
+599	    match evt {
+600	        NetEvent::Connected => {
+601	            n.connected = true;
+602	            n.last_msg = Some("Connected. Waiting for hello…".into());
+603	        }
+604	        NetEvent::Server(boxed) => match *boxed {
+605	            ServerMsg::Hello { observer, rules, view, .. } => {
+606	                let was_seated = n.observer.is_some();
+607	                n.observer = Some(observer);
+608	                n.rules = Some(rules);
+609	                let shape = view.shape;
+610	                let (rows, cols) = orient::display_dims(shape);
+611	                n.cursor = (rows / 2, cols / 2);
+612	                n.selected = None;
+613	                n.last_view = Some(view);
+614	                n.connected = true;
+615	                // First Hello = "Joined as X". Subsequent Hello = rematch reset.
+616	                n.last_msg = Some(if was_seated {
+617	                    "Rematch — new game.".into()
+618	                } else {
+619	                    format!("Joined as {}.", side_label(observer))
+620	                });
+621	            }
+622	            ServerMsg::Update { view } => {
+623	                n.last_view = Some(view);
+624	                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
+625	                if n.last_msg.as_deref() == Some("Sent.") {
+626	                    n.last_msg = None;
+627	                }
+628	            }
+629	            ServerMsg::Error { message } => {
+630	                n.last_msg = Some(message);
+631	            }
+632	        },
+633	        NetEvent::Disconnected(reason) => {
+634	            n.connected = false;
+635	            n.last_msg = Some(format!("Disconnected: {reason}"));
+636	        }
+637	    }
+638	}
+639	
+640	fn side_label(side: Side) -> &'static str {
+641	    if side == Side::RED {
+642	        "Red 紅"
+643	    } else if side == Side::BLACK {
+644	        "Black 黑"
+645	    } else {
+646	        "Green 綠"
+647	    }
+648	}
+649	
+650	/// Convert terminal click coords to (display_row, display_col) within board.
+651	///
+652	/// Cells are `cell_rows × cell_cols` terminal cells. With the intersection
+653	/// layout, `cell_rows = 2` (rank row + between row) so clicks on either of
+654	/// those rows resolve to the same display cell — including the river row,
+655	/// which simply replaces the between-row at index 4 without changing the
+656	/// row layout.
+657	fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> Option<(u8, u8)> {
+658	    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+659	        return None;
+660	    }
+661	    let col_off = term_col - rect.x - rect.left_pad;
+662	    let row_off = term_row - rect.y - rect.top_pad;
+663	    if rect.cell_cols == 0 || rect.cell_rows == 0 {
+664	        return None;
+665	    }
+666	    let cell_col = col_off / rect.cell_cols;
+667	    let cell_row = row_off / rect.cell_rows;
+668	    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+669	        return None;
+670	    }
+671	    Some((cell_row as u8, cell_col as u8))
+672	}
+673
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Tiny text-input helpers for the host/lobby/create-room prompts.
+//!
+//! Deliberately not pulling in the `tui-input` crate — these inputs are
+//! short ASCII strings (host:port, room id, password) and a 30-line helper
+//! covers every keypress we care about.
+
+/// Append a printable char, capped at `max_len` bytes. Non-printables and
+/// over-budget chars are silently dropped.
+pub fn push_char(buf: &mut String, ch: char, max_len: usize) {
+    if !ch.is_control() && buf.len() + ch.len_utf8() <= max_len {
+        buf.push(ch);
+    }
+}
+
+/// Pop the last char (or no-op if empty).
+pub fn backspace(buf: &mut String) {
+    buf.pop();
+}
+
+/// Mask a password for display: `••••••` (one `•` per char) up to 32, then
+/// `…` for any extra. Empty becomes the placeholder `(none)`.
+pub fn mask(pw: &str) -> String {
+    if pw.is_empty() {
+        return "(none)".into();
+    }
+    let n = pw.chars().count();
+    if n <= 32 {
+        "•".repeat(n)
+    } else {
+        format!("{}…", "•".repeat(31))
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/text_input.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:37Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #62 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:37Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #63 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:24:41Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/input.rs`
+
+```text
+1	//! Keyboard / mouse events → `Action`. Pure mapping; no state mutation.
+2	
+3	use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+4	
+5	#[derive(Clone, Debug)]
+6	pub enum Action {
+7	    None,
+8	    Quit,
+9	    /// Confirm an open quit-confirm dialog (user pressed y/Y).
+10	    ConfirmYes,
+11	    /// Cancel an open quit-confirm dialog (user pressed anything else).
+12	    ConfirmNo,
+13	    HelpToggle,
+14	    RulesToggle,
+15	    NewGame,
+16	    // Picker
+17	    PickerUp,
+18	    PickerDown,
+19	    PickerSelect,
+20	    // Game
+21	    CursorUp,
+22	    CursorDown,
+23	    CursorLeft,
+24	    CursorRight,
+25	    SelectOrCommit,
+26	    Cancel,
+27	    Undo,
+28	    Flip,
+29	    /// Mouse click in terminal coords. The app resolves it against the board
+30	    /// rect captured by the most recent draw().
+31	    Click {
+32	        term_col: u16,
+33	        term_row: u16,
+34	    },
+35	}
+36	
+37	pub fn from_key(ev: KeyEvent, in_picker: bool, quit_confirm_open: bool) -> Action {
+38	    // Quit-confirm dialog hijacks input: y/Y confirms, anything else cancels.
+39	    if quit_confirm_open {
+40	        return match ev.code {
+41	            KeyCode::Char('y') | KeyCode::Char('Y') => Action::ConfirmYes,
+42	            _ => Action::ConfirmNo,
+43	        };
+44	    }
+45	    if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
+46	        return Action::Quit;
+47	    }
+48	    match ev.code {
+49	        KeyCode::Char('q') => Action::Quit,
+50	        KeyCode::Char('?') => Action::HelpToggle,
+51	        KeyCode::Char('r') if !in_picker => Action::RulesToggle,
+52	        _ if in_picker => match ev.code {
+53	            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+54	            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+55	            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+56	            KeyCode::Esc => Action::Quit,
+57	            _ => Action::None,
+58	        },
+59	        _ => match ev.code {
+60	            KeyCode::Up | KeyCode::Char('k') => Action::CursorUp,
+61	            KeyCode::Down | KeyCode::Char('j') => Action::CursorDown,
+62	            KeyCode::Left | KeyCode::Char('h') => Action::CursorLeft,
+63	            KeyCode::Right | KeyCode::Char('l') => Action::CursorRight,
+64	            KeyCode::Enter | KeyCode::Char(' ') => Action::SelectOrCommit,
+65	            KeyCode::Esc => Action::Cancel,
+66	            KeyCode::Char('u') => Action::Undo,
+67	            KeyCode::Char('f') => Action::Flip,
+68	            KeyCode::Char('n') => Action::NewGame,
+69	            _ => Action::None,
+70	        },
+71	    }
+72	}
+73	
+74	pub fn from_mouse(ev: MouseEvent) -> Action {
+75	    match ev.kind {
+76	        MouseEventKind::Down(MouseButton::Left) => {
+77	            Action::Click { term_col: ev.column, term_row: ev.row }
+78	        }
+79	        _ => Action::None,
+80	    }
+81	}
+82
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:12Z)**_
+
+Now redesigning input.rs to support all the new input modes.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:13Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #64 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Keyboard / mouse events → `Action`. Pure mapping; no state mutation.
+
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+
+/// Where the user's focus is right now. Drives the keymap branch in
+/// [`from_key`]. `Game` covers both local hot-seat (`Screen::Game`) and
+/// online (`Screen::Net`) play.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum InputMode {
+    Picker,
+    Lobby,
+    Text,
+    Game,
+}
+
+#[derive(Clone, Debug)]
+pub enum Action {
+    None,
+    Quit,
+    /// Confirm an open quit-confirm dialog (user pressed y/Y).
+    ConfirmYes,
+    /// Cancel an open quit-confirm dialog (user pressed anything else).
+    ConfirmNo,
+    HelpToggle,
+    RulesToggle,
+    NewGame,
+    /// "Back one screen" — Esc semantics outside game/picker. The
+    /// dispatcher decides what to back into per screen.
+    Back,
+    // Picker / Lobby (list-cursor)
+    PickerUp,
+    PickerDown,
+    PickerSelect,
+    // Lobby
+    LobbyCreate,
+    LobbyRefresh,
+    // Text input (HostPrompt / CreateRoom)
+    TextInput(char),
+    TextBackspace,
+    FocusNext,
+    FocusPrev,
+    /// Submit a text-input form (Enter while in `Text` mode).
+    Submit,
+    // Game
+    CursorUp,
+    CursorDown,
+    CursorLeft,
+    CursorRight,
+    SelectOrCommit,
+    Cancel,
+    Undo,
+    Flip,
+    /// Mouse click in terminal coords. The app resolves it against the board
+    /// rect captured by the most recent draw().
+    Click {
+        term_col: u16,
+        term_row: u16,
+    },
+}
+
+pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Action {
+    // Quit-confirm dialog hijacks input: y/Y confirms, anything else cancels.
+    if quit_confirm_open {
+        return match ev.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => Action::ConfirmYes,
+            _ => Action::ConfirmNo,
+        };
+    }
+    if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
+        return Action::Quit;
+    }
+    match mode {
+        InputMode::Picker => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Esc => Action::Quit,
+            _ => Action::None,
+        },
+        InputMode::Lobby => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Char('c') => Action::LobbyCreate,
+            KeyCode::Char('r') => Action::LobbyRefresh,
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Esc => Action::Back,
+            _ => Action::None,
+        },
+        InputMode::Text => match ev.code {
+            KeyCode::Esc => Action::Back,
+            KeyCode::Enter => Action::Submit,
+            KeyCode::Backspace => Action::TextBackspace,
+            KeyCode::Tab => Action::FocusNext,
+            KeyCode::BackTab => Action::FocusPrev,
+            KeyCode::Char(c) => Action::TextInput(c),
+            _ => Action::None,
+        },
+        InputMode::Game => match ev.code {
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Char('r') => Action::RulesToggle,
+            KeyCode::Up | KeyCode::Char('k') => Action::CursorUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::CursorDown,
+            KeyCode::Left | KeyCode::Char('h') => Action::CursorLeft,
+            KeyCode::Right | KeyCode::Char('l') => Action::CursorRight,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::SelectOrCommit,
+            KeyCode::Esc => Action::Cancel,
+            KeyCode::Char('u') => Action::Undo,
+            KeyCode::Char('f') => Action::Flip,
+            KeyCode::Char('n') => Action::NewGame,
+            _ => Action::None,
+        },
+    }
+}
+
+pub fn from_mouse(ev: MouseEvent) -> Action {
+    match ev.kind {
+        MouseEventKind::Down(MouseButton::Left) => {
+            Action::Click { term_col: ev.column, term_row: ev.row }
+        }
+        _ => Action::None,
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:33Z)**_
+
+Now extending app.rs with the new screens and dispatch handlers.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:25:40Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:26:04Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:26:21Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:26:24Z)**_
+
+Now extend the AppState with new constructors and the dispatch routing.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:26:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:26:47Z)**_
+
+Now update `dispatch` to route the new actions and `dispatch_picker` to handle the new entry. I'll also add the new dispatch handlers and the lobby-event applier.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:27:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:27:10Z)**_
+
+Now update `is_game_in_progress` to handle the new screens, then update `dispatch_picker` for the ConnectToServer entry, and add the new dispatch_lobby/dispatch_text + apply_lobby_event handlers.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:27:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:27:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:27:48Z)**_
+
+I need a few helper functions. Adding a tiny `url` module and the lobby event applier.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:08Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! URL helpers for the host-prompt / lobby / connect flows.
+//!
+//! All hand-rolled — the entire URL space we care about is `ws://host:port`
+//! plus an optional `/ws/<id>?password=…` suffix, so pulling in the `url`
+//! crate isn't worth the dep.
+
+/// Normalize a free-text host string into a `ws://host:port` form (no path).
+/// Examples:
+///   "127.0.0.1:7878"   → "ws://127.0.0.1:7878"
+///   "ws://127.0.0.1"   → "ws://127.0.0.1"
+///   "ws://host:7878/ws"→ "ws://host:7878"   (trailing path stripped)
+pub fn normalize_host_url(raw: &str) -> Result<String, String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return Err("Empty host. Try ws://127.0.0.1:7878".into());
+    }
+    let with_scheme = if raw.starts_with("ws://") || raw.starts_with("wss://") {
+        raw.to_string()
+    } else if raw.starts_with("http://") {
+        format!("ws://{}", raw.trim_start_matches("http://"))
+    } else if raw.starts_with("https://") {
+        format!("wss://{}", raw.trim_start_matches("https://"))
+    } else {
+        format!("ws://{raw}")
+    };
+    // Strip any path / query so we can re-append `/lobby` or `/ws/<id>` cleanly.
+    let scheme_end = with_scheme.find("://").map(|i| i + 3).ok_or("missing scheme")?;
+    let rest = &with_scheme[scheme_end..];
+    let host_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    if rest[..host_end].is_empty() {
+        return Err("Empty host after scheme.".into());
+    }
+    Ok(format!("{}{}", &with_scheme[..scheme_end], &rest[..host_end]))
+}
+
+/// Append `/lobby` if the URL doesn't already end in one of the chess-net
+/// path conventions.
+pub fn normalize_lobby_url(raw: &str) -> Result<String, String> {
+    let host = normalize_host_url(raw)?;
+    Ok(format!("{host}/lobby"))
+}
+
+/// Auto-append `/ws` for the bare-host shortcut, like the legacy
+/// `--connect ws://host:port`. Anything containing `/ws` or `/lobby` is
+/// preserved as-is.
+pub fn normalize_connect_url(raw: &str) -> Result<String, String> {
+    let raw = raw.trim();
+    if raw.contains("/ws") || raw.contains("/lobby") {
+        return Ok(raw.to_string());
+    }
+    let host = normalize_host_url(raw)?;
+    Ok(format!("{host}/ws"))
+}
+
+/// Minimal percent-encoding for the `password=` query value. Encodes the
+/// reserved chars that would break URL parsing; spaces become `%20`.
+pub fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
+}
+
+/// Validate a room id matches the server-side regex `^[a-zA-Z0-9_-]{1,32}$`.
+pub fn valid_room_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 32
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn host_url_adds_scheme() {
+        assert_eq!(normalize_host_url("127.0.0.1:7878").unwrap(), "ws://127.0.0.1:7878");
+    }
+
+    #[test]
+    fn host_url_strips_path() {
+        assert_eq!(normalize_host_url("ws://h:1/ws/foo").unwrap(), "ws://h:1");
+    }
+
+    #[test]
+    fn http_to_ws() {
+        assert_eq!(normalize_host_url("http://host").unwrap(), "ws://host");
+        assert_eq!(normalize_host_url("https://host").unwrap(), "wss://host");
+    }
+
+    #[test]
+    fn empty_host_rejected() {
+        assert!(normalize_host_url("").is_err());
+        assert!(normalize_host_url("ws:///path").is_err());
+    }
+
+    #[test]
+    fn connect_url_preserves_explicit_paths() {
+        assert_eq!(normalize_connect_url("ws://h/ws/foo").unwrap(), "ws://h/ws/foo");
+        assert_eq!(normalize_connect_url("ws://h").unwrap(), "ws://h/ws");
+    }
+
+    #[test]
+    fn url_encode_password_special_chars() {
+        assert_eq!(urlencode("hello world"), "hello%20world");
+        assert_eq!(urlencode("a&b=c"), "a%26b%3Dc");
+        assert_eq!(urlencode("plain123"), "plain123");
+    }
+
+    #[test]
+    fn valid_room_id_rules() {
+        assert!(valid_room_id("foo"));
+        assert!(valid_room_id("Room_42-x"));
+        assert!(!valid_room_id(""));
+        assert!(!valid_room_id("with space"));
+        assert!(!valid_room_id("../escape"));
+        assert!(!valid_room_id(&"x".repeat(33)));
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/url.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:11Z)**_
+
+Now I need to fix the references in app.rs to use `crate::url::*` instead, and add `apply_lobby_event`.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:21Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:25Z)**_
+
+Now add `apply_lobby_event` near the other helpers at the bottom of the file.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:35Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:39Z)**_
+
+Need to add `mod url;` to main.rs and check compilation.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify chess-tui compiles
+
+`cargo check -p chess-tui 2>&1 | tail -60`
+
+```text
+227 |                     from_key(k, in_picker, quit_confirm)
+    |                     --------    ^^^^^^^^^ expected `InputMode`, found `bool`
+    |                     |
+    |                     arguments to this function are incorrect
+    |
+note: function defined here
+   --> clients/chess-tui/src/input.rs:61:8
+    |
+ 61 | pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Action {
+    |        ^^^^^^^^               ---------------
+
+error[E0004]: non-exhaustive patterns: `ServerMsg::Rooms { .. }` not covered
+   --> clients/chess-tui/src/app.rs:937:42
+    |
+937 |         NetEvent::Server(boxed) => match *boxed {
+    |                                          ^^^^^^ pattern `ServerMsg::Rooms { .. }` not covered
+    |
+note: `ServerMsg` defined here
+   --> /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/src/protocol.rs:26:1
+    |
+ 26 | pub enum ServerMsg {
+    | ^^^^^^^^^^^^^^^^^^
+...
+ 38 |     Rooms { rooms: Vec<RoomSummary> },
+    |     ----- not covered
+    = note: the matched value is of type `ServerMsg`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+964 ~             },
+965 +             ServerMsg::Rooms { .. } => todo!()
+    |
+
+error[E0004]: non-exhaustive patterns: `&Screen::HostPrompt(_)`, `&Screen::Lobby(_)` and `&Screen::CreateRoom(_)` not covered
+   --> clients/chess-tui/src/ui.rs:25:11
+    |
+ 25 |     match &app.screen {
+    |           ^^^^^^^^^^^ patterns `&Screen::HostPrompt(_)`, `&Screen::Lobby(_)` and `&Screen::CreateRoom(_)` not covered
+    |
+note: `Screen` defined here
+   --> clients/chess-tui/src/app.rs:140:10
+    |
+140 | pub enum Screen {
+    |          ^^^^^^
+...
+144 |     HostPrompt(HostPromptView),
+    |     ---------- not covered
+145 |     Lobby(Box<LobbyView>),
+    |     ----- not covered
+146 |     CreateRoom(CreateRoomView),
+    |     ---------- not covered
+    = note: the matched value is of type `&Screen`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+    |
+ 28 ~         Screen::Net(_) => draw_net(frame, area, app),
+ 29 ~         &Screen::HostPrompt(_) | &Screen::Lobby(_) | &Screen::CreateRoom(_) => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0308.
+For more information about an error, try `rustc --explain E0004`.
+error: could not compile `chess-tui` (bin "chess-tui") due to 3 previous errors
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:53Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:28:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:01Z)**_
+
+Now updating main.rs to use InputMode and adding stub UI handlers, then wiring proper UI in the next task.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:04Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:38Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:42Z)**_
+
+Also need to bump the poll cadence for Lobby mode (server pushes are infrequent but should feel snappy). Then check compilation.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:46Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:50Z)**_
+
+Now I need to extend ui.rs to handle the new screens. Let me look at it briefly first.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:50Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #63 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:51Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #64 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:51Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #66 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:52Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #65 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:52Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+1	//! ratatui draw layer. Stateless — reads `AppState` and draws.
+2	
+3	use chess_core::board::BoardShape;
+4	use chess_core::coord::Square;
+5	use chess_core::piece::{PieceKind, Side};
+6	use chess_core::state::{GameStatus, WinReason};
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	
+9	use ratatui::layout::{Constraint, Direction, Layout, Rect};
+10	use ratatui::style::{Color, Modifier, Style as TuiStyle};
+11	use ratatui::text::{Line, Span};
+12	use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+13	use ratatui::Frame;
+14	
+15	use crate::app::{AppState, GameView, NetView, PickerEntry, PickerView, RectPx, Screen};
+16	use crate::glyph::{self, Style};
+17	use crate::orient;
+18	
+19	const CELL_COLS: u16 = 4;
+20	const CELL_ROWS: u16 = 2;
+21	const RANK_LABEL_COLS: u16 = 3;
+22	
+23	pub fn draw(frame: &mut Frame, app: &mut AppState) {
+24	    let area = frame.area();
+25	    match &app.screen {
+26	        Screen::Picker(p) => draw_picker(frame, area, p),
+27	        Screen::Game(_) => draw_game(frame, area, app),
+28	        Screen::Net(_) => draw_net(frame, area, app),
+29	    }
+30	
+31	    if app.rules_open {
+32	        draw_rules_overlay(frame, area, app.style);
+33	    }
+34	    if app.quit_confirm_open {
+35	        draw_quit_confirm_overlay(frame, area);
+36	    }
+37	}
+38	
+39	fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+40	    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+41	    let mut lines = vec![
+42	        Line::from(title),
+43	        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+44	        Line::from(""),
+45	    ];
+46	    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+47	        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+48	        let style = if i == picker.cursor {
+49	            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+50	        } else {
+51	            TuiStyle::default()
+52	        };
+53	        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+54	    }
+55	    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+56	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+57	    frame.render_widget(para, area);
+58	}
+59	
+60	fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
+61	    let chunks = Layout::default()
+62	        .direction(Direction::Horizontal)
+63	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+64	        .split(area);
+65	
+66	    let Screen::Game(g) = &app.screen else {
+67	        return;
+68	    };
+69	    let g_ref: &GameView = g.as_ref();
+70	    let observer = app.observer;
+71	    let style = app.style;
+72	    let use_color = app.use_color;
+73	    let help_open = app.help_open;
+74	
+75	    let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
+76	    let mut rect = app.board_rect;
+77	    draw_board(
+78	        frame,
+79	        chunks[0],
+80	        observer,
+81	        style,
+82	        use_color,
+83	        &view,
+84	        g_ref.cursor,
+85	        g_ref.selected,
+86	        &mut rect,
+87	    );
+88	    app.board_rect = rect;
+89	    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open);
+90	}
+91	
+92	fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
+93	    let chunks = Layout::default()
+94	        .direction(Direction::Horizontal)
+95	        .constraints([Constraint::Min(40), Constraint::Length(36)])
+96	        .split(area);
+97	
+98	    let Screen::Net(n) = &app.screen else {
+99	        return;
+100	    };
+101	    let n_ref: &NetView = n.as_ref();
+102	    let style = app.style;
+103	    let use_color = app.use_color;
+104	    let help_open = app.help_open;
+105	    let observer = n_ref.observer.unwrap_or(app.observer);
+106	
+107	    match n_ref.last_view.as_ref() {
+108	        Some(view) => {
+109	            let mut rect = app.board_rect;
+110	            draw_board(
+111	                frame,
+112	                chunks[0],
+113	                observer,
+114	                style,
+115	                use_color,
+116	                view,
+117	                n_ref.cursor,
+118	                n_ref.selected,
+119	                &mut rect,
+120	            );
+121	            app.board_rect = rect;
+122	            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open);
+123	        }
+124	        None => {
+125	            draw_connecting_placeholder(frame, chunks[0], n_ref);
+126	            draw_sidebar_net_idle(frame, chunks[1], n_ref);
+127	        }
+128	    }
+129	}
+130	
+131	fn draw_connecting_placeholder(frame: &mut Frame, area: Rect, n: &NetView) {
+132	    let block = Block::default().borders(Borders::ALL).title(" Net ");
+133	    let lines = vec![
+134	        Line::from(""),
+135	        Line::from(Span::styled("  Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+136	        Line::from(Span::styled(format!("  → {}", n.url), TuiStyle::default().fg(Color::Gray))),
+137	        Line::from(""),
+138	        Line::from(Span::styled(
+139	            n.last_msg.clone().unwrap_or_else(|| "  (waiting for server hello)".into()),
+140	            TuiStyle::default().fg(Color::Yellow),
+141	        )),
+142	    ];
+143	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+144	    frame.render_widget(para, area);
+145	}
+146	
+147	fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
+148	    let block = Block::default().borders(Borders::ALL).title(" Status ");
+149	    let lines = vec![
+150	        Line::from(Span::styled("Connecting…", TuiStyle::default().add_modifier(Modifier::BOLD))),
+151	        Line::from(format!("URL: {}", n.url)),
+152	        Line::from(""),
+153	        Line::from(Span::styled("Press q to give up.", TuiStyle::default().fg(Color::DarkGray))),
+154	    ];
+155	    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+156	    frame.render_widget(para, area);
+157	}
+158	
+159	#[allow(clippy::too_many_arguments)]
+160	fn draw_board(
+161	    frame: &mut Frame,
+162	    area: Rect,
+163	    observer: Side,
+164	    style: Style,
+165	    use_color: bool,
+166	    view: &PlayerView,
+167	    cursor: (u8, u8),
+168	    selected: Option<Square>,
+169	    board_rect: &mut Option<RectPx>,
+170	) {
+171	    let block = Block::default().borders(Borders::ALL).title(" Board ");
+172	    let inner = block.inner(area);
+173	    frame.render_widget(block, area);
+174	
+175	    let shape = view.shape;
+176	    let (rows, cols) = orient::display_dims(shape);
+177	    let model_w = shape.dimensions().0;
+178	
+179	    // Build legal-target highlight set when a piece is selected.
+180	    let highlight: std::collections::HashSet<Square> = match selected {
+181	        Some(from) => view
+182	            .legal_moves
+183	            .iter()
+184	            .filter(|m| m.origin_square() == from)
+185	            .filter_map(|m| m.to_square())
+186	            .collect(),
+187	        None => std::collections::HashSet::new(),
+188	    };
+189	
+190	    let border_style = TuiStyle::default().fg(Color::DarkGray);
+191	    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 2);
+192	
+193	    // File header (top)
+194	    lines.push(file_header_line(observer, shape));
+195	
+196	    let river_after = if matches!(shape, BoardShape::Xiangqi9x10) { Some(4u8) } else { None };
+197	
+198	    for display_row in 0..rows {
+199	        lines.push(rank_row(
+200	            view,
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:57Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:29:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find help/sidebar functions
+
+`grep -n "HELP_LINES\|fn draw_help\|fn draw_sidebar\|fn draw_picker\|format_status\|win_reason_label" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs | head -40`
+
+```text
+39:fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+147:fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
+587:fn draw_sidebar(
+645:    let (status_text, status_color) = format_status_short(view.status, style);
+671:        for ln in HELP_LINES {
+686:fn draw_sidebar_net(
+747:    let (status_text, status_color) = format_status_short(view.status, style);
+775:        for ln in HELP_LINES_NET {
+790:const HELP_LINES_NET: &[&str] = &[
+821:                    win_reason_label(*reason),
+852:fn win_reason_label(reason: WinReason) -> &'static str {
+866:fn format_status_short(status: GameStatus, style: Style) -> (String, Color) {
+870:            format!("{} wins — {}", glyph::side_name(winner, style), win_reason_label(reason)),
+945:const HELP_LINES: &[&str] = &[
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:30:04Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+780	        lines.push(Line::from(Span::styled(
+781	            "?=help, r=rules, q=quit",
+782	            TuiStyle::default().fg(Color::DarkGray),
+783	        )));
+784	    }
+785	
+786	    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+787	    frame.render_widget(para, inner);
+788	}
+789	
+790	const HELP_LINES_NET: &[&str] = &[
+791	    "h j k l / ←↓↑→  move cursor",
+792	    "Enter / Space   select / commit (sends Move to server)",
+793	    "Esc             cancel selection",
+794	    "f               flip (banqi)",
+795	    "n               request rematch (after game over; needs both sides)",
+796	    "r               toggle rules overlay",
+797	    "?               toggle this help",
+798	    "Click           select / commit",
+799	    "q / Ctrl-C      quit (closes the connection)",
+800	    "(undo not supported online yet)",
+801	];
+802	
+803	fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
+804	    match status {
+805	        GameStatus::Ongoing => None,
+806	        GameStatus::Won { winner, reason } => {
+807	            let header = Line::from(Span::styled(
+808	                "★  GAME OVER  ★",
+809	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+810	            ));
+811	            let winner_line = Line::from(vec![
+812	                Span::raw("Winner: "),
+813	                Span::styled(
+814	                    glyph::side_name(*winner, style),
+815	                    TuiStyle::default().fg(side_color(*winner)).add_modifier(Modifier::BOLD),
+816	                ),
+817	            ]);
+818	            let reason_line = Line::from(vec![
+819	                Span::raw("Reason: "),
+820	                Span::styled(
+821	                    win_reason_label(*reason),
+822	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+823	                ),
+824	            ]);
+825	            let footer = Line::from(Span::styled(
+826	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+827	                TuiStyle::default().fg(Color::Cyan),
+828	            ));
+829	            Some(vec![header, winner_line, reason_line, footer])
+830	        }
+831	        GameStatus::Drawn { reason } => {
+832	            let header = Line::from(Span::styled(
+833	                "—  DRAW  —",
+834	                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+835	            ));
+836	            let reason_line = Line::from(vec![
+837	                Span::raw("Reason: "),
+838	                Span::styled(
+839	                    format!("{:?}", reason),
+840	                    TuiStyle::default().add_modifier(Modifier::BOLD),
+841	                ),
+842	            ]);
+843	            let footer = Line::from(Span::styled(
+844	                "Press 'n' for new game, 'u' to take back, 'q' to quit.",
+845	                TuiStyle::default().fg(Color::Cyan),
+846	            ));
+847	            Some(vec![header, reason_line, footer])
+848	        }
+849	    }
+850	}
+851	
+852	fn win_reason_label(reason: WinReason) -> &'static str {
+853	    match reason {
+854	        WinReason::Checkmate => "Checkmate (將死)",
+855	        WinReason::Stalemate => "Stalemate (困死) — no legal moves",
+856	        WinReason::Resignation => "Resignation",
+857	        WinReason::OnlyOneSideHasPieces => "Opponent eliminated",
+858	        WinReason::Timeout => "Time forfeit",
+859	        WinReason::GeneralCaptured => "General captured (將被吃)",
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:30:07Z)**_
+
+Now updating ui.rs to handle the new screens.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:30:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:30:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:30:22Z)**_
+
+Now add the three new draw functions. Putting them after `draw_sidebar_net_idle` so they're near related code.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:02Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify chess-tui compiles
+
+`cargo check -p chess-tui 2>&1 | tail -50`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.57s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:15Z)**_
+
+Compiles clean. Running format + clippy + tests now.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format and clippy gate
+
+`cargo fmt 2>&1 | tail -5 && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `format!("ws://{addr}/ws/bar")`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrows_for_generic_args
+
+error: the borrowed expression implements the required traits
+   --> crates/chess-net/tests/server_smoke.rs:400:55
+    |
+400 |         let (mut bar_black, _) = tungstenite::connect(&format!("ws://{addr}/ws/bar"))?;
+    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `format!("ws://{addr}/ws/bar")`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrows_for_generic_args
+
+error: the borrowed expression implements the required traits
+   --> crates/chess-net/tests/server_smoke.rs:440:50
+    |
+440 |         let (mut temp, _) = tungstenite::connect(&format!("ws://{addr}/ws/temp"))?;
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `format!("ws://{addr}/ws/temp")`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrows_for_generic_args
+
+error: the borrowed expression implements the required traits
+   --> crates/chess-net/tests/server_smoke.rs:469:47
+    |
+469 |         let (mut a, _) = tungstenite::connect(&format!("ws://{addr}/ws"))?;
+    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `format!("ws://{addr}/ws")`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrows_for_generic_args
+
+error: could not compile `chess-net` (test "server_smoke") due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+[This command modified 5 files you've previously read: clients/chess-tui/src/ui.rs, clients/chess-tui/src/app.rs, clients/chess-tui/src/main.rs, crates/chess-net/src/server.rs, crates/chess-net/tests/server_smoke.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:24Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:24Z)**_
+
+Fixing the clippy `needless_borrows_for_generic_args` warnings.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Collect all clippy errors
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | grep -E "^error" | head -20`
+
+```text
+error: the borrowed expression implements the required traits
+error: the borrowed expression implements the required traits
+error: the borrowed expression implements the required traits
+error: the borrowed expression implements the required traits
+error: the borrowed expression implements the required traits
+error: the borrowed expression implements the required traits
+error: could not compile `chess-net` (test "server_smoke") due to 6 previous errors
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Get exact lines
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | grep -E "tests/server_smoke.rs:" | head -10`
+
+```text
+   --> crates/chess-net/tests/server_smoke.rs:389:53
+   --> crates/chess-net/tests/server_smoke.rs:395:55
+   --> crates/chess-net/tests/server_smoke.rs:398:53
+   --> crates/chess-net/tests/server_smoke.rs:400:55
+   --> crates/chess-net/tests/server_smoke.rs:440:50
+   --> crates/chess-net/tests/server_smoke.rs:469:47
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-net/tests/server_smoke.rs`
+
+```text
+385	    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+386	    tokio::time::sleep(Duration::from_millis(50)).await;
+387	
+388	    tokio::task::spawn_blocking(move || -> Result<()> {
+389	        let (mut foo_red, _) = tungstenite::connect(&format!("ws://{addr}/ws/foo"))?;
+390	        let foo_hello = read_json(&mut foo_red)?;
+391	        let mv = match foo_hello {
+392	            ServerMsg::Hello { view, .. } => view.legal_moves[0].clone(),
+393	            other => panic!("expected Hello, got {other:?}"),
+394	        };
+395	        let (mut foo_black, _) = tungstenite::connect(&format!("ws://{addr}/ws/foo"))?;
+396	        let _ = read_json(&mut foo_black)?;
+397	
+398	        let (mut bar_red, _) = tungstenite::connect(&format!("ws://{addr}/ws/bar"))?;
+399	        let _ = read_json(&mut bar_red)?;
+400	        let (mut bar_black, _) = tungstenite::connect(&format!("ws://{addr}/ws/bar"))?;
+401	        let _ = read_json(&mut bar_black)?;
+402	
+403	        send_json(&mut foo_red, &ClientMsg::Move { mv })?;
+404	        // Both foo seats see the Update.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:40Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated. All occurrences were successfully replaced.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:46Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated. All occurrences were successfully replaced.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:51Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:31:55Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/server_smoke.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clippy gate
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.57s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run full workspace test suite
+
+`cargo test --workspace 2>&1 | tail -40`
+
+```text
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-b931080b537ec68e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_ai
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Summarize test results
+
+`cargo test --workspace 2>&1 | grep -E "test result|running" | head -20`
+
+```text
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 73 tests
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 3 tests
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Total test stats
+
+`cargo test --workspace 2>&1 | grep -E "test result" | awk '{ok+=$4; fail+=$6; ign+=$8} END {printf "passed=%d failed=%d ignored=%d\n", ok, fail, ign}'`
+
+```text
+passed=137 failed=0 ignored=1
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:32Z)**_
+
+137 passing (up from 117), 1 slow ignored. Now the launcher script and Makefile target.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #65 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:33Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #67 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./scripts/play-local.sh`
+
+```text
+1	#!/usr/bin/env bash
+2	# Launch one chess-net-server + two chess-tui --connect clients in a
+3	# single tmux session. The first window ("clients") holds two client panes
+4	# in a horizontal split; the second window ("server") shows the server log.
+5	#
+6	# Windows are addressed by NAME, not index — this is robust against any
+7	# `base-index` / `pane-base-index` you set in ~/.tmux.conf.
+8	#
+9	# Usage:
+10	#   scripts/play-local.sh [SESSION] [PORT] [VARIANT] [SERVER_ARGS...]
+11	#
+12	# Examples:
+13	#   scripts/play-local.sh                          # xiangqi casual on :7878
+14	#   scripts/play-local.sh chess-local 9000 banqi --preset taiwan --seed 42
+15	#   scripts/play-local.sh chess-strict 7878 xiangqi --strict
+16	#
+17	# Detach with Ctrl-b d. Kill with `make stop-local` or
+18	# `tmux kill-session -t SESSION`.
+19	
+20	set -euo pipefail
+21	
+22	SESSION="${1:-chess-local}"
+23	PORT="${2:-7878}"
+24	VARIANT="${3:-xiangqi}"
+25	shift 3 2>/dev/null || true
+26	SERVER_EXTRA=("$@")
+27	
+28	if ! command -v tmux >/dev/null 2>&1; then
+29	  echo "tmux not found on PATH. Install tmux to use this launcher." >&2
+30	  exit 1
+31	fi
+32	
+33	REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+34	cd "$REPO_ROOT"
+35	
+36	# Pre-build so the panes don't all race-compile on first launch and the
+37	# server bind doesn't lag the client connect.
+38	echo "==> building chess-net-server + chess-tui (debug)..."
+39	cargo build -p chess-net -p chess-tui
+40	
+41	SERVER_BIN="$REPO_ROOT/target/debug/chess-net-server"
+42	CLIENT_BIN="$REPO_ROOT/target/debug/chess-tui"
+43	
+44	if [[ ! -x "$SERVER_BIN" || ! -x "$CLIENT_BIN" ]]; then
+45	  echo "build did not produce expected binaries:" >&2
+46	  echo "  $SERVER_BIN" >&2
+47	  echo "  $CLIENT_BIN" >&2
+48	  exit 1
+49	fi
+50	
+51	# Reset stale session, if any.
+52	tmux kill-session -t "$SESSION" 2>/dev/null || true
+53	
+54	CLIENT_CMD="$CLIENT_BIN --connect ws://127.0.0.1:$PORT"
+55	SERVER_CMD="$SERVER_BIN --port $PORT $VARIANT ${SERVER_EXTRA[*]:-}"
+56	
+57	# Two windows: "clients" (split into two client panes) and "server".
+58	# Address windows by NAME — `tmux new-session -n` honors `base-index`, so
+59	# letting tmux pick the index avoids "index 1 in use" when the user has
+60	# `set -g base-index 1` in ~/.tmux.conf.
+61	tmux new-session  -d -s "$SESSION" -n clients
+62	tmux new-window   -t "$SESSION" -n server "$SERVER_CMD"
+63	
+64	# Tiny grace period so the server has bound :$PORT before clients try
+65	# to connect. The clients also retry on failure, so this is just to
+66	# avoid the first try wasting a backoff.
+67	sleep 0.5
+68	
+69	tmux send-keys    -t "${SESSION}:clients" "$CLIENT_CMD" C-m
+70	tmux split-window -h -t "${SESSION}:clients" "$CLIENT_CMD"
+71	tmux select-layout -t "${SESSION}:clients" even-horizontal
+72	tmux select-window -t "${SESSION}:clients"
+73	
+74	# If we're already inside tmux, plain `attach` would error with
+75	# "sessions should be nested with care" (and won't help anyway —
+76	# you can't view two tmux sessions at once from one client). Switch
+77	# the current client to the new session instead; press the prefix
+78	# + L (last-window) or prefix + s (session picker) to switch back.
+79	if [[ -n "${TMUX:-}" ]]; then
+80	  echo
+81	  echo "Already inside tmux — switching this client to '$SESSION'."
+82	  echo "  - prefix + d  detach back to your shell"
+83	  echo "  - prefix + s  pick another session (your previous one is still alive)"
+84	  exec tmux switch-client -t "$SESSION"
+85	else
+86	  exec tmux attach -t "$SESSION"
+87	fi
+88
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./Makefile`
+
+```text
+1	# Convenience targets for local development. The canonical build/test
+2	# flow is plain `cargo`; this just wraps the multi-process net launcher.
+3	
+4	SESSION ?= chess-local
+5	PORT    ?= 7878
+6	VARIANT ?= xiangqi
+7	
+8	.PHONY: help build server play-local stop-local check fmt clippy test wasm
+9	
+10	help:
+11		@echo "Targets:"
+12		@echo "  build         build chess-net-server + chess-tui (debug)"
+13		@echo "  server        run a single chess-net-server on :$(PORT)"
+14		@echo "  play-local    tmux: window0=2 chess-tui clients, window1=server"
+15		@echo "  stop-local    kill the tmux session created by play-local"
+16		@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+17		@echo "  fmt | clippy | test | wasm   individual gates"
+18		@echo ""
+19		@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) VARIANT=$(VARIANT)"
+20		@echo "Banqi example: make play-local VARIANT=banqi"
+21	
+22	build:
+23		cargo build -p chess-net -p chess-tui
+24	
+25	server: build
+26		./target/debug/chess-net-server --port $(PORT) $(VARIANT)
+27	
+28	play-local:
+29		@scripts/play-local.sh $(SESSION) $(PORT) $(VARIANT)
+30	
+31	stop-local:
+32		-tmux kill-session -t $(SESSION) 2>/dev/null
+33	
+34	# Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
+35	check: fmt clippy test wasm
+36	
+37	fmt:
+38		cargo fmt --check
+39	
+40	clippy:
+41		cargo clippy --workspace --all-targets -- -D warnings
+42	
+43	test:
+44		cargo test --workspace
+45	
+46	wasm:
+47		cargo build --target wasm32-unknown-unknown -p chess-core
+48
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:53Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```sh
+#!/usr/bin/env bash
+# Launch one chess-net-server + three chess-tui panes in a single tmux
+# session, exercising the multi-room lobby flow:
+#
+#   - pane A and B: open the variant picker → pick "Connect to server…" →
+#     enter ws://127.0.0.1:$PORT in the host prompt → land in the lobby.
+#     One creates a room, the other picks it from the live list.
+#   - pane C:       launches with --lobby ws://127.0.0.1:$PORT directly,
+#     so it skips the picker and watches the room appear/fill in real time.
+#
+# Address windows by NAME (robust against `base-index` settings) and use
+# `switch-client` instead of `attach` when invoked from inside tmux.
+#
+# Usage:
+#   scripts/play-lobby.sh [SESSION] [PORT] [VARIANT] [SERVER_ARGS...]
+#
+# Examples:
+#   scripts/play-lobby.sh                       # xiangqi casual on :7878
+#   scripts/play-lobby.sh chess-lobby 9000 banqi --preset taiwan --seed 42
+
+set -euo pipefail
+
+SESSION="${1:-chess-lobby}"
+PORT="${2:-7878}"
+VARIANT="${3:-xiangqi}"
+shift 3 2>/dev/null || true
+SERVER_EXTRA=("$@")
+
+if ! command -v tmux >/dev/null 2>&1; then
+  echo "tmux not found on PATH. Install tmux to use this launcher." >&2
+  exit 1
+fi
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
+echo "==> building chess-net-server + chess-tui (debug)..."
+cargo build -p chess-net -p chess-tui
+
+SERVER_BIN="$REPO_ROOT/target/debug/chess-net-server"
+CLIENT_BIN="$REPO_ROOT/target/debug/chess-tui"
+
+if [[ ! -x "$SERVER_BIN" || ! -x "$CLIENT_BIN" ]]; then
+  echo "build did not produce expected binaries:" >&2
+  echo "  $SERVER_BIN" >&2
+  echo "  $CLIENT_BIN" >&2
+  exit 1
+fi
+
+tmux kill-session -t "$SESSION" 2>/dev/null || true
+
+# Pane A & B drop the user into the variant picker (no flags). They go
+# through the lobby flow manually — pick "Connect to server…", type the
+# host, etc. Pane C uses --lobby to skip straight to the browser.
+CLIENT_PICK="$CLIENT_BIN"
+CLIENT_LOBBY="$CLIENT_BIN --lobby ws://127.0.0.1:$PORT"
+SERVER_CMD="$SERVER_BIN --port $PORT $VARIANT ${SERVER_EXTRA[*]:-}"
+
+tmux new-session  -d -s "$SESSION" -n clients
+tmux new-window   -t "$SESSION" -n server "$SERVER_CMD"
+
+sleep 0.5
+
+# Three vertical-tile clients: A (picker), B (picker), C (--lobby watcher).
+tmux send-keys    -t "${SESSION}:clients" "$CLIENT_PICK" C-m
+tmux split-window -h -t "${SESSION}:clients" "$CLIENT_PICK"
+tmux split-window -h -t "${SESSION}:clients" "$CLIENT_LOBBY"
+tmux select-layout -t "${SESSION}:clients" even-horizontal
+tmux select-window -t "${SESSION}:clients"
+
+if [[ -n "${TMUX:-}" ]]; then
+  echo
+  echo "Already inside tmux — switching this client to '$SESSION'."
+  echo "  - prefix + d  detach back to your shell"
+  echo "  - prefix + s  pick another session (your previous one is still alive)"
+  exec tmux switch-client -t "$SESSION"
+else
+  exec tmux attach -t "$SESSION"
+fi
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-lobby.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:32:53Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Make launcher executable
+
+`chmod +x /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-lobby.sh`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/Makefile has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:11Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/Makefile has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:15Z)**_
+
+Now docs and TODO updates.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:15Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #67 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:16Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #68 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List existing ADRs for numbering
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/ 2>/dev/null`
+
+```text
+ 0001-rust-workspace-layout.md
+ 0002-square-as-u16.md
+ 0003-ruleset-as-data-not-trait.md
+ 0004-player-view-projection.md
+󰂺 README.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# ADR 0005 — Multi-room lobby + optional password
+
+Status: accepted (shipped 2026-05-06)
+Supersedes: nothing
+Related: ADR-0004 (PlayerView projection — still the only visible state)
+
+## Context
+
+The chess-net MVP shipped a single hard-coded room: two ws clients connect
+to `ws://host:7878`, get seated Red/Black, and play. To find each other,
+players had to coordinate the host:port out of band ("Slack the IP, count
+seats by hand"). Three integration paths surfaced when designing the next
+step:
+
+A. Extend `chess-tui` with an in-process lobby browser (`Screen::Lobby`).
+B. Ship a separate `chess-tui-lobby` binary or subcommand.
+C. Replace/parallel the transport with `russh` so users do
+   `ssh chess.you.dev`.
+
+## Decision
+
+Pick **A**. Multi-room is implemented inside the existing chess-net axum
+server with a new `/lobby` ws subscription channel, and `chess-tui` grows
+three new screens (`HostPrompt`, `Lobby`, `CreateRoom`) plus `--lobby` /
+`--password` flags. The first joiner of a `/ws/<id>?password=<pw>` URL
+locks the room with that password; later joiners must present the same
+secret or get `Error{"bad password"}` and are dropped pre-Hello.
+
+## Consequences
+
+**Reused stack**: no new dependencies in chess-tui (no `reqwest`, no
+`tui-input`, no `russh`). The lobby connection is a second instance of
+the existing sync `tungstenite` worker thread (`net.rs`). Server-side it's
+two more axum routes plus a `Mutex<HashMap<String, Arc<Mutex<RoomState>>>>`
+table.
+
+**Live updates**: the `Rooms` push goes out on every seat insertion / seat
+removal / status flip / explicit `ListRooms` request. Lobby viewers see
+new rooms appear and fill in real time without polling.
+
+**Backwards compat preserved**: `ws://host` and `ws://host/ws` still land
+in a default room called `main`, which is permanent (never GC'd) so v1
+clients always have a stable target. The new wire variants
+(`ServerMsg::Rooms`, `ClientMsg::ListRooms`) are additive — old payload
+shapes are byte-identical.
+
+**Friend-lock not security**: `?password=` is plain-text, stored in
+memory, transmitted over plaintext ws. This is *not* an auth boundary;
+it's the equivalent of a numeric room PIN to keep strangers out of your
+home game. Real auth + WSS belongs in a separate PR.
+
+**Mixed-variant servers deferred**: a server boots with one `--variant`
+that's used for every auto-created room. Per-room `RuleSet` is doable
+(`RoomState` already owns its `GameState`) but adds UX questions about
+filter / sort in the lobby that we punted for now.
+
+## Alternatives weighed
+
+**REST `GET /rooms` polling instead of `/lobby` push**: simpler protocol,
+but the chess-tui worker is shaped for streaming `ServerMsg`/`ClientMsg`
+JSON. Adding HTTP would have meant either pulling in `reqwest` or
+hand-rolling HTTP/1.1 over `TcpStream`. The push approach reuses the
+existing transport with two new enum variants. The `/rooms` endpoint
+exists anyway as a small `axum::Json` handler for `curl`-driven debugging.
+
+**Separate `chess-tui-lobby` binary (Option B)**: rejected. The whole
+point of the lobby is to remove the URL-copy-paste step. A second binary
+re-introduces the gap (browse rooms in one process, copy id, type
+`--connect ws://host/ws/<id>` in another).
+
+**`russh` SSH server (Option C)**: rejected. ~1500 LOC of glue, locks the
+canonical transport to SSH, conflicts with the chess-web roadmap (P2 in
+`TODO.md`). Filed as a P? spike for later (`Wish/SSH multiplayer
+alternative to chess-net`); not scope for this PR.
+
+**`DashMap` instead of nested `tokio::sync::Mutex<HashMap<...>>`**: same
+runtime cost in practice; the nested Mutex pattern is one fewer dep and
+the lock ordering (outer → inner) is trivial to reason about. Outer lock
+is held only for HashMap insert/remove/iterate-to-snapshot, never across
+`await` or `tx.send`.
+
+## Validation
+
+Eight new server-smoke tests cover the lobby push semantics, multi-room
+isolation, password accept/reject, and the `main`-room back-compat path.
+Two new protocol round-trip tests cover the `Rooms` / `ListRooms` /
+`RoomSummary` shapes. Manual smoke is `make play-lobby` (one server +
+three TUI panes: two go through the picker → host-prompt → lobby flow,
+one watches via `--lobby`).
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/0005-multi-room-lobby.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:33:58Z)**_
+
+Now updating CLAUDE.md and TODO.md.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:06Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:10Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships an MVP single-room websocket server (`chess-net-server`) that two `chess-tui --connect` clients can play on. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+16	
+17	# Format + lint (CI requires both clean; clippy uses -D warnings)
+18	cargo fmt --check
+19	cargo clippy --workspace --all-targets -- -D warnings
+20	
+21	# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+22	cargo test -p chess-core
+23	
+24	# Run a single test
+25	cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+26	
+27	# Slow xiangqi perft depth-3 — runs in release for speed
+28	cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+29	
+30	# WASM cleanliness — proves chess-core has no platform deps
+31	cargo build --target wasm32-unknown-unknown -p chess-core
+32	
+33	# Run the REPL test harness (proves the engine end-to-end)
+34	cargo run -p chess-cli
+35	> xiangqi
+36	> moves
+37	> play h2e2
+38	> banqi --preset taiwan --seed 42
+39	> view 0
+40	> quit
+41	
+42	# Interactive TUI (default render: CJK glyphs + color)
+43	cargo run -p chess-tui                                    # variant picker
+44	cargo run -p chess-tui -- xiangqi                         # casual mode (default)
+45	cargo run -p chess-tui -- xiangqi --strict                # standard self-check rules
+46	cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+47	cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+48	cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+49	cargo run -p chess-tui -- --as black xiangqi              # render as Black
+50	
+51	# Networked play (MVP: single room, no lobby / reconnect / time controls)
+52	cargo run -p chess-net -- --port 7878 xiangqi             # server
+53	cargo run -p chess-net -- --port 7878 xiangqi --strict    # ditto, strict self-check
+54	cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+55	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878   # client (server picks variant + side)
+56	
+57	# One-shot local 2-client harness (tmux: window 0 = clients, window 1 = server)
+58	make play-local                                           # xiangqi casual on :7878
+59	make play-local VARIANT=banqi                             # banqi
+60	make play-local PORT=9000 VARIANT=xiangqi                 # custom port
+61	make stop-local                                           # tear down the tmux session
+62	```
+63	
+64	TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
+65	`Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
+66	`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit.
+67	Mouse left-click selects or commits. When the game ends, a banner appears in
+68	the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
+69	back the losing move.
+70	
+71	`rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
+72	
+73	## Architecture quick reference
+74	
+75	The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, `chess-web`, and `xtask` are still stubs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+76	
+77	1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+78	2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+79	3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+80	4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+81	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+82	
+83	Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+84	
+85	## Gotchas worth knowing
+86	
+87	- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+88	
+89	- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+90	
+91	- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+92	
+93	- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+94	
+95	- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+96	
+97	- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+98	
+99	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+100	
+101	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+102	
+103	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+104	
+105	- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+106	
+107	- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+108	
+109	- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+110	
+111	- **`chess-net` MVP is single-room, single-game.** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds the authoritative `GameState` and broadcasts per-side `PlayerView` after every committed move. First connection = Red, second = Black, third+ gets `Error{"room full"}` and is dropped. `chess-tui` joins via `--connect` and runs a sync `tungstenite` worker thread (`clients/chess-tui/src/net.rs`) that talks to the TUI over `std::sync::mpsc` — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / lobby / time controls / takeback are deferred (see `TODO.md`).
+112	
+113	## Where to put new work
+114	
+115	| Kind | Where |
+116	|---|---|
+117	| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+118	| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+119	| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+120	| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:55Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:34:59Z)**_
+
+Now updating TODO.md: promote the lobby entry to Done and add follow-ups.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:22Z)**_
+
+Now add the Done entry for the multi-room lobby PR.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:31Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:34Z)**_
+
+Validate the TODO format then run the full pre-push gates.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Validate TODO.md format
+
+`test -x scripts/todo-kanban.sh && scripts/todo-kanban.sh --validate-only TODO.md 2>&1 | tail -10 || echo "(no validator script available)"`
+
+```text
+(no validator script available)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:40Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #68 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:41Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #69 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run all gates except cargo test (separate)
+
+`cargo fmt --check 2>&1 | tail -5 ; echo "---" ; cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 ; echo "---" ; cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -5`
+
+```text
+---
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.44s
+---
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run full test suite
+
+`cargo test --workspace 2>&1 | grep -E "test result" | awk '{ok+=$4; fail+=$6; ign+=$8} END {printf "passed=%d failed=%d ignored=%d\n", ok, fail, ign}'`
+
+```text
+passed=137 failed=0 ignored=1
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:35:56Z)**_
+
+All gates clean: fmt ✓, clippy ✓, 137 tests passing (up from 117), wasm32 ✓. Verifying the binaries build, then committing.
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Build the two binaries used by the launcher
+
+`cargo build -p chess-net -p chess-tui 2>&1 | tail -5`
+
+```text
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.79s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify CLI parses
+
+`./target/debug/chess-tui --help 2>&1 | tail -25`
+
+```text
+ratatui frontend for chess-core
+
+Usage: chess-tui [OPTIONS] [COMMAND]
+
+Commands:
+  xiangqi  Xiangqi (9×10). Casual rules by default — moves that leave your own general capturable are allowed; the game ends when the general is actually captured. Pass `--strict` for the standard self-check filter
+  banqi    Banqi (4×8 face-down)
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --style <STYLE>        Render style [default: cjk] [possible values: cjk, ascii]
+      --no-color             Disable ANSI color (keeps the chosen glyph set)
+      --as <OBSERVER>        Render from this side's perspective (debug; default RED). Ignored when `--connect` is set — the server assigns a side on join [default: red] [possible values: red, black]
+      --connect <CONNECT>    Connect to a chess-net-server instead of starting a local game. Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added automatically if missing). Use ws://host/ws/<room-id> to target a specific room on a multi-room server; pair with --password if the room is locked
+      --lobby <LOBBY>        Open the lobby browser for the given chess-net server. Example: --lobby ws://127.0.0.1:7878 — picks a room from the live list (or creates one) instead of joining a fixed URL. Mutually exclusive with --connect; if both are provided, --lobby wins
+      --password <PASSWORD>  Password for password-locked rooms when paired with --connect. The in-TUI lobby browser prompts for the password directly, so this flag is mostly for scripted reconnects
+  -h, --help                 Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect working tree changes
+
+`git status --short ; echo "---" ; git diff --stat HEAD 2>/dev/null | tail -25`
+
+```text
+ M .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+ M CLAUDE.md
+ M Makefile
+ M README.md
+ M TODO.md
+ M clients/chess-tui/src/app.rs
+ M clients/chess-tui/src/input.rs
+ M clients/chess-tui/src/main.rs
+ M clients/chess-tui/src/ui.rs
+ M crates/chess-net/src/lib.rs
+ M crates/chess-net/src/protocol.rs
+ M crates/chess-net/src/server.rs
+ M crates/chess-net/tests/protocol_roundtrip.rs
+ M crates/chess-net/tests/server_smoke.rs
+?? .claude/
+?? clients/chess-tui/src/text_input.rs
+?? clients/chess-tui/src/url.rs
+?? docs/adr/0005-multi-room-lobby.md
+?? scripts/play-lobby.sh
+---
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 15518 +++++++++++++++++++
+ CLAUDE.md                                          |    26 +-
+ Makefile                                           |    19 +-
+ README.md                                          |     4 +
+ TODO.md                                            |     8 +-
+ clients/chess-tui/src/app.rs                       |   408 +-
+ clients/chess-tui/src/input.rs                     |    62 +-
+ clients/chess-tui/src/main.rs                      |    58 +-
+ clients/chess-tui/src/ui.rs                        |   243 +-
+ crates/chess-net/src/lib.rs                        |    25 +-
+ crates/chess-net/src/protocol.rs                   |    59 +-
+ crates/chess-net/src/server.rs                     |   424 +-
+ crates/chess-net/tests/protocol_roundtrip.rs       |    53 +-
+ crates/chess-net/tests/server_smoke.rs             |   378 +-
+ 14 files changed, 17171 insertions(+), 114 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check unexpected changes
+
+`git diff README.md | head -30 ; echo "---" ; ls -la .claude/ 2>/dev/null | head -10`
+
+```text
+diff --git a/README.md b/README.md
+index a61416c..89083a1 100644
+--- a/README.md
++++ b/README.md
+@@ -60,3 +60,7 @@ Backward-looking knowledge — past traps and non-obvious debugging — lives in
+ [`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
+ message and land on the root cause + workaround instead of re-debugging from
+ scratch.
++
++## Resources
++
++- [Free Online Chinese Chess | Play Xiangqi](https://www.xiangqi.com/)
+---
+drwxr-xr-x@  - daviddwlee84  6 May 17:17  **plans
+.rw-r--r--@ 42 daviddwlee84  6 May 17:17  settings.json
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage feature files only
+
+```bash
+git add CLAUDE.md Makefile TODO.md \
+  clients/chess-tui/src/app.rs clients/chess-tui/src/input.rs clients/chess-tui/src/main.rs \
+  clients/chess-tui/src/ui.rs clients/chess-tui/src/text_input.rs clients/chess-tui/src/url.rs \
+  crates/chess-net/src/lib.rs crates/chess-net/src/protocol.rs crates/chess-net/src/server.rs \
+  crates/chess-net/tests/protocol_roundtrip.rs crates/chess-net/tests/server_smoke.rs \
+  docs/adr/0005-multi-room-lobby.md scripts/play-lobby.sh && git status --short
+```
+
+```text
+ M .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+M  CLAUDE.md
+M  Makefile
+ M README.md
+M  TODO.md
+M  clients/chess-tui/src/app.rs
+M  clients/chess-tui/src/input.rs
+M  clients/chess-tui/src/main.rs
+A  clients/chess-tui/src/text_input.rs
+M  clients/chess-tui/src/ui.rs
+A  clients/chess-tui/src/url.rs
+M  crates/chess-net/src/lib.rs
+M  crates/chess-net/src/protocol.rs
+M  crates/chess-net/src/server.rs
+M  crates/chess-net/tests/protocol_roundtrip.rs
+M  crates/chess-net/tests/server_smoke.rs
+A  docs/adr/0005-multi-room-lobby.md
+A  scripts/play-lobby.sh
+?? .claude/
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit multi-room lobby feature
+
+```bash
+git -c commit.gpgsign=false commit -m "$(cat <<'EOF'
+feat(net): multi-room lobby + optional password
+
+Turns chess-net from a single hard-coded room into a real multi-room
+server with an in-TUI lobby browser. The default `ws://host` and
+`ws://host/ws` URLs still land in a permanent room called "main", so
+v1 clients keep working unchanged.
+
+Server: HashMap<RoomId, Arc<Mutex<RoomState>>> keyed by `[a-zA-Z0-9_-]{1,32}`,
+auto-created on first connect to `/ws/<id>`, GC'd when the last seat
+disconnects (except `main`). New routes: `/lobby` pushes a live
+`ServerMsg::Rooms` snapshot whenever room state changes; `/rooms`
+returns the same as JSON for `curl` / `jq` debugging. Optional
+`?password=<secret>` locks the room to whoever sets it first; mismatched
+joiners get `Error{"bad password"}` and are dropped before any Hello.
+Plain text — friend-list lock, not security.
+
+chess-tui: three new screens (`HostPrompt`, `Lobby`, `CreateRoom`) plus a
+new `Connect to server…` picker entry. New CLI flags `--lobby <ws>`
+(skip picker, land in browser) and `--password <pw>` (paired with
+`--connect`). The lobby uses a second instance of the existing sync
+`tungstenite` worker — no tokio in the TUI binary. Live room list
+(rooms appear/fill/finish without polling) via `Rooms` push. Mid-prompt
+modal handles password entry for locked rooms.
+
+Wire: `PROTOCOL_VERSION` bumped to 2. New `ServerMsg::Rooms{rooms}`,
+`ClientMsg::ListRooms`, `RoomSummary{id,variant,seats,has_password,status}`,
+`RoomStatus{Lobby,Playing,Finished}`. All additive — old enums round-trip
+unchanged.
+
+Tests: 8 new server-smoke (lobby snapshot/push, multi-room isolation,
+password accept/reject, room GC, main-room persistence, /rooms JSON
+snapshot, default-room back-compat) + 3 protocol round-trips. Total
+suite: 117 → 137 passing.
+
+Launcher: `make play-lobby` opens a 4-pane tmux session — server +
+2 picker clients (going through the lobby flow) + 1 `--lobby` watcher.
+
+Out of scope (filed as P2 follow-ups in TODO.md): mixed-variant rooms,
+spectator slots, lobby filter/sort, lobby push debouncing, admin/kick.
+russh / SSH transport remains the separate P? spike it always was.
+
+ADR-0005 captures the design choices (in-process Screen::Lobby vs
+separate binary vs SSH; ws push vs REST polling; lock ordering; plain
+password as friend-lock).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main 8d0b882] feat(net): multi-room lobby + optional password
+ 16 files changed, 1974 insertions(+), 114 deletions(-)
+ create mode 100644 clients/chess-tui/src/text_input.rs
+ create mode 100644 clients/chess-tui/src/url.rs
+ create mode 100644 docs/adr/0005-multi-room-lobby.md
+ create mode 100755 scripts/play-lobby.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify commit landed
+
+`git log --oneline -3`
+
+```text
+8d0b882 feat(net): multi-room lobby + optional password
+8f5a269 fix(net): rematch protocol + nested-tmux launcher
+e0570e2 chore: bundle SpecStory transcript for chess-net-mvp PR
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:36:57Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #69 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 09:37:11Z)**_
+
+Shipped as `8d0b882 feat(net): multi-room lobby + optional password`.
+
+**What changed**
+
+- **Server** (`crates/chess-net/src/server.rs`): rewritten for multi-room. `Arc<Mutex<HashMap<RoomId, Arc<Mutex<RoomState>>>>>` keyed by `[a-zA-Z0-9_-]{1,32}`, auto-created on first arrival, GC'd when empty (except `main`). Routes: `/`, `/ws`, `/ws/:id`, `/lobby` (live `Rooms` push), `/rooms` (JSON snapshot for `curl`).
+- **Wire** (`crates/chess-net/src/protocol.rs`): `PROTOCOL_VERSION=2`. New additive variants `ServerMsg::Rooms`, `ClientMsg::ListRooms`, `RoomSummary`, `RoomStatus`.
+- **Client** (`clients/chess-tui/`): three new screens — `HostPrompt`, `Lobby`, `CreateRoom`. New picker entry `Connect to server…`. New flags `--lobby <ws>` and `--password <pw>`. The lobby is a second sync `tungstenite` worker — still no tokio in the TUI.
+- **Launcher**: `make play-lobby` (1 server + 3 panes: 2 picker-flow joiners + 1 `--lobby` watcher).
+- **Docs**: ADR-0005 explains the design tradeoffs (in-process vs separate binary vs `russh`; ws push vs REST polling; lock ordering; password is friend-lock not security).
+- **Tests**: 117 → 137 passing. 8 new server smokes (lobby semantics, multi-room isolation, password accept/reject, GC, back-compat); 3 new protocol round-trips.
+
+**UX flow**
+
+```
+chess-tui                                      → Picker → "Connect to server…" → HostPrompt
+   ws://127.0.0.1:7878 + Enter                 → Lobby (live ws push)
+       Enter on a row                          → Net (joins /ws/<id>)
+       'c'                                     → CreateRoom
+       'r'                                     → manual ListRooms
+       Esc                                     → HostPrompt → Picker
+chess-tui --lobby ws://host                    → straight to Lobby
+chess-tui --connect ws://host/ws/foo --password bar  → straight to Net
+chess-tui --connect ws://host                  → unchanged: default room "main"
+```
+
+**Try it**: `make play-lobby` — pane A creates a room, pane B picks it from the live list, pane C watches the seat count flip from 1→2 in real time.

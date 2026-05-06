@@ -7,7 +7,9 @@ use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
 use chess_core::state::GameState;
 use chess_core::view::PlayerView;
-use chess_net::protocol::{ClientMsg, ServerMsg, PROTOCOL_VERSION};
+use chess_net::protocol::{
+    variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+};
 
 fn roundtrip_server(msg: &ServerMsg) -> ServerMsg {
     let json = serde_json::to_string(msg).expect("encode");
@@ -101,4 +103,53 @@ fn protocol_uses_type_tag() {
     })
     .unwrap();
     assert!(json.starts_with("{\"type\":\"Move\""), "got: {json}");
+}
+
+#[test]
+fn server_rooms_roundtrips() {
+    let msg = ServerMsg::Rooms {
+        rooms: vec![
+            RoomSummary {
+                id: "main".into(),
+                variant: "xiangqi".into(),
+                seats: 0,
+                has_password: false,
+                status: RoomStatus::Lobby,
+            },
+            RoomSummary {
+                id: "locked".into(),
+                variant: "banqi".into(),
+                seats: 2,
+                has_password: true,
+                status: RoomStatus::Playing,
+            },
+        ],
+    };
+    let json = serde_json::to_string(&msg).unwrap();
+    assert!(json.contains("\"type\":\"Rooms\""), "got: {json}");
+    assert!(json.contains("\"status\":\"playing\""), "lowercase rename: {json}");
+    match roundtrip_server(&msg) {
+        ServerMsg::Rooms { rooms } => {
+            assert_eq!(rooms.len(), 2);
+            assert_eq!(rooms[0].id, "main");
+            assert!(!rooms[0].has_password);
+            assert_eq!(rooms[1].status, RoomStatus::Playing);
+        }
+        _ => panic!("wrong variant"),
+    }
+}
+
+#[test]
+fn client_list_rooms_roundtrips() {
+    let json = serde_json::to_string(&ClientMsg::ListRooms).unwrap();
+    assert!(json.contains("ListRooms"), "got: {json}");
+    assert!(matches!(roundtrip_client(&ClientMsg::ListRooms), ClientMsg::ListRooms));
+}
+
+#[test]
+fn variant_label_covers_all_variants() {
+    assert_eq!(variant_label(&RuleSet::xiangqi()), "xiangqi-strict");
+    assert_eq!(variant_label(&RuleSet::xiangqi_casual()), "xiangqi");
+    assert_eq!(variant_label(&RuleSet::banqi(Default::default())), "banqi");
+    assert_eq!(variant_label(&RuleSet::three_kingdom()), "three-kingdom");
 }

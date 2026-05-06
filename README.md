@@ -60,3 +60,7 @@ Backward-looking knowledge — past traps and non-obvious debugging — lives in
 [`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
 message and land on the root cause + workaround instead of re-debugging from
 scratch.
+
+## Resources
+
+- [Free Online Chinese Chess | Play Xiangqi](https://www.xiangqi.com/)

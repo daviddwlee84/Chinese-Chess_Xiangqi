@@ -13,7 +13,9 @@ mod glyph;
 mod input;
 mod net;
 mod orient;
+mod text_input;
 mod ui;
+mod url;
 
 use std::io::{self, Stdout};
 use std::time::Duration;
@@ -33,6 +35,7 @@ use ratatui::Terminal;
 use crate::app::AppState;
 use crate::glyph::Style;
 use crate::input::{from_key, from_mouse, Action};
+use crate::url::{normalize_connect_url, normalize_lobby_url};
 
 #[derive(Parser, Debug)]
 #[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
@@ -52,9 +55,24 @@ struct Cli {
 
     /// Connect to a chess-net-server instead of starting a local game.
     /// Example: --connect ws://127.0.0.1:7878 (the trailing /ws is added
-    /// automatically if missing).
+    /// automatically if missing). Use ws://host/ws/<room-id> to target a
+    /// specific room on a multi-room server; pair with --password if the
+    /// room is locked.
     #[arg(long)]
     connect: Option<String>,
+
+    /// Open the lobby browser for the given chess-net server. Example:
+    /// --lobby ws://127.0.0.1:7878 — picks a room from the live list (or
+    /// creates one) instead of joining a fixed URL. Mutually exclusive
+    /// with --connect; if both are provided, --lobby wins.
+    #[arg(long)]
+    lobby: Option<String>,
+
+    /// Password for password-locked rooms when paired with --connect. The
+    /// in-TUI lobby browser prompts for the password directly, so this
+    /// flag is mostly for scripted reconnects.
+    #[arg(long)]
+    password: Option<String>,
 
     #[command(subcommand)]
     cmd: Option<Cmd>,
@@ -117,8 +135,18 @@ fn main() -> Result<()> {
     };
     let use_color = !cli.no_color;
 
-    let app = if let Some(url) = cli.connect.as_deref() {
-        let url = normalize_ws_url(url);
+    let app = if let Some(host) = cli.lobby.as_deref() {
+        let url = normalize_lobby_url(host).map_err(|e| anyhow!(e))?;
+        // Strip the /lobby suffix before storing as `host` so the lobby
+        // can re-derive `/ws/<id>` for joins.
+        let host = url.trim_end_matches("/lobby").to_string();
+        AppState::new_lobby(host, style, use_color, observer)
+    } else if let Some(url) = cli.connect.as_deref() {
+        let mut url = normalize_connect_url(url).map_err(|e| anyhow!(e))?;
+        if let Some(pw) = cli.password.as_deref() {
+            let sep = if url.contains('?') { '&' } else { '?' };
+            url = format!("{url}{sep}password={}", crate::url::urlencode(pw));
+        }
         AppState::new_net(url, style, use_color)
     } else {
         match &cli.cmd {
@@ -135,14 +163,6 @@ fn main() -> Result<()> {
     };
 
     run(app)
-}
-
-fn normalize_ws_url(url: &str) -> String {
-    if url.contains("/ws") || url.ends_with('/') {
-        url.to_string()
-    } else {
-        format!("{url}/ws")
-    }
 }
 
 fn build_banqi_rules(
@@ -213,16 +233,20 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppStat
             return Ok(());
         }
 
-        // Shorter poll in Net mode keeps server pushes feeling snappy
-        // (we redraw at most every poll interval). 200ms in single-process
-        // mode is fine — there's no async source to drain.
-        let poll_ms = if matches!(app.screen, app::Screen::Net(_)) { 60 } else { 200 };
+        // Shorter poll in Net / Lobby modes keeps server pushes feeling
+        // snappy (we redraw at most every poll interval). 200ms in
+        // single-process modes is fine — no async source to drain.
+        let poll_ms = if matches!(app.screen, app::Screen::Net(_) | app::Screen::Lobby(_)) {
+            60
+        } else {
+            200
+        };
         if event::poll(Duration::from_millis(poll_ms))? {
-            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+            let mode = app.input_mode();
             let quit_confirm = app.quit_confirm_open;
             let action = match event::read()? {
                 Event::Key(k) if k.kind == event::KeyEventKind::Press => {
-                    from_key(k, in_picker, quit_confirm)
+                    from_key(k, mode, quit_confirm)
                 }
                 Event::Mouse(m) => from_mouse(m),
                 Event::Resize(_, _) => Action::None,

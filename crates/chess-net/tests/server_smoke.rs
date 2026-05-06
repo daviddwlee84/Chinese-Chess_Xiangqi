@@ -1,13 +1,13 @@
-//! End-to-end smoke: boot a server on an ephemeral port, two sync
-//! `tungstenite` clients connect, exchange Hello, Red plays a legal move,
-//! both clients next read an Update. Validates the full loop.
+//! End-to-end smoke: boot a server on an ephemeral port, sync `tungstenite`
+//! clients connect, exchange messages, validate the full loop including the
+//! multi-room + lobby + password additions.
 
 use std::time::Duration;
 
 use anyhow::Result;
 use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
-use chess_net::{ClientMsg, ServerMsg};
+use chess_net::{ClientMsg, RoomStatus, ServerMsg};
 use tungstenite::Message;
 
 fn read_json<S: std::io::Read + std::io::Write>(
@@ -16,6 +16,52 @@ fn read_json<S: std::io::Read + std::io::Write>(
     let m = ws.read()?;
     let text = m.to_text()?;
     Ok(serde_json::from_str(text)?)
+}
+
+fn send_json<S: std::io::Read + std::io::Write>(
+    ws: &mut tungstenite::WebSocket<S>,
+    msg: &ClientMsg,
+) -> Result<()> {
+    ws.send(Message::Text(serde_json::to_string(msg)?))?;
+    Ok(())
+}
+
+fn set_nonblocking(
+    ws: &mut tungstenite::WebSocket<tungstenite::stream::MaybeTlsStream<std::net::TcpStream>>,
+) -> Result<()> {
+    match ws.get_mut() {
+        tungstenite::stream::MaybeTlsStream::Plain(tcp) => Ok(tcp.set_nonblocking(true)?),
+        _ => Ok(()),
+    }
+}
+
+/// Drain Rooms pushes until one matches the predicate, or we hit a
+/// reasonable read budget. The lobby socket can receive several stale
+/// snapshots back-to-back during fast room churn (each refresh_summary
+/// triggers its own push); the test cares about *eventually consistent*
+/// state, not every intermediate frame.
+fn read_rooms_until<S, F>(
+    ws: &mut tungstenite::WebSocket<S>,
+    mut pred: F,
+) -> Result<Vec<chess_net::RoomSummary>>
+where
+    S: std::io::Read + std::io::Write,
+    F: FnMut(&[chess_net::RoomSummary]) -> bool,
+{
+    for _ in 0..16 {
+        match read_json(ws)? {
+            ServerMsg::Rooms { rooms } => {
+                if pred(&rooms) {
+                    return Ok(rooms);
+                }
+            }
+            ServerMsg::Error { message } => {
+                anyhow::bail!("unexpected error on lobby socket: {message}")
+            }
+            other => anyhow::bail!("expected Rooms on lobby socket, got {other:?}"),
+        }
+    }
+    anyhow::bail!("predicate never matched within 16 lobby pushes")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -177,6 +223,330 @@ async fn third_client_gets_room_full() -> Result<()> {
             }
             other => panic!("expected Error, got {other:?}"),
         }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+// --- Lobby + multi-room + password tests --------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn lobby_lists_empty_initially() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let lobby_url = format!("ws://{addr}/lobby");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let rooms = read_rooms_until(&mut lobby, |_| true)?;
+        assert!(rooms.is_empty(), "fresh server should report no rooms, got {rooms:?}");
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn lobby_sees_room_after_join() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let lobby_url = format!("ws://{addr}/lobby");
+    let game_url = format!("ws://{addr}/ws/foo");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |_| true)?; // initial empty snapshot
+
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        let _ = read_json(&mut red)?; // Hello
+
+        let rooms = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "foo"))?;
+        let foo = rooms.iter().find(|r| r.id == "foo").unwrap();
+        assert_eq!(foo.seats, 1);
+        assert_eq!(foo.status, RoomStatus::Lobby);
+        assert!(!foo.has_password);
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn lobby_sees_seat_fill_and_finish() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let lobby_url = format!("ws://{addr}/lobby");
+    let game_url = format!("ws://{addr}/ws/foo");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |_| true)?;
+
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        let _ = read_json(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&game_url)?;
+        let _ = read_json(&mut black)?;
+
+        let rooms = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "foo" && r.seats == 2 && r.status == RoomStatus::Playing)
+        })?;
+        assert!(rooms.iter().any(|r| r.id == "foo"));
+
+        send_json(&mut red, &ClientMsg::Resign)?;
+        // Drain the resignation Updates from both game sockets first so
+        // they don't pile up.
+        assert!(matches!(read_json(&mut red)?, ServerMsg::Update { .. }));
+        assert!(matches!(read_json(&mut black)?, ServerMsg::Update { .. }));
+
+        let _ = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "foo" && r.status == RoomStatus::Finished)
+        })?;
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn password_rejected_on_wrong() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let red_url = format!("ws://{addr}/ws/locked?password=alpha");
+    let bad_url = format!("ws://{addr}/ws/locked?password=beta");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut red, _) = tungstenite::connect(&red_url)?;
+        let red_hello = read_json(&mut red)?;
+        assert!(matches!(red_hello, ServerMsg::Hello { .. }), "got {red_hello:?}");
+
+        let (mut bad, _) = tungstenite::connect(&bad_url)?;
+        match read_json(&mut bad)? {
+            ServerMsg::Error { message } => {
+                assert!(message.contains("bad password"), "got: {message}")
+            }
+            other => panic!("expected Error, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn password_accepted_on_right() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let url = format!("ws://{addr}/ws/locked?password=alpha");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut red, _) = tungstenite::connect(&url)?;
+        match read_json(&mut red)? {
+            ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::RED),
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        let (mut black, _) = tungstenite::connect(&url)?;
+        match read_json(&mut black)? {
+            ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::BLACK),
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn two_rooms_isolated_no_crosstalk() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut foo_red, _) = tungstenite::connect(format!("ws://{addr}/ws/foo"))?;
+        let foo_hello = read_json(&mut foo_red)?;
+        let mv = match foo_hello {
+            ServerMsg::Hello { view, .. } => view.legal_moves[0].clone(),
+            other => panic!("expected Hello, got {other:?}"),
+        };
+        let (mut foo_black, _) = tungstenite::connect(format!("ws://{addr}/ws/foo"))?;
+        let _ = read_json(&mut foo_black)?;
+
+        let (mut bar_red, _) = tungstenite::connect(format!("ws://{addr}/ws/bar"))?;
+        let _ = read_json(&mut bar_red)?;
+        let (mut bar_black, _) = tungstenite::connect(format!("ws://{addr}/ws/bar"))?;
+        let _ = read_json(&mut bar_black)?;
+
+        send_json(&mut foo_red, &ClientMsg::Move { mv })?;
+        // Both foo seats see the Update.
+        assert!(matches!(read_json(&mut foo_red)?, ServerMsg::Update { .. }));
+        assert!(matches!(read_json(&mut foo_black)?, ServerMsg::Update { .. }));
+
+        // bar sockets must NOT see anything within the next ~150ms.
+        set_nonblocking(&mut bar_red)?;
+        set_nonblocking(&mut bar_black)?;
+        std::thread::sleep(Duration::from_millis(150));
+        match bar_red.read() {
+            Err(tungstenite::Error::Io(e)) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            other => panic!("bar_red saw cross-room traffic: {other:?}"),
+        }
+        match bar_black.read() {
+            Err(tungstenite::Error::Io(e)) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            other => panic!("bar_black saw cross-room traffic: {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn room_gc_after_last_seat_leaves() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let lobby_url = format!("ws://{addr}/lobby");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |_| true)?;
+
+        let (mut temp, _) = tungstenite::connect(format!("ws://{addr}/ws/temp"))?;
+        let _ = read_json(&mut temp)?;
+
+        let _ = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "temp"))?;
+
+        // Disconnect → room should be GC'd (it's not "main").
+        drop(temp);
+        let rooms = read_rooms_until(&mut lobby, |rs| !rs.iter().any(|r| r.id == "temp"))?;
+        assert!(!rooms.iter().any(|r| r.id == "temp"));
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn default_room_main_persists_after_empty() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let lobby_url = format!("ws://{addr}/lobby");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |_| true)?;
+
+        let (mut a, _) = tungstenite::connect(format!("ws://{addr}/ws"))?;
+        let _ = read_json(&mut a)?;
+        let _ = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "main"))?;
+
+        drop(a);
+        // After the only seat leaves, "main" must still exist (just with seats=0)
+        // — never GC'd. Allow the lobby to settle, then ask for an explicit list.
+        std::thread::sleep(Duration::from_millis(100));
+        send_json(&mut lobby, &ClientMsg::ListRooms)?;
+        let rooms =
+            read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "main" && r.seats == 0))?;
+        assert!(rooms.iter().any(|r| r.id == "main"));
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn default_room_back_compat() -> Result<()> {
+    // Old (v1-style) clients connect to /ws (no room id) and land in "main".
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let url = format!("ws://{addr}/ws");
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut a, _) = tungstenite::connect(&url)?;
+        match read_json(&mut a)? {
+            ServerMsg::Hello { observer, protocol, .. } => {
+                assert_eq!(observer, Side::RED);
+                assert_eq!(protocol, chess_net::PROTOCOL_VERSION);
+            }
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        let (mut b, _) = tungstenite::connect(&url)?;
+        match read_json(&mut b)? {
+            ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::BLACK),
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rooms_json_endpoint_returns_snapshot() -> Result<()> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let game_url = format!("ws://{addr}/ws/curl-test");
+    let rooms_url = format!("http://{addr}/rooms");
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        let _ = read_json(&mut red)?;
+
+        let body = std::thread::spawn(move || -> Result<String> {
+            // Plain HTTP/1.1 GET on the same listener — easier than pulling
+            // reqwest into dev-deps just for one assertion.
+            use std::io::{Read, Write};
+            let stream = std::net::TcpStream::connect(
+                rooms_url.trim_start_matches("http://").trim_end_matches("/rooms"),
+            )?;
+            let mut stream = stream;
+            stream.write_all(b"GET /rooms HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")?;
+            let mut buf = String::new();
+            stream.read_to_string(&mut buf)?;
+            Ok(buf)
+        })
+        .join()
+        .map_err(|_| anyhow::anyhow!("http thread panicked"))??;
+
+        assert!(body.contains("curl-test"), "expected curl-test in body, got: {body}");
         Ok(())
     })
     .await??;

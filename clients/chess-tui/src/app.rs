@@ -7,12 +7,14 @@ use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, RuleSet};
 use chess_core::state::{GameState, GameStatus};
 use chess_core::view::{PlayerView, VisibleCell};
-use chess_net::{ClientMsg, ServerMsg};
+use chess_net::{ClientMsg, RoomSummary, ServerMsg};
 
 use crate::glyph::Style;
-use crate::input::Action;
+use crate::input::{Action, InputMode};
 use crate::net::{NetClient, NetEvent};
 use crate::orient;
+use crate::text_input;
+use crate::url::{normalize_host_url, urlencode, valid_room_id};
 
 /// Variant + preset choices in the picker, in display order.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -22,16 +24,19 @@ pub enum PickerEntry {
     BanqiPurist,
     BanqiTaiwan,
     BanqiAggressive,
+    /// Open the host prompt → lobby browser → online play flow.
+    ConnectToServer,
     Quit,
 }
 
 impl PickerEntry {
-    pub const ALL: [PickerEntry; 6] = [
+    pub const ALL: [PickerEntry; 7] = [
         PickerEntry::Xiangqi,
         PickerEntry::XiangqiStrict,
         PickerEntry::BanqiPurist,
         PickerEntry::BanqiTaiwan,
         PickerEntry::BanqiAggressive,
+        PickerEntry::ConnectToServer,
         PickerEntry::Quit,
     ];
 
@@ -42,6 +47,7 @@ impl PickerEntry {
             PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
             PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
             PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+            PickerEntry::ConnectToServer => "Connect to server… (online)",
             PickerEntry::Quit => "Quit",
         }
     }
@@ -57,7 +63,7 @@ impl PickerEntry {
             PickerEntry::BanqiAggressive => {
                 Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
             }
-            PickerEntry::Quit => None,
+            PickerEntry::ConnectToServer | PickerEntry::Quit => None,
         }
     }
 }
@@ -87,10 +93,57 @@ pub struct NetView {
     pub connected: bool,
 }
 
+/// Free-text "ws://host:port" prompt entered before the lobby.
+pub struct HostPromptView {
+    pub buf: String,
+    pub error: Option<String>,
+}
+
+/// Live room browser. Reads from a separate `NetClient` connected to the
+/// server's `/lobby` endpoint; joining a room spawns a fresh `NetClient` to
+/// `/ws/<id>?password=…` and transitions to `Screen::Net`.
+pub struct LobbyView {
+    pub client: NetClient,
+    /// Original `ws://host:port` (no path). The lobby ws is `host/lobby`;
+    /// joining builds `host/ws/<id>` from the same prefix.
+    pub host: String,
+    pub rooms: Vec<RoomSummary>,
+    pub cursor: usize,
+    pub last_msg: Option<String>,
+    pub connected: bool,
+    /// When `Some`, the user picked a password-locked room and we're
+    /// reading the password into this buffer before issuing the join.
+    pub pending_join: Option<PendingJoin>,
+}
+
+pub struct PendingJoin {
+    pub room_id: String,
+    pub password_buf: String,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum CreateRoomField {
+    Id,
+    Password,
+    Submit,
+}
+
+/// Form for creating a new room (server auto-creates on first join).
+pub struct CreateRoomView {
+    pub host: String,
+    pub id_buf: String,
+    pub password_buf: String,
+    pub focus: CreateRoomField,
+    pub error: Option<String>,
+}
+
 pub enum Screen {
     Picker(PickerView),
     Game(Box<GameView>),
     Net(Box<NetView>),
+    HostPrompt(HostPromptView),
+    Lobby(Box<LobbyView>),
+    CreateRoom(CreateRoomView),
 }
 
 pub struct AppState {
@@ -192,14 +245,81 @@ impl AppState {
         }
     }
 
-    /// Drain ws events from the worker thread and apply them to the
-    /// `NetView`. Called once per main-loop tick (no-op outside Net mode).
+    /// Skip the picker and land on the host-prompt screen so the user can
+    /// type a server URL. Used by the `--lobby` flag with no host argument
+    /// — currently main always passes a URL, so this is the safety net for
+    /// future entrypoints (e.g. picker → "Connect to server…").
+    pub fn new_host_prompt(style: Style, use_color: bool, observer: Side) -> Self {
+        Self {
+            screen: Screen::HostPrompt(HostPromptView { buf: "ws://".into(), error: None }),
+            style,
+            use_color,
+            observer,
+            help_open: false,
+            rules_open: false,
+            quit_confirm_open: false,
+            board_rect: None,
+            should_quit: false,
+        }
+    }
+
+    /// Open the lobby browser against `host` (e.g. `"ws://127.0.0.1:7878"`).
+    pub fn new_lobby(host: String, style: Style, use_color: bool, observer: Side) -> Self {
+        let client = NetClient::spawn(format!("{host}/lobby"));
+        Self {
+            screen: Screen::Lobby(Box::new(LobbyView {
+                client,
+                host,
+                rooms: Vec::new(),
+                cursor: 0,
+                last_msg: Some("Connecting to lobby…".into()),
+                connected: false,
+                pending_join: None,
+            })),
+            style,
+            use_color,
+            observer,
+            help_open: false,
+            rules_open: false,
+            quit_confirm_open: false,
+            board_rect: None,
+            should_quit: false,
+        }
+    }
+
+    /// Drain ws events from the worker thread(s) and apply them to the
+    /// active `NetView` / `LobbyView`. Called once per main-loop tick
+    /// (no-op outside Net / Lobby modes).
     pub fn tick_net(&mut self) {
-        let Screen::Net(n) = &mut self.screen else {
-            return;
-        };
-        while let Ok(evt) = n.client.evt_rx.try_recv() {
-            apply_net_event(n, evt);
+        match &mut self.screen {
+            Screen::Net(n) => {
+                while let Ok(evt) = n.client.evt_rx.try_recv() {
+                    apply_net_event(n, evt);
+                }
+            }
+            Screen::Lobby(l) => {
+                while let Ok(evt) = l.client.evt_rx.try_recv() {
+                    apply_lobby_event(l, evt);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Compute the input mode for the current screen so main.rs can drive
+    /// `from_key` without poking at private state.
+    pub fn input_mode(&self) -> InputMode {
+        match &self.screen {
+            Screen::Picker(_) => InputMode::Picker,
+            Screen::Lobby(l) => {
+                if l.pending_join.is_some() {
+                    InputMode::Text
+                } else {
+                    InputMode::Lobby
+                }
+            }
+            Screen::HostPrompt(_) | Screen::CreateRoom(_) => InputMode::Text,
+            Screen::Game(_) | Screen::Net(_) => InputMode::Game,
         }
     }
 
@@ -249,14 +369,54 @@ impl AppState {
                     *self = AppState::new_picker(style, use_color, observer);
                 }
             }
-            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
-                self.dispatch_picker(action);
+            Action::Back => self.dispatch_back(),
+            Action::PickerUp | Action::PickerDown | Action::PickerSelect => match &self.screen {
+                Screen::Picker(_) => self.dispatch_picker(action),
+                Screen::Lobby(_) => self.dispatch_lobby(action),
+                _ => {}
+            },
+            Action::LobbyCreate | Action::LobbyRefresh => {
+                if matches!(self.screen, Screen::Lobby(_)) {
+                    self.dispatch_lobby(action);
+                }
             }
+            Action::TextInput(_)
+            | Action::TextBackspace
+            | Action::FocusNext
+            | Action::FocusPrev
+            | Action::Submit => self.dispatch_text(action),
             _ => match &self.screen {
                 Screen::Net(_) => self.dispatch_net(action),
                 Screen::Game(_) => self.dispatch_game(action),
-                Screen::Picker(_) => {}
+                Screen::Picker(_)
+                | Screen::HostPrompt(_)
+                | Screen::Lobby(_)
+                | Screen::CreateRoom(_) => {}
             },
+        }
+    }
+
+    fn dispatch_back(&mut self) {
+        let style = self.style;
+        let use_color = self.use_color;
+        let observer = self.observer;
+        match &mut self.screen {
+            Screen::HostPrompt(_) => {
+                *self = AppState::new_picker(style, use_color, observer);
+            }
+            Screen::Lobby(l) => {
+                if l.pending_join.is_some() {
+                    l.pending_join = None;
+                    l.last_msg = None;
+                    return;
+                }
+                *self = AppState::new_picker(style, use_color, observer);
+            }
+            Screen::CreateRoom(c) => {
+                let host = c.host.clone();
+                *self = AppState::new_lobby(host, style, use_color, observer);
+            }
+            _ => {}
         }
     }
 
@@ -269,7 +429,10 @@ impl AppState {
                 Some(view) => matches!(view.status, GameStatus::Ongoing) && n.connected,
                 None => false,
             },
-            Screen::Picker(_) => false,
+            Screen::Picker(_)
+            | Screen::HostPrompt(_)
+            | Screen::Lobby(_)
+            | Screen::CreateRoom(_) => false,
         }
     }
 
@@ -283,14 +446,174 @@ impl AppState {
             Action::PickerDown => p.cursor = (p.cursor + 1) % n,
             Action::PickerSelect => {
                 let entry = PickerEntry::ALL[p.cursor];
-                match entry.rules() {
-                    Some(rules) => {
-                        let observer = self.observer;
+                let observer = self.observer;
+                let style = self.style;
+                let use_color = self.use_color;
+                match entry {
+                    PickerEntry::ConnectToServer => {
+                        *self = AppState::new_host_prompt(style, use_color, observer);
+                    }
+                    PickerEntry::Quit => self.should_quit = true,
+                    other => {
+                        if let Some(rules) = other.rules() {
+                            *self = AppState::new_game(rules, style, use_color, observer);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn dispatch_lobby(&mut self, action: Action) {
+        let Screen::Lobby(l) = &mut self.screen else {
+            return;
+        };
+        // Pending password prompt eats list-cursor inputs.
+        if l.pending_join.is_some() {
+            return;
+        }
+        match action {
+            Action::PickerUp => {
+                if !l.rooms.is_empty() {
+                    l.cursor = (l.cursor + l.rooms.len() - 1) % l.rooms.len();
+                }
+            }
+            Action::PickerDown => {
+                if !l.rooms.is_empty() {
+                    l.cursor = (l.cursor + 1) % l.rooms.len();
+                }
+            }
+            Action::PickerSelect => {
+                if l.rooms.is_empty() {
+                    l.last_msg =
+                        Some("No rooms yet. Press 'c' to create one, or 'r' to refresh.".into());
+                    return;
+                }
+                let cursor = l.cursor.min(l.rooms.len() - 1);
+                let room = l.rooms[cursor].clone();
+                if room.seats >= 2 {
+                    l.last_msg = Some(format!("Room '{}' is full (2/2).", room.id));
+                    return;
+                }
+                if room.has_password {
+                    l.pending_join =
+                        Some(PendingJoin { room_id: room.id, password_buf: String::new() });
+                    l.last_msg = Some("Type password, Enter to join, Esc to cancel.".into());
+                    return;
+                }
+                let host = l.host.clone();
+                let style = self.style;
+                let use_color = self.use_color;
+                *self = AppState::new_net(format!("{host}/ws/{}", room.id), style, use_color);
+            }
+            Action::LobbyCreate => {
+                let host = l.host.clone();
+                self.screen = Screen::CreateRoom(CreateRoomView {
+                    host,
+                    id_buf: String::new(),
+                    password_buf: String::new(),
+                    focus: CreateRoomField::Id,
+                    error: None,
+                });
+            }
+            Action::LobbyRefresh => {
+                let _ = l.client.cmd_tx.send(ClientMsg::ListRooms);
+                l.last_msg = Some("Refresh requested.".into());
+            }
+            _ => {}
+        }
+    }
+
+    fn dispatch_text(&mut self, action: Action) {
+        match &mut self.screen {
+            Screen::HostPrompt(h) => match action {
+                Action::TextInput(c) => text_input::push_char(&mut h.buf, c, 128),
+                Action::TextBackspace => text_input::backspace(&mut h.buf),
+                Action::Submit => {
+                    let raw = h.buf.trim().to_string();
+                    let host = match normalize_host_url(&raw) {
+                        Ok(u) => u,
+                        Err(e) => {
+                            h.error = Some(e);
+                            return;
+                        }
+                    };
+                    let style = self.style;
+                    let use_color = self.use_color;
+                    let observer = self.observer;
+                    *self = AppState::new_lobby(host, style, use_color, observer);
+                }
+                _ => {}
+            },
+            Screen::CreateRoom(c) => match action {
+                Action::TextInput(ch) => match c.focus {
+                    CreateRoomField::Id => text_input::push_char(&mut c.id_buf, ch, 32),
+                    CreateRoomField::Password => text_input::push_char(&mut c.password_buf, ch, 64),
+                    CreateRoomField::Submit => {
+                        if matches!(ch, ' ' | '\n') {
+                            self.dispatch_text(Action::Submit);
+                        }
+                    }
+                },
+                Action::TextBackspace => match c.focus {
+                    CreateRoomField::Id => text_input::backspace(&mut c.id_buf),
+                    CreateRoomField::Password => text_input::backspace(&mut c.password_buf),
+                    _ => {}
+                },
+                Action::FocusNext => {
+                    c.focus = match c.focus {
+                        CreateRoomField::Id => CreateRoomField::Password,
+                        CreateRoomField::Password => CreateRoomField::Submit,
+                        CreateRoomField::Submit => CreateRoomField::Id,
+                    };
+                }
+                Action::FocusPrev => {
+                    c.focus = match c.focus {
+                        CreateRoomField::Id => CreateRoomField::Submit,
+                        CreateRoomField::Password => CreateRoomField::Id,
+                        CreateRoomField::Submit => CreateRoomField::Password,
+                    };
+                }
+                Action::Submit => {
+                    let id = c.id_buf.trim().to_string();
+                    if !valid_room_id(&id) {
+                        c.error = Some("Room id must be 1–32 chars of [a-zA-Z0-9_-].".into());
+                        return;
+                    }
+                    let host = c.host.clone();
+                    let password =
+                        if c.password_buf.is_empty() { None } else { Some(c.password_buf.clone()) };
+                    let url = match password {
+                        Some(pw) => format!("{host}/ws/{id}?password={}", urlencode(&pw)),
+                        None => format!("{host}/ws/{id}"),
+                    };
+                    let style = self.style;
+                    let use_color = self.use_color;
+                    *self = AppState::new_net(url, style, use_color);
+                }
+                _ => {}
+            },
+            Screen::Lobby(l) => {
+                let Some(pj) = l.pending_join.as_mut() else {
+                    return;
+                };
+                match action {
+                    Action::TextInput(c) => text_input::push_char(&mut pj.password_buf, c, 64),
+                    Action::TextBackspace => text_input::backspace(&mut pj.password_buf),
+                    Action::Submit => {
+                        let host = l.host.clone();
+                        let pj_owned = l.pending_join.take().unwrap();
+                        let url = format!(
+                            "{host}/ws/{}?password={}",
+                            pj_owned.room_id,
+                            urlencode(&pj_owned.password_buf)
+                        );
                         let style = self.style;
                         let use_color = self.use_color;
-                        *self = AppState::new_game(rules, style, use_color, observer);
+                        *self = AppState::new_net(url, style, use_color);
                     }
-                    None => self.should_quit = true,
+                    _ => {}
                 }
             }
             _ => {}
@@ -629,6 +952,11 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
             ServerMsg::Error { message } => {
                 n.last_msg = Some(message);
             }
+            ServerMsg::Rooms { .. } => {
+                // Game socket should never receive Rooms — surface so a
+                // server bug is debuggable rather than silently dropped.
+                n.last_msg = Some("(unexpected lobby payload on game socket)".into());
+            }
         },
         NetEvent::Disconnected(reason) => {
             n.connected = false;
@@ -644,6 +972,46 @@ fn side_label(side: Side) -> &'static str {
         "Black 黑"
     } else {
         "Green 綠"
+    }
+}
+
+fn apply_lobby_event(l: &mut LobbyView, evt: NetEvent) {
+    match evt {
+        NetEvent::Connected => {
+            l.connected = true;
+            l.last_msg = Some("Lobby connected.".into());
+        }
+        NetEvent::Server(boxed) => match *boxed {
+            ServerMsg::Rooms { rooms } => {
+                let prev_id = l.rooms.get(l.cursor).map(|r| r.id.clone());
+                l.rooms = rooms;
+                l.rooms.sort_by(|a, b| a.id.cmp(&b.id));
+                // Try to keep the cursor on the same room id; otherwise clamp.
+                if let Some(id) = prev_id {
+                    if let Some(idx) = l.rooms.iter().position(|r| r.id == id) {
+                        l.cursor = idx;
+                    } else if l.cursor >= l.rooms.len() && !l.rooms.is_empty() {
+                        l.cursor = l.rooms.len() - 1;
+                    } else if l.rooms.is_empty() {
+                        l.cursor = 0;
+                    }
+                } else if l.cursor >= l.rooms.len() && !l.rooms.is_empty() {
+                    l.cursor = l.rooms.len() - 1;
+                }
+            }
+            ServerMsg::Error { message } => {
+                l.last_msg = Some(message);
+            }
+            ServerMsg::Hello { .. } | ServerMsg::Update { .. } => {
+                // Game-socket payloads should never arrive on a lobby ws.
+                // If they do (server bug), surface for debugging.
+                l.last_msg = Some("(unexpected game payload on lobby socket)".into());
+            }
+        },
+        NetEvent::Disconnected(reason) => {
+            l.connected = false;
+            l.last_msg = Some(format!("Lobby disconnected: {reason}"));
+        }
     }
 }
 

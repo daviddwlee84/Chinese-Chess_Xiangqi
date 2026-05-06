@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project at a glance
 
-Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships an MVP single-room websocket server (`chess-net-server`) that two `chess-tui --connect` clients can play on. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships a multi-room websocket server (`chess-net-server`) with an in-TUI lobby browser, optional per-room password, and live `Rooms` push to lobby viewers. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
 
 For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 
@@ -48,17 +48,25 @@ cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
 cargo run -p chess-tui -- --as black xiangqi              # render as Black
 
-# Networked play (MVP: single room, no lobby / reconnect / time controls)
-cargo run -p chess-net -- --port 7878 xiangqi             # server
-cargo run -p chess-net -- --port 7878 xiangqi --strict    # ditto, strict self-check
+# Networked play (multi-room — see ADR-0005)
+cargo run -p chess-net -- --port 7878 xiangqi             # server, all rooms = xiangqi
+cargo run -p chess-net -- --port 7878 xiangqi --strict    # strict self-check
 cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
-cargo run -p chess-tui -- --connect ws://127.0.0.1:7878   # client (server picks variant + side)
 
-# One-shot local 2-client harness (tmux: window 0 = clients, window 1 = server)
-make play-local                                           # xiangqi casual on :7878
+# Client — three entry points to the same server:
+cargo run -p chess-tui -- --lobby   ws://127.0.0.1:7878            # browse rooms, pick or create
+cargo run -p chess-tui -- --connect ws://127.0.0.1:7878             # default room "main" (back-compat)
+cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/myroom   # named room
+cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/locked --password secret  # locked room
+
+curl -s http://127.0.0.1:7878/rooms | jq                   # JSON room snapshot for debugging
+
+# tmux harnesses
+make play-local                                           # 1 server + 2 --connect clients (default room)
+make play-lobby                                           # 1 server + 3 panes (2 lobby flow + 1 watcher)
 make play-local VARIANT=banqi                             # banqi
 make play-local PORT=9000 VARIANT=xiangqi                 # custom port
-make stop-local                                           # tear down the tmux session
+make stop-local      / make stop-lobby                    # tear down each session
 ```
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
@@ -108,7 +116,7 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
 
-- **`chess-net` MVP is single-room, single-game.** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). The server (`crates/chess-net/src/server.rs` + `bin/server.rs`) holds the authoritative `GameState` and broadcasts per-side `PlayerView` after every committed move. First connection = Red, second = Black, third+ gets `Error{"room full"}` and is dropped. `chess-tui` joins via `--connect` and runs a sync `tungstenite` worker thread (`clients/chess-tui/src/net.rs`) that talks to the TUI over `std::sync::mpsc` — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / lobby / time controls / takeback are deferred (see `TODO.md`).
+- **`chess-net` is multi-room (ADR-0005).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room to whoever sets it first; subsequent joiners with the wrong password get `ServerMsg::Error{"bad password"}` before any `Hello`. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. The server (`server.rs` + `bin/server.rs`) holds an `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` plus a parallel `summaries` cache so `notify_lobby` can build a `Rooms` snapshot without holding any inner lock. Within a room, first connection = Red, second = Black, third+ still gets `room full`. `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / spectators / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
 
 ## Where to put new work
 

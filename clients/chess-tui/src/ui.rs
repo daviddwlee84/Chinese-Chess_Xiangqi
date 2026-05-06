@@ -12,9 +12,13 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
-use crate::app::{AppState, GameView, NetView, PickerEntry, PickerView, RectPx, Screen};
+use crate::app::{
+    AppState, CreateRoomField, CreateRoomView, GameView, HostPromptView, LobbyView, NetView,
+    PickerEntry, PickerView, RectPx, Screen,
+};
 use crate::glyph::{self, Style};
 use crate::orient;
+use crate::text_input;
 
 const CELL_COLS: u16 = 4;
 const CELL_ROWS: u16 = 2;
@@ -26,6 +30,9 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
         Screen::Picker(p) => draw_picker(frame, area, p),
         Screen::Game(_) => draw_game(frame, area, app),
         Screen::Net(_) => draw_net(frame, area, app),
+        Screen::HostPrompt(h) => draw_host_prompt(frame, area, h, app.help_open),
+        Screen::Lobby(l) => draw_lobby(frame, area, l, app.help_open),
+        Screen::CreateRoom(c) => draw_create_room(frame, area, c),
     }
 
     if app.rules_open {
@@ -155,6 +162,240 @@ fn draw_sidebar_net_idle(frame: &mut Frame, area: Rect, n: &NetView) {
     let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
     frame.render_widget(para, area);
 }
+
+fn draw_host_prompt(frame: &mut Frame, area: Rect, h: &HostPromptView, help_open: bool) {
+    let title =
+        Span::styled("Connect to chess-net", TuiStyle::default().add_modifier(Modifier::BOLD));
+    let mut lines = vec![
+        Line::from(title),
+        Line::from(""),
+        Line::from(Span::raw("Server URL (e.g. ws://127.0.0.1:7878):")),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(format!("{}_", h.buf), TuiStyle::default().fg(Color::Yellow)),
+        ]),
+        Line::from(""),
+    ];
+    if let Some(err) = h.error.as_deref() {
+        lines
+            .push(Line::from(Span::styled(format!("× {err}"), TuiStyle::default().fg(Color::Red))));
+        lines.push(Line::from(""));
+    }
+    if help_open {
+        for ln in HELP_LINES_HOST_PROMPT {
+            lines.push(Line::from(Span::styled(*ln, TuiStyle::default().fg(Color::DarkGray))));
+        }
+    } else {
+        lines.push(Line::from(Span::styled(
+            "Enter to connect, Esc to go back, ? for help.",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+    let block = Block::default().borders(Borders::ALL).title(" Online ");
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+fn draw_lobby(frame: &mut Frame, area: Rect, l: &LobbyView, help_open: bool) {
+    // Two columns: room list (left) + status/help (right). When the user is
+    // mid-password-prompt, overlay a small modal.
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(36)])
+        .split(area);
+
+    let header_style = TuiStyle::default().fg(Color::DarkGray);
+    let mut lines: Vec<Line<'static>> = Vec::with_capacity(l.rooms.len() + 4);
+    lines.push(Line::from(Span::styled(
+        format!("Lobby — {}", l.host),
+        TuiStyle::default().add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(Span::styled(
+        format!("{:<20} {:<14} {:<6} {:<8}", "Room", "Variant", "Seats", "Status"),
+        header_style,
+    )));
+    if l.rooms.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "  (no rooms yet — press 'c' to create one)",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    } else {
+        for (i, r) in l.rooms.iter().enumerate() {
+            let prefix = if i == l.cursor { "▶ " } else { "  " };
+            let lock = if r.has_password { "🔒" } else { "  " };
+            let status = match r.status {
+                chess_net::RoomStatus::Lobby => "lobby",
+                chess_net::RoomStatus::Playing => "playing",
+                chess_net::RoomStatus::Finished => "finished",
+            };
+            let cell_style = if i == l.cursor {
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                TuiStyle::default()
+            };
+            lines.push(Line::from(vec![
+                Span::raw(prefix),
+                Span::raw(lock),
+                Span::raw(" "),
+                Span::styled(
+                    format!("{:<18} {:<14} {}/2    {:<8}", r.id, r.variant, r.seats, status),
+                    cell_style,
+                ),
+            ]));
+        }
+    }
+
+    let block = Block::default().borders(Borders::ALL).title(" Lobby ");
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, chunks[0]);
+
+    draw_lobby_sidebar(frame, chunks[1], l, help_open);
+
+    if let Some(pj) = l.pending_join.as_ref() {
+        let modal = Rect {
+            x: area.x + area.width / 4,
+            y: area.y + area.height / 3,
+            width: (area.width / 2).max(40),
+            height: 7,
+        };
+        frame.render_widget(Clear, modal);
+        let lines = vec![
+            Line::from(Span::styled(
+                format!("Join '{}' — locked", pj.room_id),
+                TuiStyle::default().add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("Password: "),
+                Span::styled(
+                    format!("{}_", text_input::mask(&pj.password_buf)),
+                    TuiStyle::default().fg(Color::Yellow),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Enter to join, Esc to cancel.",
+                TuiStyle::default().fg(Color::DarkGray),
+            )),
+        ];
+        let block = Block::default().borders(Borders::ALL).title(" Password ");
+        frame.render_widget(Paragraph::new(lines).block(block).wrap(Wrap { trim: false }), modal);
+    }
+}
+
+fn draw_lobby_sidebar(frame: &mut Frame, area: Rect, l: &LobbyView, help_open: bool) {
+    let block = Block::default().borders(Borders::ALL).title(" Status ");
+    let mut lines = vec![Line::from(vec![
+        Span::raw("Connection: "),
+        Span::styled(
+            if l.connected { "ws live" } else { "connecting…" },
+            TuiStyle::default().fg(if l.connected { Color::Green } else { Color::Yellow }),
+        ),
+    ])];
+    lines.push(Line::from(format!("Rooms: {}", l.rooms.len())));
+    lines.push(Line::from(""));
+    if let Some(msg) = l.last_msg.as_deref() {
+        lines.push(Line::from(Span::styled(msg.to_string(), TuiStyle::default().fg(Color::Cyan))));
+        lines.push(Line::from(""));
+    }
+    if help_open {
+        for ln in HELP_LINES_LOBBY {
+            lines.push(Line::from(Span::styled(*ln, TuiStyle::default().fg(Color::DarkGray))));
+        }
+    } else {
+        lines.push(Line::from(Span::styled(
+            "Enter=join, c=create, r=refresh, Esc=back, ?=help, q=quit.",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+fn draw_create_room(frame: &mut Frame, area: Rect, c: &CreateRoomView) {
+    let title = Span::styled("Create room", TuiStyle::default().add_modifier(Modifier::BOLD));
+    let id_active = matches!(c.focus, CreateRoomField::Id);
+    let pw_active = matches!(c.focus, CreateRoomField::Password);
+    let submit_active = matches!(c.focus, CreateRoomField::Submit);
+    let mut lines = vec![
+        Line::from(title),
+        Line::from(format!("Server: {}", c.host)),
+        Line::from(""),
+        Line::from(Span::raw("Room id (1–32 chars, [a-zA-Z0-9_-]):")),
+        Line::from(vec![
+            Span::raw(if id_active { "▶ " } else { "  " }),
+            Span::styled(
+                if id_active { format!("{}_", c.id_buf) } else { c.id_buf.clone() },
+                if id_active {
+                    TuiStyle::default().fg(Color::Yellow)
+                } else {
+                    TuiStyle::default().fg(Color::Gray)
+                },
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::raw("Password (optional, leave blank for open room):")),
+        Line::from(vec![
+            Span::raw(if pw_active { "▶ " } else { "  " }),
+            Span::styled(
+                if pw_active {
+                    format!("{}_", text_input::mask(&c.password_buf))
+                } else {
+                    text_input::mask(&c.password_buf)
+                },
+                if pw_active {
+                    TuiStyle::default().fg(Color::Yellow)
+                } else {
+                    TuiStyle::default().fg(Color::Gray)
+                },
+            ),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw(if submit_active { "▶ " } else { "  " }),
+            Span::styled(
+                "[ Create & join ]",
+                if submit_active {
+                    TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    TuiStyle::default().fg(Color::Gray)
+                },
+            ),
+        ]),
+    ];
+    if let Some(err) = c.error.as_deref() {
+        lines.push(Line::from(""));
+        lines
+            .push(Line::from(Span::styled(format!("× {err}"), TuiStyle::default().fg(Color::Red))));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Tab/Shift-Tab: switch field. Enter on submit creates the room. Esc: back.",
+        TuiStyle::default().fg(Color::DarkGray),
+    )));
+    let block = Block::default().borders(Borders::ALL).title(" New room ");
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+const HELP_LINES_HOST_PROMPT: &[&str] = &[
+    "Type a server URL like  ws://192.168.1.5:7878",
+    "Schemes: ws://  wss://  http(s):// auto-converts.",
+    "Enter      open the lobby for that host",
+    "Esc        back to the variant picker",
+    "?          toggle this help",
+    "Ctrl-C     quit",
+];
+
+const HELP_LINES_LOBBY: &[&str] = &[
+    "j k / ↓ ↑   move cursor",
+    "Enter       join the highlighted room (prompts for password if locked)",
+    "c           create a new room",
+    "r           force-refresh room list (server pushes automatically)",
+    "Esc         back to host prompt",
+    "?           toggle this help",
+    "q / Ctrl-C  quit",
+];
 
 #[allow(clippy::too_many_arguments)]
 fn draw_board(
