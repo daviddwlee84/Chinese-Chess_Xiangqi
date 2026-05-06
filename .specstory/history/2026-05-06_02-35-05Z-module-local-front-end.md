@@ -9980,12 +9980,6 @@ When you're ready, describe the 三國暗棋 capture rules + the home-zone layou
 
 _**User (2026-05-06 05:09:26Z)**_
 
-<command-message>project-knowledge-harness</command-message>
-<command-name>/project-knowledge-harness</command-name>
-<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
-
-_**User (2026-05-06 05:09:26Z)**_
-
 Base directory for this skill: /Users/daviddwlee84/.claude/skills/project-knowledge-harness
 
 # project-knowledge-harness
@@ -10185,6 +10179,12 @@ A live example of this harness is at
 
 
 ARGUMENTS: git commit 然後 把還沒做的feature羅列起來
+
+_**User (2026-05-06 05:09:26Z)**_
+
+<command-message>project-knowledge-harness</command-message>
+<command-name>/project-knowledge-harness</command-name>
+<command-args>git commit 然後 把還沒做的feature羅列起來</command-args>
 
 ---
 
@@ -15439,5 +15439,8621 @@ Confirm shape.rs edit compiles
     Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
     Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.34s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:43Z)**_
+
+Only remaining 大盤 reference is the historical note in `backlog/three-kingdoms-banqi.md` (per plan, leave alone — it accurately records what the user said in turn 1). Committing.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage all corrections
+
+`git add -A && git status --short`
+
+```text
+M  .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+M  CLAUDE.md
+M  README.md
+M  TODO.md
+M  crates/chess-core/src/board/shape.rs
+M  docs/adr/0002-square-as-u16.md
+M  docs/adr/0003-ruleset-as-data-not-trait.md
+M  docs/architecture.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:01:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit corrections + TODO add
+
+```bash
+git commit -m "$(cat <<'EOF'
+docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+
+The original turn-1 prompt listed "大盤" alongside 暗棋 / 三國棋 / 家規 as
+target features. I read it as "large-board variants" (廣象戲 19×19 etc.)
+and inflated that across the docs and a P3 TODO. The user clarifies:
+"大盤" simply means the standard full-size 9×10 xiangqi board (vs "半盤"
+the half-board banqi uses) — already implemented as
+BoardShape::Xiangqi9x10. Nothing planned was actually missing.
+
+Removes the misclaim from active docs:
+- TODO.md  : drop the [M] Large-board variants P3 entry
+- README.md: drop the bullet promising "Large board variants"
+- CLAUDE.md: drop "and large-board variants" from the project paragraph
+- docs/architecture.md: strip 大盤 from goals, why-rust paragraph, roadmap row
+- docs/adr/0002-square-as-u16.md: replace "大盤 variants" bullet with the
+  generic Custom-shape escape hatch
+- docs/adr/0003-ruleset-as-data-not-trait.md: drop "and (eventually) with
+  large-board variants" from the variant-explosion list
+- crates/chess-core/src/board/shape.rs: BoardShape::Custom docstring
+  changes from "大盤 / arbitrary variants" to just "Arbitrary
+  custom-shape variants"
+
+The BoardShape::Custom variant itself stays — it's a useful escape
+hatch if anyone genuinely does want to add a non-standard shape later.
+.specstory/history/* and backlog/three-kingdoms-banqi.md keep their
+original wording (they're time-anchored historical records).
+
+Adds:
+- TODO.md P2/S "Handicap mode (讓棋)" — stronger player removes own
+  pieces (車/馬/炮 single or pairs) before play. Likely shape: Handicap
+  field on RuleSet consumed by setup::build_xiangqi.
+
+Verified: cargo check / test --workspace pass; todo-kanban validates.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline | head -5
+```
+
+```text
+[main 2b94711] docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+ 8 files changed, 1128 insertions(+), 15 deletions(-)
+2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:02:23Z)**_
+
+Done. Commit `2b94711`.
+
+## 三點回應
+
+### 1. TUI / Web mode
+
+**都還沒實作**。`chess-tui`（ratatui）和 `chess-web`（Leptos+WASM）都是 stub crates，分別在 P2 lane。今天能玩遊戲只有 `chess-cli` REPL 一個 surface。
+
+如果想盡快有 GUI 體驗，可以挑一條：
+- 走 `chess-tui` → 同機 hot-seat + SSH（搭配未來 `chess-net` 也可以遠端）
+- 走 `chess-web` → 真正的瀏覽器體驗，但要先把 `chess-net` 的 ws server 拉起來才有跨機對戰
+
+### 2. 大盤 校正完成
+
+把我自己的誤解砍掉：8 個檔案改動，包含兩個 ADR（0002 + 0003）也誤用了「large-board variants」字眼，順手清掉。`BoardShape::Custom` 型別本身保留 — 萬一以後真有人要加 19×19 廣象戲還可以用，但 docs 不再宣稱這是已規劃功能。
+
+剩一處 `backlog/three-kingdoms-banqi.md` 仍寫「user listed... and 大盤」— 那是時間戳記性的歷史紀錄，按照 backlog 的精神不去改。`.specstory/history/*` 同理保留。
+
+### 3. 讓棋 已加 P2/S
+
+```
+[S] Handicap mode (讓棋) — Stronger player removes one or more of their
+own pieces from the initial setup (xiangqi tradition: 讓單馬 / 讓雙馬 /
+讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap
+field on RuleSet consumed by setup::build_xiangqi.
+```
+
+實作時的 sketch：
+```rust
+pub enum Handicap {
+    None,
+    /// Squares to leave empty when building the giver's side.
+    Pieces { giver: Side, omit_squares: SmallVec<[Square; 4]> },
+}
+
+impl Handicap {
+    pub fn single_horse_left(giver: Side) -> Self;     // 讓馬八
+    pub fn single_horse_right(giver: Side) -> Self;    // 讓馬二
+    pub fn both_horses(giver: Side) -> Self;           // 讓雙馬
+    pub fn single_chariot(giver: Side) -> Self;        // 讓單車
+    // ...
+}
+```
+
+放在 `RuleSet`（不是 setup-only 參數）的好處：替你解決三件事：
+- 存檔/載入會把讓子設定保留下來
+- `Replay` 的 metadata 自動帶有讓子資訊
+- 之後 chess-net 在賽前協商讓子配置只要傳 RuleSet
+
+Banqi 的隨機洗牌讓「讓子」概念不直接適用，先擺一邊等需求。
+
+### 目前 TODO 板
+
+| Lane | 數 | 焦點 |
+|---|---:|---|
+| P1 (5) | 5 | 三國暗棋、3 條家規、三重複位 |
+| P2 (7) | 7 | TUI、net、web、WXF、計時器、悔棋、**讓棋（new）** |
+| P3 (3) | 3 | AI、replay、insta（少了 大盤） |
+| P? (2) | 2 | SSH、Unity |
+| Done (2) | 2 | core scaffolding + end-condition tests |
+
+---
+
+_**User (2026-05-06 06:03:08Z)**_
+
+<command-name>/compact</command-name>
+            <command-message>compact</command-message>
+            <command-args></command-args>
+
+_**User (2026-05-06 06:03:08Z)**_
+
+<local-command-caveat>Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.</local-command-caveat>
+
+_**User (2026-05-06 06:08:25Z)**_
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user is building a hobby Chinese chess game with these explicit requests over the conversation:
+   
+   **Initial scope (turn 1):** Game supporting 大盤, 暗棋, 家規, 三國棋; modular core (棋盤/規則/引擎); local + online play; technology evaluation among pure terminal (charmbracelet/wish), web app, Unity; mouse + keyboard with vim mode + coordinate input; for-fun "spin up server, play with friends" use case.
+   
+   **Selection (turn 3):** Chose Rust+WASM. Clarified 三國棋 = 三國暗棋 (banqi 3-team variant per `zh.wikipedia.org/zh-sg/三國暗棋`). Specified 5 banqi house rules (連吃/暗連/車衝/馬斜/炮快移) per `darkchess.funtown.com.tw/rules2.html`, each toggleable with presets. Said "本次優先進行core開發".
+   
+   **Knowledge harness (turn 5):** "git commit 然後 把還沒做的feature羅列起來" — commit work, set up TODO/backlog/pitfalls.
+   
+   **CLAUDE.md (turn 6):** "(specstory chat history跟著對應commit一起add)" — write CLAUDE.md with chat transcript bundled into commits.
+   
+   **Status check (turn 7):** Asked about current playability; requested 計時器 + 悔棋 added to TODO; asked what unit tests exist and whether custom endgame positions could verify win logic.
+   
+   **Snapshot/Replay (turn 8):** Asked for "配置文件" to express board state with export/import, AND game history preservation enabling animation playback / undo / fork-from-any-state / endgame mode. Said "幫我設計一下 然後跟當前這個一起做" (design + implement together with end-condition tests).
+   
+   **Final corrections (turn 9, most recent):** (a) Asked if TUI/Web modes work yet; (b) **CORRECTED** earlier misinterpretation: "我之前指的大盤就是標準規則 並不是特殊玩法" — 大盤 simply means the standard full-size 9×10 board (vs 半盤 banqi's half board), NOT large-board variants like 19×19 廣象戲; (c) "新增規則 比如其實可以配置讓棋 比如讓車馬炮 等等 之類的可開關設置 (這部分可以先扔Todo)" — add 讓棋 (handicap) as TODO.
+
+2. Key Technical Concepts:
+   - Rust + WASM (chess-core compiles to native + wasm32-unknown-unknown)
+   - Cargo workspace with 8 members (chess-core, chess-engine, chess-net, chess-ai, chess-cli, chess-tui, chess-web, xtask)
+   - Five locked-in design decisions in ADRs
+   - Xiangqi (9×10), banqi (4×8), three-kingdoms-banqi (variant types ready, rules deferred)
+   - serde JSON serialization for canonical state
+   - Custom .pos text DSL for human-readable test fixtures
+   - bitflags for HouseRules
+   - SmallVec for MoveList (32-element inline)
+   - ChaCha8Rng for deterministic banqi shuffle
+   - getrandom + js feature for browser WASM
+   - proptest for hidden-info no-leak verification
+   - Perft validation (1=44, 2=1920, 3=79666 match published values)
+   - project-knowledge-harness skill (TODO.md/backlog/pitfalls)
+   - SpecStory hook auto-amends commits to bundle chat transcript
+   - Replay = (initial GameState, Vec<Move>) primitive serving save/load + animation + undo + fork + endgame puzzle
+
+3. Files and Code Sections:
+
+   **Recent edits (turn 9 task):**
+
+   - `/Users/daviddwlee84/.claude/plans/magical-honking-book.md` — Overwrote with new plan: "Correct '大盤' misinterpretation across docs; add 讓棋 to TODO". Plan listed table of file edits and verification steps.
+
+   - `crates/chess-core/src/board/shape.rs` — Changed Custom variant docstring:
+     ```rust
+     /// Arbitrary custom-shape variants (escape hatch for future use).
+     /// `mask` bit `i` set means cell `i` is playable. Up to 128 cells;
+     /// widen if a future variant exceeds that.
+     Custom { width: u8, height: u8, mask: u128 },
+     ```
+     (Was: "/// 大盤 / arbitrary variants. ...")
+
+   - `README.md` — Deleted bullet `- **Large board variants (大盤)** — n×m via BoardShape::Custom *(planned)*`
+
+   - `CLAUDE.md` — Changed opening paragraph: removed "and large-board variants" phrase. Now reads: "Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋)."
+
+   - `docs/architecture.md` — Three edits:
+     - Goals bullet: removed "and 大盤 variants"
+     - Why-Rust paragraph: changed "(xiangqi vs banqi vs 三國暗棋 vs 大盤 vs N house-rule combinations)" → "(xiangqi vs banqi vs 三國暗棋 vs N house-rule combinations)"
+     - Roadmap table: deleted row `| 7 | 大盤 variants |`
+
+   - `docs/adr/0002-square-as-u16.md` — Replaced bullet:
+     - Was: `- 大盤 variants (n×m, possibly up to 19×19)`
+     - Now: `- An open escape hatch (BoardShape::Custom) for any future non-standard shape`
+
+   - `docs/adr/0003-ruleset-as-data-not-trait.md` — Removed phrase "and (eventually) with large-board variants" from variant-explosion list.
+
+   - `TODO.md` — Deleted P3 line `[M] Large-board variants (大盤)`. Added P2/S `Handicap mode (讓棋)` via add-todo.sh.
+
+   **Previously created (earlier turns, important context):**
+
+   - `crates/chess-core/src/snapshot.rs` — Created in turn 8. Key public APIs:
+     ```rust
+     impl GameState {
+         pub fn to_json(&self) -> Result<String, CoreError>;
+         pub fn from_json(s: &str) -> Result<Self, CoreError>;
+         pub fn to_pos_text(&self) -> String;
+         pub fn from_pos_text(s: &str) -> Result<Self, CoreError>;
+     }
+     ```
+     `.pos` DSL: variant/side_to_move/house/seed/side_assignment headers + indented board rows with K/A/B/R/N/C/P uppercase=Red lowercase=Black, `.`=empty, `?X`=face-down. Top row is highest rank.
+
+   - `crates/chess-core/src/replay.rs` — Created in turn 8:
+     ```rust
+     pub struct Replay {
+         pub version: u32,
+         pub metadata: ReplayMeta,
+         pub initial: GameState,
+         pub moves: Vec<Move>,
+     }
+     impl Replay {
+         pub fn new(initial: GameState, metadata: ReplayMeta) -> Self;
+         pub fn from_game(state: &GameState, metadata: ReplayMeta) -> Result<Self, CoreError>;
+         pub fn play_to(&self, step: usize) -> Result<GameState, CoreError>;
+         pub fn final_state(&self) -> Result<GameState, CoreError>;
+         pub fn iter_states(&self) -> impl Iterator<Item = Result<GameState, CoreError>> + '_;
+         pub fn to_json(&self) -> Result<String, CoreError>;
+         pub fn from_json(s: &str) -> Result<Self, CoreError>;
+         pub fn push(&mut self, m: Move);
+     }
+     ```
+
+   - `crates/chess-core/tests/fixtures/xiangqi/three-chariot-mate.pos` — Black checkmated by R(d8)/R(e8)/R(f8)
+   - `crates/chess-core/tests/fixtures/xiangqi/horse-stalemate.pos` — Black stalemated; horses at b9/d7
+   - `crates/chess-core/tests/fixtures/banqi/red-wiped-out.pos` — Red has zero pieces
+   - `crates/chess-core/tests/end_conditions.rs` — 4 tests asserting `refresh_status` produces correct `GameStatus::Won { reason: Checkmate/Stalemate/OnlyOneSideHasPieces }`
+   - `crates/chess-core/tests/replay_round_trip.rs` — 4 integration tests
+   - `docs/snapshot-format.md` — Format documentation
+   - `crates/chess-core/Cargo.toml` — Moved serde_json from dev-deps to regular deps; target-specific getrandom for wasm32
+
+4. Errors and fixes:
+   - **Closure mutability (turn 4):** `let back = ...` failed because closure captures `board` mutably. Fix: `let mut back =`.
+   - **chain_origin bug (turn 4):** Stub function returned `Square::NONE` for ChainCapture origin. Fixed by passing `seed_from` through `extend_recursive`. Added explicit test verifying `from` field is correct.
+   - **Clippy warnings (turn 4):** Renamed `from_square` → `origin_square` (`wrong_self_convention`); `('a'..='z').contains(&f)` → `f.is_ascii_lowercase()`; `walked.len() > 0` → `!walked.is_empty()`; two `loop { let Some else break; }` → `while let Some(...)`.
+   - **WASM build error (turn 4):** `getrandom 0.2` E0433 unresolved module `imp` for `wasm32-unknown-unknown`. Fix: target-specific dep `[target.'cfg(target_arch = "wasm32")'.dependencies] getrandom = { version = "0.2", features = ["js"] }`. Documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+   - **Concurrent file modification (turn 9):** TODO.md Edit failed with "File has been modified since read" (likely SpecStory hook). Fix: re-read TODO.md, then re-applied Edit successfully.
+   - **Stray references in ADRs (turn 9):** Plan didn't list docs/adr/0002 and docs/adr/0003 references. Discovered via grep, fixed both.
+   
+   **User feedback corrections:**
+   - Turn 3: User clarified 三國棋 = 三國暗棋 (banqi variant), correcting my initial 3-player xiangqi assumption.
+   - Turn 9: User clarified 大盤 = standard 9×10 board, correcting my "large-board variants" inflation.
+   - Turn 7: User pointed out 悔棋 in single-player is just `unmake_move`; the TODO is for multiplayer takeback protocol. I incorporated this distinction.
+
+5. Problem Solving:
+   Solved: Tech selection (Rust+WASM); architecture (5 ADRs); xiangqi/banqi engine with house rules; per-player view projection; CLI REPL; .pos/JSON snapshot formats; Replay primitive serving 5 use cases; end-condition tests via fixtures; doc corrections after user clarification on 大盤.
+   
+   Ongoing/Deferred (in TODO): 三國暗棋 implementation (P1), 3 deferred house rules (P1), threefold repetition (P1), chess-tui/chess-net/chess-web (P2), WXF notation (P2), time controls (P2), takeback protocol (P2), handicap mode (P2 - newly added), AI engine (P3), replay format (P3), insta snapshots (P3), Wish/SSH spike (P?), Unity FFI spike (P?).
+
+6. All user messages:
+   1. "我想做一個象棋遊戲 能支援大盤、暗棋、特殊家規、三國棋等..." (initial scope + tech selection request, listing 大盤 alongside other variants)
+   2. "那選擇 Rust + WASM 吧 (把我們的分析落到 docs/ 中..." (Rust+WASM chosen; 三國棋 = 三國暗棋 per wiki link; house rules per funtown link; "本次優先進行core開發")
+   3. "Tool loaded." (after ExitPlanMode tool fetch)
+   4. "/project-knowledge-harness" with args "git commit 然後 把還沒做的feature羅列起來"
+   5. "/init" with args "(specstory chat history跟著對應commit一起add)"
+   6. "我想了解 目前的實現來說 可以做到什麼程度的遊玩？(比如目前支援了哪些game rules & UI) 然後把計時器、悔棋 機制加入Todo 然後我們的unit test都有哪些？(是不是可以自定殘局然後驗證獲勝邏輯等等？)"
+   7. "好啊 另外我們是否能夠有某種配置文件的形式 能夠用來表達版面狀態等等 可以匯出匯入某個版面狀態snapshot... 另外也能夠把每局下棋歷史保留 能夠動畫回放... 幫我設計一下 然後跟當前這個一起做"
+   8. (CLI output paste) + "我想了解現在除了CLI mode 能有TUI或Web mode了嗎？ 另外 修正一下 我之前指的大盤就是標準規則 並不是特殊玩法 然後我們也新增規則 比如其實可以配置讓棋 比如讓車馬炮 等等 之類的可開關設置 (這部分可以先扔Todo)"
+   9. "Tool loaded." (after ExitPlanMode tool fetch in plan mode)
+
+7. Pending Tasks:
+   No new explicit pending tasks from user. All requests in the most recent turn (TUI/Web question, 大盤 correction, 讓棋 TODO) are completed and committed.
+
+8. Current Work:
+   Just before this summary request, I completed and committed the doc-correction task. The final commit was:
+   ```
+   [main 2b94711] docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+    8 files changed, 1128 insertions(+), 15 deletions(-)
+   ```
+   Commit log:
+   ```
+   2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+   7e6d031 feat(core): snapshot + replay formats; end-condition tests
+   d7258ca docs: add CLAUDE.md and update transcript
+   15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+   f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+   ```
+   
+   Test count: 93 passing + 1 ignored. cargo check/test/clippy/wasm all green. TODO.md validates via scripts/todo-kanban.sh. Final TODO state: P1=5, P2=7 (now includes 讓棋), P3=3 (大盤 entry removed), P?=2, Done=2.
+   
+   Files edited in the last task: TODO.md, README.md, CLAUDE.md, docs/architecture.md, docs/adr/0002-square-as-u16.md, docs/adr/0003-ruleset-as-data-not-trait.md, crates/chess-core/src/board/shape.rs (plus auto-bundled .specstory/history/* via SpecStory hook).
+
+9. Optional Next Step:
+   The user's most recent task is complete and committed. There is no explicit pending task to continue. The last user instruction was the trio of items in turn 9 (TUI/Web question answered as text; 大盤 correction completed; 讓棋 TODO added) — all addressed in commit 2b94711.
+   
+   If the user wants to continue, the natural next candidates from the prioritized TODO would be P1 quick wins like wiring DARK_CHAIN/HORSE_DIAGONAL/CANNON_FAST_MOVE house rules, but the user has not requested this and I should wait for explicit direction. Per the agent contract: "Don't make large assumptions about user intent."
+   
+   No next step should be initiated without user confirmation.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/daviddwlee84/.claude/projects/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+_**User (2026-05-06 06:08:27Z)**_
+
+<local-command-stdout>[2mCompacted (ctrl+o to see full summary)[22m
+[2mPreCompact [~/.codeisland/codeisland-hook.sh] completed successfully[22m</local-command-stdout>
+
+_**User (2026-05-06 06:08:29Z)**_
+
+```
+TUI / Web mode
+
+都還沒實作。chess-tui（ratatui）和 chess-web（Leptos+WASM）都是 stub crates，分別在 P2 lane。今天能玩遊戲只有 chess-cli REPL 一個 surface。
+
+如果想盡快有 GUI 體驗，可以挑一條：
+- 走 chess-tui → 同機 hot-seat + SSH（搭配未來 chess-net 也可以遠端）
+- 走 chess-web → 真正的瀏覽器體驗，但要先把 chess-net 的 ws server 拉起來才有跨機對戰
+```
+
+上次聊時提到
+或許我們能先有 chess-tui 這樣至少能夠開始玩
+看看怎樣render比較好 ASCII table 純文字(純英文 或是 棋子用中文 不同mode可用args切？)+顏色？ 或是有沒有什麼好看的design
+
+另外單機的話 可能就是直立朝上
+如果是連線 則己方棋爲下方
+對方的畫面也是己方棋在下 (i.e. 棋盤坐標要反過來)
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-06 06:08:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:08:43Z)**_
+
+I'll plan out the chess-tui implementation. Let me explore the current state first to understand the existing scaffolding and what `chess-core` exposes for rendering.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:10:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Survey chess-tui + chess-cli + workspace deps
+
+```text
+Excellent! Now I have enough information. Let me compile my findings into a comprehensive report:
+
+---
+
+## Chess-TUI Workspace Exploration Report
+
+**WORKSPACE METADATA:**
+- **Root Cargo.toml**: Edition 2021, MSRV 1.84, workspace version 0.1.0
+- **chess-tui Cargo.toml** (stub): Zero TUI deps added yet; only depends on `chess-core`
+- **chess-cli Cargo.toml**: Also zero deps beyond `chess-core`
+
+---
+
+### 1. CHESS-CLI REPL (/clients/chess-cli/src/main.rs)
+
+**Command parsing** (lines 53–116):
+- `dispatch(line, state)` pattern-matches commands: `xiangqi`, `banqi [--preset/--house/--seed]`, `moves`, `play <iccs>`, `undo`, `view [side]`, `status`, `help`, `quit`
+- Banqi args parse house flags (`chain`, `dark-chain`, `rush`, `horse-diagonal`, `cannon-fast`) and presets (`purist`, `taiwan`, `aggressive`)
+
+**Board rendering** (lines 182–227, `print_view`):
+- Iterates **top-down** (highest rank first, lines 186–190)
+- Uses **ASCII chars**: `piece_char(kind)` → `{g,a,b,r,h,c,p}` (line 229–239)
+- **Case encodes side**: uppercase = RED, lowercase = BLACK (lines 195–200)
+- Blank/empty → `.`, hidden → `?`
+- **Hard-coded xiangqi river decoration** (line 212–214): prints `"-- 楚河 漢界 --"` between ranks 4–5 (Chinese text already in the binary!)
+- **Files rendered as a–i** (line 223)
+- No board rotation/orientation support yet; always renders from one viewpoint
+
+**View API consumed** (line 105):
+```rust
+let view = PlayerView::project(s, observer);
+```
+Then iterates `view.cells[idx]` as `VisibleCell` enum (Empty | Hidden | Revealed(PieceOnSquare))
+
+**Move parsing** (line 85):
+```rust
+let m = iccs::decode_move(s, rest)?;
+```
+Decodes ICCS notation (h2e2, a3xb3xc3, flip a0, etc.)
+
+---
+
+### 2. CHESS-TUI (/clients/chess-tui/src/main.rs)
+
+**Current state**: Pure stub, one line:
+```rust
+fn main() {
+    eprintln!("chess-tui stub — see docs/architecture.md roadmap.");
+}
+```
+No Cargo dependencies beyond `chess-core` yet. Ready to scaffold.
+
+---
+
+### 3. PIECE & SIDE TYPES (/crates/chess-core/src/piece.rs)
+
+**Side** (lines 7–27):
+```rust
+#[repr(transparent)]
+pub struct Side(pub u8);
+
+impl Side {
+    pub const RED: Side = Side(0);
+    pub const BLACK: Side = Side(1);
+    pub const GREEN: Side = Side(2);  // 三國暗棋
+    pub const fn opposite(self) -> Side { Side(self.0 ^ 1) }
+}
+```
+
+**PieceKind** (lines 30–74) — **no Chinese glyph helper exists yet**:
+```rust
+pub enum PieceKind {
+    General,    // 將/帥
+    Advisor,    // 士/仕
+    Elephant,   // 象/相
+    Chariot,    // 車/俥
+    Horse,      // 馬/傌
+    Cannon,     // 炮/砲
+    Soldier,    // 卒/兵
+}
+
+impl PieceKind {
+    pub const ALL: [PieceKind; 7] = [...];
+    pub const fn banqi_rank(self) -> u8 { /* ordering */ }
+}
+```
+
+**PieceOnSquare** (lines 90–108):
+```rust
+pub struct PieceOnSquare {
+    pub piece: Piece,      // {side, kind}
+    pub revealed: bool,    // for banqi face-down
+}
+```
+
+**Opportunity**: No function like `piece_to_chinese_glyph()` exists. You'll add one.
+
+---
+
+### 4. PLAYER VIEW (/crates/chess-core/src/view.rs)
+
+**ProjectionAPI** (lines 40–69):
+```rust
+impl PlayerView {
+    pub fn project(state: &GameState, observer: Side) -> Self {
+        // Iterates (0..board.cell_count()) and maps each Square to VisibleCell
+        // Hidden pieces scrubbed for non-side-to-move
+        // legal_moves empty for opponent
+    }
+}
+```
+
+**VisibleCell enum** (lines 16–22):
+```rust
+pub enum VisibleCell {
+    Empty,
+    Hidden,                    // Banqi face-down
+    Revealed(PieceOnSquare),   // {piece: {side, kind}, revealed: bool}
+}
+```
+
+**PlayerView struct** (lines 24–35):
+```rust
+pub struct PlayerView {
+    pub observer: Side,
+    pub shape: BoardShape,
+    pub width: u8,
+    pub height: u8,
+    pub cells: Vec<VisibleCell>,  // Linear array, row-major
+    pub side_to_move: Side,
+    pub status: GameStatus,
+    pub legal_moves: MoveList,    // Empty if opponent's turn
+}
+```
+
+**Key insight**: Cells are **linear row-major**; you must call `board.file_rank(sq)` to convert back to (File, Rank) for rendering.
+
+---
+
+### 5. BOARD & COORDINATES (/crates/chess-core/src/board/mod.rs, coord.rs)
+
+**Board public API** (board/mod.rs, lines 24–92):
+```rust
+pub struct Board {
+    shape: BoardShape,
+    width: u8,
+    height: u8,
+    cells: Vec<Option<PieceOnSquare>>,
+}
+
+impl Board {
+    pub fn shape(&self) -> BoardShape
+    pub fn width(&self) -> u8
+    pub fn height(&self) -> u8
+    pub fn cell_count(&self) -> usize
+    pub fn sq(&self, file: File, rank: Rank) -> Square
+    pub fn file_rank(&self, sq: Square) -> (File, Rank)
+    pub fn get(&self, sq: Square) -> Option<PieceOnSquare>
+    pub fn squares(&self) -> impl Iterator<Item = Square>
+    pub fn step(&self, from: Square, dir: Direction) -> Option<Square>
+    pub fn ray(&self, from: Square, dir: Direction) -> (SmallVec<[Square; 16]>, Option<Square>)
+}
+```
+
+**Coordinate types** (coord.rs, lines 7–91):
+```rust
+#[repr(transparent)]
+pub struct Square(pub u16);           // Linear index
+
+#[repr(transparent)]
+pub struct File(pub u8);              // Column (a–i for xiangqi)
+
+#[repr(transparent)]
+pub struct Rank(pub u8);              // Row (0–9 for xiangqi)
+
+pub enum Direction {
+    N, S, E, W, NE, NW, SE, SW
+}
+impl Direction {
+    pub const ORTHOGONAL: [Direction; 4]
+    pub const DIAGONAL: [Direction; 4]
+    pub const ALL: [Direction; 8]
+}
+```
+
+**Board shapes** (board/shape.rs, lines 8–54):
+```rust
+pub enum BoardShape {
+    Xiangqi9x10,      // (9 files, 10 ranks) — all 90 cells valid
+    Banqi4x8,         // (4 files, 8 ranks) — all 32 cells valid
+    ThreeKingdom,     // PR-2 placeholder
+    Custom { width: u8, height: u8, mask: u128 },
+}
+
+impl BoardShape {
+    pub const fn dimensions(self) -> (u8, u8)
+    pub const fn cell_count(self) -> usize
+    pub const fn is_playable(self, idx: usize) -> bool
+}
+```
+
+---
+
+### 6. ICCS NOTATION (/crates/chess-core/src/notation/iccs.rs)
+
+**Square encoding** (lines 13–21):
+```rust
+pub fn encode_square(board: &Board, sq: Square) -> String {
+    // Returns "h2" style: file (a–i) + rank (0–9)
+}
+```
+
+**Move decoding** (lines 69–79, signature):
+```rust
+pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
+    // Accepts: "h2e2" (step), "h2xh9" (capture), "a3xb3xc3" (chain), "flip a0" (reveal)
+    // Resolves ambiguity by matching against legal_moves
+}
+```
+
+**Move encoding** (lines 43–61):
+```rust
+pub fn encode_move(board: &Board, m: &Move) -> String {
+    // Move::Step → "h2e2"
+    // Move::Capture → "h2xh9"
+    // Move::Reveal → "flip a0"
+    // Move::ChainCapture → "a3xb3xc3"
+}
+```
+
+---
+
+### 7. RENDERING HELPERS ALREADY IN CORE (/crates/chess-core/src/snapshot.rs)
+
+**`.pos` text format** (lines 116–141, `cell_glyph` + `kind_char`):
+```rust
+fn cell_glyph(pos: Option<PieceOnSquare>) -> String {
+    // '.' for empty, '?K' for hidden, 'K'/'k' for revealed (case = side)
+}
+
+fn kind_char(kind: PieceKind) -> char {
+    // K=General, A=Advisor, B=Elephant, R=Chariot, N=Horse, C=Cannon, P=Soldier
+}
+```
+
+---
+
+## SUMMARY FOR CHESS-TUI PLANNING
+
+**What exists to leverage:**
+1. ✅ `PlayerView::project(state, observer)` — projection API already handles hidden pieces & legal moves
+2. ✅ Linear cell array (`Vec<VisibleCell>`) — iterate and render with `board.file_rank(sq)` lookup
+3. ✅ `BoardShape` enum & `Board` coordinate methods — supports xiangqi (9×10) and banqi (4×8)
+4. ✅ ICCS parsing/encoding — wire user input to `iccs::decode_move()`, render moves via `iccs::encode_move()`
+5. ✅ ASCII piece chars already exist (`piece_char()` in cli, `kind_char()` in snapshot)
+6. ✅ River decoration in CLI already shows Chinese text capability
+
+**What you need to add:**
+1. **Board orientation** — `PlayerView` doesn't rotate; add a transform layer in TUI to flip for opponent view
+2. **Chinese glyph mapping** — Write `PieceKind → {Red/Black} → CJK character` helper (帥/將, 仕/士, etc.)
+3. **Render style enum** — `{AsciiEnglish, ChineseChars, Colored}` + selection logic
+4. **Ratatui deps** — Add `ratatui`, `crossterm`, possibly `unicode-width` to `chess-tui/Cargo.toml`
+5. **TUI state machine** — Wrap `GameState`, selection cursor, render style, board orientation
+
+**Coordinates don't need special mapping**: chess-cli's approach (rank 0 at bottom, displayed top-down) is already correct for xiangqi visual orientation.
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-06 06:09:03Z)**_
+
+Explore the chinese-chess workspace at /Volumes/Data/Program/tries/2026-05-06-chinese-chess to surface everything I need to plan the chess-tui frontend.
+
+Context: chess-tui is currently a stub crate. The user wants to wire it up so the game is actually playable. They want to evaluate render styles (ASCII English vs Chinese-character pieces vs colored), and they care about board orientation: in local hot-seat mode the board points one way; in future networked mode each player should see their own side at the bottom (i.e., the view flips for the opponent).
+
+What I need from you:
+
+1. **`crates/chess-cli/`** — Read the entire crate. I want to know:
+   - How the REPL parses input (commands like `xiangqi`, `moves`, `play h2e2`, `banqi --preset taiwan --seed 42`, `view 0`, `quit`).
+   - How it currently renders the board to stdout — does it have a `print_board` helper, what character set, any color, any orientation support.
+   - Which `chess-core` APIs it consumes (PlayerView::project? Board iter? Square/File/Rank conversion? Move parsing?).
+   - Anything reusable for a TUI frontend.
+
+2. **`crates/chess-tui/`** — Whatever's there now (stub or skeleton). Just confirm what exists.
+
+3. **Workspace `Cargo.toml`** — Look at the root `Cargo.toml`, all member `Cargo.toml`s. List:
+   - Existing TUI/terminal deps already added (ratatui, crossterm, etc.) if any.
+   - The crate's stated MSRV / edition.
+   - What features `chess-tui` currently declares.
+
+4. **`crates/chess-core/src/view.rs`** (or wherever `PlayerView` lives) — Show me:
+   - The public API for projecting a state into a player's view.
+   - The `VisibleCell` enum (Hidden vs Visible) shape.
+   - Any existing iteration helper for "all cells in display order".
+
+5. **`crates/chess-core/src/board/`** — Find:
+   - The Board's public API for iterating squares.
+   - File / Rank conversion (since the user wants to render in board-coordinates and the input is ICCS like h2e2).
+   - Any rendering / Display impl that already exists.
+
+6. **`crates/chess-core/src/notation/`** — How ICCS encoding/decoding works (what format users type).
+
+7. **`crates/chess-core/src/piece.rs`** (or equivalent) — The Piece / PieceKind / Side types. I want to know if a piece-to-Chinese-glyph helper already exists (like 帥/將, 仕/士, 相/象, 俥/車, 傌/馬, 炮/砲, 兵/卒). If not, I'll plan to add one.
+
+Report findings as a structured rundown — file paths, function signatures, the types' public methods. Quote 5-10 lines max from each file. Don't summarize what they "do" abstractly; show me the actual signatures so I can plan what wraps cleanly into a ratatui widget.
+
+Under 500 words.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:05Z)**_
+
+I'll conduct a thorough exploration of the chinese-chess workspace to surface what you need for planning chess-tui. Let me start with a broad scan, then zoom into each area.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess -type f -name "*.rs" -o -name "*.toml" | head -30`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/rustfmt.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clippy.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/rust-toolchain.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/xtask/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-engine/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai/Cargo.toml
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/lib.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli/src/main.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-engine/src/lib.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/xiangqi_perft.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/banqi_house_chain.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/replay_round_trip.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/banqi_basic.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/end_conditions.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/view_projection.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/coord.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/error.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/lib.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/piece.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/prelude.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:09Z)**_
+
+Now let me read the key files in parallel:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:10Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./Cargo.toml`
+
+```text
+1	[workspace]
+2	resolver = "2"
+3	members = [
+4	    "crates/chess-core",
+5	    "crates/chess-engine",
+6	    "crates/chess-net",
+7	    "crates/chess-ai",
+8	    "clients/chess-cli",
+9	    "clients/chess-tui",
+10	    "clients/chess-web",
+11	    "xtask",
+12	]
+13	default-members = ["crates/chess-core", "clients/chess-cli"]
+14	
+15	[workspace.package]
+16	version      = "0.1.0"
+17	edition      = "2021"
+18	rust-version = "1.84"
+19	license      = "MIT OR Apache-2.0"
+20	authors      = ["Da-Wei Lee <trader3206@gmail.com>"]
+21	repository   = "https://github.com/daviddwlee84/chinese-chess"
+22	
+23	[workspace.dependencies]
+24	serde       = { version = "1.0.217", features = ["derive"] }
+25	serde_json  = "1.0.135"
+26	thiserror   = "2.0.11"
+27	smallvec    = { version = "1.13", features = ["serde", "union", "const_generics"] }
+28	bitflags    = { version = "2.6", features = ["serde"] }
+29	rand        = "0.8.5"
+30	rand_chacha = "0.3.1"
+31	tracing     = "0.1.41"
+32	arrayvec    = "0.7.6"
+33	
+34	# Dev/test
+35	proptest          = "1.6"
+36	insta             = { version = "1.41", features = ["yaml", "json"] }
+37	pretty_assertions = "1.4"
+38	
+39	[profile.release]
+40	lto           = "thin"
+41	codegen-units = 1
+42	panic         = "abort"
+43	
+44	[profile.test]
+45	opt-level = 1
+46
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:10Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/Cargo.toml`
+
+```text
+1	[package]
+2	name              = "chess-core"
+3	description       = "Pure game logic for xiangqi, banqi, and variants. Native + WASM."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[dependencies]
+12	serde       = { workspace = true }
+13	serde_json  = { workspace = true }
+14	thiserror   = { workspace = true }
+15	smallvec    = { workspace = true }
+16	bitflags    = { workspace = true }
+17	rand        = { workspace = true }
+18	rand_chacha = { workspace = true }
+19	tracing     = { workspace = true }
+20	arrayvec    = { workspace = true }
+21	
+22	# Browser-WASM bridge for OS randomness. Native builds don't need this;
+23	# pure WASI builds would also skip it. Required only for wasm32 + browser
+24	# (Leptos / Yew clients), which is our intended web target.
+25	[target.'cfg(target_arch = "wasm32")'.dependencies]
+26	getrandom = { version = "0.2", features = ["js"] }
+27	
+28	[dev-dependencies]
+29	proptest          = { workspace = true }
+30	insta             = { workspace = true }
+31	pretty_assertions = { workspace = true }
+32
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-tui"
+3	description = "ratatui frontend. Stub for a follow-up PR."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[[bin]]
+12	name = "chess-tui"
+13	path = "src/main.rs"
+14	
+15	[dependencies]
+16	chess-core = { path = "../../crates/chess-core" }
+17
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-cli/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-cli"
+3	description = "REPL test harness for chess-core."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[[bin]]
+12	name = "chess-cli"
+13	path = "src/main.rs"
+14	
+15	[dependencies]
+16	chess-core = { path = "../../crates/chess-core" }
+17
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:13Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-cli/src/main.rs`
+
+```text
+1	//! `chess-cli` — REPL test harness for chess-core.
+2	//!
+3	//! Commands:
+4	//!   xiangqi                                start standard xiangqi
+5	//!   banqi [--house chain,rush,...] [--seed N] [--preset taiwan|aggressive|purist]
+6	//!   moves                                  list legal moves (ICCS)
+7	//!   play <move>                            apply a move (e.g. h2e2 or 'flip a0')
+8	//!   view [<side>]                          render the board (default: side-to-move)
+9	//!   undo                                   undo last move
+10	//!   status                                 print game status
+11	//!   help                                   show this help
+12	//!   quit / exit                            exit
+13	
+14	use std::io::{self, BufRead, Write};
+15	
+16	use chess_core::board::BoardShape;
+17	use chess_core::notation::iccs;
+18	use chess_core::piece::{PieceKind, Side};
+19	use chess_core::rules::{HouseRules, RuleSet};
+20	use chess_core::state::GameState;
+21	use chess_core::view::{PlayerView, VisibleCell};
+22	
+23	fn main() {
+24	    println!("chess-cli ready. Type 'help' for commands.");
+25	    let stdin = io::stdin();
+26	    let mut state: Option<GameState> = None;
+27	    for line in stdin.lock().lines() {
+28	        let Ok(line) = line else { break };
+29	        let cmd = line.trim();
+30	        if cmd.is_empty() {
+31	            print_prompt();
+32	            continue;
+33	        }
+34	        match dispatch(cmd, &mut state) {
+35	            Ok(Action::Continue) => {}
+36	            Ok(Action::Quit) => break,
+37	            Err(e) => println!("error: {e}"),
+38	        }
+39	        print_prompt();
+40	    }
+41	}
+42	
+43	fn print_prompt() {
+44	    print!("> ");
+45	    let _ = io::stdout().flush();
+46	}
+47	
+48	enum Action {
+49	    Continue,
+50	    Quit,
+51	}
+52	
+53	fn dispatch(line: &str, state: &mut Option<GameState>) -> Result<Action, String> {
+54	    let mut parts = line.splitn(2, char::is_whitespace);
+55	    let cmd = parts.next().unwrap_or("");
+56	    let rest = parts.next().unwrap_or("").trim();
+57	    match cmd {
+58	        "help" | "?" => {
+59	            print_help();
+60	            Ok(Action::Continue)
+61	        }
+62	        "quit" | "exit" => Ok(Action::Quit),
+63	        "xiangqi" => {
+64	            *state = Some(GameState::new(RuleSet::xiangqi()));
+65	            println!("Started standard xiangqi. Red to move.");
+66	            Ok(Action::Continue)
+67	        }
+68	        "banqi" => {
+69	            let rules = parse_banqi_args(rest)?;
+70	            *state = Some(GameState::new(rules));
+71	            println!("Started banqi. Players have 32 face-down pieces; first flip locks colors.");
+72	            Ok(Action::Continue)
+73	        }
+74	        "moves" => {
+75	            let s = state.as_ref().ok_or("start a game first (xiangqi / banqi)")?;
+76	            let moves = s.legal_moves();
+77	            println!("{} legal moves:", moves.len());
+78	            for (i, m) in moves.iter().enumerate() {
+79	                println!("  [{i:>3}] {}", iccs::encode_move(&s.board, m));
+80	            }
+81	            Ok(Action::Continue)
+82	        }
+83	        "play" => {
+84	            let s = state.as_mut().ok_or("start a game first")?;
+85	            let m = iccs::decode_move(s, rest).map_err(|e| e.to_string())?;
+86	            s.make_move(&m).map_err(|e| e.to_string())?;
+87	            s.refresh_status();
+88	            println!("Played: {}", iccs::encode_move(&s.board, &m));
+89	            print_status(s);
+90	            Ok(Action::Continue)
+91	        }
+92	        "undo" => {
+93	            let s = state.as_mut().ok_or("start a game first")?;
+94	            s.unmake_move().map_err(|e| e.to_string())?;
+95	            println!("Undone. Now {:?} to move.", s.side_to_move);
+96	            Ok(Action::Continue)
+97	        }
+98	        "view" => {
+99	            let s = state.as_ref().ok_or("start a game first")?;
+100	            let observer = if rest.is_empty() {
+101	                s.side_to_move
+102	            } else {
+103	                Side(rest.parse::<u8>().map_err(|_| "view <side> expects 0,1,2")?)
+104	            };
+105	            let view = PlayerView::project(s, observer);
+106	            print_view(&view);
+107	            Ok(Action::Continue)
+108	        }
+109	        "status" => {
+110	            let s = state.as_ref().ok_or("start a game first")?;
+111	            print_status(s);
+112	            Ok(Action::Continue)
+113	        }
+114	        other => Err(format!("unknown command: {other}")),
+115	    }
+116	}
+117	
+118	fn parse_banqi_args(rest: &str) -> Result<RuleSet, String> {
+119	    let mut house = HouseRules::empty();
+120	    let mut seed: Option<u64> = None;
+121	    let mut tokens = rest.split_whitespace().peekable();
+122	    while let Some(tok) = tokens.next() {
+123	        match tok {
+124	            "--house" => {
+125	                let val = tokens.next().ok_or("--house needs a value")?;
+126	                for flag in val.split(',') {
+127	                    house |= match flag {
+128	                        "chain" => HouseRules::CHAIN_CAPTURE,
+129	                        "dark-chain" | "dark" => HouseRules::DARK_CHAIN,
+130	                        "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+131	                        "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+132	                        "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+133	                        other => return Err(format!("unknown house flag: {other}")),
+134	                    };
+135	                }
+136	            }
+137	            "--preset" => {
+138	                let val = tokens.next().ok_or("--preset needs a value")?;
+139	                house |= match val {
+140	                    "purist" => chess_core::rules::PRESET_PURIST,
+141	                    "taiwan" => chess_core::rules::PRESET_TAIWAN,
+142	                    "aggressive" => chess_core::rules::PRESET_AGGRESSIVE,
+143	                    other => return Err(format!("unknown preset: {other}")),
+144	                };
+145	            }
+146	            "--seed" => {
+147	                let val = tokens.next().ok_or("--seed needs a value")?;
+148	                seed = Some(val.parse().map_err(|_| "seed must be u64")?);
+149	            }
+150	            other => return Err(format!("unknown banqi arg: {other}")),
+151	        }
+152	    }
+153	    let house = chess_core::rules::house::normalize(house);
+154	    Ok(match seed {
+155	        Some(s) => RuleSet::banqi_with_seed(house, s),
+156	        None => RuleSet::banqi(house),
+157	    })
+158	}
+159	
+160	fn print_status(s: &GameState) {
+161	    println!(
+162	        "  side_to_move={:?}  no_progress_plies={}  status={:?}",
+163	        s.side_to_move, s.no_progress_plies, s.status
+164	    );
+165	}
+166	
+167	fn print_help() {
+168	    println!(
+169	        "Commands:
+170	  xiangqi
+171	  banqi [--preset purist|taiwan|aggressive] [--house chain,dark-chain,rush,horse-diagonal,cannon-fast] [--seed N]
+172	  moves
+173	  play <iccs>             e.g. h2e2 or 'flip a0' or 'a3xb3xc3' for chains
+174	  undo
+175	  view [side]             0 = RED, 1 = BLACK, 2 = third (3-kingdoms)
+176	  status
+177	  help
+178	  quit"
+179	    );
+180	}
+181	
+182	fn print_view(view: &PlayerView) {
+183	    let (w, h) = (view.width as usize, view.height as usize);
+184	    println!("Observer: {:?}  Side to move: {:?}", view.observer, view.side_to_move);
+185	    // Print top-down (highest rank first).
+186	    for r in (0..h).rev() {
+187	        print!(" {r:>2} |");
+188	        for f in 0..w {
+189	            let idx = r * w + f;
+190	            let glyph = match &view.cells[idx] {
+191	                VisibleCell::Empty => '.',
+192	                VisibleCell::Hidden => '?',
+193	                VisibleCell::Revealed(pos) => {
+194	                    let ch = piece_char(pos.piece.kind);
+195	                    if pos.piece.side == Side::RED {
+196	                        ch.to_ascii_uppercase()
+197	                    } else {
+198	                        ch
+199	                    }
+200	                }
+201	            };
+202	            print!(" {glyph}");
+203	            if matches!(view.shape, BoardShape::Xiangqi9x10)
+204	                && (f == 8 || (h == 10 && r == 5 && f + 1 == w))
+205	            {
+206	                // No-op marker; the river break is the gap between ranks 4 and 5,
+207	                // rendered below by an interstitial line.
+208	            }
+209	        }
+210	        println!();
+211	        // Xiangqi river between ranks 4 and 5
+212	        if matches!(view.shape, BoardShape::Xiangqi9x10) && r == 5 {
+213	            println!("    | -- 楚河 漢界 --");
+214	        }
+215	    }
+216	    print!("    +");
+217	    for _ in 0..w {
+218	        print!("--");
+219	    }
+220	    println!();
+221	    print!("      ");
+222	    for f in 0..w {
+223	        print!(" {}", (b'a' + f as u8) as char);
+224	    }
+225	    println!();
+226	    println!("Status: {:?}  legal moves available: {}", view.status, view.legal_moves.len());
+227	}
+228	
+229	fn piece_char(kind: PieceKind) -> char {
+230	    match kind {
+231	        PieceKind::General => 'g',
+232	        PieceKind::Advisor => 'a',
+233	        PieceKind::Elephant => 'b', // 'b' for bishop-equivalent
+234	        PieceKind::Chariot => 'r',  // rook-equivalent
+235	        PieceKind::Horse => 'h',
+236	        PieceKind::Cannon => 'c',
+237	        PieceKind::Soldier => 'p', // pawn-equivalent
+238	    }
+239	}
+240
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:14Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend. Stub for a follow-up PR.
+2	
+3	fn main() {
+4	    eprintln!("chess-tui stub — see docs/architecture.md roadmap.");
+5	}
+6
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:14Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/view.rs`
+
+```text
+1	//! Per-player view projection.
+2	//!
+3	//! `PlayerView` is the only state the network layer should serialize and
+4	//! ship to clients — it has hidden-piece identities scrubbed and (for
+5	//! non-side-to-move observers) no legal-move list to leak strategy.
+6	//!
+7	//! See ADR-0004.
+8	
+9	use serde::{Deserialize, Serialize};
+10	
+11	use crate::board::BoardShape;
+12	use crate::moves::{Move, MoveList};
+13	use crate::piece::{PieceOnSquare, Side};
+14	use crate::state::{GameState, GameStatus};
+15	
+16	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+17	pub enum VisibleCell {
+18	    Empty,
+19	    /// Banqi face-down: identity hidden from this observer.
+20	    Hidden,
+21	    Revealed(PieceOnSquare),
+22	}
+23	
+24	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+25	pub struct PlayerView {
+26	    pub observer: Side,
+27	    pub shape: BoardShape,
+28	    pub width: u8,
+29	    pub height: u8,
+30	    pub cells: Vec<VisibleCell>,
+31	    pub side_to_move: Side,
+32	    pub status: GameStatus,
+33	    /// Legal moves for the observer if it's their turn; empty otherwise.
+34	    pub legal_moves: MoveList,
+35	}
+36	
+37	impl PlayerView {
+38	    /// Project `state` from `observer`'s vantage point. Hidden pieces stay
+39	    /// hidden; for opponents, legal-move list is empty.
+40	    pub fn project(state: &GameState, observer: Side) -> Self {
+41	        let board = &state.board;
+42	        let cells: Vec<VisibleCell> = (0..board.cell_count())
+43	            .map(|i| {
+44	                let sq = crate::coord::Square(i as u16);
+45	                match board.get(sq) {
+46	                    None => VisibleCell::Empty,
+47	                    Some(pos) if pos.revealed => VisibleCell::Revealed(pos),
+48	                    Some(_) => VisibleCell::Hidden,
+49	                }
+50	            })
+51	            .collect();
+52	
+53	        let legal_moves = if observer == state.side_to_move {
+54	            sanitize_for_observer(state.legal_moves(), observer)
+55	        } else {
+56	            MoveList::new()
+57	        };
+58	
+59	        Self {
+60	            observer,
+61	            shape: board.shape(),
+62	            width: board.width(),
+63	            height: board.height(),
+64	            cells,
+65	            side_to_move: state.side_to_move,
+66	            status: state.status,
+67	            legal_moves,
+68	        }
+69	    }
+70	}
+71	
+72	/// Strip identity from `Reveal` moves before they reach the network.
+73	/// Even the side-to-move sees `revealed: None` because the engine resolves
+74	/// the identity authoritatively when the move is applied.
+75	fn sanitize_for_observer(moves: MoveList, _observer: Side) -> MoveList {
+76	    moves
+77	        .into_iter()
+78	        .map(|m| match m {
+79	            Move::Reveal { at, revealed: _ } => Move::Reveal { at, revealed: None },
+80	            other => other,
+81	        })
+82	        .collect()
+83	}
+84	
+85	#[cfg(test)]
+86	mod tests {
+87	    use super::*;
+88	    use crate::rules::{HouseRules, RuleSet};
+89	
+90	    #[test]
+91	    fn fresh_banqi_view_has_all_hidden_for_any_observer() {
+92	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 7));
+93	        let view = PlayerView::project(&state, Side::RED);
+94	        assert_eq!(view.cells.len(), 32);
+95	        assert!(view.cells.iter().all(|c| matches!(c, VisibleCell::Hidden)));
+96	    }
+97	
+98	    #[test]
+99	    fn xiangqi_view_shows_revealed_pieces() {
+100	        let state = GameState::new(RuleSet::xiangqi());
+101	        let view = PlayerView::project(&state, Side::RED);
+102	        let revealed: Vec<_> =
+103	            view.cells.iter().filter(|c| matches!(c, VisibleCell::Revealed(_))).collect();
+104	        assert_eq!(revealed.len(), 32);
+105	    }
+106	
+107	    #[test]
+108	    fn opponent_view_has_empty_legal_moves() {
+109	        let state = GameState::new(RuleSet::xiangqi());
+110	        let red_view = PlayerView::project(&state, Side::RED);
+111	        let black_view = PlayerView::project(&state, Side::BLACK);
+112	        assert!(!red_view.legal_moves.is_empty(), "side-to-move sees moves");
+113	        assert!(black_view.legal_moves.is_empty(), "opponent doesn't");
+114	    }
+115	
+116	    #[test]
+117	    fn reveal_moves_have_no_identity_in_view() {
+118	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 1));
+119	        let view = PlayerView::project(&state, Side::RED);
+120	        for m in &view.legal_moves {
+121	            if let Move::Reveal { revealed, .. } = m {
+122	                assert!(revealed.is_none(), "Reveal payload must be stripped in view");
+123	            }
+124	        }
+125	    }
+126	
+127	    #[test]
+128	    fn no_hidden_identity_in_serialized_view() {
+129	        // The smoke-level version of the proptest in tests/view_projection.rs.
+130	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 42));
+131	        let view = PlayerView::project(&state, Side::RED);
+132	        let json = serde_json::to_string(&view).unwrap();
+133	        // None of the piece-kind names should appear in any cell — they're all hidden.
+134	        // (Empty cells trivially never contain a kind; we just confirm the doc-level
+135	        // invariant.)
+136	        for kind_name in ["General", "Advisor", "Elephant", "Chariot", "Horse", "Cannon", "Soldier"]
+137	        {
+138	            assert!(
+139	                !json.contains(kind_name),
+140	                "fresh banqi view must not leak any piece kind ({kind_name})"
+141	            );
+142	        }
+143	    }
+144	}
+145
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:10:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Survey PlayerView + orientation handling
+
+```text
+Perfect. Now I have all the information. Let me compile my findings:
+
+---
+
+## TUI Frontend Planning: Two Concerns Addressed
+
+### **Concern 1: Board Orientation / View Flipping**
+
+**Finding 1** — `PlayerView` encodes perspective:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs` lines 24–35
+- `PlayerView` has field `observer: Side` explicitly encoding whose perspective is being sent.
+```rust
+pub struct PlayerView {
+    pub observer: Side,
+    pub shape: BoardShape,
+    pub width: u8,
+    pub height: u8,
+    pub cells: Vec<VisibleCell>,
+    // ...
+}
+```
+
+**Finding 2** — Coordinates are **physical (always Red's perspective)**:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/coord.rs` lines 37–43
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/mod.rs` lines 58–61
+- `File` and `Rank` are opaque newtypes; the model uses `Square` (linear index), decoded as `(File, Rank)` via `Board::file_rank()`. Flipping requires client-side iteration reversal (low-to-high vs high-to-low rank).
+```rust
+#[inline]
+pub fn file_rank(&self, sq: Square) -> (File, Rank) {
+    let w = self.width as u16;
+    (File((sq.0 % w) as u8), Rank((sq.0 / w) as u8))
+}
+```
+
+**Finding 3** — No existing render helper:
+- No `fn render`, `impl fmt::Display for Board`, or `print_board` found. TUI must build its own orientation logic.
+
+**Finding 4** — Banqi is 4 wide × 8 tall in model:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs` line 13–14
+- Comment: "Banqi: 4 files × 8 ranks (half a xiangqi board, **oriented sideways**)." The data model stores it 4 wide × 8 tall; display should transpose if traditional view expects 8 wide × 4 tall.
+
+---
+
+### **Concern 2: Reading / Writing Pieces in Display**
+
+**Finding 5** — `Piece` struct carries side + kind only:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/piece.rs` lines 77–87
+```rust
+pub struct Piece {
+    pub side: Side,
+    pub kind: PieceKind,
+}
+```
+`PieceOnSquare` wraps `Piece` with reveal state:
+```rust
+pub struct PieceOnSquare {
+    pub piece: Piece,
+    pub revealed: bool,
+}
+```
+
+**Finding 6** — `VisibleCell` has three variants:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs` lines 16–22
+```rust
+pub enum VisibleCell {
+    Empty,
+    Hidden,
+    Revealed(PieceOnSquare),
+}
+```
+Hidden pieces are opaque (Banqi face-down); Revealed expose kind + side.
+
+**Finding 7** — Selection state is client-only:
+- Engine has no concept of "selected square." `PlayerView.legal_moves` is pre-filtered by the engine (empty for opponent); client maintains UI selection independently.
+
+**Finding 8** — Filtering moves by origin is cheap:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs` lines 49–61
+- `Move::origin_square()` is an inline method; TUI can call `legal_moves.iter().filter(|m| m.origin_square() == selected_sq)` without helper. `MoveList` is a `SmallVec<[Move; 32]>`, so scan is negligible.
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-06 06:09:14Z)**_
+
+Explore /Volumes/Data/Program/tries/2026-05-06-chinese-chess for two specific concerns related to planning a TUI frontend.
+
+**Concern 1: Board orientation / view flipping.**
+
+In Chinese chess (xiangqi), each player traditionally sees the board with their own pieces at the bottom. When networked, the engine sends a `PlayerView` (per ADR-0004) but rendering is the client's job. I need to know:
+
+1. Does `PlayerView` already encode whose perspective it is? (Look in `crates/chess-core/src/view.rs` or wherever `PlayerView` lives.)
+2. Are board coordinates physical (always Red's perspective) or relative (observer's perspective)? Look at how `Square`, `File`, `Rank` are defined. The Square layout matters because flipping for display is either "iterate ranks low-to-high vs high-to-low" or "subtract from board height".
+3. Is there an existing "render" helper anywhere — a Display impl or pretty-print function that takes a Side parameter for orientation? Grep for `fn render`, `fn display`, `impl fmt::Display for Board`, `print_board`.
+4. Banqi's 4×8 board — how is it oriented in the data model? Banqi traditionally is laid sideways (long axis horizontal, 8 wide × 4 tall when displayed). Is the underlying `Board` 4 wide × 8 tall, or does the model already match the display convention?
+
+**Concern 2: Reading vs writing pieces in display.**
+
+For rendering each cell I need to know:
+
+5. The `Piece` struct — what fields does it carry (kind + side? + revealed-state? + chain-state?). Show me `crates/chess-core/src/piece.rs`.
+6. The `VisibleCell` enum — what each variant exposes. The TUI needs to render `Hidden` differently from a face-up `Piece`.
+7. Selection / highlighting state lives in the client, not the engine — confirm. (i.e., the engine has no concept of "currently selected square".)
+8. How `legal_moves` results are filtered — can a TUI cheaply query "what moves are legal from THIS square" to highlight destinations? Look for any helper like `legal_moves_from(square)` or whether you have to scan all `legal_moves()`.
+
+For each finding, cite the file path and 2-5 lines of actual code (the type definition or function signature). Don't editorialize.
+
+Under 400 words.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:15Z)**_
+
+I'll explore the codebase systematically to address these TUI frontend concerns.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess -type f -name "*.rs" | grep -E "(view|piece|board|square)" | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/tests/view_projection.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/piece.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/grid.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/mod.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/zones.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:18Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/piece.rs`
+
+```text
+1	//! Pieces and sides.
+2	
+3	use serde::{Deserialize, Serialize};
+4	
+5	/// Player side. Two-player games use 0 and 1; 三國暗棋 uses 0, 1, 2.
+6	///
+7	/// Wraps a small int rather than a fixed enum so 3-player isn't a special case.
+8	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+9	#[repr(transparent)]
+10	pub struct Side(pub u8);
+11	
+12	impl Side {
+13	    pub const RED: Side = Side(0);
+14	    pub const BLACK: Side = Side(1);
+15	    /// Third faction in 三國暗棋. Maps to 蜀/吳/魏 externally as the variant chooses.
+16	    pub const GREEN: Side = Side(2);
+17	
+18	    #[inline]
+19	    pub const fn raw(self) -> u8 {
+20	        self.0
+21	    }
+22	
+23	    /// 2-player only: the opposing side.
+24	    #[inline]
+25	    pub const fn opposite(self) -> Side {
+26	        Side(self.0 ^ 1)
+27	    }
+28	}
+29	
+30	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+31	pub enum PieceKind {
+32	    /// 將 / 帥
+33	    General,
+34	    /// 士 / 仕
+35	    Advisor,
+36	    /// 象 / 相
+37	    Elephant,
+38	    /// 車 / 俥
+39	    Chariot,
+40	    /// 馬 / 傌
+41	    Horse,
+42	    /// 炮 / 砲
+43	    Cannon,
+44	    /// 卒 / 兵
+45	    Soldier,
+46	}
+47	
+48	impl PieceKind {
+49	    /// Banqi capture rank. Higher beats lower (with the cannon and
+50	    /// soldier-vs-general exceptions handled in the move generator,
+51	    /// not by this number).
+52	    #[inline]
+53	    pub const fn banqi_rank(self) -> u8 {
+54	        match self {
+55	            PieceKind::General => 6,
+56	            PieceKind::Advisor => 5,
+57	            PieceKind::Elephant => 4,
+58	            PieceKind::Chariot => 3,
+59	            PieceKind::Horse => 2,
+60	            PieceKind::Cannon => 1,
+61	            PieceKind::Soldier => 0,
+62	        }
+63	    }
+64	
+65	    /// Iteration helper.
+66	    pub const ALL: [PieceKind; 7] = [
+67	        PieceKind::General,
+68	        PieceKind::Advisor,
+69	        PieceKind::Elephant,
+70	        PieceKind::Chariot,
+71	        PieceKind::Horse,
+72	        PieceKind::Cannon,
+73	        PieceKind::Soldier,
+74	    ];
+75	}
+76	
+77	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+78	pub struct Piece {
+79	    pub side: Side,
+80	    pub kind: PieceKind,
+81	}
+82	
+83	impl Piece {
+84	    #[inline]
+85	    pub const fn new(side: Side, kind: PieceKind) -> Self {
+86	        Self { side, kind }
+87	    }
+88	}
+89	
+90	/// What sits on a square. Banqi pieces start `revealed: false`;
+91	/// xiangqi pieces are always `revealed: true`.
+92	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+93	pub struct PieceOnSquare {
+94	    pub piece: Piece,
+95	    pub revealed: bool,
+96	}
+97	
+98	impl PieceOnSquare {
+99	    #[inline]
+100	    pub const fn revealed(piece: Piece) -> Self {
+101	        Self { piece, revealed: true }
+102	    }
+103	
+104	    #[inline]
+105	    pub const fn hidden(piece: Piece) -> Self {
+106	        Self { piece, revealed: false }
+107	    }
+108	}
+109	
+110	#[cfg(test)]
+111	mod tests {
+112	    use super::*;
+113	
+114	    #[test]
+115	    fn side_opposite_is_involution() {
+116	        assert_eq!(Side::RED.opposite(), Side::BLACK);
+117	        assert_eq!(Side::BLACK.opposite(), Side::RED);
+118	        assert_eq!(Side::RED.opposite().opposite(), Side::RED);
+119	    }
+120	
+121	    #[test]
+122	    fn banqi_rank_strictly_decreasing_general_to_soldier() {
+123	        // General > Advisor > Elephant > Chariot > Horse > Cannon > Soldier
+124	        let order = [
+125	            PieceKind::General,
+126	            PieceKind::Advisor,
+127	            PieceKind::Elephant,
+128	            PieceKind::Chariot,
+129	            PieceKind::Horse,
+130	            PieceKind::Cannon,
+131	            PieceKind::Soldier,
+132	        ];
+133	        for w in order.windows(2) {
+134	            assert!(w[0].banqi_rank() > w[1].banqi_rank(), "{:?} should outrank {:?}", w[0], w[1],);
+135	        }
+136	    }
+137	
+138	    #[test]
+139	    fn piece_kind_all_covers_seven_distinct() {
+140	        let mut sorted: Vec<_> = PieceKind::ALL.iter().collect();
+141	        sorted.sort_by_key(|p| format!("{:?}", p));
+142	        sorted.dedup();
+143	        assert_eq!(sorted.len(), 7);
+144	    }
+145	}
+146
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:18Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/notation`
+
+```text
+EISDIR: illegal operation on a directory, read '/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation'
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src -type f -name "*.rs" | grep -E "(coord|board)" | head -5`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/coord.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/grid.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/mod.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/zones.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:19Z)**_
+
+Now let me read the key files to address both concerns:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/view.rs`
+
+```text
+1	//! Per-player view projection.
+2	//!
+3	//! `PlayerView` is the only state the network layer should serialize and
+4	//! ship to clients — it has hidden-piece identities scrubbed and (for
+5	//! non-side-to-move observers) no legal-move list to leak strategy.
+6	//!
+7	//! See ADR-0004.
+8	
+9	use serde::{Deserialize, Serialize};
+10	
+11	use crate::board::BoardShape;
+12	use crate::moves::{Move, MoveList};
+13	use crate::piece::{PieceOnSquare, Side};
+14	use crate::state::{GameState, GameStatus};
+15	
+16	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+17	pub enum VisibleCell {
+18	    Empty,
+19	    /// Banqi face-down: identity hidden from this observer.
+20	    Hidden,
+21	    Revealed(PieceOnSquare),
+22	}
+23	
+24	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+25	pub struct PlayerView {
+26	    pub observer: Side,
+27	    pub shape: BoardShape,
+28	    pub width: u8,
+29	    pub height: u8,
+30	    pub cells: Vec<VisibleCell>,
+31	    pub side_to_move: Side,
+32	    pub status: GameStatus,
+33	    /// Legal moves for the observer if it's their turn; empty otherwise.
+34	    pub legal_moves: MoveList,
+35	}
+36	
+37	impl PlayerView {
+38	    /// Project `state` from `observer`'s vantage point. Hidden pieces stay
+39	    /// hidden; for opponents, legal-move list is empty.
+40	    pub fn project(state: &GameState, observer: Side) -> Self {
+41	        let board = &state.board;
+42	        let cells: Vec<VisibleCell> = (0..board.cell_count())
+43	            .map(|i| {
+44	                let sq = crate::coord::Square(i as u16);
+45	                match board.get(sq) {
+46	                    None => VisibleCell::Empty,
+47	                    Some(pos) if pos.revealed => VisibleCell::Revealed(pos),
+48	                    Some(_) => VisibleCell::Hidden,
+49	                }
+50	            })
+51	            .collect();
+52	
+53	        let legal_moves = if observer == state.side_to_move {
+54	            sanitize_for_observer(state.legal_moves(), observer)
+55	        } else {
+56	            MoveList::new()
+57	        };
+58	
+59	        Self {
+60	            observer,
+61	            shape: board.shape(),
+62	            width: board.width(),
+63	            height: board.height(),
+64	            cells,
+65	            side_to_move: state.side_to_move,
+66	            status: state.status,
+67	            legal_moves,
+68	        }
+69	    }
+70	}
+71	
+72	/// Strip identity from `Reveal` moves before they reach the network.
+73	/// Even the side-to-move sees `revealed: None` because the engine resolves
+74	/// the identity authoritatively when the move is applied.
+75	fn sanitize_for_observer(moves: MoveList, _observer: Side) -> MoveList {
+76	    moves
+77	        .into_iter()
+78	        .map(|m| match m {
+79	            Move::Reveal { at, revealed: _ } => Move::Reveal { at, revealed: None },
+80	            other => other,
+81	        })
+82	        .collect()
+83	}
+84	
+85	#[cfg(test)]
+86	mod tests {
+87	    use super::*;
+88	    use crate::rules::{HouseRules, RuleSet};
+89	
+90	    #[test]
+91	    fn fresh_banqi_view_has_all_hidden_for_any_observer() {
+92	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 7));
+93	        let view = PlayerView::project(&state, Side::RED);
+94	        assert_eq!(view.cells.len(), 32);
+95	        assert!(view.cells.iter().all(|c| matches!(c, VisibleCell::Hidden)));
+96	    }
+97	
+98	    #[test]
+99	    fn xiangqi_view_shows_revealed_pieces() {
+100	        let state = GameState::new(RuleSet::xiangqi());
+101	        let view = PlayerView::project(&state, Side::RED);
+102	        let revealed: Vec<_> =
+103	            view.cells.iter().filter(|c| matches!(c, VisibleCell::Revealed(_))).collect();
+104	        assert_eq!(revealed.len(), 32);
+105	    }
+106	
+107	    #[test]
+108	    fn opponent_view_has_empty_legal_moves() {
+109	        let state = GameState::new(RuleSet::xiangqi());
+110	        let red_view = PlayerView::project(&state, Side::RED);
+111	        let black_view = PlayerView::project(&state, Side::BLACK);
+112	        assert!(!red_view.legal_moves.is_empty(), "side-to-move sees moves");
+113	        assert!(black_view.legal_moves.is_empty(), "opponent doesn't");
+114	    }
+115	
+116	    #[test]
+117	    fn reveal_moves_have_no_identity_in_view() {
+118	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 1));
+119	        let view = PlayerView::project(&state, Side::RED);
+120	        for m in &view.legal_moves {
+121	            if let Move::Reveal { revealed, .. } = m {
+122	                assert!(revealed.is_none(), "Reveal payload must be stripped in view");
+123	            }
+124	        }
+125	    }
+126	
+127	    #[test]
+128	    fn no_hidden_identity_in_serialized_view() {
+129	        // The smoke-level version of the proptest in tests/view_projection.rs.
+130	        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 42));
+131	        let view = PlayerView::project(&state, Side::RED);
+132	        let json = serde_json::to_string(&view).unwrap();
+133	        // None of the piece-kind names should appear in any cell — they're all hidden.
+134	        // (Empty cells trivially never contain a kind; we just confirm the doc-level
+135	        // invariant.)
+136	        for kind_name in ["General", "Advisor", "Elephant", "Chariot", "Horse", "Cannon", "Soldier"]
+137	        {
+138	            assert!(
+139	                !json.contains(kind_name),
+140	                "fresh banqi view must not leak any piece kind ({kind_name})"
+141	            );
+142	        }
+143	    }
+144	}
+145
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/piece.rs`
+
+```text
+1	//! Pieces and sides.
+2	
+3	use serde::{Deserialize, Serialize};
+4	
+5	/// Player side. Two-player games use 0 and 1; 三國暗棋 uses 0, 1, 2.
+6	///
+7	/// Wraps a small int rather than a fixed enum so 3-player isn't a special case.
+8	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+9	#[repr(transparent)]
+10	pub struct Side(pub u8);
+11	
+12	impl Side {
+13	    pub const RED: Side = Side(0);
+14	    pub const BLACK: Side = Side(1);
+15	    /// Third faction in 三國暗棋. Maps to 蜀/吳/魏 externally as the variant chooses.
+16	    pub const GREEN: Side = Side(2);
+17	
+18	    #[inline]
+19	    pub const fn raw(self) -> u8 {
+20	        self.0
+21	    }
+22	
+23	    /// 2-player only: the opposing side.
+24	    #[inline]
+25	    pub const fn opposite(self) -> Side {
+26	        Side(self.0 ^ 1)
+27	    }
+28	}
+29	
+30	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+31	pub enum PieceKind {
+32	    /// 將 / 帥
+33	    General,
+34	    /// 士 / 仕
+35	    Advisor,
+36	    /// 象 / 相
+37	    Elephant,
+38	    /// 車 / 俥
+39	    Chariot,
+40	    /// 馬 / 傌
+41	    Horse,
+42	    /// 炮 / 砲
+43	    Cannon,
+44	    /// 卒 / 兵
+45	    Soldier,
+46	}
+47	
+48	impl PieceKind {
+49	    /// Banqi capture rank. Higher beats lower (with the cannon and
+50	    /// soldier-vs-general exceptions handled in the move generator,
+51	    /// not by this number).
+52	    #[inline]
+53	    pub const fn banqi_rank(self) -> u8 {
+54	        match self {
+55	            PieceKind::General => 6,
+56	            PieceKind::Advisor => 5,
+57	            PieceKind::Elephant => 4,
+58	            PieceKind::Chariot => 3,
+59	            PieceKind::Horse => 2,
+60	            PieceKind::Cannon => 1,
+61	            PieceKind::Soldier => 0,
+62	        }
+63	    }
+64	
+65	    /// Iteration helper.
+66	    pub const ALL: [PieceKind; 7] = [
+67	        PieceKind::General,
+68	        PieceKind::Advisor,
+69	        PieceKind::Elephant,
+70	        PieceKind::Chariot,
+71	        PieceKind::Horse,
+72	        PieceKind::Cannon,
+73	        PieceKind::Soldier,
+74	    ];
+75	}
+76	
+77	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+78	pub struct Piece {
+79	    pub side: Side,
+80	    pub kind: PieceKind,
+81	}
+82	
+83	impl Piece {
+84	    #[inline]
+85	    pub const fn new(side: Side, kind: PieceKind) -> Self {
+86	        Self { side, kind }
+87	    }
+88	}
+89	
+90	/// What sits on a square. Banqi pieces start `revealed: false`;
+91	/// xiangqi pieces are always `revealed: true`.
+92	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+93	pub struct PieceOnSquare {
+94	    pub piece: Piece,
+95	    pub revealed: bool,
+96	}
+97	
+98	impl PieceOnSquare {
+99	    #[inline]
+100	    pub const fn revealed(piece: Piece) -> Self {
+101	        Self { piece, revealed: true }
+102	    }
+103	
+104	    #[inline]
+105	    pub const fn hidden(piece: Piece) -> Self {
+106	        Self { piece, revealed: false }
+107	    }
+108	}
+109	
+110	#[cfg(test)]
+111	mod tests {
+112	    use super::*;
+113	
+114	    #[test]
+115	    fn side_opposite_is_involution() {
+116	        assert_eq!(Side::RED.opposite(), Side::BLACK);
+117	        assert_eq!(Side::BLACK.opposite(), Side::RED);
+118	        assert_eq!(Side::RED.opposite().opposite(), Side::RED);
+119	    }
+120	
+121	    #[test]
+122	    fn banqi_rank_strictly_decreasing_general_to_soldier() {
+123	        // General > Advisor > Elephant > Chariot > Horse > Cannon > Soldier
+124	        let order = [
+125	            PieceKind::General,
+126	            PieceKind::Advisor,
+127	            PieceKind::Elephant,
+128	            PieceKind::Chariot,
+129	            PieceKind::Horse,
+130	            PieceKind::Cannon,
+131	            PieceKind::Soldier,
+132	        ];
+133	        for w in order.windows(2) {
+134	            assert!(w[0].banqi_rank() > w[1].banqi_rank(), "{:?} should outrank {:?}", w[0], w[1],);
+135	        }
+136	    }
+137	
+138	    #[test]
+139	    fn piece_kind_all_covers_seven_distinct() {
+140	        let mut sorted: Vec<_> = PieceKind::ALL.iter().collect();
+141	        sorted.sort_by_key(|p| format!("{:?}", p));
+142	        sorted.dedup();
+143	        assert_eq!(sorted.len(), 7);
+144	    }
+145	}
+146
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/board/mod.rs`
+
+```text
+1	//! Board: dense storage + shape-aware coordinate operations.
+2	
+3	pub mod grid;
+4	pub mod shape;
+5	pub mod zones;
+6	
+7	pub use shape::BoardShape;
+8	pub use zones::RegionKind;
+9	
+10	use serde::{Deserialize, Serialize};
+11	use smallvec::SmallVec;
+12	
+13	use crate::coord::{Direction, File, Rank, Square};
+14	use crate::piece::PieceOnSquare;
+15	
+16	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+17	pub struct Board {
+18	    shape: BoardShape,
+19	    width: u8,
+20	    height: u8,
+21	    cells: Vec<Option<PieceOnSquare>>,
+22	}
+23	
+24	impl Board {
+25	    pub fn new(shape: BoardShape) -> Self {
+26	        let (width, height) = shape.dimensions();
+27	        Self { shape, width, height, cells: vec![None; shape.cell_count()] }
+28	    }
+29	
+30	    #[inline]
+31	    pub fn shape(&self) -> BoardShape {
+32	        self.shape
+33	    }
+34	
+35	    #[inline]
+36	    pub fn width(&self) -> u8 {
+37	        self.width
+38	    }
+39	
+40	    #[inline]
+41	    pub fn height(&self) -> u8 {
+42	        self.height
+43	    }
+44	
+45	    #[inline]
+46	    pub fn cell_count(&self) -> usize {
+47	        self.cells.len()
+48	    }
+49	
+50	    /// Build a `Square` from `(file, rank)` on this board.
+51	    #[inline]
+52	    pub fn sq(&self, file: File, rank: Rank) -> Square {
+53	        Square((rank.0 as u16) * (self.width as u16) + file.0 as u16)
+54	    }
+55	
+56	    /// Decompose a `Square` into `(file, rank)`.
+57	    #[inline]
+58	    pub fn file_rank(&self, sq: Square) -> (File, Rank) {
+59	        let w = self.width as u16;
+60	        (File((sq.0 % w) as u8), Rank((sq.0 / w) as u8))
+61	    }
+62	
+63	    pub fn get(&self, sq: Square) -> Option<PieceOnSquare> {
+64	        self.cells.get(sq.0 as usize).copied().flatten()
+65	    }
+66	
+67	    pub fn set(&mut self, sq: Square, value: Option<PieceOnSquare>) {
+68	        self.cells[sq.0 as usize] = value;
+69	    }
+70	
+71	    /// Iterate every playable square in linear order.
+72	    pub fn squares(&self) -> impl Iterator<Item = Square> + '_ {
+73	        grid::squares_of(self.shape)
+74	    }
+75	
+76	    /// One step in `dir` from `from`. Returns `None` if the destination
+77	    /// would leave the board or land on a non-playable cell.
+78	    pub fn step(&self, from: Square, dir: Direction) -> Option<Square> {
+79	        let (df, dr) = dir.delta();
+80	        let (file, rank) = self.file_rank(from);
+81	        let nf = (file.0 as i16) + df as i16;
+82	        let nr = (rank.0 as i16) + dr as i16;
+83	        if nf < 0 || nr < 0 || nf >= self.width as i16 || nr >= self.height as i16 {
+84	            return None;
+85	        }
+86	        let next = self.sq(File(nf as u8), Rank(nr as u8));
+87	        if self.shape.is_playable(next.0 as usize) {
+88	            Some(next)
+89	        } else {
+90	            None
+91	        }
+92	    }
+93	
+94	    /// Cast a ray from `from` in `dir`. Returns the squares walked over
+95	    /// (all empty) and, if the ray stopped on an occupied square, that
+96	    /// square. Stops at the board edge with `None` blocker.
+97	    pub fn ray(&self, from: Square, dir: Direction) -> (SmallVec<[Square; 16]>, Option<Square>) {
+98	        let mut walked = SmallVec::new();
+99	        let mut cursor = from;
+100	        loop {
+101	            match self.step(cursor, dir) {
+102	                None => return (walked, None),
+103	                Some(next) => {
+104	                    if self.get(next).is_some() {
+105	                        return (walked, Some(next));
+106	                    }
+107	                    walked.push(next);
+108	                    cursor = next;
+109	                }
+110	            }
+111	        }
+112	    }
+113	
+114	    /// Convenience predicate forwarding to [`zones::in_region`].
+115	    #[inline]
+116	    pub fn in_region(&self, sq: Square, region: RegionKind) -> bool {
+117	        zones::in_region(self.shape, sq, region)
+118	    }
+119	}
+120	
+121	#[cfg(test)]
+122	mod tests {
+123	    use super::*;
+124	    use crate::piece::{Piece, PieceKind, Side};
+125	
+126	    #[test]
+127	    fn xiangqi_round_trip_file_rank() {
+128	        let b = Board::new(BoardShape::Xiangqi9x10);
+129	        for f in 0..9 {
+130	            for r in 0..10 {
+131	                let s = b.sq(File(f), Rank(r));
+132	                let (f2, r2) = b.file_rank(s);
+133	                assert_eq!((f2.0, r2.0), (f, r));
+134	            }
+135	        }
+136	    }
+137	
+138	    #[test]
+139	    fn step_off_board_is_none() {
+140	        let b = Board::new(BoardShape::Xiangqi9x10);
+141	        let corner = b.sq(File(0), Rank(0));
+142	        assert!(b.step(corner, Direction::S).is_none());
+143	        assert!(b.step(corner, Direction::W).is_none());
+144	        assert!(b.step(corner, Direction::N).is_some());
+145	    }
+146	
+147	    #[test]
+148	    fn ray_walks_until_blocker() {
+149	        let mut b = Board::new(BoardShape::Xiangqi9x10);
+150	        let from = b.sq(File(0), Rank(0));
+151	        // Place blocker 3 ranks north
+152	        let blocker = b.sq(File(0), Rank(3));
+153	        b.set(blocker, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+154	        let (walked, hit) = b.ray(from, Direction::N);
+155	        assert_eq!(walked.len(), 2);
+156	        assert_eq!(hit, Some(blocker));
+157	    }
+158	
+159	    #[test]
+160	    fn ray_off_board_no_blocker() {
+161	        let b = Board::new(BoardShape::Xiangqi9x10);
+162	        let from = b.sq(File(0), Rank(7));
+163	        let (walked, hit) = b.ray(from, Direction::N);
+164	        assert_eq!(walked.len(), 2); // ranks 8, 9
+165	        assert!(hit.is_none());
+166	    }
+167	
+168	    #[test]
+169	    fn banqi_board_has_32_cells() {
+170	        let b = Board::new(BoardShape::Banqi4x8);
+171	        assert_eq!(b.cell_count(), 32);
+172	        assert_eq!(b.squares().count(), 32);
+173	    }
+174	}
+175
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/board/shape.rs`
+
+```text
+1	//! Board shapes.
+2	//!
+3	//! `BoardShape` is the discriminator: pick one and the `Board` knows its
+4	//! dimensions and (for irregular boards) which cells are off-limits.
+5	
+6	use serde::{Deserialize, Serialize};
+7	
+8	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+9	pub enum BoardShape {
+10	    /// Standard xiangqi: 9 files × 10 ranks. All cells valid.
+11	    Xiangqi9x10,
+12	
+13	    /// Banqi: 4 files × 8 ranks (half a xiangqi board, oriented sideways).
+14	    Banqi4x8,
+15	
+16	    /// 三國暗棋. Implementation lands in PR 2; the variant exists in PR 1
+17	    /// so the type system is already wired for it.
+18	    ThreeKingdom,
+19	
+20	    /// Arbitrary custom-shape variants (escape hatch for future use).
+21	    /// `mask` bit `i` set means cell `i` is playable. Up to 128 cells;
+22	    /// widen if a future variant exceeds that.
+23	    Custom { width: u8, height: u8, mask: u128 },
+24	}
+25	
+26	impl BoardShape {
+27	    #[inline]
+28	    pub const fn dimensions(self) -> (u8, u8) {
+29	        match self {
+30	            BoardShape::Xiangqi9x10 => (9, 10),
+31	            BoardShape::Banqi4x8 => (4, 8),
+32	            // PR-2 placeholder; pick a plausible bounding box for now.
+33	            BoardShape::ThreeKingdom => (4, 8),
+34	            BoardShape::Custom { width, height, .. } => (width, height),
+35	        }
+36	    }
+37	
+38	    #[inline]
+39	    pub const fn cell_count(self) -> usize {
+40	        let (w, h) = self.dimensions();
+41	        (w as usize) * (h as usize)
+42	    }
+43	
+44	    /// Whether the cell at the given linear index is a playable square.
+45	    /// Rectangular shapes accept any in-range index; irregular shapes
+46	    /// consult their mask.
+47	    #[inline]
+48	    pub const fn is_playable(self, idx: usize) -> bool {
+49	        match self {
+50	            BoardShape::Xiangqi9x10 | BoardShape::Banqi4x8 => idx < self.cell_count(),
+51	            BoardShape::ThreeKingdom => false, // PR-2: replace with proper mask
+52	            BoardShape::Custom { mask, .. } => idx < 128 && (mask >> idx) & 1 == 1,
+53	        }
+54	    }
+55	}
+56	
+57	#[cfg(test)]
+58	mod tests {
+59	    use super::*;
+60	
+61	    #[test]
+62	    fn xiangqi_dimensions() {
+63	        assert_eq!(BoardShape::Xiangqi9x10.dimensions(), (9, 10));
+64	        assert_eq!(BoardShape::Xiangqi9x10.cell_count(), 90);
+65	    }
+66	
+67	    #[test]
+68	    fn banqi_dimensions() {
+69	        assert_eq!(BoardShape::Banqi4x8.dimensions(), (4, 8));
+70	        assert_eq!(BoardShape::Banqi4x8.cell_count(), 32);
+71	    }
+72	
+73	    #[test]
+74	    fn rectangular_all_cells_playable() {
+75	        for i in 0..90 {
+76	            assert!(BoardShape::Xiangqi9x10.is_playable(i));
+77	        }
+78	        assert!(!BoardShape::Xiangqi9x10.is_playable(90));
+79	    }
+80	
+81	    #[test]
+82	    fn custom_mask_respected() {
+83	        let shape = BoardShape::Custom { width: 3, height: 3, mask: 0b101_010_101 };
+84	        assert!(shape.is_playable(0));
+85	        assert!(!shape.is_playable(1));
+86	        assert!(shape.is_playable(2));
+87	        assert!(!shape.is_playable(3));
+88	        assert!(shape.is_playable(4));
+89	    }
+90	}
+91
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation -type f -name "*.rs"`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation/mod.rs
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation/iccs.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/coord.rs`
+
+```text
+1	//! Coordinate types.
+2	//!
+3	//! `Square` is a linear index into a board's cell array. Boards know their own
+4	//! shape and convert between `Square` and `(File, Rank)` as needed. See
+5	//! `docs/adr/0002-square-as-u16.md` for why this isn't a `(file, rank)` tuple.
+6	
+7	use serde::{Deserialize, Serialize};
+8	
+9	/// Linear square index. Interpreted by a `Board` via its `BoardShape`.
+10	///
+11	/// `u16` accommodates up to 65535 cells — comfortably more than any
+12	/// xiangqi-family board (largest planned: 19×19 = 361).
+13	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+14	#[repr(transparent)]
+15	pub struct Square(pub u16);
+16	
+17	impl Square {
+18	    /// Sentinel for "no square" without an `Option<Square>`.
+19	    pub const NONE: Square = Square(u16::MAX);
+20	
+21	    #[inline]
+22	    pub const fn new(idx: u16) -> Self {
+23	        Self(idx)
+24	    }
+25	
+26	    #[inline]
+27	    pub const fn raw(self) -> u16 {
+28	        self.0
+29	    }
+30	
+31	    #[inline]
+32	    pub const fn is_none(self) -> bool {
+33	        self.0 == u16::MAX
+34	    }
+35	}
+36	
+37	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+38	#[repr(transparent)]
+39	pub struct File(pub u8);
+40	
+41	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+42	#[repr(transparent)]
+43	pub struct Rank(pub u8);
+44	
+45	/// Eight compass directions.
+46	///
+47	/// `ORTHOGONAL` and `DIAGONAL` constants make iteration ergonomic.
+48	#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+49	pub enum Direction {
+50	    N,
+51	    S,
+52	    E,
+53	    W,
+54	    NE,
+55	    NW,
+56	    SE,
+57	    SW,
+58	}
+59	
+60	impl Direction {
+61	    pub const ORTHOGONAL: [Direction; 4] = [Direction::N, Direction::S, Direction::E, Direction::W];
+62	
+63	    pub const DIAGONAL: [Direction; 4] =
+64	        [Direction::NE, Direction::NW, Direction::SE, Direction::SW];
+65	
+66	    pub const ALL: [Direction; 8] = [
+67	        Direction::N,
+68	        Direction::S,
+69	        Direction::E,
+70	        Direction::W,
+71	        Direction::NE,
+72	        Direction::NW,
+73	        Direction::SE,
+74	        Direction::SW,
+75	    ];
+76	
+77	    /// `(dfile, drank)` deltas. North is +rank, East is +file.
+78	    #[inline]
+79	    pub const fn delta(self) -> (i8, i8) {
+80	        match self {
+81	            Direction::N => (0, 1),
+82	            Direction::S => (0, -1),
+83	            Direction::E => (1, 0),
+84	            Direction::W => (-1, 0),
+85	            Direction::NE => (1, 1),
+86	            Direction::NW => (-1, 1),
+87	            Direction::SE => (1, -1),
+88	            Direction::SW => (-1, -1),
+89	        }
+90	    }
+91	}
+92	
+93	#[cfg(test)]
+94	mod tests {
+95	    use super::*;
+96	
+97	    #[test]
+98	    fn square_none_sentinel_distinct() {
+99	        assert!(Square::NONE.is_none());
+100	        assert!(!Square::new(0).is_none());
+101	        assert!(!Square::new(89).is_none());
+102	    }
+103	
+104	    #[test]
+105	    fn direction_constants_complete() {
+106	        let mut all: Vec<_> =
+107	            Direction::ORTHOGONAL.iter().chain(Direction::DIAGONAL.iter()).collect();
+108	        all.sort_by_key(|d| format!("{:?}", d));
+109	        let mut expected: Vec<_> = Direction::ALL.iter().collect();
+110	        expected.sort_by_key(|d| format!("{:?}", d));
+111	        assert_eq!(all, expected);
+112	    }
+113	
+114	    #[test]
+115	    fn direction_deltas_consistent() {
+116	        // North/South are inverses; East/West are inverses; etc.
+117	        assert_eq!(Direction::N.delta(), (0, 1));
+118	        assert_eq!(Direction::S.delta(), (0, -1));
+119	        assert_eq!(Direction::E.delta(), (1, 0));
+120	        assert_eq!(Direction::W.delta(), (-1, 0));
+121	        assert_eq!(Direction::NE.delta(), (1, 1));
+122	        assert_eq!(Direction::SW.delta(), (-1, -1));
+123	    }
+124	}
+125
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/board/mod.rs`
+
+```text
+1	//! Board: dense storage + shape-aware coordinate operations.
+2	
+3	pub mod grid;
+4	pub mod shape;
+5	pub mod zones;
+6	
+7	pub use shape::BoardShape;
+8	pub use zones::RegionKind;
+9	
+10	use serde::{Deserialize, Serialize};
+11	use smallvec::SmallVec;
+12	
+13	use crate::coord::{Direction, File, Rank, Square};
+14	use crate::piece::PieceOnSquare;
+15	
+16	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+17	pub struct Board {
+18	    shape: BoardShape,
+19	    width: u8,
+20	    height: u8,
+21	    cells: Vec<Option<PieceOnSquare>>,
+22	}
+23	
+24	impl Board {
+25	    pub fn new(shape: BoardShape) -> Self {
+26	        let (width, height) = shape.dimensions();
+27	        Self { shape, width, height, cells: vec![None; shape.cell_count()] }
+28	    }
+29	
+30	    #[inline]
+31	    pub fn shape(&self) -> BoardShape {
+32	        self.shape
+33	    }
+34	
+35	    #[inline]
+36	    pub fn width(&self) -> u8 {
+37	        self.width
+38	    }
+39	
+40	    #[inline]
+41	    pub fn height(&self) -> u8 {
+42	        self.height
+43	    }
+44	
+45	    #[inline]
+46	    pub fn cell_count(&self) -> usize {
+47	        self.cells.len()
+48	    }
+49	
+50	    /// Build a `Square` from `(file, rank)` on this board.
+51	    #[inline]
+52	    pub fn sq(&self, file: File, rank: Rank) -> Square {
+53	        Square((rank.0 as u16) * (self.width as u16) + file.0 as u16)
+54	    }
+55	
+56	    /// Decompose a `Square` into `(file, rank)`.
+57	    #[inline]
+58	    pub fn file_rank(&self, sq: Square) -> (File, Rank) {
+59	        let w = self.width as u16;
+60	        (File((sq.0 % w) as u8), Rank((sq.0 / w) as u8))
+61	    }
+62	
+63	    pub fn get(&self, sq: Square) -> Option<PieceOnSquare> {
+64	        self.cells.get(sq.0 as usize).copied().flatten()
+65	    }
+66	
+67	    pub fn set(&mut self, sq: Square, value: Option<PieceOnSquare>) {
+68	        self.cells[sq.0 as usize] = value;
+69	    }
+70	
+71	    /// Iterate every playable square in linear order.
+72	    pub fn squares(&self) -> impl Iterator<Item = Square> + '_ {
+73	        grid::squares_of(self.shape)
+74	    }
+75	
+76	    /// One step in `dir` from `from`. Returns `None` if the destination
+77	    /// would leave the board or land on a non-playable cell.
+78	    pub fn step(&self, from: Square, dir: Direction) -> Option<Square> {
+79	        let (df, dr) = dir.delta();
+80	        let (file, rank) = self.file_rank(from);
+81	        let nf = (file.0 as i16) + df as i16;
+82	        let nr = (rank.0 as i16) + dr as i16;
+83	        if nf < 0 || nr < 0 || nf >= self.width as i16 || nr >= self.height as i16 {
+84	            return None;
+85	        }
+86	        let next = self.sq(File(nf as u8), Rank(nr as u8));
+87	        if self.shape.is_playable(next.0 as usize) {
+88	            Some(next)
+89	        } else {
+90	            None
+91	        }
+92	    }
+93	
+94	    /// Cast a ray from `from` in `dir`. Returns the squares walked over
+95	    /// (all empty) and, if the ray stopped on an occupied square, that
+96	    /// square. Stops at the board edge with `None` blocker.
+97	    pub fn ray(&self, from: Square, dir: Direction) -> (SmallVec<[Square; 16]>, Option<Square>) {
+98	        let mut walked = SmallVec::new();
+99	        let mut cursor = from;
+100	        loop {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:24Z)**_
+
+Now let me search for Move types and legal_moves helpers:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "legal_moves" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src --include="*.rs" | grep -E "(fn|struct|enum)" | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs:    fn opponent_view_has_empty_legal_moves() {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:    pub fn legal_moves(&self) -> MoveList {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/xiangqi.rs:pub fn pseudo_legal_moves(state: &GameState, out: &mut MoveList) {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/xiangqi.rs:    fn opening_position_yields_nonzero_legal_moves() {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src -name "moves.rs" -o -name "move*.rs" | head -5`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:26Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/notation/iccs.rs`
+
+```text
+1	//! ICCS notation: file `a..i` × rank `0..9` → `h2e2` style.
+2	//!
+3	//! Encoder is straightforward; decoder takes a state because string-form
+4	//! moves are ambiguous between Step/Capture/CannonJump (the geometry is
+5	//! identical from outside) — we resolve by intersecting with `legal_moves`.
+6	
+7	use crate::board::Board;
+8	use crate::coord::{File, Rank, Square};
+9	use crate::error::CoreError;
+10	use crate::moves::Move;
+11	use crate::state::GameState;
+12	
+13	/// Encode a single square as `<file><rank>` e.g. `h2`.
+14	pub fn encode_square(board: &Board, sq: Square) -> String {
+15	    let (f, r) = board.file_rank(sq);
+16	    format!("{}{}", file_char(f.0), r.0)
+17	}
+18	
+19	fn file_char(f: u8) -> char {
+20	    (b'a' + f) as char
+21	}
+22	
+23	fn parse_square(board: &Board, s: &str) -> Result<Square, CoreError> {
+24	    let mut chars = s.chars();
+25	    let f = chars.next().ok_or_else(|| CoreError::BadNotation(s.into()))?;
+26	    let r = chars.next().ok_or_else(|| CoreError::BadNotation(s.into()))?;
+27	    if chars.next().is_some() {
+28	        return Err(CoreError::BadNotation(s.into()));
+29	    }
+30	    if !f.is_ascii_lowercase() {
+31	        return Err(CoreError::BadNotation(s.into()));
+32	    }
+33	    let file_idx = (f as u8) - b'a';
+34	    let rank_idx = r.to_digit(10).ok_or_else(|| CoreError::BadNotation(s.into()))? as u8;
+35	    if file_idx >= board.width() || rank_idx >= board.height() {
+36	        return Err(CoreError::BadNotation(format!("{s} out of board bounds")));
+37	    }
+38	    Ok(board.sq(File(file_idx), Rank(rank_idx)))
+39	}
+40	
+41	/// Encode a move as ICCS. `Reveal` becomes `flip <sq>`. `ChainCapture`
+42	/// chains squares with `x` separators.
+43	pub fn encode_move(board: &Board, m: &Move) -> String {
+44	    match m {
+45	        Move::Reveal { at, .. } => format!("flip {}", encode_square(board, *at)),
+46	        Move::Step { from, to } => {
+47	            format!("{}{}", encode_square(board, *from), encode_square(board, *to))
+48	        }
+49	        Move::Capture { from, to, .. } | Move::CannonJump { from, to, .. } => {
+50	            format!("{}x{}", encode_square(board, *from), encode_square(board, *to))
+51	        }
+52	        Move::ChainCapture { from, path } => {
+53	            let mut s = encode_square(board, *from);
+54	            for hop in path {
+55	                s.push('x');
+56	                s.push_str(&encode_square(board, hop.to));
+57	            }
+58	            s
+59	        }
+60	    }
+61	}
+62	
+63	/// Decode a move from ICCS, resolving Step/Capture ambiguity by matching
+64	/// against the current legal-move list. Forms accepted:
+65	/// - `h2e2`               — step
+66	/// - `h2xh9`              — capture (single)
+67	/// - `a3xb3xc3`           — chain capture (any number of x-separated squares)
+68	/// - `flip a3` / `flip a3` — reveal
+69	pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
+70	    let trimmed = input.trim();
+71	    if let Some(rest) = trimmed.strip_prefix("flip ") {
+72	        let at = parse_square(&state.board, rest.trim())?;
+73	        return Ok(Move::Reveal { at, revealed: None });
+74	    }
+75	    let board = &state.board;
+76	
+77	    // Split into squares: handle both 'h2e2' (no separator) and 'h2xe2'.
+78	    let parts: Vec<Square> = if trimmed.contains('x') {
+79	        trimmed.split('x').map(|p| parse_square(board, p.trim())).collect::<Result<Vec<_>, _>>()?
+80	    } else if trimmed.len() == 4 {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:28Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/moves.rs`
+
+```text
+1	//! Move enum.
+2	//!
+3	//! Flat enum (not a trait) so serde, equality, and pattern matching work
+4	//! without ceremony. The `Reveal` variant carries `Option<Piece>` because
+5	//! the network ABI distinguishes pre-flip (`None` from client) from
+6	//! post-flip (`Some` from authoritative server). See ADR-0004.
+7	
+8	use serde::{Deserialize, Serialize};
+9	use smallvec::SmallVec;
+10	
+11	use crate::coord::Square;
+12	use crate::piece::Piece;
+13	
+14	/// One logical move from a player's perspective.
+15	///
+16	/// `ChainCapture` is a single move even though it encodes a sequence —
+17	/// undo pops once, history records once, the network ships one message.
+18	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+19	pub enum Move {
+20	    /// Banqi: flip the face-down piece at `at`. The identity is `None`
+21	    /// when the client requests the flip and `Some(_)` once the
+22	    /// authoritative engine has resolved it.
+23	    Reveal { at: Square, revealed: Option<Piece> },
+24	
+25	    /// Plain non-capturing slide.
+26	    Step { from: Square, to: Square },
+27	
+28	    /// Capture (single hop). `captured` is recorded so undo can restore.
+29	    Capture { from: Square, to: Square, captured: Piece },
+30	
+31	    /// Chain capture (banqi house rule 連吃 / 暗連). `path` is the sequence
+32	    /// of hops, each of which is a capture. Last hop's `to` is the final
+33	    /// landing square. Length ≥ 1.
+34	    ChainCapture { from: Square, path: SmallVec<[ChainHop; 4]> },
+35	
+36	    /// Cannon capture-by-jump. `screen` is the piece jumped over.
+37	    CannonJump { from: Square, to: Square, screen: Square, captured: Piece },
+38	}
+39	
+40	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+41	pub struct ChainHop {
+42	    pub to: Square,
+43	    pub captured: Piece,
+44	}
+45	
+46	/// Move-list type alias — sized to avoid heap allocation in typical positions.
+47	pub type MoveList = SmallVec<[Move; 32]>;
+48	
+49	impl Move {
+50	    /// Origin square of the move (where the moving piece started).
+51	    /// `Reveal` returns the flip square.
+52	    #[inline]
+53	    pub fn origin_square(&self) -> Square {
+54	        match self {
+55	            Move::Reveal { at, .. } => *at,
+56	            Move::Step { from, .. }
+57	            | Move::Capture { from, .. }
+58	            | Move::ChainCapture { from, .. }
+59	            | Move::CannonJump { from, .. } => *from,
+60	        }
+61	    }
+62	
+63	    /// Destination square (where the moving piece ended). `Reveal` has none.
+64	    #[inline]
+65	    pub fn to_square(&self) -> Option<Square> {
+66	        match self {
+67	            Move::Reveal { .. } => None,
+68	            Move::Step { to, .. } | Move::Capture { to, .. } | Move::CannonJump { to, .. } => {
+69	                Some(*to)
+70	            }
+71	            Move::ChainCapture { path, .. } => path.last().map(|h| h.to),
+72	        }
+73	    }
+74	
+75	    /// Whether this move resets the no-progress counter (capture or reveal).
+76	    #[inline]
+77	    pub fn resets_no_progress(&self) -> bool {
+78	        matches!(
+79	            self,
+80	            Move::Reveal { .. }
+81	                | Move::Capture { .. }
+82	                | Move::ChainCapture { .. }
+83	                | Move::CannonJump { .. }
+84	        )
+85	    }
+86	}
+87
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:28Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/state/mod.rs`
+
+```text
+1	//! Game state: board + turn + history + status.
+2	
+3	pub mod history;
+4	pub mod repetition;
+5	pub mod turn_order;
+6	
+7	pub use history::MoveRecord;
+8	pub use turn_order::TurnOrder;
+9	
+10	use serde::{Deserialize, Serialize};
+11	use smallvec::SmallVec;
+12	
+13	use crate::board::Board;
+14	use crate::error::CoreError;
+15	use crate::moves::{Move, MoveList};
+16	use crate::piece::{Piece, PieceOnSquare, Side};
+17	use crate::rules::{RuleSet, Variant};
+18	
+19	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+20	pub enum GameStatus {
+21	    Ongoing,
+22	    Won { winner: Side, reason: WinReason },
+23	    Drawn { reason: DrawReason },
+24	}
+25	
+26	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+27	pub enum WinReason {
+28	    Checkmate,
+29	    Stalemate,
+30	    Resignation,
+31	    OnlyOneSideHasPieces,
+32	    Timeout,
+33	}
+34	
+35	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+36	pub enum DrawReason {
+37	    NoProgress,
+38	    Repetition,
+39	    Agreed,
+40	    InsufficientMaterial,
+41	}
+42	
+43	/// Side ↔ piece-color assignment for banqi (set after the first flip).
+44	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+45	pub struct SideAssignment {
+46	    /// `mapping[side.0 as usize]` = the piece-color that seat controls.
+47	    pub mapping: SmallVec<[Side; 3]>,
+48	}
+49	
+50	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+51	pub struct GameState {
+52	    pub rules: RuleSet,
+53	    pub board: Board,
+54	    pub side_to_move: Side,
+55	    pub turn_order: TurnOrder,
+56	    pub history: Vec<MoveRecord>,
+57	    pub status: GameStatus,
+58	    /// Banqi only: established after first flip. `None` until then.
+59	    pub side_assignment: Option<SideAssignment>,
+60	    pub no_progress_plies: u16,
+61	}
+62	
+63	impl GameState {
+64	    pub fn new(rules: RuleSet) -> Self {
+65	        crate::setup::build_initial_state(rules)
+66	    }
+67	
+68	    /// Generate all legal moves for the side to move.
+69	    pub fn legal_moves(&self) -> MoveList {
+70	        let mut out = MoveList::new();
+71	        crate::rules::generate_moves(self, &mut out);
+72	        out
+73	    }
+74	
+75	    /// Apply a move. Caller is responsible for legality (use `legal_moves`).
+76	    /// Returns the move pushed to history (with `Reveal` payloads filled in).
+77	    pub fn make_move(&mut self, m: &Move) -> Result<(), CoreError> {
+78	        if matches!(self.status, GameStatus::Won { .. } | GameStatus::Drawn { .. }) {
+79	            return Err(CoreError::GameOver);
+80	        }
+81	        let mover = self.side_to_move;
+82	        let no_progress_before = self.no_progress_plies;
+83	
+84	        // Normalize the move (fill in Reveal payload from board if missing).
+85	        let normalized = self.normalize_for_apply(m)?;
+86	        self.apply_inner(&normalized)?;
+87	
+88	        self.history.push(MoveRecord { mover, the_move: normalized.clone(), no_progress_before });
+89	
+90	        if normalized.resets_no_progress() {
+91	            self.no_progress_plies = 0;
+92	        } else {
+93	            self.no_progress_plies = self.no_progress_plies.saturating_add(1);
+94	        }
+95	
+96	        self.turn_order.advance();
+97	        self.side_to_move = self.turn_order.current_side();
+98	
+99	        Ok(())
+100	    }
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:29Z)**_
+
+Now let me check the board shape and any existing rendering hints:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:30Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/board/shape.rs`
+
+```text
+1	//! Board shapes.
+2	//!
+3	//! `BoardShape` is the discriminator: pick one and the `Board` knows its
+4	//! dimensions and (for irregular boards) which cells are off-limits.
+5	
+6	use serde::{Deserialize, Serialize};
+7	
+8	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+9	pub enum BoardShape {
+10	    /// Standard xiangqi: 9 files × 10 ranks. All cells valid.
+11	    Xiangqi9x10,
+12	
+13	    /// Banqi: 4 files × 8 ranks (half a xiangqi board, oriented sideways).
+14	    Banqi4x8,
+15	
+16	    /// 三國暗棋. Implementation lands in PR 2; the variant exists in PR 1
+17	    /// so the type system is already wired for it.
+18	    ThreeKingdom,
+19	
+20	    /// Arbitrary custom-shape variants (escape hatch for future use).
+21	    /// `mask` bit `i` set means cell `i` is playable. Up to 128 cells;
+22	    /// widen if a future variant exceeds that.
+23	    Custom { width: u8, height: u8, mask: u128 },
+24	}
+25	
+26	impl BoardShape {
+27	    #[inline]
+28	    pub const fn dimensions(self) -> (u8, u8) {
+29	        match self {
+30	            BoardShape::Xiangqi9x10 => (9, 10),
+31	            BoardShape::Banqi4x8 => (4, 8),
+32	            // PR-2 placeholder; pick a plausible bounding box for now.
+33	            BoardShape::ThreeKingdom => (4, 8),
+34	            BoardShape::Custom { width, height, .. } => (width, height),
+35	        }
+36	    }
+37	
+38	    #[inline]
+39	    pub const fn cell_count(self) -> usize {
+40	        let (w, h) = self.dimensions();
+41	        (w as usize) * (h as usize)
+42	    }
+43	
+44	    /// Whether the cell at the given linear index is a playable square.
+45	    /// Rectangular shapes accept any in-range index; irregular shapes
+46	    /// consult their mask.
+47	    #[inline]
+48	    pub const fn is_playable(self, idx: usize) -> bool {
+49	        match self {
+50	            BoardShape::Xiangqi9x10 | BoardShape::Banqi4x8 => idx < self.cell_count(),
+51	            BoardShape::ThreeKingdom => false, // PR-2: replace with proper mask
+52	            BoardShape::Custom { mask, .. } => idx < 128 && (mask >> idx) & 1 == 1,
+53	        }
+54	    }
+55	}
+56	
+57	#[cfg(test)]
+58	mod tests {
+59	    use super::*;
+60	
+61	    #[test]
+62	    fn xiangqi_dimensions() {
+63	        assert_eq!(BoardShape::Xiangqi9x10.dimensions(), (9, 10));
+64	        assert_eq!(BoardShape::Xiangqi9x10.cell_count(), 90);
+65	    }
+66	
+67	    #[test]
+68	    fn banqi_dimensions() {
+69	        assert_eq!(BoardShape::Banqi4x8.dimensions(), (4, 8));
+70	        assert_eq!(BoardShape::Banqi4x8.cell_count(), 32);
+71	    }
+72	
+73	    #[test]
+74	    fn rectangular_all_cells_playable() {
+75	        for i in 0..90 {
+76	            assert!(BoardShape::Xiangqi9x10.is_playable(i));
+77	        }
+78	        assert!(!BoardShape::Xiangqi9x10.is_playable(90));
+79	    }
+80
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "Display\|render\|glyph\|中文\|Chinese" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src --include="*.rs" -n | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/lib.rs:1://! `chess-core` — pure game logic for Chinese chess variants.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/lib.rs:4://! It has no IO, no rendering, no platform deps — compiles cleanly to WASM.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:107:            let glyph = cell_glyph(board.get(sq));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:109:            write!(out, " {:<2}", glyph).unwrap();
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:116:fn cell_glyph(pos: Option<PieceOnSquare>) -> String {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:31Z)**_
+
+Now let me check for coordinate definitions and any existing render/display functionality:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src -name "coord.rs" | head -1`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/coord.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "impl.*Display\|fn.*render\|fn.*display" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates --include="*.rs" | grep -v test | head -10`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:33Z)**_
+
+Let me check the snapshot rendering helper:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:33Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/snapshot.rs`
+
+```text
+1	//! Snapshot serialization.
+2	//!
+3	//! Two layers, on purpose:
+4	//!
+5	//! - **JSON** (`to_json` / `from_json`) — canonical, lossless. Used for save
+6	//!   files, network protocol, replays. Serde does the work.
+7	//! - **`.pos` text DSL** (`to_pos_text` / `from_pos_text`) — human-friendly
+8	//!   for hand-written test fixtures and endgame puzzles. Limited to xiangqi
+9	//!   and banqi (two-player variants) — three-kingdoms uses JSON.
+10	//!
+11	//! ## .pos format
+12	//!
+13	//! ```text
+14	//! # Comments start with '#'
+15	//! variant: xiangqi
+16	//! side_to_move: red
+17	//! no_progress_plies: 0       # optional, default 0
+18	//! house: chain,rush          # optional banqi house rules
+19	//! seed: 42                   # optional banqi seed
+20	//! side_assignment: red,black # optional banqi side->color mapping
+21	//!
+22	//! board:
+23	//!   . . . . k . . . .
+24	//!   . . . . . . . . .
+25	//!   . . . r R r . . .
+26	//!   . . . . . . . . .
+27	//!   . . . . . . . . .
+28	//!   . . . . . . . . .
+29	//!   . . . . . . . . .
+30	//!   . . . . . . . . .
+31	//!   . . . . . . . . .
+32	//!   . . . . K . . . .
+33	//! ```
+34	//!
+35	//! - `K A B R N C P` = General/Advisor/Elephant/Chariot/Horse/Cannon/Soldier
+36	//!   (Xiangqi-FEN convention). Uppercase = Red, lowercase = Black.
+37	//! - `.` = empty.
+38	//! - `?X` (e.g. `?K`, `?p`) = face-down piece (engine knows the identity).
+39	//! - Top of grid is the highest rank (Black home for xiangqi); bottom is
+40	//!   rank 0 (Red home).
+41	
+42	use std::fmt::Write as _;
+43	
+44	use smallvec::SmallVec;
+45	
+46	use crate::board::{Board, BoardShape};
+47	use crate::coord::{File, Rank};
+48	use crate::error::CoreError;
+49	use crate::piece::{Piece, PieceKind, PieceOnSquare, Side};
+50	use crate::rules::{DrawPolicy, HouseRules, RuleSet, Variant};
+51	use crate::state::{GameState, GameStatus, SideAssignment, TurnOrder};
+52	
+53	impl GameState {
+54	    /// Serialize to canonical JSON (lossless).
+55	    pub fn to_json(&self) -> Result<String, CoreError> {
+56	        serde_json::to_string_pretty(self)
+57	            .map_err(|e| CoreError::BadNotation(format!("json serialize: {e}")))
+58	    }
+59	
+60	    /// Deserialize from canonical JSON.
+61	    pub fn from_json(s: &str) -> Result<Self, CoreError> {
+62	        serde_json::from_str(s).map_err(|e| CoreError::BadNotation(format!("json parse: {e}")))
+63	    }
+64	
+65	    /// Emit human-friendly `.pos` text. Two-player variants only.
+66	    pub fn to_pos_text(&self) -> String {
+67	        emit_pos_text(self)
+68	    }
+69	
+70	    /// Parse a `.pos` text fixture into a fresh `GameState`. History is empty.
+71	    pub fn from_pos_text(input: &str) -> Result<Self, CoreError> {
+72	        parse_pos_text(input)
+73	    }
+74	}
+75	
+76	// ============================================================================
+77	// Emitter
+78	// ============================================================================
+79	
+80	fn emit_pos_text(state: &GameState) -> String {
+81	    let mut out = String::new();
+82	    writeln!(out, "variant: {}", variant_str(state.rules.variant)).unwrap();
+83	    writeln!(out, "side_to_move: {}", side_str(state.side_to_move)).unwrap();
+84	    if state.no_progress_plies > 0 {
+85	        writeln!(out, "no_progress_plies: {}", state.no_progress_plies).unwrap();
+86	    }
+87	    if !state.rules.house.is_empty() {
+88	        writeln!(out, "house: {}", emit_house(state.rules.house)).unwrap();
+89	    }
+90	    if let Some(seed) = state.rules.banqi_seed {
+91	        writeln!(out, "seed: {seed}").unwrap();
+92	    }
+93	    if let Some(sa) = &state.side_assignment {
+94	        let sides: Vec<&str> = sa.mapping.iter().map(|s| side_str(*s)).collect();
+95	        writeln!(out, "side_assignment: {}", sides.join(",")).unwrap();
+96	    }
+97	    writeln!(out).unwrap();
+98	    writeln!(out, "board:").unwrap();
+99	
+100	    let board = &state.board;
+101	    let (w, h) = (board.width(), board.height());
+102	    for display_row in 0..h {
+103	        let rank = h - 1 - display_row;
+104	        write!(out, " ").unwrap();
+105	        for file in 0..w {
+106	            let sq = board.sq(File(file), Rank(rank));
+107	            let glyph = cell_glyph(board.get(sq));
+108	            // 2-char padded so `?K` and `K ` and `. ` all align.
+109	            write!(out, " {:<2}", glyph).unwrap();
+110	        }
+111	        writeln!(out).unwrap();
+112	    }
+113	    out
+114	}
+115	
+116	fn cell_glyph(pos: Option<PieceOnSquare>) -> String {
+117	    match pos {
+118	        None => ".".to_string(),
+119	        Some(p) => {
+120	            let c = kind_char(p.piece.kind);
+121	            let cased = if p.piece.side == Side::RED { c } else { c.to_ascii_lowercase() };
+122	            if p.revealed {
+123	                cased.to_string()
+124	            } else {
+125	                format!("?{cased}")
+126	            }
+127	        }
+128	    }
+129	}
+130	
+131	#[inline]
+132	fn kind_char(kind: PieceKind) -> char {
+133	    match kind {
+134	        PieceKind::General => 'K',
+135	        PieceKind::Advisor => 'A',
+136	        PieceKind::Elephant => 'B',
+137	        PieceKind::Chariot => 'R',
+138	        PieceKind::Horse => 'N',
+139	        PieceKind::Cannon => 'C',
+140	        PieceKind::Soldier => 'P',
+141	    }
+142	}
+143	
+144	#[inline]
+145	fn variant_str(v: Variant) -> &'static str {
+146	    match v {
+147	        Variant::Xiangqi => "xiangqi",
+148	        Variant::Banqi => "banqi",
+149	        Variant::ThreeKingdomBanqi => "three-kingdom-banqi",
+150	    }
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:36Z)**_
+
+Perfect. Now let me check the lib.rs to see the public API surface:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:37Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/lib.rs`
+
+```text
+1	//! `chess-core` — pure game logic for Chinese chess variants.
+2	//!
+3	//! This crate is the engine: boards, pieces, rules, and game state.
+4	//! It has no IO, no rendering, no platform deps — compiles cleanly to WASM.
+5	
+6	#![warn(missing_debug_implementations, rust_2018_idioms)]
+7	
+8	pub mod board;
+9	pub mod coord;
+10	pub mod error;
+11	pub mod moves;
+12	pub mod notation;
+13	pub mod piece;
+14	pub mod prelude;
+15	pub mod replay;
+16	pub mod rules;
+17	pub mod setup;
+18	pub mod snapshot;
+19	pub mod state;
+20	pub mod view;
+21
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:09:56Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/coord.rs`
+
+```text
+1	//! Coordinate types.
+2	//!
+3	//! `Square` is a linear index into a board's cell array. Boards know their own
+4	//! shape and convert between `Square` and `(File, Rank)` as needed. See
+5	//! `docs/adr/0002-square-as-u16.md` for why this isn't a `(file, rank)` tuple.
+6	
+7	use serde::{Deserialize, Serialize};
+8	
+9	/// Linear square index. Interpreted by a `Board` via its `BoardShape`.
+10	///
+11	/// `u16` accommodates up to 65535 cells — comfortably more than any
+12	/// xiangqi-family board (largest planned: 19×19 = 361).
+13	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+14	#[repr(transparent)]
+15	pub struct Square(pub u16);
+16	
+17	impl Square {
+18	    /// Sentinel for "no square" without an `Option<Square>`.
+19	    pub const NONE: Square = Square(u16::MAX);
+20	
+21	    #[inline]
+22	    pub const fn new(idx: u16) -> Self {
+23	        Self(idx)
+24	    }
+25	
+26	    #[inline]
+27	    pub const fn raw(self) -> u16 {
+28	        self.0
+29	    }
+30	
+31	    #[inline]
+32	    pub const fn is_none(self) -> bool {
+33	        self.0 == u16::MAX
+34	    }
+35	}
+36	
+37	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+38	#[repr(transparent)]
+39	pub struct File(pub u8);
+40	
+41	#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
+42	#[repr(transparent)]
+43	pub struct Rank(pub u8);
+44	
+45	/// Eight compass directions.
+46	///
+47	/// `ORTHOGONAL` and `DIAGONAL` constants make iteration ergonomic.
+48	#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+49	pub enum Direction {
+50	    N,
+51	    S,
+52	    E,
+53	    W,
+54	    NE,
+55	    NW,
+56	    SE,
+57	    SW,
+58	}
+59	
+60	impl Direction {
+61	    pub const ORTHOGONAL: [Direction; 4] = [Direction::N, Direction::S, Direction::E, Direction::W];
+62	
+63	    pub const DIAGONAL: [Direction; 4] =
+64	        [Direction::NE, Direction::NW, Direction::SE, Direction::SW];
+65	
+66	    pub const ALL: [Direction; 8] = [
+67	        Direction::N,
+68	        Direction::S,
+69	        Direction::E,
+70	        Direction::W,
+71	        Direction::NE,
+72	        Direction::NW,
+73	        Direction::SE,
+74	        Direction::SW,
+75	    ];
+76	
+77	    /// `(dfile, drank)` deltas. North is +rank, East is +file.
+78	    #[inline]
+79	    pub const fn delta(self) -> (i8, i8) {
+80	        match self {
+81	            Direction::N => (0, 1),
+82	            Direction::S => (0, -1),
+83	            Direction::E => (1, 0),
+84	            Direction::W => (-1, 0),
+85	            Direction::NE => (1, 1),
+86	            Direction::NW => (-1, 1),
+87	            Direction::SE => (1, -1),
+88	            Direction::SW => (-1, -1),
+89	        }
+90	    }
+91	}
+92	
+93	#[cfg(test)]
+94	mod tests {
+95	    use super::*;
+96	
+97	    #[test]
+98	    fn square_none_sentinel_distinct() {
+99	        assert!(Square::NONE.is_none());
+100	        assert!(!Square::new(0).is_none());
+101	        assert!(!Square::new(89).is_none());
+102	    }
+103	
+104	    #[test]
+105	    fn direction_constants_complete() {
+106	        let mut all: Vec<_> =
+107	            Direction::ORTHOGONAL.iter().chain(Direction::DIAGONAL.iter()).collect();
+108	        all.sort_by_key(|d| format!("{:?}", d));
+109	        let mut expected: Vec<_> = Direction::ALL.iter().collect();
+110	        expected.sort_by_key(|d| format!("{:?}", d));
+111	        assert_eq!(all, expected);
+112	    }
+113	
+114	    #[test]
+115	    fn direction_deltas_consistent() {
+116	        // North/South are inverses; East/West are inverses; etc.
+117	        assert_eq!(Direction::N.delta(), (0, 1));
+118	        assert_eq!(Direction::S.delta(), (0, -1));
+119	        assert_eq!(Direction::E.delta(), (1, 0));
+120	        assert_eq!(Direction::W.delta(), (-1, 0));
+121	        assert_eq!(Direction::NE.delta(), (1, 1));
+122	        assert_eq!(Direction::SW.delta(), (-1, -1));
+123	    }
+124	}
+125
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:01Z)**_
+
+Finally, let me check for any existing helper functions filtering moves by origin square:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "origin_square\|from_square\|legal_moves_from" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src --include="*.rs" -A 2 | head -30`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs:    pub fn origin_square(&self) -> Square {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs-        match self {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs-            Move::Reveal { at, .. } => *at,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation/iccs.rs:            .filter(|m| m.origin_square() == from && m.to_square() == Some(to))
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation/iccs.rs-            .collect();
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/notation/iccs.rs-        match candidates.as_slice() {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:05Z)**_
+
+Perfect. Let me also check for any selection state or TUI-specific code:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess -type d -name tui -o -type d -name ui | head -5`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:07Z)**_
+
+Excellent! Now I have enough information. Let me compile my findings into a comprehensive report:
+
+---
+
+## Chess-TUI Workspace Exploration Report
+
+**WORKSPACE METADATA:**
+- **Root Cargo.toml**: Edition 2021, MSRV 1.84, workspace version 0.1.0
+- **chess-tui Cargo.toml** (stub): Zero TUI deps added yet; only depends on `chess-core`
+- **chess-cli Cargo.toml**: Also zero deps beyond `chess-core`
+
+---
+
+### 1. CHESS-CLI REPL (/clients/chess-cli/src/main.rs)
+
+**Command parsing** (lines 53–116):
+- `dispatch(line, state)` pattern-matches commands: `xiangqi`, `banqi [--preset/--house/--seed]`, `moves`, `play <iccs>`, `undo`, `view [side]`, `status`, `help`, `quit`
+- Banqi args parse house flags (`chain`, `dark-chain`, `rush`, `horse-diagonal`, `cannon-fast`) and presets (`purist`, `taiwan`, `aggressive`)
+
+**Board rendering** (lines 182–227, `print_view`):
+- Iterates **top-down** (highest rank first, lines 186–190)
+- Uses **ASCII chars**: `piece_char(kind)` → `{g,a,b,r,h,c,p}` (line 229–239)
+- **Case encodes side**: uppercase = RED, lowercase = BLACK (lines 195–200)
+- Blank/empty → `.`, hidden → `?`
+- **Hard-coded xiangqi river decoration** (line 212–214): prints `"-- 楚河 漢界 --"` between ranks 4–5 (Chinese text already in the binary!)
+- **Files rendered as a–i** (line 223)
+- No board rotation/orientation support yet; always renders from one viewpoint
+
+**View API consumed** (line 105):
+```rust
+let view = PlayerView::project(s, observer);
+```
+Then iterates `view.cells[idx]` as `VisibleCell` enum (Empty | Hidden | Revealed(PieceOnSquare))
+
+**Move parsing** (line 85):
+```rust
+let m = iccs::decode_move(s, rest)?;
+```
+Decodes ICCS notation (h2e2, a3xb3xc3, flip a0, etc.)
+
+---
+
+### 2. CHESS-TUI (/clients/chess-tui/src/main.rs)
+
+**Current state**: Pure stub, one line:
+```rust
+fn main() {
+    eprintln!("chess-tui stub — see docs/architecture.md roadmap.");
+}
+```
+No Cargo dependencies beyond `chess-core` yet. Ready to scaffold.
+
+---
+
+### 3. PIECE & SIDE TYPES (/crates/chess-core/src/piece.rs)
+
+**Side** (lines 7–27):
+```rust
+#[repr(transparent)]
+pub struct Side(pub u8);
+
+impl Side {
+    pub const RED: Side = Side(0);
+    pub const BLACK: Side = Side(1);
+    pub const GREEN: Side = Side(2);  // 三國暗棋
+    pub const fn opposite(self) -> Side { Side(self.0 ^ 1) }
+}
+```
+
+**PieceKind** (lines 30–74) — **no Chinese glyph helper exists yet**:
+```rust
+pub enum PieceKind {
+    General,    // 將/帥
+    Advisor,    // 士/仕
+    Elephant,   // 象/相
+    Chariot,    // 車/俥
+    Horse,      // 馬/傌
+    Cannon,     // 炮/砲
+    Soldier,    // 卒/兵
+}
+
+impl PieceKind {
+    pub const ALL: [PieceKind; 7] = [...];
+    pub const fn banqi_rank(self) -> u8 { /* ordering */ }
+}
+```
+
+**PieceOnSquare** (lines 90–108):
+```rust
+pub struct PieceOnSquare {
+    pub piece: Piece,      // {side, kind}
+    pub revealed: bool,    // for banqi face-down
+}
+```
+
+**Opportunity**: No function like `piece_to_chinese_glyph()` exists. You'll add one.
+
+---
+
+### 4. PLAYER VIEW (/crates/chess-core/src/view.rs)
+
+**ProjectionAPI** (lines 40–69):
+```rust
+impl PlayerView {
+    pub fn project(state: &GameState, observer: Side) -> Self {
+        // Iterates (0..board.cell_count()) and maps each Square to VisibleCell
+        // Hidden pieces scrubbed for non-side-to-move
+        // legal_moves empty for opponent
+    }
+}
+```
+
+**VisibleCell enum** (lines 16–22):
+```rust
+pub enum VisibleCell {
+    Empty,
+    Hidden,                    // Banqi face-down
+    Revealed(PieceOnSquare),   // {piece: {side, kind}, revealed: bool}
+}
+```
+
+**PlayerView struct** (lines 24–35):
+```rust
+pub struct PlayerView {
+    pub observer: Side,
+    pub shape: BoardShape,
+    pub width: u8,
+    pub height: u8,
+    pub cells: Vec<VisibleCell>,  // Linear array, row-major
+    pub side_to_move: Side,
+    pub status: GameStatus,
+    pub legal_moves: MoveList,    // Empty if opponent's turn
+}
+```
+
+**Key insight**: Cells are **linear row-major**; you must call `board.file_rank(sq)` to convert back to (File, Rank) for rendering.
+
+---
+
+### 5. BOARD & COORDINATES (/crates/chess-core/src/board/mod.rs, coord.rs)
+
+**Board public API** (board/mod.rs, lines 24–92):
+```rust
+pub struct Board {
+    shape: BoardShape,
+    width: u8,
+    height: u8,
+    cells: Vec<Option<PieceOnSquare>>,
+}
+
+impl Board {
+    pub fn shape(&self) -> BoardShape
+    pub fn width(&self) -> u8
+    pub fn height(&self) -> u8
+    pub fn cell_count(&self) -> usize
+    pub fn sq(&self, file: File, rank: Rank) -> Square
+    pub fn file_rank(&self, sq: Square) -> (File, Rank)
+    pub fn get(&self, sq: Square) -> Option<PieceOnSquare>
+    pub fn squares(&self) -> impl Iterator<Item = Square>
+    pub fn step(&self, from: Square, dir: Direction) -> Option<Square>
+    pub fn ray(&self, from: Square, dir: Direction) -> (SmallVec<[Square; 16]>, Option<Square>)
+}
+```
+
+**Coordinate types** (coord.rs, lines 7–91):
+```rust
+#[repr(transparent)]
+pub struct Square(pub u16);           // Linear index
+
+#[repr(transparent)]
+pub struct File(pub u8);              // Column (a–i for xiangqi)
+
+#[repr(transparent)]
+pub struct Rank(pub u8);              // Row (0–9 for xiangqi)
+
+pub enum Direction {
+    N, S, E, W, NE, NW, SE, SW
+}
+impl Direction {
+    pub const ORTHOGONAL: [Direction; 4]
+    pub const DIAGONAL: [Direction; 4]
+    pub const ALL: [Direction; 8]
+}
+```
+
+**Board shapes** (board/shape.rs, lines 8–54):
+```rust
+pub enum BoardShape {
+    Xiangqi9x10,      // (9 files, 10 ranks) — all 90 cells valid
+    Banqi4x8,         // (4 files, 8 ranks) — all 32 cells valid
+    ThreeKingdom,     // PR-2 placeholder
+    Custom { width: u8, height: u8, mask: u128 },
+}
+
+impl BoardShape {
+    pub const fn dimensions(self) -> (u8, u8)
+    pub const fn cell_count(self) -> usize
+    pub const fn is_playable(self, idx: usize) -> bool
+}
+```
+
+---
+
+### 6. ICCS NOTATION (/crates/chess-core/src/notation/iccs.rs)
+
+**Square encoding** (lines 13–21):
+```rust
+pub fn encode_square(board: &Board, sq: Square) -> String {
+    // Returns "h2" style: file (a–i) + rank (0–9)
+}
+```
+
+**Move decoding** (lines 69–79, signature):
+```rust
+pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
+    // Accepts: "h2e2" (step), "h2xh9" (capture), "a3xb3xc3" (chain), "flip a0" (reveal)
+    // Resolves ambiguity by matching against legal_moves
+}
+```
+
+**Move encoding** (lines 43–61):
+```rust
+pub fn encode_move(board: &Board, m: &Move) -> String {
+    // Move::Step → "h2e2"
+    // Move::Capture → "h2xh9"
+    // Move::Reveal → "flip a0"
+    // Move::ChainCapture → "a3xb3xc3"
+}
+```
+
+---
+
+### 7. RENDERING HELPERS ALREADY IN CORE (/crates/chess-core/src/snapshot.rs)
+
+**`.pos` text format** (lines 116–141, `cell_glyph` + `kind_char`):
+```rust
+fn cell_glyph(pos: Option<PieceOnSquare>) -> String {
+    // '.' for empty, '?K' for hidden, 'K'/'k' for revealed (case = side)
+}
+
+fn kind_char(kind: PieceKind) -> char {
+    // K=General, A=Advisor, B=Elephant, R=Chariot, N=Horse, C=Cannon, P=Soldier
+}
+```
+
+---
+
+## SUMMARY FOR CHESS-TUI PLANNING
+
+**What exists to leverage:**
+1. ✅ `PlayerView::project(state, observer)` — projection API already handles hidden pieces & legal moves
+2. ✅ Linear cell array (`Vec<VisibleCell>`) — iterate and render with `board.file_rank(sq)` lookup
+3. ✅ `BoardShape` enum & `Board` coordinate methods — supports xiangqi (9×10) and banqi (4×8)
+4. ✅ ICCS parsing/encoding — wire user input to `iccs::decode_move()`, render moves via `iccs::encode_move()`
+5. ✅ ASCII piece chars already exist (`piece_char()` in cli, `kind_char()` in snapshot)
+6. ✅ River decoration in CLI already shows Chinese text capability
+
+**What you need to add:**
+1. **Board orientation** — `PlayerView` doesn't rotate; add a transform layer in TUI to flip for opponent view
+2. **Chinese glyph mapping** — Write `PieceKind → {Red/Black} → CJK character` helper (帥/將, 仕/士, etc.)
+3. **Render style enum** — `{AsciiEnglish, ChineseChars, Colored}` + selection logic
+4. **Ratatui deps** — Add `ratatui`, `crossterm`, possibly `unicode-width` to `chess-tui/Cargo.toml`
+5. **TUI state machine** — Wrap `GameState`, selection cursor, render style, board orientation
+
+**Coordinates don't need special mapping**: chess-cli's approach (rank 0 at bottom, displayed top-down) is already correct for xiangqi visual orientation.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates`
+
+```text
+ **chess-ai
+ **chess-core
+ **chess-engine
+ **chess-net
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:10Z)**_
+
+Good — no TUI crate exists yet. Let me verify the banqi board orientation once more:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -r "banqi\|Banqi" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src --include="*.rs" -B 2 -A 2 | grep -E "(width|height|4|8)" | head -15`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/piece.rs:    pub const fn banqi_rank(self) -> u8 {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs:        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 42));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/grid.rs:        assert_eq!(squares_of(BoardShape::Banqi4x8).count(), 32);
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs://! seed: 42                   # optional banqi seed
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:        Variant::Banqi => BoardShape::Banqi4x8,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/snapshot.rs:        let s1 = GameState::new(RuleSet::banqi_with_seed(HouseRules::CHAIN_CAPTURE, 42));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:    /// Banqi: 4 files × 8 ranks (half a xiangqi board, oriented sideways).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:    Banqi4x8,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:            BoardShape::Banqi4x8 => (4, 8),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs-            BoardShape::ThreeKingdom => (4, 8),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:            BoardShape::Xiangqi9x10 | BoardShape::Banqi4x8 => idx < self.cell_count(),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs-            BoardShape::Custom { mask, .. } => idx < 128 && (mask >> idx) & 1 == 1,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:        assert_eq!(BoardShape::Banqi4x8.dimensions(), (4, 8));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs:        assert_eq!(BoardShape::Banqi4x8.cell_count(), 32);
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/mod.rs:        let b = Board::new(BoardShape::Banqi4x8);
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-06 06:10:23Z)**_
+
+Perfect. Now I have all the information. Let me compile my findings:
+
+---
+
+## TUI Frontend Planning: Two Concerns Addressed
+
+### **Concern 1: Board Orientation / View Flipping**
+
+**Finding 1** — `PlayerView` encodes perspective:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs` lines 24–35
+- `PlayerView` has field `observer: Side` explicitly encoding whose perspective is being sent.
+```rust
+pub struct PlayerView {
+    pub observer: Side,
+    pub shape: BoardShape,
+    pub width: u8,
+    pub height: u8,
+    pub cells: Vec<VisibleCell>,
+    // ...
+}
+```
+
+**Finding 2** — Coordinates are **physical (always Red's perspective)**:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/coord.rs` lines 37–43
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/mod.rs` lines 58–61
+- `File` and `Rank` are opaque newtypes; the model uses `Square` (linear index), decoded as `(File, Rank)` via `Board::file_rank()`. Flipping requires client-side iteration reversal (low-to-high vs high-to-low rank).
+```rust
+#[inline]
+pub fn file_rank(&self, sq: Square) -> (File, Rank) {
+    let w = self.width as u16;
+    (File((sq.0 % w) as u8), Rank((sq.0 / w) as u8))
+}
+```
+
+**Finding 3** — No existing render helper:
+- No `fn render`, `impl fmt::Display for Board`, or `print_board` found. TUI must build its own orientation logic.
+
+**Finding 4** — Banqi is 4 wide × 8 tall in model:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/board/shape.rs` line 13–14
+- Comment: "Banqi: 4 files × 8 ranks (half a xiangqi board, **oriented sideways**)." The data model stores it 4 wide × 8 tall; display should transpose if traditional view expects 8 wide × 4 tall.
+
+---
+
+### **Concern 2: Reading / Writing Pieces in Display**
+
+**Finding 5** — `Piece` struct carries side + kind only:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/piece.rs` lines 77–87
+```rust
+pub struct Piece {
+    pub side: Side,
+    pub kind: PieceKind,
+}
+```
+`PieceOnSquare` wraps `Piece` with reveal state:
+```rust
+pub struct PieceOnSquare {
+    pub piece: Piece,
+    pub revealed: bool,
+}
+```
+
+**Finding 6** — `VisibleCell` has three variants:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/view.rs` lines 16–22
+```rust
+pub enum VisibleCell {
+    Empty,
+    Hidden,
+    Revealed(PieceOnSquare),
+}
+```
+Hidden pieces are opaque (Banqi face-down); Revealed expose kind + side.
+
+**Finding 7** — Selection state is client-only:
+- Engine has no concept of "selected square." `PlayerView.legal_moves` is pre-filtered by the engine (empty for opponent); client maintains UI selection independently.
+
+**Finding 8** — Filtering moves by origin is cheap:
+- **File:** `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/moves.rs` lines 49–61
+- `Move::origin_square()` is an inline method; TUI can call `legal_moves.iter().filter(|m| m.origin_square() == selected_sq)` without helper. `MoveList` is a `SmallVec<[Move; 32]>`, so scan is negligible.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:14Z)**_
+
+Let me verify a few key code points before finalizing the plan.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-cli/src/main.rs`
+
+```text
+182	fn print_view(view: &PlayerView) {
+183	    let (w, h) = (view.width as usize, view.height as usize);
+184	    println!("Observer: {:?}  Side to move: {:?}", view.observer, view.side_to_move);
+185	    // Print top-down (highest rank first).
+186	    for r in (0..h).rev() {
+187	        print!(" {r:>2} |");
+188	        for f in 0..w {
+189	            let idx = r * w + f;
+190	            let glyph = match &view.cells[idx] {
+191	                VisibleCell::Empty => '.',
+192	                VisibleCell::Hidden => '?',
+193	                VisibleCell::Revealed(pos) => {
+194	                    let ch = piece_char(pos.piece.kind);
+195	                    if pos.piece.side == Side::RED {
+196	                        ch.to_ascii_uppercase()
+197	                    } else {
+198	                        ch
+199	                    }
+200	                }
+201	            };
+202	            print!(" {glyph}");
+203	            if matches!(view.shape, BoardShape::Xiangqi9x10)
+204	                && (f == 8 || (h == 10 && r == 5 && f + 1 == w))
+205	            {
+206	                // No-op marker; the river break is the gap between ranks 4 and 5,
+207	                // rendered below by an interstitial line.
+208	            }
+209	        }
+210	        println!();
+211	        // Xiangqi river between ranks 4 and 5
+212	        if matches!(view.shape, BoardShape::Xiangqi9x10) && r == 5 {
+213	            println!("    | -- 楚河 漢界 --");
+214	        }
+215	    }
+216	    print!("    +");
+217	    for _ in 0..w {
+218	        print!("--");
+219	    }
+220	    println!();
+221	    print!("      ");
+222	    for f in 0..w {
+223	        print!(" {}", (b'a' + f as u8) as char);
+224	    }
+225	    println!();
+226	    println!("Status: {:?}  legal moves available: {}", view.status, view.legal_moves.len());
+227	}
+228	
+229	fn piece_char(kind: PieceKind) -> char {
+230	    match kind {
+231	        PieceKind::General => 'g',
+232	        PieceKind::Advisor => 'a',
+233	        PieceKind::Elephant => 'b', // 'b' for bishop-equivalent
+234	        PieceKind::Chariot => 'r',  // rook-equivalent
+235	        PieceKind::Horse => 'h',
+236	        PieceKind::Cannon => 'c',
+237	        PieceKind::Soldier => 'p', // pawn-equivalent
+238	    }
+239	}
+240
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:16Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/setup.rs`
+
+```text
+1	//! Initial position builders.
+2	//!
+3	//! Returns a fully-formed `GameState` for each variant. Banqi shuffling is
+4	//! seeded via `ChaCha8Rng` so games are reproducible from `RuleSet::banqi_seed`.
+5	
+6	use rand::seq::SliceRandom;
+7	use rand::SeedableRng;
+8	use rand_chacha::ChaCha8Rng;
+9	
+10	use crate::board::{Board, BoardShape};
+11	use crate::piece::{Piece, PieceKind, PieceOnSquare, Side};
+12	use crate::rules::{RuleSet, Variant};
+13	use crate::state::{GameState, GameStatus, TurnOrder};
+14	
+15	pub fn build_initial_state(rules: RuleSet) -> GameState {
+16	    match rules.variant {
+17	        Variant::Xiangqi => build_xiangqi(rules),
+18	        Variant::Banqi => build_banqi(rules),
+19	        Variant::ThreeKingdomBanqi => build_three_kingdom_stub(rules),
+20	    }
+21	}
+22	
+23	fn build_xiangqi(rules: RuleSet) -> GameState {
+24	    let mut board = Board::new(BoardShape::Xiangqi9x10);
+25	    place_xiangqi_initial(&mut board);
+26	    GameState {
+27	        rules,
+28	        board,
+29	        side_to_move: Side::RED,
+30	        turn_order: TurnOrder::two_player(),
+31	        history: Vec::new(),
+32	        status: GameStatus::Ongoing,
+33	        side_assignment: None,
+34	        no_progress_plies: 0,
+35	    }
+36	}
+37	
+38	/// Place the 32 standard xiangqi pieces. Files indexed 0..9 left-to-right
+39	/// from Red's view; ranks 0..9 bottom-to-top with Red on the bottom.
+40	fn place_xiangqi_initial(board: &mut Board) {
+41	    use crate::coord::{File, Rank};
+42	
+43	    let mut back = |kind: PieceKind, side: Side, files: &[u8], rank: u8| {
+44	        for &f in files {
+45	            board.set(
+46	                board.sq(File(f), Rank(rank)),
+47	                Some(PieceOnSquare::revealed(Piece::new(side, kind))),
+48	            );
+49	        }
+50	    };
+51	
+52	    // Red back rank (rank 0)
+53	    back(PieceKind::Chariot, Side::RED, &[0, 8], 0);
+54	    back(PieceKind::Horse, Side::RED, &[1, 7], 0);
+55	    back(PieceKind::Elephant, Side::RED, &[2, 6], 0);
+56	    back(PieceKind::Advisor, Side::RED, &[3, 5], 0);
+57	    back(PieceKind::General, Side::RED, &[4], 0);
+58	
+59	    // Red cannons (rank 2)
+60	    back(PieceKind::Cannon, Side::RED, &[1, 7], 2);
+61	
+62	    // Red soldiers (rank 3)
+63	    back(PieceKind::Soldier, Side::RED, &[0, 2, 4, 6, 8], 3);
+64	
+65	    // Black mirrors at rank 9, 7, 6
+66	    back(PieceKind::Chariot, Side::BLACK, &[0, 8], 9);
+67	    back(PieceKind::Horse, Side::BLACK, &[1, 7], 9);
+68	    back(PieceKind::Elephant, Side::BLACK, &[2, 6], 9);
+69	    back(PieceKind::Advisor, Side::BLACK, &[3, 5], 9);
+70	    back(PieceKind::General, Side::BLACK, &[4], 9);
+71	    back(PieceKind::Cannon, Side::BLACK, &[1, 7], 7);
+72	    back(PieceKind::Soldier, Side::BLACK, &[0, 2, 4, 6, 8], 6);
+73	}
+74	
+75	fn build_banqi(rules: RuleSet) -> GameState {
+76	    let mut board = Board::new(BoardShape::Banqi4x8);
+77	    let seed = rules.banqi_seed.unwrap_or_else(|| {
+78	        // Nondeterministic in the absence of a seed.
+79	        use rand::RngCore;
+80	        rand::thread_rng().next_u64()
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:16Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./Cargo.toml`
+
+```text
+1	[workspace]
+2	resolver = "2"
+3	members = [
+4	    "crates/chess-core",
+5	    "crates/chess-engine",
+6	    "crates/chess-net",
+7	    "crates/chess-ai",
+8	    "clients/chess-cli",
+9	    "clients/chess-tui",
+10	    "clients/chess-web",
+11	    "xtask",
+12	]
+13	default-members = ["crates/chess-core", "clients/chess-cli"]
+14	
+15	[workspace.package]
+16	version      = "0.1.0"
+17	edition      = "2021"
+18	rust-version = "1.84"
+19	license      = "MIT OR Apache-2.0"
+20	authors      = ["Da-Wei Lee <trader3206@gmail.com>"]
+21	repository   = "https://github.com/daviddwlee84/chinese-chess"
+22	
+23	[workspace.dependencies]
+24	serde       = { version = "1.0.217", features = ["derive"] }
+25	serde_json  = "1.0.135"
+26	thiserror   = "2.0.11"
+27	smallvec    = { version = "1.13", features = ["serde", "union", "const_generics"] }
+28	bitflags    = { version = "2.6", features = ["serde"] }
+29	rand        = "0.8.5"
+30	rand_chacha = "0.3.1"
+31	tracing     = "0.1.41"
+32	arrayvec    = "0.7.6"
+33	
+34	# Dev/test
+35	proptest          = "1.6"
+36	insta             = { version = "1.41", features = ["yaml", "json"] }
+37	pretty_assertions = "1.4"
+38	
+39	[profile.release]
+40	lto           = "thin"
+41	codegen-units = 1
+42	panic         = "abort"
+43	
+44	[profile.test]
+45	opt-level = 1
+46
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:17Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-tui"
+3	description = "ratatui frontend. Stub for a follow-up PR."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[[bin]]
+12	name = "chess-tui"
+13	path = "src/main.rs"
+14	
+15	[dependencies]
+16	chess-core = { path = "../../crates/chess-core" }
+17
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:48Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:11:48Z)**_
+
+Now I have enough to write the plan. Let me overwrite the plan file with the new chess-tui plan.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:13:03Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Wire chess-tui — first playable GUI surface
+
+## Context
+
+Today the only way to play is `chess-cli` (line-oriented REPL — type `play h2e2`, the board reprints). The user wants a real interactive surface so they can actually sit down and play, and they want to evaluate render styles before committing to one.
+
+`chess-tui` is currently a one-line stub (`clients/chess-tui/src/main.rs` prints "stub"). All the engine work is done — `PlayerView::project(state, observer)` already returns everything a renderer needs (cells, side-to-move, status, legal_moves), and orientation flipping happens entirely client-side.
+
+User constraints from the latest message:
+
+- **Render styles** — explore ASCII English vs CJK glyphs vs colored, `args` toggleable.
+- **Single-player orientation** — board fixed (Red-up, like cli today is fine).
+- **Future networked play** — each player sees own pieces at the bottom (i.e., for Black observer the rank order flips). We won't ship multiplayer in this PR (no `chess-net` yet), but the orientation function takes the observer Side from day one so when `chess-net` lands the renderer Just Works.
+
+Goal: ship a usable single-player TUI in one PR. ~93 chess-core tests must still pass; clippy/wasm/format gates stay green. No engine changes.
+
+## Scope
+
+**In:**
+- `chess-tui` binary that boots into a runtime variant picker (or skips it via CLI args, mirroring chess-cli).
+- Xiangqi + banqi (with house-rule presets and seed). 三國暗棋 still gated by core PR-2.
+- Two render styles via `--style {cjk,ascii}` (default CJK), plus `--no-color` modifier.
+- Vim cursor (hjkl), arrow keys, mouse click select, Enter/Space to commit, `u` undo, `q` quit.
+- Side panel: variant + side-to-move + status + last-error message + legal-move count.
+- Selection highlights legal-destination squares.
+- Orientation function `(Square, observer: Side) → (display_row, display_col)` so the network case is a one-line change later.
+
+**Out:**
+- `chess-net` integration (no chess-net yet).
+- Reveal-flip animation, move-history scroll panel, piece-move tweening — all P2 follow-ups.
+- Banqi sideways-transpose layout (8-wide × 4-tall traditional view). Ship 4×8 matching the data model and chess-cli; revisit if the user finds it visually wrong.
+- Runtime style toggle (must restart with different `--style`). Trivial to add later.
+
+## Architecture
+
+\```
+clients/chess-tui/
+├── Cargo.toml          # add ratatui, crossterm, anyhow, clap (4.5+, derive)
+├── src/
+│   ├── main.rs         # clap CLI, terminal init/teardown, event loop
+│   ├── app.rs          # AppState { state: GameState, ui: UiState, style: Style, last_msg }
+│   ├── input.rs        # crossterm Event → Action mapping (vim keys + mouse)
+│   ├── ui.rs           # ratatui draw fn — layout (board | sidebar) + status bar
+│   ├── glyph.rs        # PieceKind × Side → &'static str, both ASCII and CJK tables
+│   └── orient.rs       # (Square, observer, BoardShape) → (display_row, display_col)
+\```
+
+One binary, no library. ~600-800 LOC for the cut described above.
+
+### Render-style decision
+
+Two glyph sets, each with a colored variant. Selected at startup, immutable for the session.
+
+| Style | Red glyphs | Black glyphs | Hidden | Cell width |
+|---|---|---|---|---|
+| `--style cjk` (default) | 帥 仕 相 俥 傌 炮 兵 | 將 士 象 車 馬 砲 卒 | ■ | 2 cols (CJK is double-width) |
+| `--style ascii` | K A B R N C P (uppercase) | k a b r n c p (lowercase) | ? | 1 col (or padded to 2 for grid alignment) |
+
+`--no-color` strips ANSI styling but keeps the chosen glyph set. With color (default), Red glyphs render in `Style::Red` and Black in `Style::Gray`/`White` against a wood-toned background; selected square uses an inverted bg, legal-move targets use a subtle `·` overlay or accent bg.
+
+Xiangqi river break (`楚河 漢界`) and palace cross-marks render in CJK style; ASCII style uses dashes / `+` markers.
+
+### Orientation
+
+\```rust
+// src/orient.rs
+pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+    let (w, h) = shape.dimensions();
+    let f = (sq.0 as u8) % w;
+    let r = (sq.0 as u8) / w;
+    match observer {
+        Side::RED   => (h - 1 - r, f),       // rank 9 at top, rank 0 at bottom (Red-up)
+        Side::BLACK => (r, w - 1 - f),       // rank 0 at top, files reversed (Black-up)
+        _           => (h - 1 - r, f),       // 三國暗棋 deferred — fall back to Red-up
+    }
+}
+\```
+
+Single-player MVP always passes `Side::RED` as observer. When `chess-net` lands, the client passes the local player's side from `PlayerView.observer`.
+
+### Input model
+
+| Key | Action |
+|---|---|
+| `h j k l` / arrows | Move cursor |
+| `Enter` / `Space` | (1st press) select piece at cursor; (2nd press) commit move to cursor — if legal |
+| `Esc` | Cancel selection |
+| `u` | Undo (`state.unmake_move()` if history non-empty) |
+| `f` | Flip / reveal at cursor (banqi only — emits `Move::Reveal { at: cursor, revealed: None }`) |
+| `?` | Toggle help overlay |
+| `q` / `Ctrl-C` | Quit |
+| Mouse click | Select / move (same two-step semantics as Enter) |
+
+Move execution path: cursor + selection → build `Move` candidate → search `view.legal_moves` for a match → if found, `state.make_move(m)?` then `state.refresh_status()`; else flash `last_msg = "illegal"`. This is the same path chess-cli uses, just driven by event loop instead of stdin.
+
+### CLI surface (mirroring chess-cli)
+
+\```
+chess-tui                                          # opens variant picker
+chess-tui xiangqi
+chess-tui banqi --preset taiwan --seed 42
+chess-tui banqi --house chain,rush --seed 42
+chess-tui --style ascii xiangqi
+chess-tui --no-color xiangqi
+chess-tui --as black xiangqi    # debug: render from Black's perspective in single-player
+\```
+
+The `--as black` flag is for visually verifying the orientation flip without `chess-net`. Useful for the test plan.
+
+## Critical files
+
+**New:**
+- `clients/chess-tui/Cargo.toml` — add `ratatui = "0.29"`, `crossterm = "0.28"` (matches ratatui), `anyhow = "1"`, `clap = { version = "4.5", features = ["derive"] }`. Pin via direct deps; no need to add to workspace deps unless reused.
+- `clients/chess-tui/src/main.rs` — replace stub. CLI parsing → terminal raw mode → app loop → teardown.
+- `clients/chess-tui/src/app.rs` — `AppState`, dispatch.
+- `clients/chess-tui/src/input.rs` — event → Action enum.
+- `clients/chess-tui/src/ui.rs` — ratatui `draw(frame, app)` with two-panel layout.
+- `clients/chess-tui/src/glyph.rs` — `pub fn glyph(kind, side, style) -> &'static str` plus styling helpers.
+- `clients/chess-tui/src/orient.rs` — `project_cell` as above.
+
+**Touched (small):**
+- `crates/chess-core/src/piece.rs` — add `pub fn cjk_glyph(self, side: Side) -> &'static str` on `PieceKind` (or keep this in chess-tui's `glyph.rs`; the engine doesn't need it). **Decision: keep in chess-tui.** chess-core stays presentation-free.
+- `TODO.md` — promote `chess-tui: ratatui frontend` from P2 to Done via `scripts/promote-todo.sh --title "chess-tui" --summary "ratatui frontend with vim+mouse input, CJK/ASCII glyph styles, orientation-aware rendering"`.
+- `README.md` — update the "what runs today" line to mention chess-tui.
+- `CLAUDE.md` — add chess-tui to "common commands" (`cargo run -p chess-tui`); add a "TUI input map" line under Architecture quick reference.
+
+**Reused (no change):**
+- `chess_core::view::PlayerView::project` — sole engine entry.
+- `chess_core::notation::iccs::{decode_move, encode_move}` — for any text-input fallback or move-list display.
+- `chess_core::state::GameState::{make_move, unmake_move, refresh_status, legal_moves}` — same as chess-cli.
+
+## Verification
+
+1. `cargo run -p chess-tui` — opens picker; pick xiangqi; play `h2e2` style moves with cursor + Enter; verify check / checkmate end states from playing into a `tests/fixtures/xiangqi/three-chariot-mate.pos` setup (load via a `--from-pos <path>` dev flag — *defer* if scope-creeping, fall back to manual play).
+2. `cargo run -p chess-tui -- xiangqi --as black` — board flips: Black pieces at bottom, file `a` on the right.
+3. `cargo run -p chess-tui -- --style ascii xiangqi` — falls back to letter glyphs.
+4. `cargo run -p chess-tui -- --no-color --style ascii xiangqi` — pipes cleanly; smoke-test that output is readable in a non-color terminal.
+5. `cargo run -p chess-tui -- banqi --preset taiwan --seed 42` — banqi with hidden pieces; press `f` on a hidden cell to reveal.
+6. `u` undo: take back any move; verify `state.history` shrinks.
+7. `cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings` — green.
+8. `cargo test --workspace` — 93 + tests still pass; chess-tui has zero unit tests for first cut (UI surface — assert-via-eyeballs).
+9. `cargo build --target wasm32-unknown-unknown -p chess-core` — chess-tui isn't a wasm target, but confirm chess-core still builds clean (no accidental coupling).
+10. `scripts/todo-kanban.sh --validate-only TODO.md` — after promotion entry is added.
+
+## Out of scope (explicit)
+
+- `chess-net` integration — when that crate exists, `AppState` swaps `GameState` for a `NetworkedClient` that produces `PlayerView` over ws. The render layer doesn't change because it already consumes `PlayerView`.
+- Reveal animation, piece-slide animation, captured-piece tray, move-history scrollback panel.
+- Runtime style/orientation toggle (must restart). Easy to add later.
+- 三國暗棋 board mask (still core PR-2).
+- Banqi sideways display (8 wide × 4 tall traditional). Ship 4×8 matching data model; user can request transpose if it bothers them visually.
+- Tests for ratatui rendering. ratatui has `TestBackend` for snapshot-style tests, but for MVP this is yak-shaving. Add when something regresses.
+
+## Open decisions worth confirming
+
+1. **Default render style** — proposed `--style cjk` with color on. Acceptable, or prefer ASCII default for portability?
+2. **Banqi orientation** — proposed 4 wide × 8 tall (matches data model + chess-cli). Acceptable, or transpose to 8 wide × 4 tall (traditional sideways view)?
+3. **Variant picker UX on bare `chess-tui`** — proposed in-TUI picker screen. Alternative: print usage and exit, force CLI args. Picker is friendlier for hobby use; usage-only is faster to ship.
+
+```
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:13:06Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `/Users/daviddwlee84/.claude/plans/magical-honking-book.md`
+
+```text
+1	# Correct "大盤" misinterpretation across docs; add 讓棋 to TODO
+2	
+3	## Context
+4	
+5	Two things surfaced after the user looked at the current state:
+6	
+7	1. **大盤 was a misinterpretation, not a future variant.** In Chinese chess parlance, "大盤" simply means the **standard full-size 9×10 board** — the opposite of "半盤" (the half-board banqi uses, 4×8). The user listed it alongside 暗棋, 三國棋, 家規 in the very first turn; I read it as "large-board *variants*" (廣象戲 19×19 etc.) and inflated that misreading across the docs and a P3 TODO entry. The standard board is already implemented (it's `BoardShape::Xiangqi9x10`), so the "Large-board variants" P3 TODO is bogus and the README / architecture / CLAUDE.md mentions need pruning. The architectural escape hatch (`BoardShape::Custom`) stays — it's still useful for actual future non-standard variants — but the docstring shouldn't claim 大盤.
+8	
+9	2. **Add 讓棋 (handicap mode) as a TODO** (P2, S). Stronger player removes specific own pieces (車/馬/炮 single or pairs) before play. User said "可以先扔TODO" — so just a TODO entry, no implementation this round.
+10	
+11	The user also asked whether TUI / Web mode work yet. They don't — both are P2 stubs. That's a chat answer, not part of this plan.
+12	
+13	## Changes
+14	
+15	### 1. Remove "大盤 = future variant" misclaim from active docs
+16	
+17	| File | Where | Edit |
+18	|---|---|---|
+19	| `TODO.md` | P3 line `[M] Large-board variants (大盤)` | Delete. Re-validate with `scripts/todo-kanban.sh --validate-only`. |
+20	| `README.md` | bullet `Large board variants (大盤) — n×m via BoardShape::Custom *(planned)*` | Delete the bullet. |
+21	| `CLAUDE.md` | "and large-board variants" in the opening paragraph | Remove phrase. |
+22	| `docs/architecture.md` | (a) Goals bullet "and 大盤 variants"; (b) "vs 大盤 vs N house-rule combinations" in Why-Rust paragraph; (c) Roadmap row `7 | 大盤 variants` | Strip "大盤" wording from each spot; keep surrounding sentences/rows. |
+23	| `crates/chess-core/src/board/shape.rs` | line 20 docstring "/// 大盤 / arbitrary variants." | Replace with "/// Arbitrary custom-shape variants." `BoardShape::Custom` itself stays — still useful as future-proofing for genuinely non-standard variants. |
+24	
+25	**Do NOT touch:**
+26	- `.specstory/history/*` — historical chat record, frozen.
+27	- `backlog/three-kingdoms-banqi.md` — its passing mention is recording what the user said in turn 1 (factually accurate; backlog docs are time-anchored notes).
+28	
+29	### 2. Add 讓棋 to TODO
+30	
+31	Run:
+32	
+33	```bash
+34	scripts/add-todo.sh --priority P2 --effort S \
+35	  --title "Handicap mode (讓棋)" \
+36	  --description "Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks."
+37	```
+38	
+39	### 3. Commit
+40	
+41	After edits + validation pass, stage and commit. Message body should:
+42	- Note the misinterpretation correction (so future-me doesn't undo it).
+43	- Mention the new 讓棋 TODO entry.
+44	- Reference the affected files briefly.
+45	
+46	## Critical files
+47	
+48	- `TODO.md`
+49	- `README.md`
+50	- `CLAUDE.md`
+51	- `docs/architecture.md`
+52	- `crates/chess-core/src/board/shape.rs`
+53	
+54	## Verification
+55	
+56	1. `scripts/todo-kanban.sh --validate-only TODO.md` — format intact after manual delete.
+57	2. `scripts/todo-kanban.sh TODO.md` — visually confirm 讓棋 in P2, 大盤 entry gone from P3.
+58	3. `grep -rn "大盤" --include="*.md" --include="*.rs" .` (excluding `.specstory/`) — only acceptable mentions remain (`backlog/three-kingdoms-banqi.md` historical reference is OK).
+59	4. `cargo check --workspace` — confirm the shape.rs docstring edit doesn't break compilation.
+60	5. `cargo test --workspace` — sanity; no test depends on the docstring.
+61	
+62	## Out of scope
+63	
+64	- Implementing handicap (just adding TODO).
+65	- Building TUI / Web mode (both already P2; user asked the question, not for the work).
+66	- Editing `.specstory/history/*` (frozen) or `backlog/three-kingdoms-banqi.md` (historical note).
+67
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:14:27Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Wire chess-tui — first playable GUI surface
+
+## Context
+
+Today the only way to play is `chess-cli` (line-oriented REPL — type `play h2e2`, the board reprints). The user wants a real interactive surface so they can actually sit down and play, and they want to evaluate render styles before committing to one.
+
+`chess-tui` is currently a one-line stub (`clients/chess-tui/src/main.rs` prints "stub"). All the engine work is done — `PlayerView::project(state, observer)` already returns everything a renderer needs (cells, side-to-move, status, legal_moves), and orientation flipping happens entirely client-side.
+
+User constraints from the latest message:
+
+- **Render styles** — explore ASCII English vs CJK glyphs vs colored, `args` toggleable.
+- **Single-player orientation** — board fixed (Red-up, like cli today is fine).
+- **Future networked play** — each player sees own pieces at the bottom (i.e., for Black observer the rank order flips). We won't ship multiplayer in this PR (no `chess-net` yet), but the orientation function takes the observer Side from day one so when `chess-net` lands the renderer Just Works.
+
+Goal: ship a usable single-player TUI in one PR. ~93 chess-core tests must still pass; clippy/wasm/format gates stay green. No engine changes.
+
+## Scope
+
+**In:**
+- `chess-tui` binary that boots into a runtime variant picker (or skips it via CLI args, mirroring chess-cli).
+- Xiangqi + banqi (with house-rule presets and seed). 三國暗棋 still gated by core PR-2.
+- Two render styles via `--style {cjk,ascii}` (default CJK), plus `--no-color` modifier.
+- Vim cursor (hjkl), arrow keys, mouse click select, Enter/Space to commit, `u` undo, `q` quit.
+- Side panel: variant + side-to-move + status + last-error message + legal-move count.
+- Selection highlights legal-destination squares.
+- Orientation function `(Square, observer: Side) → (display_row, display_col)` so the network case is a one-line change later.
+
+**Out:**
+- `chess-net` integration (no chess-net yet).
+- Reveal-flip animation, move-history scroll panel, piece-move tweening — all P2 follow-ups.
+- Banqi sideways-transpose layout (8-wide × 4-tall traditional view). Ship 4×8 matching the data model and chess-cli; revisit if the user finds it visually wrong.
+- Runtime style toggle (must restart with different `--style`). Trivial to add later.
+
+## Architecture
+
+\```
+clients/chess-tui/
+├── Cargo.toml          # add ratatui, crossterm, anyhow, clap (4.5+, derive)
+├── src/
+│   ├── main.rs         # clap CLI, terminal init/teardown, event loop
+│   ├── app.rs          # AppState { state: GameState, ui: UiState, style: Style, last_msg }
+│   ├── input.rs        # crossterm Event → Action mapping (vim keys + mouse)
+│   ├── ui.rs           # ratatui draw fn — layout (board | sidebar) + status bar
+│   ├── glyph.rs        # PieceKind × Side → &'static str, both ASCII and CJK tables
+│   └── orient.rs       # (Square, observer, BoardShape) → (display_row, display_col)
+\```
+
+One binary, no library. ~600-800 LOC for the cut described.
+
+### Render-style decision
+
+Two glyph sets, each with a colored variant. Selected at startup, immutable for the session.
+
+| Style | Red glyphs | Black glyphs | Hidden | Cell width |
+|---|---|---|---|---|
+| `--style cjk` (default) | 帥 仕 相 俥 傌 炮 兵 | 將 士 象 車 馬 砲 卒 | ■ | 2 cols (CJK is double-width) |
+| `--style ascii` | K A B R N C P (uppercase) | k a b r n c p (lowercase) | ? | 1 col (or padded to 2 for grid alignment) |
+
+`--no-color` strips ANSI styling but keeps the chosen glyph set. With color (default), Red glyphs render in `Style::Red` and Black in `Style::Gray`/`White` against a wood-toned background; selected square uses an inverted bg, legal-move targets use a subtle `·` overlay or accent bg.
+
+Xiangqi river break (`楚河 漢界`) and palace cross-marks render in CJK style; ASCII style uses dashes / `+` markers.
+
+### Orientation
+
+\```rust
+// src/orient.rs
+pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+    let (w, h) = shape.dimensions();
+    let f = (sq.0 as u8) % w;
+    let r = (sq.0 as u8) / w;
+    match observer {
+        Side::RED   => (h - 1 - r, f),       // rank 9 at top, rank 0 at bottom (Red-up)
+        Side::BLACK => (r, w - 1 - f),       // rank 0 at top, files reversed (Black-up)
+        _           => (h - 1 - r, f),       // 三國暗棋 deferred — fall back to Red-up
+    }
+}
+\```
+
+Single-player MVP always passes `Side::RED` as observer. When `chess-net` lands, the client passes the local player's side from `PlayerView.observer`.
+
+### Input model
+
+| Key | Action |
+|---|---|
+| `h j k l` / arrows | Move cursor |
+| `Enter` / `Space` | (1st press) select piece at cursor; (2nd press) commit move to cursor — if legal |
+| `Esc` | Cancel selection |
+| `u` | Undo (`state.unmake_move()` if history non-empty) |
+| `f` | Flip / reveal at cursor (banqi only — emits `Move::Reveal { at: cursor, revealed: None }`) |
+| `?` | Toggle help overlay |
+| `q` / `Ctrl-C` | Quit |
+| Mouse click | Select / move (same two-step semantics as Enter) |
+
+Move execution path: cursor + selection → build `Move` candidate → search `view.legal_moves` for a match → if found, `state.make_move(m)?` then `state.refresh_status()`; else flash `last_msg = "illegal"`. Same path chess-cli uses, just driven by event loop instead of stdin.
+
+### CLI surface (mirroring chess-cli)
+
+\```
+chess-tui                                          # opens variant picker
+chess-tui xiangqi
+chess-tui banqi --preset taiwan --seed 42
+chess-tui banqi --house chain,rush --seed 42
+chess-tui --style ascii xiangqi
+chess-tui --no-color xiangqi
+chess-tui --as black xiangqi    # debug: render from Black's perspective in single-player
+\```
+
+The `--as black` flag is for visually verifying the orientation flip without `chess-net`. Useful for the test plan.
+
+## Critical files
+
+**New:**
+- `clients/chess-tui/Cargo.toml` — add `ratatui = "0.29"`, `crossterm = "0.28"` (matches ratatui), `anyhow = "1"`, `clap = { version = "4.5", features = ["derive"] }`. Pin via direct deps; no need to add to workspace deps unless reused.
+- `clients/chess-tui/src/main.rs` — replace stub. CLI parsing → terminal raw mode → app loop → teardown.
+- `clients/chess-tui/src/app.rs` — `AppState`, dispatch.
+- `clients/chess-tui/src/input.rs` — event → Action enum.
+- `clients/chess-tui/src/ui.rs` — ratatui `draw(frame, app)` with two-panel layout.
+- `clients/chess-tui/src/glyph.rs` — `pub fn glyph(kind, side, style) -> &'static str` plus styling helpers.
+- `clients/chess-tui/src/orient.rs` — `project_cell` as above.
+
+**Touched (small):**
+- `TODO.md` — promote `chess-tui: ratatui frontend` from P2 to Done via `scripts/promote-todo.sh`.
+- `README.md` — update the "what runs today" line to mention chess-tui.
+- `CLAUDE.md` — add chess-tui to "common commands" (`cargo run -p chess-tui`); add a "TUI input map" line under Architecture quick reference.
+
+**Reused (no change):**
+- `chess_core::view::PlayerView::project` — sole engine entry. Confirmed at `crates/chess-core/src/view.rs:40`.
+- `chess_core::notation::iccs::{decode_move, encode_move}` — for any text-input fallback or move-list display. Confirmed at `crates/chess-core/src/notation/iccs.rs:13,43,69`.
+- `chess_core::state::GameState::{make_move, unmake_move, refresh_status, legal_moves}` — same as chess-cli.
+- `chess_core::piece::PieceKind::ALL` — for glyph table iteration in tests.
+- `chess_core::board::Board::file_rank` — Square → (File, Rank) inverse, at `crates/chess-core/src/board/mod.rs:58`.
+
+**Decision:** keep CJK glyph table in `chess-tui/src/glyph.rs`, NOT in `chess-core`. The engine stays presentation-free per `docs/architecture.md` (no IO, no rendering, no platform deps). Other clients (chess-web, future Unity) bring their own glyph mapping.
+
+## Verification
+
+1. `cargo run -p chess-tui` — opens picker; pick xiangqi; play a few moves with cursor + Enter; verify illegal moves flash a message.
+2. `cargo run -p chess-tui -- xiangqi --as black` — board flips: Black pieces at bottom, file `a` on the right.
+3. `cargo run -p chess-tui -- --style ascii xiangqi` — falls back to letter glyphs.
+4. `cargo run -p chess-tui -- --no-color --style ascii xiangqi` — pipes cleanly; smoke-test in a non-color terminal (e.g. `TERM=dumb`).
+5. `cargo run -p chess-tui -- banqi --preset taiwan --seed 42` — banqi with hidden pieces; press `f` on a hidden cell to reveal.
+6. `u` undo: take back any move; verify `state.history` shrinks.
+7. `cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings` — green.
+8. `cargo test --workspace` — 93 tests still pass; chess-tui ships with one unit test in `glyph.rs` (table is total over `PieceKind::ALL × {RED, BLACK}`).
+9. `cargo build --target wasm32-unknown-unknown -p chess-core` — chess-tui isn't a wasm target, but confirm chess-core stays clean (no accidental coupling via shared deps).
+10. `scripts/todo-kanban.sh --validate-only TODO.md` — after promotion entry is added.
+
+## Out of scope (explicit)
+
+- `chess-net` integration — when that crate lands, `AppState` swaps `GameState` for a `NetworkedClient` that produces `PlayerView` over ws. The render layer doesn't change because it already consumes `PlayerView`.
+- Reveal animation, piece-slide animation, captured-piece tray, move-history scrollback panel.
+- Runtime style/orientation toggle (must restart). Easy to add later.
+- 三國暗棋 board mask (still core PR-2).
+- Banqi sideways display (8 wide × 4 tall traditional). Ship 4×8 matching data model; user can request transpose if it bothers them visually.
+- Tests for ratatui rendering. ratatui has `TestBackend` for snapshot-style tests, but for MVP this is yak-shaving. Add when something regresses.
+
+## Open decisions worth confirming before implementation
+
+1. **Default render style** — proposed `--style cjk` with color on. Acceptable, or prefer ASCII default for portability?
+2. **Banqi orientation** — proposed 4 wide × 8 tall (matches data model + chess-cli). Acceptable, or transpose to 8 wide × 4 tall (traditional sideways view)?
+3. **Variant picker UX on bare `chess-tui`** — proposed in-TUI picker screen. Alternative: print usage and exit, force CLI args. Picker is friendlier for hobby use; usage-only is faster to ship.
+
+```
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:14:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:14:32Z)**_
+
+Let me load AskUserQuestion to confirm the three design decisions before exiting plan mode.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:14:33Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `2`
+- query: `select:AskUserQuestion,ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:16:17Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="AskUserQuestion"><details>
+<summary>Tool use: **AskUserQuestion**</summary>
+**Default render style on bare `chess-tui`?**
+
+Options:
+- **CJK + color (Recommended)** - 帥/將, 仕/士, 相/象, 俥/車, 傌/馬, 炮/砲, 兵/卒. Red glyphs in red, Black in dim white, selected square inverted, legal-target squares accented. Looks closest to a real board. Falls back to ASCII via --style ascii.
+- **ASCII English + color** - Same as chess-cli (K/A/B/R/N/C/P uppercase=Red, lowercase=Black) but with red/white coloring and selection highlights. Maximum portability — works in TERM=dumb. Switch to CJK via --style cjk.
+- **Boxed CJK with grid lines** - CJK glyphs inside drawn box-drawing borders for each cell. Prettier but more screen real estate; small terminals may not fit a 9x10 board. Heavier first cut.
+
+**Banqi display orientation?**
+
+Options:
+- **4 wide × 8 tall (Recommended)** - Matches the data model and chess-cli. Lower-effort first cut; orient the board the same way as xiangqi (one rank on top of another).
+- **8 wide × 4 tall (traditional)** - Transposes the board for display only — closer to how 暗棋 is set up on a real half-board. Costs a bit more orient.rs logic plus a mental model split (model coords stay 4×8). Worth it if it bothers you visually.
+
+**What should bare `chess-tui` (no args) do?**
+
+Options:
+- **In-TUI variant picker (Recommended)** - Boots into a small splash screen: arrow-keys + Enter to choose Xiangqi / Banqi (with preset sub-menu) / quit. Friendlier for hobby use; only ~30 LOC.
+- **Print usage and exit** - Bare invocation prints `usage: chess-tui {xiangqi,banqi} [...]`. Faster to ship, forces explicit args every time. Mirrors how chess-cli works.
+
+
+**Answer:** CJK + color (Recommended)" selected preview:
+  9 |車 馬 象 士 將 士 象 馬 車
+  8 |·  ·  ·  ·  ·  ·  ·  ·  ·
+  7 |·  砲 ·  ·  ·  ·  ·  砲 ·
+  6 |卒 ·  卒 ·  卒 ·  卒 ·  卒
+     |── 楚河  漢界 ──
+  3 |兵 ·  兵 ·  兵 ·  兵 ·  兵
+  2 |·  炮 ·  ·  ·  ·  ·  炮 ·
+  1 |·  ·  ·  ·  ·  ·  ·  ·  ·
+  0 |俥 傌 相 仕 帥 仕 相 傌 俥
+      a  b  c  d  e  f  g  h  i, 8 wide × 4 tall (traditional)" selected preview:
+  3 |? ? ? ? ? ? ? ?
+  2 |? ? ? ? ? ? ? ?
+  1 |? ? ? ? ? ? ? ?
+  0 |? ? ? ? ? ? ? ?
+     a b c d e f g h, In-TUI variant picker (Recommended)
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:16:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:16:40Z)**_
+
+Let me update the plan to reflect the answered decisions, especially the banqi transpose.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:16:55Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:17:03Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:17:23Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/daviddwlee84/.claude/plans/magical-honking-book.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:18Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/daviddwlee84/.claude/plans/magical-honking-book.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# Wire chess-tui — first playable GUI surface
+
+## Context
+
+Today the only way to play is `chess-cli` (line-oriented REPL — type `play h2e2`, the board reprints). The user wants a real interactive surface so they can actually sit down and play, and they want to evaluate render styles before committing to one.
+
+`chess-tui` is currently a one-line stub (`clients/chess-tui/src/main.rs` prints "stub"). All the engine work is done — `PlayerView::project(state, observer)` already returns everything a renderer needs (cells, side-to-move, status, legal_moves), and orientation flipping happens entirely client-side.
+
+User constraints from the latest message:
+
+- **Render styles** — explore ASCII English vs CJK glyphs vs colored, `args` toggleable.
+- **Single-player orientation** — board fixed (Red-up, like cli today is fine).
+- **Future networked play** — each player sees own pieces at the bottom (i.e., for Black observer the rank order flips). We won't ship multiplayer in this PR (no `chess-net` yet), but the orientation function takes the observer Side from day one so when `chess-net` lands the renderer Just Works.
+
+Goal: ship a usable single-player TUI in one PR. ~93 chess-core tests must still pass; clippy/wasm/format gates stay green. No engine changes.
+
+## Scope
+
+**In:**
+- `chess-tui` binary that boots into a runtime variant picker (or skips it via CLI args, mirroring chess-cli).
+- Xiangqi + banqi (with house-rule presets and seed). 三國暗棋 still gated by core PR-2.
+- Two render styles via `--style {cjk,ascii}` (default CJK), plus `--no-color` modifier.
+- Vim cursor (hjkl), arrow keys, mouse click select, Enter/Space to commit, `u` undo, `q` quit.
+- Side panel: variant + side-to-move + status + last-error message + legal-move count.
+- Selection highlights legal-destination squares.
+- Orientation function `(Square, observer: Side) → (display_row, display_col)` so the network case is a one-line change later.
+
+**Out:**
+- `chess-net` integration (no chess-net yet).
+- Reveal-flip animation, move-history scroll panel, piece-move tweening — all P2 follow-ups.
+- Banqi observer-based flip (rotate 180° once both sides are assigned). Banqi displays in fixed traditional 8×4 orientation for first cut. Revisit when chess-net lands.
+- Runtime style toggle (must restart with different `--style`). Trivial to add later.
+
+## Architecture
+
+```
+clients/chess-tui/
+├── Cargo.toml          # add ratatui, crossterm, anyhow, clap (4.5+, derive)
+├── src/
+│   ├── main.rs         # clap CLI, terminal init/teardown, event loop
+│   ├── app.rs          # AppState { state: GameState, ui: UiState, style: Style, last_msg }
+│   ├── input.rs        # crossterm Event → Action mapping (vim keys + mouse)
+│   ├── ui.rs           # ratatui draw fn — layout (board | sidebar) + status bar
+│   ├── glyph.rs        # PieceKind × Side → &'static str, both ASCII and CJK tables
+│   └── orient.rs       # (Square, observer, BoardShape) → (display_row, display_col)
+```
+
+One binary, no library. ~600-800 LOC for the cut described.
+
+### Render-style decision
+
+Two glyph sets, each with a colored variant. Selected at startup, immutable for the session.
+
+| Style | Red glyphs | Black glyphs | Hidden | Cell width |
+|---|---|---|---|---|
+| `--style cjk` (default) | 帥 仕 相 俥 傌 炮 兵 | 將 士 象 車 馬 砲 卒 | ■ | 2 cols (CJK is double-width) |
+| `--style ascii` | K A B R N C P (uppercase) | k a b r n c p (lowercase) | ? | 1 col (or padded to 2 for grid alignment) |
+
+`--no-color` strips ANSI styling but keeps the chosen glyph set. With color (default), Red glyphs render in `Style::Red` and Black in `Style::Gray`/`White` against a wood-toned background; selected square uses an inverted bg, legal-move targets use a subtle `·` overlay or accent bg.
+
+Xiangqi river break (`楚河 漢界`) and palace cross-marks render in CJK style; ASCII style uses dashes / `+` markers.
+
+### Orientation
+
+```rust
+// src/orient.rs
+pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+    let (w, h) = shape.dimensions();
+    let f = (sq.0 as u8) % w;
+    let r = (sq.0 as u8) / w;
+    match shape {
+        // Xiangqi 9×10: rank 0 = Red back. Display Red-up (rank 9 at top of
+        // screen for Red observer, flipped for Black observer).
+        BoardShape::Xiangqi9x10 => match observer {
+            Side::RED   => (h - 1 - r, f),       // rank 9 at top, rank 0 at bottom
+            Side::BLACK => (r, w - 1 - f),       // rank 0 at top, files reversed
+            _           => (h - 1 - r, f),       // 三國暗棋 fallback
+        },
+
+        // Banqi 4×8 in model → 8 wide × 4 tall on screen (traditional layout).
+        // display_row = file (0..4), display_col = rank (0..8).
+        // Banqi has no pre-assigned Red/Black before first reveal, so observer-
+        // based flipping doesn't apply for first cut. After both sides are
+        // assigned, future enhancement: rotate 180° for non-RED observer.
+        BoardShape::Banqi4x8 => (f, r),
+
+        // 三國暗棋 ships in core PR-2; placeholder.
+        BoardShape::ThreeKingdom => (h - 1 - r, f),
+        BoardShape::Custom { .. } => (h - 1 - r, f),
+    }
+}
+
+/// Inverse: display (row, col) + observer + shape → Square. Used by mouse-click
+/// hit-test and cursor-to-ICCS conversion.
+pub fn square_at_display(row: u8, col: u8, observer: Side, shape: BoardShape) -> Option<Square>;
+```
+
+Single-player MVP always passes `Side::RED` as observer for xiangqi; `--as black` flips for visual verification. Banqi ignores observer for now.
+
+The inverse function is what the cursor uses: when the user presses `l` (right) the cursor's display column advances by 1, and we resolve back to a Square via `square_at_display`. Both directions get unit tests (round-trip: square → display → square).
+
+### Input model
+
+| Key | Action |
+|---|---|
+| `h j k l` / arrows | Move cursor |
+| `Enter` / `Space` | (1st press) select piece at cursor; (2nd press) commit move to cursor — if legal |
+| `Esc` | Cancel selection |
+| `u` | Undo (`state.unmake_move()` if history non-empty) |
+| `f` | Flip / reveal at cursor (banqi only — emits `Move::Reveal { at: cursor, revealed: None }`) |
+| `?` | Toggle help overlay |
+| `q` / `Ctrl-C` | Quit |
+| Mouse click | Select / move (same two-step semantics as Enter) |
+
+Move execution path: cursor + selection → build `Move` candidate → search `view.legal_moves` for a match → if found, `state.make_move(m)?` then `state.refresh_status()`; else flash `last_msg = "illegal"`. Same path chess-cli uses, just driven by event loop instead of stdin.
+
+### CLI surface (mirroring chess-cli)
+
+```
+chess-tui                                          # opens variant picker
+chess-tui xiangqi
+chess-tui banqi --preset taiwan --seed 42
+chess-tui banqi --house chain,rush --seed 42
+chess-tui --style ascii xiangqi
+chess-tui --no-color xiangqi
+chess-tui --as black xiangqi    # debug: render from Black's perspective in single-player
+```
+
+The `--as black` flag is for visually verifying the orientation flip without `chess-net`. Useful for the test plan.
+
+## Critical files
+
+**New:**
+- `clients/chess-tui/Cargo.toml` — add `ratatui = "0.29"`, `crossterm = "0.28"` (matches ratatui), `anyhow = "1"`, `clap = { version = "4.5", features = ["derive"] }`. Pin via direct deps; no need to add to workspace deps unless reused.
+- `clients/chess-tui/src/main.rs` — replace stub. CLI parsing → terminal raw mode → app loop → teardown.
+- `clients/chess-tui/src/app.rs` — `AppState`, dispatch.
+- `clients/chess-tui/src/input.rs` — event → Action enum.
+- `clients/chess-tui/src/ui.rs` — ratatui `draw(frame, app)` with two-panel layout.
+- `clients/chess-tui/src/glyph.rs` — `pub fn glyph(kind, side, style) -> &'static str` plus styling helpers.
+- `clients/chess-tui/src/orient.rs` — `project_cell` as above.
+
+**Touched (small):**
+- `TODO.md` — promote `chess-tui: ratatui frontend` from P2 to Done via `scripts/promote-todo.sh`.
+- `README.md` — update the "what runs today" line to mention chess-tui.
+- `CLAUDE.md` — add chess-tui to "common commands" (`cargo run -p chess-tui`); add a "TUI input map" line under Architecture quick reference.
+
+**Reused (no change):**
+- `chess_core::view::PlayerView::project` — sole engine entry. Confirmed at `crates/chess-core/src/view.rs:40`.
+- `chess_core::notation::iccs::{decode_move, encode_move}` — for any text-input fallback or move-list display. Confirmed at `crates/chess-core/src/notation/iccs.rs:13,43,69`.
+- `chess_core::state::GameState::{make_move, unmake_move, refresh_status, legal_moves}` — same as chess-cli.
+- `chess_core::piece::PieceKind::ALL` — for glyph table iteration in tests.
+- `chess_core::board::Board::file_rank` — Square → (File, Rank) inverse, at `crates/chess-core/src/board/mod.rs:58`.
+
+**Decision:** keep CJK glyph table in `chess-tui/src/glyph.rs`, NOT in `chess-core`. The engine stays presentation-free per `docs/architecture.md` (no IO, no rendering, no platform deps). Other clients (chess-web, future Unity) bring their own glyph mapping.
+
+## Verification
+
+1. `cargo run -p chess-tui` — opens picker; pick xiangqi; play a few moves with cursor + Enter; verify illegal moves flash a message.
+2. `cargo run -p chess-tui -- xiangqi --as black` — board flips: Black pieces at bottom, file `a` on the right.
+3. `cargo run -p chess-tui -- --style ascii xiangqi` — falls back to letter glyphs.
+4. `cargo run -p chess-tui -- --no-color --style ascii xiangqi` — pipes cleanly; smoke-test in a non-color terminal (e.g. `TERM=dumb`).
+5. `cargo run -p chess-tui -- banqi --preset taiwan --seed 42` — banqi with hidden pieces; press `f` on a hidden cell to reveal.
+6. `u` undo: take back any move; verify `state.history` shrinks.
+7. `cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings` — green.
+8. `cargo test --workspace` — 93 tests still pass; chess-tui ships with one unit test in `glyph.rs` (table is total over `PieceKind::ALL × {RED, BLACK}`).
+9. `cargo build --target wasm32-unknown-unknown -p chess-core` — chess-tui isn't a wasm target, but confirm chess-core stays clean (no accidental coupling via shared deps).
+10. `scripts/todo-kanban.sh --validate-only TODO.md` — after promotion entry is added.
+
+## Out of scope (explicit)
+
+- `chess-net` integration — when that crate lands, `AppState` swaps `GameState` for a `NetworkedClient` that produces `PlayerView` over ws. The render layer doesn't change because it already consumes `PlayerView`.
+- Reveal animation, piece-slide animation, captured-piece tray, move-history scrollback panel.
+- Runtime style/orientation toggle (must restart). Easy to add later.
+- 三國暗棋 board mask (still core PR-2).
+- Tests for ratatui rendering. ratatui has `TestBackend` for snapshot-style tests, but for MVP this is yak-shaving. Add when something regresses.
+
+## Decisions confirmed
+
+- **Render style:** `--style cjk` default with color on. Red glyphs (帥仕相俥傌炮兵) in red, Black (將士象車馬砲卒) in dim white. ASCII fallback via `--style ascii`; `--no-color` for monochrome terminals.
+- **Banqi orientation:** transpose to traditional 8 wide × 4 tall on screen. Model coords stay 4×8; only display transposes (see `project_cell`). ICCS notation unchanged.
+- **Bare `chess-tui` UX:** in-TUI variant picker. Splash screen with arrow-key + Enter selection of Xiangqi / Banqi. Banqi pick opens a sub-menu for preset (purist / taiwan / aggressive) and optional seed entry. Esc / `q` quits.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:21Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:21Z)**_
+
+Plan approved. Let me set up task tracking and start implementing.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `3`
+- query: `select:TaskCreate,TaskUpdate,TaskList`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:25Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:27Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add ratatui 0.29, crossterm 0.28, anyhow 1, clap 4.5 with derive feature.
+
+```text
+Task #19 created successfully: Add ratatui/crossterm/clap deps to chess-tui Cargo.toml
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Glyph mapping for PieceKind × Side × Style. Include unit test that table is total over PieceKind::ALL × {RED, BLACK}.
+
+```text
+Task #20 created successfully: Implement glyph.rs (CJK + ASCII tables)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+project_cell + square_at_display with xiangqi observer-flip and banqi 4×8 → 8×4 transpose. Unit test for round-trip.
+
+```text
+Task #21 created successfully: Implement orient.rs (Square ↔ display coords)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:33Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+AppState struct, Action enum, dispatch, vim+arrow+mouse → action mapping.
+
+```text
+Task #22 created successfully: Implement app.rs + input.rs (state machine + key/mouse events)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:37Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+draw(frame, app) with two-panel layout. Board widget renders cells via project_cell + glyph; sidebar shows variant/side-to-move/status/last-msg/legal-count. Picker screen: Xiangqi/Banqi splash with arrow nav.
+
+```text
+Task #23 created successfully: Implement ui.rs (ratatui render: board + sidebar + variant picker)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:39Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+CLI args parsing (xiangqi/banqi subcmds, --style, --no-color, --as), enter raw mode + alt screen, run loop, restore terminal on exit (with panic hook).
+
+```text
+Task #24 created successfully: Implement main.rs (clap CLI, terminal setup, event loop)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:41Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+cargo fmt --check / clippy / test --workspace / build wasm32 chess-core / manual play of xiangqi + banqi + --as black + --style ascii.
+
+```text
+Task #25 created successfully: Verify: build, fmt, clippy, tests, manual smoke
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:43Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+scripts/promote-todo.sh for chess-tui line; README "what runs today"; CLAUDE.md commands + input map; commit.
+
+```text
+Task #26 created successfully: Promote TODO + update README/CLAUDE.md + commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:51Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:52Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #19 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:54Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-cli/src/main.rs`
+
+```text
+1	//! `chess-cli` — REPL test harness for chess-core.
+2	//!
+3	//! Commands:
+4	//!   xiangqi                                start standard xiangqi
+5	//!   banqi [--house chain,rush,...] [--seed N] [--preset taiwan|aggressive|purist]
+6	//!   moves                                  list legal moves (ICCS)
+7	//!   play <move>                            apply a move (e.g. h2e2 or 'flip a0')
+8	//!   view [<side>]                          render the board (default: side-to-move)
+9	//!   undo                                   undo last move
+10	//!   status                                 print game status
+11	//!   help                                   show this help
+12	//!   quit / exit                            exit
+13	
+14	use std::io::{self, BufRead, Write};
+15	
+16	use chess_core::board::BoardShape;
+17	use chess_core::notation::iccs;
+18	use chess_core::piece::{PieceKind, Side};
+19	use chess_core::rules::{HouseRules, RuleSet};
+20	use chess_core::state::GameState;
+21	use chess_core::view::{PlayerView, VisibleCell};
+22	
+23	fn main() {
+24	    println!("chess-cli ready. Type 'help' for commands.");
+25	    let stdin = io::stdin();
+26	    let mut state: Option<GameState> = None;
+27	    for line in stdin.lock().lines() {
+28	        let Ok(line) = line else { break };
+29	        let cmd = line.trim();
+30	        if cmd.is_empty() {
+31	            print_prompt();
+32	            continue;
+33	        }
+34	        match dispatch(cmd, &mut state) {
+35	            Ok(Action::Continue) => {}
+36	            Ok(Action::Quit) => break,
+37	            Err(e) => println!("error: {e}"),
+38	        }
+39	        print_prompt();
+40	    }
+41	}
+42	
+43	fn print_prompt() {
+44	    print!("> ");
+45	    let _ = io::stdout().flush();
+46	}
+47	
+48	enum Action {
+49	    Continue,
+50	    Quit,
+51	}
+52	
+53	fn dispatch(line: &str, state: &mut Option<GameState>) -> Result<Action, String> {
+54	    let mut parts = line.splitn(2, char::is_whitespace);
+55	    let cmd = parts.next().unwrap_or("");
+56	    let rest = parts.next().unwrap_or("").trim();
+57	    match cmd {
+58	        "help" | "?" => {
+59	            print_help();
+60	            Ok(Action::Continue)
+61	        }
+62	        "quit" | "exit" => Ok(Action::Quit),
+63	        "xiangqi" => {
+64	            *state = Some(GameState::new(RuleSet::xiangqi()));
+65	            println!("Started standard xiangqi. Red to move.");
+66	            Ok(Action::Continue)
+67	        }
+68	        "banqi" => {
+69	            let rules = parse_banqi_args(rest)?;
+70	            *state = Some(GameState::new(rules));
+71	            println!("Started banqi. Players have 32 face-down pieces; first flip locks colors.");
+72	            Ok(Action::Continue)
+73	        }
+74	        "moves" => {
+75	            let s = state.as_ref().ok_or("start a game first (xiangqi / banqi)")?;
+76	            let moves = s.legal_moves();
+77	            println!("{} legal moves:", moves.len());
+78	            for (i, m) in moves.iter().enumerate() {
+79	                println!("  [{i:>3}] {}", iccs::encode_move(&s.board, m));
+80	            }
+81	            Ok(Action::Continue)
+82	        }
+83	        "play" => {
+84	            let s = state.as_mut().ok_or("start a game first")?;
+85	            let m = iccs::decode_move(s, rest).map_err(|e| e.to_string())?;
+86	            s.make_move(&m).map_err(|e| e.to_string())?;
+87	            s.refresh_status();
+88	            println!("Played: {}", iccs::encode_move(&s.board, &m));
+89	            print_status(s);
+90	            Ok(Action::Continue)
+91	        }
+92	        "undo" => {
+93	            let s = state.as_mut().ok_or("start a game first")?;
+94	            s.unmake_move().map_err(|e| e.to_string())?;
+95	            println!("Undone. Now {:?} to move.", s.side_to_move);
+96	            Ok(Action::Continue)
+97	        }
+98	        "view" => {
+99	            let s = state.as_ref().ok_or("start a game first")?;
+100	            let observer = if rest.is_empty() {
+101	                s.side_to_move
+102	            } else {
+103	                Side(rest.parse::<u8>().map_err(|_| "view <side> expects 0,1,2")?)
+104	            };
+105	            let view = PlayerView::project(s, observer);
+106	            print_view(&view);
+107	            Ok(Action::Continue)
+108	        }
+109	        "status" => {
+110	            let s = state.as_ref().ok_or("start a game first")?;
+111	            print_status(s);
+112	            Ok(Action::Continue)
+113	        }
+114	        other => Err(format!("unknown command: {other}")),
+115	    }
+116	}
+117	
+118	fn parse_banqi_args(rest: &str) -> Result<RuleSet, String> {
+119	    let mut house = HouseRules::empty();
+120	    let mut seed: Option<u64> = None;
+121	    let mut tokens = rest.split_whitespace().peekable();
+122	    while let Some(tok) = tokens.next() {
+123	        match tok {
+124	            "--house" => {
+125	                let val = tokens.next().ok_or("--house needs a value")?;
+126	                for flag in val.split(',') {
+127	                    house |= match flag {
+128	                        "chain" => HouseRules::CHAIN_CAPTURE,
+129	                        "dark-chain" | "dark" => HouseRules::DARK_CHAIN,
+130	                        "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+131	                        "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+132	                        "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+133	                        other => return Err(format!("unknown house flag: {other}")),
+134	                    };
+135	                }
+136	            }
+137	            "--preset" => {
+138	                let val = tokens.next().ok_or("--preset needs a value")?;
+139	                house |= match val {
+140	                    "purist" => chess_core::rules::PRESET_PURIST,
+141	                    "taiwan" => chess_core::rules::PRESET_TAIWAN,
+142	                    "aggressive" => chess_core::rules::PRESET_AGGRESSIVE,
+143	                    other => return Err(format!("unknown preset: {other}")),
+144	                };
+145	            }
+146	            "--seed" => {
+147	                let val = tokens.next().ok_or("--seed needs a value")?;
+148	                seed = Some(val.parse().map_err(|_| "seed must be u64")?);
+149	            }
+150	            other => return Err(format!("unknown banqi arg: {other}")),
+151	        }
+152	    }
+153	    let house = chess_core::rules::house::normalize(house);
+154	    Ok(match seed {
+155	        Some(s) => RuleSet::banqi_with_seed(house, s),
+156	        None => RuleSet::banqi(house),
+157	    })
+158	}
+159	
+160	fn print_status(s: &GameState) {
+161	    println!(
+162	        "  side_to_move={:?}  no_progress_plies={}  status={:?}",
+163	        s.side_to_move, s.no_progress_plies, s.status
+164	    );
+165	}
+166	
+167	fn print_help() {
+168	    println!(
+169	        "Commands:
+170	  xiangqi
+171	  banqi [--preset purist|taiwan|aggressive] [--house chain,dark-chain,rush,horse-diagonal,cannon-fast] [--seed N]
+172	  moves
+173	  play <iccs>             e.g. h2e2 or 'flip a0' or 'a3xb3xc3' for chains
+174	  undo
+175	  view [side]             0 = RED, 1 = BLACK, 2 = third (3-kingdoms)
+176	  status
+177	  help
+178	  quit"
+179	    );
+180	}
+181
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:18:54Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-cli/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-cli"
+3	description = "REPL test harness for chess-core."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[[bin]]
+12	name = "chess-cli"
+13	path = "src/main.rs"
+14	
+15	[dependencies]
+16	chess-core = { path = "../../crates/chess-core" }
+17
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:02Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/moves.rs`
+
+```text
+1	//! Move enum.
+2	//!
+3	//! Flat enum (not a trait) so serde, equality, and pattern matching work
+4	//! without ceremony. The `Reveal` variant carries `Option<Piece>` because
+5	//! the network ABI distinguishes pre-flip (`None` from client) from
+6	//! post-flip (`Some` from authoritative server). See ADR-0004.
+7	
+8	use serde::{Deserialize, Serialize};
+9	use smallvec::SmallVec;
+10	
+11	use crate::coord::Square;
+12	use crate::piece::Piece;
+13	
+14	/// One logical move from a player's perspective.
+15	///
+16	/// `ChainCapture` is a single move even though it encodes a sequence —
+17	/// undo pops once, history records once, the network ships one message.
+18	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+19	pub enum Move {
+20	    /// Banqi: flip the face-down piece at `at`. The identity is `None`
+21	    /// when the client requests the flip and `Some(_)` once the
+22	    /// authoritative engine has resolved it.
+23	    Reveal { at: Square, revealed: Option<Piece> },
+24	
+25	    /// Plain non-capturing slide.
+26	    Step { from: Square, to: Square },
+27	
+28	    /// Capture (single hop). `captured` is recorded so undo can restore.
+29	    Capture { from: Square, to: Square, captured: Piece },
+30	
+31	    /// Chain capture (banqi house rule 連吃 / 暗連). `path` is the sequence
+32	    /// of hops, each of which is a capture. Last hop's `to` is the final
+33	    /// landing square. Length ≥ 1.
+34	    ChainCapture { from: Square, path: SmallVec<[ChainHop; 4]> },
+35	
+36	    /// Cannon capture-by-jump. `screen` is the piece jumped over.
+37	    CannonJump { from: Square, to: Square, screen: Square, captured: Piece },
+38	}
+39	
+40	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+41	pub struct ChainHop {
+42	    pub to: Square,
+43	    pub captured: Piece,
+44	}
+45	
+46	/// Move-list type alias — sized to avoid heap allocation in typical positions.
+47	pub type MoveList = SmallVec<[Move; 32]>;
+48	
+49	impl Move {
+50	    /// Origin square of the move (where the moving piece started).
+51	    /// `Reveal` returns the flip square.
+52	    #[inline]
+53	    pub fn origin_square(&self) -> Square {
+54	        match self {
+55	            Move::Reveal { at, .. } => *at,
+56	            Move::Step { from, .. }
+57	            | Move::Capture { from, .. }
+58	            | Move::ChainCapture { from, .. }
+59	            | Move::CannonJump { from, .. } => *from,
+60	        }
+61	    }
+62	
+63	    /// Destination square (where the moving piece ended). `Reveal` has none.
+64	    #[inline]
+65	    pub fn to_square(&self) -> Option<Square> {
+66	        match self {
+67	            Move::Reveal { .. } => None,
+68	            Move::Step { to, .. } | Move::Capture { to, .. } | Move::CannonJump { to, .. } => {
+69	                Some(*to)
+70	            }
+71	            Move::ChainCapture { path, .. } => path.last().map(|h| h.to),
+72	        }
+73	    }
+74	
+75	    /// Whether this move resets the no-progress counter (capture or reveal).
+76	    #[inline]
+77	    pub fn resets_no_progress(&self) -> bool {
+78	        matches!(
+79	            self,
+80	            Move::Reveal { .. }
+81	                | Move::Capture { .. }
+82	                | Move::ChainCapture { .. }
+83	                | Move::CannonJump { .. }
+84	        )
+85	    }
+86	}
+87
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:03Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/state.rs`
+
+```text
+File does not exist. Note: your current working directory is /Volumes/Data/Program/tries/2026-05-06-chinese-chess. Did you mean state?
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List state module
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/`
+
+```text
+ **history.rs
+ **mod.rs
+ **repetition.rs
+ **turn_order.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/state/mod.rs`
+
+```text
+1	//! Game state: board + turn + history + status.
+2	
+3	pub mod history;
+4	pub mod repetition;
+5	pub mod turn_order;
+6	
+7	pub use history::MoveRecord;
+8	pub use turn_order::TurnOrder;
+9	
+10	use serde::{Deserialize, Serialize};
+11	use smallvec::SmallVec;
+12	
+13	use crate::board::Board;
+14	use crate::error::CoreError;
+15	use crate::moves::{Move, MoveList};
+16	use crate::piece::{Piece, PieceOnSquare, Side};
+17	use crate::rules::{RuleSet, Variant};
+18	
+19	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+20	pub enum GameStatus {
+21	    Ongoing,
+22	    Won { winner: Side, reason: WinReason },
+23	    Drawn { reason: DrawReason },
+24	}
+25	
+26	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+27	pub enum WinReason {
+28	    Checkmate,
+29	    Stalemate,
+30	    Resignation,
+31	    OnlyOneSideHasPieces,
+32	    Timeout,
+33	}
+34	
+35	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+36	pub enum DrawReason {
+37	    NoProgress,
+38	    Repetition,
+39	    Agreed,
+40	    InsufficientMaterial,
+41	}
+42	
+43	/// Side ↔ piece-color assignment for banqi (set after the first flip).
+44	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+45	pub struct SideAssignment {
+46	    /// `mapping[side.0 as usize]` = the piece-color that seat controls.
+47	    pub mapping: SmallVec<[Side; 3]>,
+48	}
+49	
+50	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+51	pub struct GameState {
+52	    pub rules: RuleSet,
+53	    pub board: Board,
+54	    pub side_to_move: Side,
+55	    pub turn_order: TurnOrder,
+56	    pub history: Vec<MoveRecord>,
+57	    pub status: GameStatus,
+58	    /// Banqi only: established after first flip. `None` until then.
+59	    pub side_assignment: Option<SideAssignment>,
+60	    pub no_progress_plies: u16,
+61	}
+62	
+63	impl GameState {
+64	    pub fn new(rules: RuleSet) -> Self {
+65	        crate::setup::build_initial_state(rules)
+66	    }
+67	
+68	    /// Generate all legal moves for the side to move.
+69	    pub fn legal_moves(&self) -> MoveList {
+70	        let mut out = MoveList::new();
+71	        crate::rules::generate_moves(self, &mut out);
+72	        out
+73	    }
+74	
+75	    /// Apply a move. Caller is responsible for legality (use `legal_moves`).
+76	    /// Returns the move pushed to history (with `Reveal` payloads filled in).
+77	    pub fn make_move(&mut self, m: &Move) -> Result<(), CoreError> {
+78	        if matches!(self.status, GameStatus::Won { .. } | GameStatus::Drawn { .. }) {
+79	            return Err(CoreError::GameOver);
+80	        }
+81	        let mover = self.side_to_move;
+82	        let no_progress_before = self.no_progress_plies;
+83	
+84	        // Normalize the move (fill in Reveal payload from board if missing).
+85	        let normalized = self.normalize_for_apply(m)?;
+86	        self.apply_inner(&normalized)?;
+87	
+88	        self.history.push(MoveRecord { mover, the_move: normalized.clone(), no_progress_before });
+89	
+90	        if normalized.resets_no_progress() {
+91	            self.no_progress_plies = 0;
+92	        } else {
+93	            self.no_progress_plies = self.no_progress_plies.saturating_add(1);
+94	        }
+95	
+96	        self.turn_order.advance();
+97	        self.side_to_move = self.turn_order.current_side();
+98	
+99	        Ok(())
+100	    }
+101	
+102	    /// Undo the last move.
+103	    pub fn unmake_move(&mut self) -> Result<(), CoreError> {
+104	        let rec = self.history.pop().ok_or(CoreError::Illegal("no move to undo"))?;
+105	        self.unapply_inner(&rec.the_move)?;
+106	        self.no_progress_plies = rec.no_progress_before;
+107	        // Rewind turn order
+108	        if self.turn_order.current == 0 {
+109	            self.turn_order.current = (self.turn_order.seats.len() as u8) - 1;
+110	        } else {
+111	            self.turn_order.current -= 1;
+112	        }
+113	        self.side_to_move = self.turn_order.current_side();
+114	        // Game status reset to Ongoing — caller may recompute.
+115	        self.status = GameStatus::Ongoing;
+116	        Ok(())
+117	    }
+118	
+119	    fn normalize_for_apply(&self, m: &Move) -> Result<Move, CoreError> {
+120	        match m {
+121	            Move::Reveal { at, revealed: None } => {
+122	                let pos = self.board.get(*at).ok_or(CoreError::Illegal("Reveal: empty"))?;
+123	                if pos.revealed {
+124	                    return Err(CoreError::Illegal("Reveal: already revealed"));
+125	                }
+126	                Ok(Move::Reveal { at: *at, revealed: Some(pos.piece) })
+127	            }
+128	            _ => Ok(m.clone()),
+129	        }
+130	    }
+131	
+132	    fn apply_inner(&mut self, m: &Move) -> Result<(), CoreError> {
+133	        match m {
+134	            Move::Reveal { at, revealed } => {
+135	                let mut pos = self.board.get(*at).ok_or(CoreError::Illegal("Reveal: empty"))?;
+136	                if pos.revealed {
+137	                    return Err(CoreError::Illegal("Reveal: already revealed"));
+138	                }
+139	                pos.revealed = true;
+140	                self.board.set(*at, Some(pos));
+141	                // First flip in banqi locks side assignment.
+142	                if self.side_assignment.is_none() && self.rules.variant == Variant::Banqi {
+143	                    if let Some(p) = revealed {
+144	                        self.side_assignment =
+145	                            Some(banqi_side_assignment(self.side_to_move, p.side));
+146	                    }
+147	                }
+148	            }
+149	            Move::Step { from, to } => {
+150	                let p = self.board.get(*from).ok_or(CoreError::Illegal("Step: empty from"))?;
+151	                if self.board.get(*to).is_some() {
+152	                    return Err(CoreError::Illegal("Step: occupied to"));
+153	                }
+154	                self.board.set(*from, None);
+155	                self.board.set(*to, Some(p));
+156	            }
+157	            Move::Capture { from, to, captured: _ } => {
+158	                let p = self.board.get(*from).ok_or(CoreError::Illegal("Capture: empty from"))?;
+159	                self.board.set(*from, None);
+160	                self.board.set(*to, Some(p));
+161	            }
+162	            Move::CannonJump { from, to, screen: _, captured: _ } => {
+163	                let p =
+164	                    self.board.get(*from).ok_or(CoreError::Illegal("CannonJump: empty from"))?;
+165	                self.board.set(*from, None);
+166	                self.board.set(*to, Some(p));
+167	            }
+168	            Move::ChainCapture { from, path } => {
+169	                let p = self.board.get(*from).ok_or(CoreError::Illegal("Chain: empty from"))?;
+170	                if path.is_empty() {
+171	                    return Err(CoreError::Illegal("Chain: empty path"));
+172	                }
+173	                self.board.set(*from, None);
+174	                for hop in &path[..path.len() - 1] {
+175	                    self.board.set(hop.to, None);
+176	                }
+177	                self.board.set(path.last().unwrap().to, Some(p));
+178	            }
+179	        }
+180	        Ok(())
+181	    }
+182	
+183	    fn unapply_inner(&mut self, m: &Move) -> Result<(), CoreError> {
+184	        match m {
+185	            Move::Reveal { at, .. } => {
+186	                let mut pos =
+187	                    self.board.get(*at).ok_or(CoreError::Illegal("Undo Reveal: empty"))?;
+188	                pos.revealed = false;
+189	                self.board.set(*at, Some(pos));
+190	                // First-flip might have set side_assignment; if this was the first move, clear it.
+191	                if self.history.is_empty() {
+192	                    self.side_assignment = None;
+193	                }
+194	            }
+195	            Move::Step { from, to } => {
+196	                let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Step: empty to"))?;
+197	                self.board.set(*to, None);
+198	                self.board.set(*from, Some(p));
+199	            }
+200	            Move::Capture { from, to, captured } => {
+201	                let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Capture: empty to"))?;
+202	                self.board.set(*to, Some(PieceOnSquare::revealed(*captured)));
+203	                self.board.set(*from, Some(p));
+204	            }
+205	            Move::CannonJump { from, to, screen: _, captured } => {
+206	                let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Jump: empty to"))?;
+207	                self.board.set(*to, Some(PieceOnSquare::revealed(*captured)));
+208	                self.board.set(*from, Some(p));
+209	            }
+210	            Move::ChainCapture { from, path } => {
+211	                let last_to = path.last().unwrap().to;
+212	                let p =
+213	                    self.board.get(last_to).ok_or(CoreError::Illegal("Undo Chain: empty last"))?;
+214	                self.board.set(last_to, None);
+215	                // Restore intermediate captures (in any order).
+216	                for hop in path {
+217	                    self.board.set(hop.to, Some(PieceOnSquare::revealed(hop.captured)));
+218	                }
+219	                self.board.set(*from, Some(p));
+220	            }
+221	        }
+222	        Ok(())
+223	    }
+224	
+225	    /// Whether `side`'s general is currently under attack by the opponent.
+226	    /// Xiangqi-specific; banqi has no general-in-check concept.
+227	    pub fn is_in_check(&self, side: Side) -> bool {
+228	        crate::rules::xiangqi::is_in_check(self, side)
+229	    }
+230	
+231	    /// Recompute `status` based on legal moves and draw counters.
+232	    /// Caller invokes this after `make_move`; we don't auto-call to avoid
+233	    /// recursing into move generation during legality filtering.
+234	    ///
+235	    /// TODO (PR 2): threefold repetition. Currently only no-progress and
+236	    /// no-legal-moves are detected.
+237	    pub fn refresh_status(&mut self) {
+238	        if matches!(self.status, GameStatus::Won { .. } | GameStatus::Drawn { .. }) {
+239	            return;
+240	        }
+241	        if self.no_progress_plies >= self.rules.draw_policy.no_progress_plies {
+242	            self.status = GameStatus::Drawn { reason: DrawReason::NoProgress };
+243	            return;
+244	        }
+245	        let moves = self.legal_moves();
+246	        if moves.is_empty() {
+247	            let me = self.side_to_move;
+248	            self.status = match self.rules.variant {
+249	                Variant::Xiangqi => {
+250	                    let reason = if self.is_in_check(me) {
+251	                        WinReason::Checkmate
+252	                    } else {
+253	                        // Asian rules: stalemate is a loss for the stalemated side.
+254	                        WinReason::Stalemate
+255	                    };
+256	                    GameStatus::Won { winner: me.opposite(), reason }
+257	                }
+258	                Variant::Banqi => GameStatus::Won {
+259	                    winner: me.opposite(),
+260	                    reason: WinReason::OnlyOneSideHasPieces,
+261	                },
+262	                Variant::ThreeKingdomBanqi => {
+263	                    // PR 2: more nuanced 3-side win/elimination logic.
+264	                    GameStatus::Won {
+265	                        winner: me.opposite(),
+266	                        reason: WinReason::OnlyOneSideHasPieces,
+267	                    }
+268	                }
+269	            };
+270	        }
+271	    }
+272	
+273	    pub fn default_starter(variant: Variant) -> Side {
+274	        match variant {
+275	            Variant::Xiangqi => Side::RED,
+276	            Variant::Banqi => Side::RED,
+277	            Variant::ThreeKingdomBanqi => Side(0),
+278	        }
+279	    }
+280	}
+281	
+282	fn banqi_side_assignment(flipper: Side, revealed_side: Side) -> SideAssignment {
+283	    let mut mapping = SmallVec::new();
+284	    if flipper == Side::RED {
+285	        mapping.push(revealed_side);
+286	        mapping.push(revealed_side.opposite());
+287	    } else {
+288	        mapping.push(revealed_side.opposite());
+289	        mapping.push(revealed_side);
+290	    }
+291	    SideAssignment { mapping }
+292	}
+293	
+294	/// Find the (single) piece matching predicate. Used to locate a general.
+295	pub(crate) fn find_piece<F>(board: &Board, pred: F) -> Option<crate::coord::Square>
+296	where
+297	    F: Fn(Piece) -> bool,
+298	{
+299	    for sq in board.squares() {
+300	        if let Some(pos) = board.get(sq) {
+301	            if pos.revealed && pred(pos.piece) {
+302	                return Some(sq);
+303	            }
+304	        }
+305	    }
+306	    None
+307	}
+308	
+309	#[cfg(test)]
+310	mod state_tests {
+311	    use super::*;
+312	    use crate::rules::{HouseRules, RuleSet};
+313	
+314	    #[test]
+315	    fn opening_xiangqi_status_ongoing_after_refresh() {
+316	        let mut state = GameState::new(RuleSet::xiangqi());
+317	        state.refresh_status();
+318	        assert_eq!(state.status, GameStatus::Ongoing);
+319	    }
+320	
+321	    #[test]
+322	    fn no_progress_plies_advance_then_reset_on_capture() {
+323	        // Synthetic: build a tiny xiangqi position where Red can capture.
+324	        let mut state = GameState::new(RuleSet::xiangqi());
+325	        // Skim a move that doesn't capture: cannon h2 forward.
+326	        let m = state.legal_moves().into_iter().find(|m| matches!(m, Move::Step { .. })).unwrap();
+327	        state.make_move(&m).unwrap();
+328	        assert_eq!(state.no_progress_plies, 1);
+329	    }
+330	
+331	    #[test]
+332	    fn banqi_no_progress_resets_on_reveal() {
+333	        let mut state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 9));
+334	        state.no_progress_plies = 5;
+335	        let m = state.legal_moves().into_iter().find(|m| matches!(m, Move::Reveal { .. })).unwrap();
+336	        state.make_move(&m).unwrap();
+337	        assert_eq!(state.no_progress_plies, 0);
+338	    }
+339	}
+340
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List rules module
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/`
+
+```text
+ **banqi.rs
+ **house.rs
+ **mod.rs
+ **three_kingdom.rs
+ **xiangqi.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find RuleSet ctors and presets
+
+`grep -n "PRESET\|pub fn xiangqi\|pub fn banqi\|pub struct RuleSet" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs | head -30`
+
+```text
+11:pub use house::{HouseRules, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+40:pub struct RuleSet {
+49:    pub fn xiangqi() -> Self {
+58:    pub fn banqi(house: HouseRules) -> Self {
+62:    pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:24Z)**_
+
+Now I have everything needed. Let me write the chess-tui Cargo.toml.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:28Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```toml
+[package]
+name        = "chess-tui"
+description = "ratatui frontend for chess-core."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[[bin]]
+name = "chess-tui"
+path = "src/main.rs"
+
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }
+ratatui    = "0.29"
+crossterm  = "0.28"
+clap       = { version = "4.5", features = ["derive"] }
+anyhow     = "1.0"
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/Cargo.toml has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:52Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm deps resolve
+
+`cargo check -p chess-tui 2>&1 | tail -20`
+
+```text
+   Compiling darling v0.23.0
+   Compiling strum_macros v0.26.4
+    Checking castaway v0.2.4
+    Checking clap v4.6.1
+    Checking errno v0.3.14
+    Checking getrandom v0.2.17
+    Checking mio v1.2.0
+    Checking signal-hook-registry v1.4.8
+    Checking rand_core v0.6.4
+    Checking parking_lot v0.12.5
+    Checking rand_chacha v0.3.1
+    Checking signal-hook-mio v0.2.5
+    Checking rand v0.8.6
+    Checking crossterm v0.28.1
+    Checking chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Checking compact_str v0.8.1
+    Checking strum v0.26.3
+    Checking ratatui v0.29.0
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 20.28s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #19 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #20 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:19:59Z)**_
+
+Now glyph.rs — the piece-to-string mapping with CJK and ASCII tables.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:20:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Piece glyph tables. Two render styles: traditional CJK (帥/將 etc.) and
+//! ASCII single-letter (uppercase = Red, lowercase = Black). The engine has
+//! no concept of glyphs — presentation lives entirely in the client.
+
+use chess_core::piece::{PieceKind, Side};
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Style {
+    Cjk,
+    Ascii,
+}
+
+/// Two-column-wide string for a piece. CJK characters are double-width in a
+/// monospace terminal; ASCII glyphs are padded with a trailing space so cells
+/// align in either mode.
+pub fn glyph(kind: PieceKind, side: Side, style: Style) -> &'static str {
+    match style {
+        Style::Cjk => cjk(kind, side),
+        Style::Ascii => ascii(kind, side),
+    }
+}
+
+fn cjk(kind: PieceKind, side: Side) -> &'static str {
+    match (side, kind) {
+        (Side::RED, PieceKind::General) => "帥",
+        (Side::RED, PieceKind::Advisor) => "仕",
+        (Side::RED, PieceKind::Elephant) => "相",
+        (Side::RED, PieceKind::Chariot) => "俥",
+        (Side::RED, PieceKind::Horse) => "傌",
+        (Side::RED, PieceKind::Cannon) => "炮",
+        (Side::RED, PieceKind::Soldier) => "兵",
+        (Side::BLACK, PieceKind::General) => "將",
+        (Side::BLACK, PieceKind::Advisor) => "士",
+        (Side::BLACK, PieceKind::Elephant) => "象",
+        (Side::BLACK, PieceKind::Chariot) => "車",
+        (Side::BLACK, PieceKind::Horse) => "馬",
+        (Side::BLACK, PieceKind::Cannon) => "砲",
+        (Side::BLACK, PieceKind::Soldier) => "卒",
+        // 三國暗棋 — Green seat. Reuse Black glyphs for now; PR-2 may pick a
+        // distinct glyph set (e.g. 君/臣/...) once the variant ships.
+        (_, PieceKind::General) => "將",
+        (_, PieceKind::Advisor) => "士",
+        (_, PieceKind::Elephant) => "象",
+        (_, PieceKind::Chariot) => "車",
+        (_, PieceKind::Horse) => "馬",
+        (_, PieceKind::Cannon) => "砲",
+        (_, PieceKind::Soldier) => "卒",
+    }
+}
+
+fn ascii(kind: PieceKind, side: Side) -> &'static str {
+    match (side, kind) {
+        (Side::RED, PieceKind::General) => "K ",
+        (Side::RED, PieceKind::Advisor) => "A ",
+        (Side::RED, PieceKind::Elephant) => "B ",
+        (Side::RED, PieceKind::Chariot) => "R ",
+        (Side::RED, PieceKind::Horse) => "N ",
+        (Side::RED, PieceKind::Cannon) => "C ",
+        (Side::RED, PieceKind::Soldier) => "P ",
+        (Side::BLACK, PieceKind::General) => "k ",
+        (Side::BLACK, PieceKind::Advisor) => "a ",
+        (Side::BLACK, PieceKind::Elephant) => "b ",
+        (Side::BLACK, PieceKind::Chariot) => "r ",
+        (Side::BLACK, PieceKind::Horse) => "n ",
+        (Side::BLACK, PieceKind::Cannon) => "c ",
+        (Side::BLACK, PieceKind::Soldier) => "p ",
+        (_, PieceKind::General) => "K*",
+        (_, PieceKind::Advisor) => "A*",
+        (_, PieceKind::Elephant) => "B*",
+        (_, PieceKind::Chariot) => "R*",
+        (_, PieceKind::Horse) => "N*",
+        (_, PieceKind::Cannon) => "C*",
+        (_, PieceKind::Soldier) => "P*",
+    }
+}
+
+/// Hidden / face-down piece (banqi pre-flip).
+pub fn hidden(style: Style) -> &'static str {
+    match style {
+        Style::Cjk => "暗",
+        Style::Ascii => "? ",
+    }
+}
+
+/// Empty cell. The xiangqi grid uses `·` (centred dot, double-width compatible)
+/// for visual structure; ASCII falls back to a literal period.
+pub fn empty(style: Style) -> &'static str {
+    match style {
+        Style::Cjk => "・",
+        Style::Ascii => ". ",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn glyph_table_total_for_red_and_black() {
+        for kind in PieceKind::ALL {
+            for side in [Side::RED, Side::BLACK] {
+                let cjk_g = glyph(kind, side, Style::Cjk);
+                let ascii_g = glyph(kind, side, Style::Ascii);
+                assert!(!cjk_g.is_empty(), "missing CJK glyph for {:?}/{:?}", side, kind);
+                assert_eq!(ascii_g.chars().count(), 2, "ASCII glyph not 2 cols: {:?}", ascii_g);
+            }
+        }
+    }
+
+    #[test]
+    fn red_and_black_distinct_in_cjk() {
+        for kind in PieceKind::ALL {
+            assert_ne!(
+                glyph(kind, Side::RED, Style::Cjk),
+                glyph(kind, Side::BLACK, Style::Cjk),
+                "Red and Black share a CJK glyph for {:?}",
+                kind
+            );
+        }
+    }
+
+    #[test]
+    fn hidden_and_empty_render() {
+        assert_eq!(hidden(Style::Ascii), "? ");
+        assert_eq!(empty(Style::Ascii), ". ");
+        assert!(!hidden(Style::Cjk).is_empty());
+        assert!(!empty(Style::Cjk).is_empty());
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/glyph.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:20:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #20 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:20:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #21 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:20:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:20:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Display orientation. Engine coords are physical (Red on rank 0); the
+//! TUI rotates / transposes per shape so each observer sees their own pieces
+//! at the bottom of the screen, and banqi displays in traditional 8×4 layout.
+
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::piece::Side;
+
+/// Dimensions of the display grid in (rows, cols). Banqi transposes; xiangqi
+/// keeps model dimensions as-is.
+pub fn display_dims(shape: BoardShape) -> (u8, u8) {
+    let (w, h) = shape.dimensions();
+    match shape {
+        BoardShape::Banqi4x8 => (w, h), // 4 rows × 8 cols
+        _ => (h, w),                    // 10 rows × 9 cols for xiangqi
+    }
+}
+
+/// Square (model coord) → (display_row, display_col).
+pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+    let (w, h) = shape.dimensions();
+    let f = (sq.0 as u8) % w;
+    let r = (sq.0 as u8) / w;
+    match shape {
+        BoardShape::Xiangqi9x10 => match observer {
+            Side::RED => (h - 1 - r, f),       // rank 9 at top, rank 0 at bottom
+            Side::BLACK => (r, w - 1 - f),     // rank 0 at top, files reversed
+            _ => (h - 1 - r, f),               // 三國暗棋 fallback
+        },
+        BoardShape::Banqi4x8 => (f, r),        // transpose: rank → col, file → row
+        BoardShape::ThreeKingdom => (h - 1 - r, f),
+        BoardShape::Custom { .. } => (h - 1 - r, f),
+    }
+}
+
+/// Display (row, col) → Square. Returns `None` when out of bounds or the
+/// shape masks that cell off (Custom / ThreeKingdom).
+pub fn square_at_display(
+    row: u8,
+    col: u8,
+    observer: Side,
+    shape: BoardShape,
+) -> Option<Square> {
+    let (w, h) = shape.dimensions();
+    let (dr, dc) = display_dims(shape);
+    if row >= dr || col >= dc {
+        return None;
+    }
+    let (f, r) = match shape {
+        BoardShape::Xiangqi9x10 => match observer {
+            Side::RED => (col, h - 1 - row),
+            Side::BLACK => (w - 1 - col, row),
+            _ => (col, h - 1 - row),
+        },
+        BoardShape::Banqi4x8 => (row, col),
+        BoardShape::ThreeKingdom => (col, h - 1 - row),
+        BoardShape::Custom { .. } => (col, h - 1 - row),
+    };
+    if f >= w || r >= h {
+        return None;
+    }
+    let idx = (r as u16) * (w as u16) + (f as u16);
+    if !shape.is_playable(idx as usize) {
+        return None;
+    }
+    Some(Square(idx))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn all_squares(shape: BoardShape) -> impl Iterator<Item = Square> {
+        let n = shape.cell_count() as u16;
+        (0..n).map(Square).filter(move |s| shape.is_playable(s.0 as usize))
+    }
+
+    #[test]
+    fn xiangqi_red_round_trip() {
+        let shape = BoardShape::Xiangqi9x10;
+        for sq in all_squares(shape) {
+            let (r, c) = project_cell(sq, Side::RED, shape);
+            assert_eq!(square_at_display(r, c, Side::RED, shape), Some(sq));
+        }
+    }
+
+    #[test]
+    fn xiangqi_black_round_trip() {
+        let shape = BoardShape::Xiangqi9x10;
+        for sq in all_squares(shape) {
+            let (r, c) = project_cell(sq, Side::BLACK, shape);
+            assert_eq!(square_at_display(r, c, Side::BLACK, shape), Some(sq));
+        }
+    }
+
+    #[test]
+    fn xiangqi_red_and_black_are_180_rotations() {
+        let shape = BoardShape::Xiangqi9x10;
+        let (dr, dc) = display_dims(shape);
+        for sq in all_squares(shape) {
+            let (rr, rc) = project_cell(sq, Side::RED, shape);
+            let (br, bc) = project_cell(sq, Side::BLACK, shape);
+            assert_eq!(rr + br, dr - 1);
+            assert_eq!(rc + bc, dc - 1);
+        }
+    }
+
+    #[test]
+    fn xiangqi_red_corner_layout() {
+        // Red chariot at file 0, rank 0 (model). Red observer: it's at the
+        // bottom-left of the display.
+        let shape = BoardShape::Xiangqi9x10;
+        let sq = Square(0); // file 0, rank 0
+        let (r, c) = project_cell(sq, Side::RED, shape);
+        assert_eq!((r, c), (9, 0));
+
+        // Black chariot at file 0, rank 9: top-left for Red.
+        let sq = Square(9 * 9); // file 0, rank 9
+        let (r, c) = project_cell(sq, Side::RED, shape);
+        assert_eq!((r, c), (0, 0));
+    }
+
+    #[test]
+    fn banqi_round_trip_and_dims() {
+        let shape = BoardShape::Banqi4x8;
+        assert_eq!(display_dims(shape), (4, 8));
+        for sq in all_squares(shape) {
+            let (r, c) = project_cell(sq, Side::RED, shape);
+            assert!(r < 4 && c < 8, "banqi cell out of display: ({}, {})", r, c);
+            assert_eq!(square_at_display(r, c, Side::RED, shape), Some(sq));
+        }
+    }
+
+    #[test]
+    fn out_of_bounds_returns_none() {
+        let shape = BoardShape::Xiangqi9x10;
+        assert!(square_at_display(10, 0, Side::RED, shape).is_none());
+        assert!(square_at_display(0, 9, Side::RED, shape).is_none());
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/orient.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:21:01Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #21 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:21:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #22 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:21:38Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:21:47Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Keyboard / mouse events → `Action`. Pure mapping; no state mutation.
+
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+
+#[derive(Clone, Debug)]
+pub enum Action {
+    None,
+    Quit,
+    HelpToggle,
+    // Picker
+    PickerUp,
+    PickerDown,
+    PickerSelect,
+    // Game
+    CursorUp,
+    CursorDown,
+    CursorLeft,
+    CursorRight,
+    SelectOrCommit,
+    Cancel,
+    Undo,
+    Flip,
+    /// Mouse click in terminal coords. The app resolves it against the board
+    /// rect captured by the most recent draw().
+    Click { term_col: u16, term_row: u16 },
+}
+
+pub fn from_key(ev: KeyEvent, in_picker: bool) -> Action {
+    if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c')) {
+        return Action::Quit;
+    }
+    match ev.code {
+        KeyCode::Char('q') => Action::Quit,
+        KeyCode::Char('?') => Action::HelpToggle,
+        _ if in_picker => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Esc => Action::Quit,
+            _ => Action::None,
+        },
+        _ => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::CursorUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::CursorDown,
+            KeyCode::Left | KeyCode::Char('h') => Action::CursorLeft,
+            KeyCode::Right | KeyCode::Char('l') => Action::CursorRight,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::SelectOrCommit,
+            KeyCode::Esc => Action::Cancel,
+            KeyCode::Char('u') => Action::Undo,
+            KeyCode::Char('f') => Action::Flip,
+            _ => Action::None,
+        },
+    }
+}
+
+pub fn from_mouse(ev: MouseEvent) -> Action {
+    match ev.kind {
+        MouseEventKind::Down(MouseButton::Left) => {
+            Action::Click { term_col: ev.column, term_row: ev.row }
+        }
+        _ => Action::None,
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/input.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:21:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:22:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
+//! short-lived flash message; actions from `input.rs` mutate it.
+
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::moves::Move;
+use chess_core::piece::Side;
+use chess_core::rules::{HouseRules, RuleSet};
+use chess_core::state::GameState;
+use chess_core::view::{PlayerView, VisibleCell};
+
+use crate::glyph::Style;
+use crate::input::Action;
+use crate::orient;
+
+/// Variant + preset choices in the picker, in display order.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum PickerEntry {
+    Xiangqi,
+    BanqiPurist,
+    BanqiTaiwan,
+    BanqiAggressive,
+    Quit,
+}
+
+impl PickerEntry {
+    pub const ALL: [PickerEntry; 5] = [
+        PickerEntry::Xiangqi,
+        PickerEntry::BanqiPurist,
+        PickerEntry::BanqiTaiwan,
+        PickerEntry::BanqiAggressive,
+        PickerEntry::Quit,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            PickerEntry::Xiangqi => "Xiangqi (象棋)",
+            PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
+            PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
+            PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+            PickerEntry::Quit => "Quit",
+        }
+    }
+
+    pub fn rules(self) -> Option<RuleSet> {
+        match self {
+            PickerEntry::Xiangqi => Some(RuleSet::xiangqi()),
+            PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
+            PickerEntry::BanqiTaiwan => {
+                Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN))
+            }
+            PickerEntry::BanqiAggressive => {
+                Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
+            }
+            PickerEntry::Quit => None,
+        }
+    }
+}
+
+pub struct PickerView {
+    pub cursor: usize,
+}
+
+pub struct GameView {
+    pub state: GameState,
+    pub cursor: (u8, u8),
+    pub selected: Option<Square>,
+    pub last_msg: Option<String>,
+}
+
+pub enum Screen {
+    Picker(PickerView),
+    Game(GameView),
+}
+
+pub struct AppState {
+    pub screen: Screen,
+    pub style: Style,
+    pub use_color: bool,
+    pub observer: Side,
+    pub help_open: bool,
+    /// Rect of the board widget last drawn (terminal coords). Used for
+    /// mouse-click hit-testing. ui.rs writes this each frame.
+    pub board_rect: Option<RectPx>,
+    pub should_quit: bool,
+}
+
+/// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
+#[derive(Copy, Clone, Debug)]
+pub struct RectPx {
+    pub x: u16,
+    pub y: u16,
+    pub width: u16,
+    pub height: u16,
+    /// Width in terminal cols of one cell (glyph + padding).
+    pub cell_cols: u16,
+    /// Offset (cols) of the first cell's start from rect.x.
+    pub left_pad: u16,
+    /// Offset (rows) of the first row from rect.y.
+    pub top_pad: u16,
+}
+
+impl AppState {
+    pub fn new_picker(style: Style, use_color: bool, observer: Side) -> Self {
+        Self {
+            screen: Screen::Picker(PickerView { cursor: 0 }),
+            style,
+            use_color,
+            observer,
+            help_open: false,
+            board_rect: None,
+            should_quit: false,
+        }
+    }
+
+    pub fn new_game(rules: RuleSet, style: Style, use_color: bool, observer: Side) -> Self {
+        let state = GameState::new(rules);
+        let shape = state.board.shape();
+        let (rows, cols) = orient::display_dims(shape);
+        let cursor = (rows / 2, cols / 2);
+        Self {
+            screen: Screen::Game(GameView {
+                state,
+                cursor,
+                selected: None,
+                last_msg: Some("Welcome. Cursor: arrows or hjkl. Enter to select/move. ? for help.".into()),
+            }),
+            style,
+            use_color,
+            observer,
+            help_open: false,
+            board_rect: None,
+            should_quit: false,
+        }
+    }
+
+    pub fn dispatch(&mut self, action: Action) {
+        match action {
+            Action::None => {}
+            Action::Quit => self.should_quit = true,
+            Action::HelpToggle => self.help_open = !self.help_open,
+            Action::PickerUp | Action::PickerDown | Action::PickerSelect => {
+                self.dispatch_picker(action);
+            }
+            _ => self.dispatch_game(action),
+        }
+    }
+
+    fn dispatch_picker(&mut self, action: Action) {
+        let Screen::Picker(p) = &mut self.screen else {
+            return;
+        };
+        let n = PickerEntry::ALL.len();
+        match action {
+            Action::PickerUp => p.cursor = (p.cursor + n - 1) % n,
+            Action::PickerDown => p.cursor = (p.cursor + 1) % n,
+            Action::PickerSelect => {
+                let entry = PickerEntry::ALL[p.cursor];
+                match entry.rules() {
+                    Some(rules) => {
+                        let observer = self.observer;
+                        let style = self.style;
+                        let use_color = self.use_color;
+                        *self = AppState::new_game(rules, style, use_color, observer);
+                    }
+                    None => self.should_quit = true,
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn dispatch_game(&mut self, action: Action) {
+        let Screen::Game(g) = &mut self.screen else {
+            return;
+        };
+        let shape = g.state.board.shape();
+        let (rows, cols) = orient::display_dims(shape);
+        match action {
+            Action::CursorUp => {
+                if g.cursor.0 > 0 {
+                    g.cursor.0 -= 1;
+                }
+            }
+            Action::CursorDown => {
+                if g.cursor.0 + 1 < rows {
+                    g.cursor.0 += 1;
+                }
+            }
+            Action::CursorLeft => {
+                if g.cursor.1 > 0 {
+                    g.cursor.1 -= 1;
+                }
+            }
+            Action::CursorRight => {
+                if g.cursor.1 + 1 < cols {
+                    g.cursor.1 += 1;
+                }
+            }
+            Action::Cancel => {
+                g.selected = None;
+                g.last_msg = None;
+            }
+            Action::SelectOrCommit => {
+                let observer = self.observer;
+                Self::handle_select_or_commit(g, observer);
+            }
+            Action::Undo => {
+                match g.state.unmake_move() {
+                    Ok(()) => {
+                        g.state.refresh_status();
+                        g.selected = None;
+                        g.last_msg = Some(format!("Undone. {:?} to move.", g.state.side_to_move));
+                    }
+                    Err(e) => {
+                        g.last_msg = Some(format!("Cannot undo: {e}"));
+                    }
+                }
+            }
+            Action::Flip => {
+                let observer = self.observer;
+                let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape)
+                else {
+                    g.last_msg = Some("Cursor not on a playable square.".into());
+                    return;
+                };
+                let m = Move::Reveal { at: sq, revealed: None };
+                Self::apply_move(g, m);
+            }
+            Action::Click { term_col, term_row } => {
+                if let Some(rect) = self.board_rect {
+                    let observer = self.observer;
+                    if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
+                        g.cursor = (row, col);
+                        Self::handle_select_or_commit(g, observer);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+        let shape = g.state.board.shape();
+        let Some(sq) = orient::square_at_display(g.cursor.0, g.cursor.1, observer, shape) else {
+            g.last_msg = Some("Cursor not on a playable square.".into());
+            return;
+        };
+
+        let view = PlayerView::project(&g.state, g.state.side_to_move);
+
+        match g.selected {
+            None => {
+                // Try to select a piece. Allowed if there's a legal move from this square.
+                let any = view.legal_moves.iter().any(|m| m.origin_square() == sq);
+                if any {
+                    g.selected = Some(sq);
+                    g.last_msg = None;
+                } else {
+                    // Maybe it's a banqi hidden cell — suggest 'f' to flip.
+                    match g.state.board.get(sq) {
+                        Some(p) if !p.revealed => {
+                            g.last_msg =
+                                Some("Hidden piece. Press 'f' to flip.".into());
+                        }
+                        _ => g.last_msg = Some("No legal move from that square.".into()),
+                    }
+                }
+            }
+            Some(from) if from == sq => {
+                g.selected = None;
+                g.last_msg = None;
+            }
+            Some(from) => {
+                // Find a legal move from `from` to `sq`. Prefer Capture / CannonJump
+                // over a chain ending at sq (for banqi); take the first match.
+                let candidate = view
+                    .legal_moves
+                    .iter()
+                    .find(|m| {
+                        m.origin_square() == from && m.to_square() == Some(sq)
+                    })
+                    .cloned();
+                match candidate {
+                    Some(m) => Self::apply_move(g, m),
+                    None => {
+                        g.last_msg = Some("Illegal move.".into());
+                        g.selected = None;
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_move(g: &mut GameView, m: Move) {
+        match g.state.make_move(&m) {
+            Ok(()) => {
+                g.state.refresh_status();
+                g.selected = None;
+                g.last_msg = Some(format!(
+                    "Played: {}",
+                    chess_core::notation::iccs::encode_move(&g.state.board, &m)
+                ));
+            }
+            Err(e) => {
+                g.last_msg = Some(format!("Engine rejected move: {e}"));
+                g.selected = None;
+            }
+        }
+    }
+}
+
+/// Convert terminal click coords to (display_row, display_col) within board.
+fn hit_test(
+    rect: RectPx,
+    term_col: u16,
+    term_row: u16,
+    rows: u8,
+    cols: u8,
+) -> Option<(u8, u8)> {
+    if term_col < rect.x + rect.left_pad || term_row < rect.y + rect.top_pad {
+        return None;
+    }
+    let col_off = term_col - rect.x - rect.left_pad;
+    let row_off = term_row - rect.y - rect.top_pad;
+    if rect.cell_cols == 0 {
+        return None;
+    }
+    let cell_col = col_off / rect.cell_cols;
+    let cell_row = row_off;
+    if cell_row >= rows as u16 || cell_col >= cols as u16 {
+        return None;
+    }
+    Some((cell_row as u8, cell_col as u8))
+}
+
+/// Helper: VisibleCell at given Square via PlayerView. Used by ui.rs.
+pub fn cell_at(view: &PlayerView, sq: Square) -> &VisibleCell {
+    let idx = sq.0 as usize;
+    &view.cells[idx]
+}
+
+/// Helper: shape from view (PlayerView reflects the engine).
+pub fn view_shape(view: &PlayerView) -> BoardShape {
+    view.shape
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:22:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check app.rs compiles in isolation
+
+`cargo check -p chess-tui 2>&1 | tail -30`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.31s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:22:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:22:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #22 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:22:48Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #23 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:23:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:02Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! ratatui draw layer. Stateless — reads `AppState` and draws.
+
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::piece::{PieceKind, Side};
+use chess_core::view::{PlayerView, VisibleCell};
+
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Modifier, Style as TuiStyle};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::Frame;
+
+use crate::app::{AppState, GameView, PickerEntry, PickerView, RectPx, Screen};
+use crate::glyph::{self, Style};
+use crate::orient;
+
+const CELL_COLS: u16 = 3;
+const RANK_LABEL_COLS: u16 = 3;
+
+pub fn draw(frame: &mut Frame, app: &mut AppState) {
+    let area = frame.area();
+    match &app.screen {
+        Screen::Picker(p) => draw_picker(frame, area, p),
+        Screen::Game(g) => draw_game(frame, area, app.observer, app.style, app.use_color, g, &mut app.board_rect, app.help_open),
+    }
+}
+
+fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
+    let title =
+        Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
+    let mut lines = vec![
+        Line::from(title),
+        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
+        Line::from(""),
+    ];
+    for (i, entry) in PickerEntry::ALL.iter().enumerate() {
+        let prefix = if i == picker.cursor { "▶ " } else { "  " };
+        let style = if i == picker.cursor {
+            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            TuiStyle::default()
+        };
+        lines.push(Line::from(vec![
+            Span::raw(prefix),
+            Span::styled(entry.label(), style),
+        ]));
+    }
+    let block = Block::default().borders(Borders::ALL).title(" Welcome ");
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, area);
+}
+
+fn draw_game(
+    frame: &mut Frame,
+    area: Rect,
+    observer: Side,
+    style: Style,
+    use_color: bool,
+    g: &GameView,
+    board_rect: &mut Option<RectPx>,
+    help_open: bool,
+) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(36), Constraint::Length(34)])
+        .split(area);
+
+    draw_board(frame, chunks[0], observer, style, use_color, g, board_rect);
+    draw_sidebar(frame, chunks[1], g, style, use_color, help_open);
+}
+
+fn draw_board(
+    frame: &mut Frame,
+    area: Rect,
+    observer: Side,
+    style: Style,
+    use_color: bool,
+    g: &GameView,
+    board_rect: &mut Option<RectPx>,
+) {
+    let block = Block::default().borders(Borders::ALL).title(" Board ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let view = PlayerView::project(&g.state, g.state.side_to_move);
+    let shape = view.shape;
+    let (rows, cols) = orient::display_dims(shape);
+    let (model_w, _) = shape.dimensions();
+
+    // Build legal-target highlight set when a piece is selected.
+    let highlight: std::collections::HashSet<Square> = match g.selected {
+        Some(from) => view
+            .legal_moves
+            .iter()
+            .filter(|m| m.origin_square() == from)
+            .filter_map(|m| m.to_square())
+            .collect(),
+        None => std::collections::HashSet::new(),
+    };
+
+    let mut lines: Vec<Line> = Vec::with_capacity(rows as usize + 2);
+
+    // Top header: file labels.
+    lines.push(file_header_line(observer, shape));
+
+    for display_row in 0..rows {
+        let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
+        spans.push(Span::raw(rank_label(observer, shape, display_row)));
+        for display_col in 0..cols {
+            let sq = orient::square_at_display(display_row, display_col, observer, shape);
+            let (glyph_text, st) = match sq {
+                Some(sq) => render_cell(&view, sq, model_w, &highlight, g, style, use_color, display_row, display_col),
+                None => (format!("{:>3}", "·"), TuiStyle::default()),
+            };
+            spans.push(Span::styled(glyph_text, st));
+        }
+        lines.push(Line::from(spans));
+    }
+
+    // River decoration for xiangqi (between display rows 4 and 5 for Red observer).
+    if matches!(shape, BoardShape::Xiangqi9x10) {
+        let banner = match style {
+            Style::Cjk => "    ── 楚 河    漢 界 ──",
+            Style::Ascii => "    -- river --",
+        };
+        // Rebuild lines: insert banner mid-board. Find the display row index.
+        // For Red: river is between rank 4 (display row 5) and rank 5 (display row 4).
+        // For Black: rank 4 at display row 4, rank 5 at row 5 — same boundary.
+        let banner_pos = (rows / 2) as usize + 1; // +1 for header
+        if banner_pos < lines.len() {
+            lines.insert(
+                banner_pos,
+                Line::from(Span::styled(banner, TuiStyle::default().fg(Color::DarkGray))),
+            );
+        }
+    }
+
+    // Footer: file labels again.
+    lines.push(file_header_line(observer, shape));
+
+    let para = Paragraph::new(lines);
+    frame.render_widget(para, inner);
+
+    *board_rect = Some(RectPx {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: inner.height,
+        cell_cols: CELL_COLS,
+        left_pad: RANK_LABEL_COLS,
+        top_pad: 1, // header row
+    });
+}
+
+fn file_header_line(observer: Side, shape: BoardShape) -> Line<'static> {
+    let (w, _) = shape.dimensions();
+    let (_, cols) = orient::display_dims(shape);
+    let mut s = String::new();
+    s.push_str("   "); // align with rank labels (3 cols)
+    for display_col in 0..cols {
+        // What model file corresponds to this display column? Ask the inverse
+        // for any row (use 0); banqi transposes so use a model-file resolver.
+        let label = file_label_for_col(display_col, w, shape, observer);
+        s.push(label);
+        s.push_str("  "); // 1-char glyph + 2 spaces ≈ CELL_COLS for ASCII labels
+    }
+    Line::from(Span::styled(s, TuiStyle::default().fg(Color::DarkGray)))
+}
+
+fn file_label_for_col(col: u8, model_w: u8, shape: BoardShape, observer: Side) -> char {
+    // Resolve via the inverse: pick row 0 (xiangqi) or row 0 (banqi); compute
+    // model file from the resulting Square.
+    let sq = orient::square_at_display(0, col, observer, shape);
+    let f = match sq {
+        Some(sq) => (sq.0 % model_w as u16) as u8,
+        None => col, // best-effort fallback
+    };
+    (b'a' + f) as char
+}
+
+fn rank_label(observer: Side, shape: BoardShape, display_row: u8) -> String {
+    // Same trick: resolve inverse to find model rank for this display row.
+    let sq = orient::square_at_display(display_row, 0, observer, shape);
+    let r = match sq {
+        Some(sq) => (sq.0 / shape.dimensions().0 as u16) as u8,
+        None => display_row,
+    };
+    format!(" {} ", r)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_cell(
+    view: &PlayerView,
+    sq: Square,
+    _model_w: u8,
+    highlight: &std::collections::HashSet<Square>,
+    g: &GameView,
+    style: Style,
+    use_color: bool,
+    display_row: u8,
+    display_col: u8,
+) -> (String, TuiStyle) {
+    let cell = &view.cells[sq.0 as usize];
+    let is_cursor = (display_row, display_col) == g.cursor;
+    let is_selected = g.selected == Some(sq);
+    let is_target = highlight.contains(&sq);
+
+    let mut text = match cell {
+        VisibleCell::Empty => glyph::empty(style).to_string(),
+        VisibleCell::Hidden => glyph::hidden(style).to_string(),
+        VisibleCell::Revealed(pos) => {
+            glyph::glyph(pos.piece.kind, pos.piece.side, style).to_string()
+        }
+    };
+    // Pad to CELL_COLS terminal columns. CJK glyphs render as 2 cols already;
+    // append a space. ASCII glyphs are 2 chars; append a space.
+    text.push(' ');
+
+    let mut s = TuiStyle::default();
+    if use_color {
+        if let VisibleCell::Revealed(pos) = cell {
+            s = s.fg(side_color(pos.piece.side));
+            if !pos.revealed {
+                s = s.add_modifier(Modifier::DIM);
+            }
+            if pos.piece.kind == PieceKind::General {
+                s = s.add_modifier(Modifier::BOLD);
+            }
+        } else if matches!(cell, VisibleCell::Hidden) {
+            s = s.fg(Color::DarkGray);
+        }
+    }
+    if is_target {
+        s = s.bg(Color::Rgb(40, 80, 40));
+    }
+    if is_selected {
+        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+    }
+    if is_cursor {
+        s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
+    }
+    (text, s)
+}
+
+fn side_color(side: Side) -> Color {
+    match side {
+        Side::RED => Color::Red,
+        Side::BLACK => Color::White,
+        _ => Color::Green,
+    }
+}
+
+fn draw_sidebar(
+    frame: &mut Frame,
+    area: Rect,
+    g: &GameView,
+    _style: Style,
+    _use_color: bool,
+    help_open: bool,
+) {
+    let block = Block::default().borders(Borders::ALL).title(" Status ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let view = PlayerView::project(&g.state, g.state.side_to_move);
+    let mut lines: Vec<Line> = Vec::new();
+
+    let variant_label = match view.shape {
+        BoardShape::Xiangqi9x10 => "Xiangqi (象棋)",
+        BoardShape::Banqi4x8 => "Banqi (暗棋)",
+        BoardShape::ThreeKingdom => "三國暗棋",
+        BoardShape::Custom { .. } => "Custom",
+    };
+    lines.push(line_label_value("Variant:", variant_label));
+    lines.push(line_label_value(
+        "Side to move:",
+        &format!("{:?}", view.side_to_move),
+    ));
+    lines.push(line_label_value("Status:", &format!("{:?}", view.status)));
+    lines.push(line_label_value(
+        "Legal moves:",
+        &view.legal_moves.len().to_string(),
+    ));
+    lines.push(line_label_value("History:", &g.state.history.len().to_string()));
+
+    let selected_label = match g.selected {
+        Some(sq) => chess_core::notation::iccs::encode_square(&g.state.board, sq),
+        None => "—".into(),
+    };
+    lines.push(line_label_value("Selected:", &selected_label));
+
+    lines.push(Line::from(""));
+    if let Some(msg) = &g.last_msg {
+        lines.push(Line::from(Span::styled(
+            msg.clone(),
+            TuiStyle::default().fg(Color::Yellow),
+        )));
+    }
+
+    if help_open {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Help",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )));
+        for ln in HELP_LINES {
+            lines.push(Line::from(Span::raw(*ln)));
+        }
+    } else {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "? for help, q to quit",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+
+    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(para, inner);
+}
+
+fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::raw(value.to_string()),
+    ])
+}
+
+const HELP_LINES: &[&str] = &[
+    "h j k l / ←↓↑→  move cursor",
+    "Enter / Space   select / commit",
+    "Esc             cancel selection",
+    "u               undo last move",
+    "f               flip (banqi)",
+    "Click           select / commit",
+    "?               toggle this help",
+    "q / Ctrl-C      quit",
+];
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #23 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:06Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #24 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:09Z)**_
+
+Now main.rs — clap CLI, terminal setup, event loop.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:35Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! `chess-tui` — ratatui frontend for chess-core.
+//!
+//! Run modes:
+//!   chess-tui                                       # variant picker
+//!   chess-tui xiangqi
+//!   chess-tui banqi --preset taiwan --seed 42
+//!   chess-tui --style ascii xiangqi
+//!   chess-tui --no-color xiangqi
+//!   chess-tui --as black xiangqi                    # debug: render as Black
+
+mod app;
+mod glyph;
+mod input;
+mod orient;
+mod ui;
+
+use std::io::{self, Stdout};
+use std::time::Duration;
+
+use anyhow::{anyhow, Context, Result};
+use chess_core::piece::Side;
+use chess_core::rules::{HouseRules, RuleSet};
+use clap::{Parser, Subcommand, ValueEnum};
+use crossterm::event::{self, Event};
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+
+use crate::app::AppState;
+use crate::glyph::Style;
+use crate::input::{from_key, from_mouse, Action};
+
+#[derive(Parser, Debug)]
+#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+struct Cli {
+    /// Render style.
+    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+    style: StyleArg,
+
+    /// Disable ANSI color (keeps the chosen glyph set).
+    #[arg(long)]
+    no_color: bool,
+
+    /// Render from this side's perspective (debug; default RED).
+    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+    observer: SideArg,
+
+    #[command(subcommand)]
+    cmd: Option<Cmd>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Cmd {
+    /// Standard xiangqi (9×10).
+    Xiangqi,
+    /// Banqi (4×8 face-down).
+    Banqi {
+        /// Preset bundle of house rules.
+        #[arg(long, value_enum)]
+        preset: Option<PresetArg>,
+        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+        #[arg(long)]
+        house: Option<String>,
+        /// Deterministic shuffle seed.
+        #[arg(long)]
+        seed: Option<u64>,
+    },
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum StyleArg {
+    Cjk,
+    Ascii,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum SideArg {
+    Red,
+    Black,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum PresetArg {
+    Purist,
+    Taiwan,
+    Aggressive,
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    let style = match cli.style {
+        StyleArg::Cjk => Style::Cjk,
+        StyleArg::Ascii => Style::Ascii,
+    };
+    let observer = match cli.observer {
+        SideArg::Red => Side::RED,
+        SideArg::Black => Side::BLACK,
+    };
+    let use_color = !cli.no_color;
+
+    let app = match &cli.cmd {
+        None => AppState::new_picker(style, use_color, observer),
+        Some(Cmd::Xiangqi) => {
+            AppState::new_game(RuleSet::xiangqi(), style, use_color, observer)
+        }
+        Some(Cmd::Banqi { preset, house, seed }) => {
+            let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+            AppState::new_game(rules, style, use_color, observer)
+        }
+    };
+
+    run(app)
+}
+
+fn build_banqi_rules(
+    preset: Option<&PresetArg>,
+    house: Option<&str>,
+    seed: Option<u64>,
+) -> Result<RuleSet> {
+    let mut flags = HouseRules::empty();
+    if let Some(p) = preset {
+        flags |= match p {
+            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+        };
+    }
+    if let Some(s) = house {
+        for tok in s.split(',') {
+            flags |= match tok.trim() {
+                "chain" => HouseRules::CHAIN_CAPTURE,
+                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+                other => return Err(anyhow!("unknown house rule: {other}")),
+            };
+        }
+    }
+    let flags = chess_core::rules::house::normalize(flags);
+    Ok(match seed {
+        Some(s) => RuleSet::banqi_with_seed(flags, s),
+        None => RuleSet::banqi(flags),
+    })
+}
+
+fn run(mut app: AppState) -> Result<()> {
+    let mut terminal = setup_terminal()?;
+    // Make sure we always restore terminal, even on panic.
+    let result = run_loop(&mut terminal, &mut app);
+    teardown_terminal(&mut terminal).ok();
+    result
+}
+
+fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+    enable_raw_mode().context("enable raw mode")?;
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture
+    )
+    .context("enter alt screen")?;
+    let backend = CrosstermBackend::new(stdout);
+    let terminal = Terminal::new(backend).context("init terminal")?;
+    Ok(terminal)
+}
+
+fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+    disable_raw_mode().ok();
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        crossterm::event::DisableMouseCapture
+    )
+    .ok();
+    terminal.show_cursor().ok();
+    Ok(())
+}
+
+fn run_loop(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    app: &mut AppState,
+) -> Result<()> {
+    loop {
+        terminal.draw(|frame| ui::draw(frame, app))?;
+        if app.should_quit {
+            return Ok(());
+        }
+        if event::poll(Duration::from_millis(200))? {
+            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+            let action = match event::read()? {
+                Event::Key(k) if k.kind == event::KeyEventKind::Press => from_key(k, in_picker),
+                Event::Mouse(m) => from_mouse(m),
+                Event::Resize(_, _) => Action::None,
+                _ => Action::None,
+            };
+            app.dispatch(action);
+        }
+    }
+}
+
+```
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:24:39Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/main.rs`
+
+```text
+1	//! `chess-tui` — ratatui frontend. Stub for a follow-up PR.
+2	
+3	fn main() {
+4	    eprintln!("chess-tui stub — see docs/architecture.md roadmap.");
+5	}
+6
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:04Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! `chess-tui` — ratatui frontend for chess-core.
+//!
+//! Run modes:
+//!   chess-tui                                       # variant picker
+//!   chess-tui xiangqi
+//!   chess-tui banqi --preset taiwan --seed 42
+//!   chess-tui --style ascii xiangqi
+//!   chess-tui --no-color xiangqi
+//!   chess-tui --as black xiangqi                    # debug: render as Black
+
+mod app;
+mod glyph;
+mod input;
+mod orient;
+mod ui;
+
+use std::io::{self, Stdout};
+use std::time::Duration;
+
+use anyhow::{anyhow, Context, Result};
+use chess_core::piece::Side;
+use chess_core::rules::{HouseRules, RuleSet};
+use clap::{Parser, Subcommand, ValueEnum};
+use crossterm::event::{self, Event};
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+
+use crate::app::AppState;
+use crate::glyph::Style;
+use crate::input::{from_key, from_mouse, Action};
+
+#[derive(Parser, Debug)]
+#[command(name = "chess-tui", about = "ratatui frontend for chess-core")]
+struct Cli {
+    /// Render style.
+    #[arg(long, value_enum, default_value_t = StyleArg::Cjk)]
+    style: StyleArg,
+
+    /// Disable ANSI color (keeps the chosen glyph set).
+    #[arg(long)]
+    no_color: bool,
+
+    /// Render from this side's perspective (debug; default RED).
+    #[arg(long = "as", value_enum, default_value_t = SideArg::Red)]
+    observer: SideArg,
+
+    #[command(subcommand)]
+    cmd: Option<Cmd>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Cmd {
+    /// Standard xiangqi (9×10).
+    Xiangqi,
+    /// Banqi (4×8 face-down).
+    Banqi {
+        /// Preset bundle of house rules.
+        #[arg(long, value_enum)]
+        preset: Option<PresetArg>,
+        /// Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast.
+        #[arg(long)]
+        house: Option<String>,
+        /// Deterministic shuffle seed.
+        #[arg(long)]
+        seed: Option<u64>,
+    },
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum StyleArg {
+    Cjk,
+    Ascii,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum SideArg {
+    Red,
+    Black,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum PresetArg {
+    Purist,
+    Taiwan,
+    Aggressive,
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    let style = match cli.style {
+        StyleArg::Cjk => Style::Cjk,
+        StyleArg::Ascii => Style::Ascii,
+    };
+    let observer = match cli.observer {
+        SideArg::Red => Side::RED,
+        SideArg::Black => Side::BLACK,
+    };
+    let use_color = !cli.no_color;
+
+    let app = match &cli.cmd {
+        None => AppState::new_picker(style, use_color, observer),
+        Some(Cmd::Xiangqi) => {
+            AppState::new_game(RuleSet::xiangqi(), style, use_color, observer)
+        }
+        Some(Cmd::Banqi { preset, house, seed }) => {
+            let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;
+            AppState::new_game(rules, style, use_color, observer)
+        }
+    };
+
+    run(app)
+}
+
+fn build_banqi_rules(
+    preset: Option<&PresetArg>,
+    house: Option<&str>,
+    seed: Option<u64>,
+) -> Result<RuleSet> {
+    let mut flags = HouseRules::empty();
+    if let Some(p) = preset {
+        flags |= match p {
+            PresetArg::Purist => chess_core::rules::PRESET_PURIST,
+            PresetArg::Taiwan => chess_core::rules::PRESET_TAIWAN,
+            PresetArg::Aggressive => chess_core::rules::PRESET_AGGRESSIVE,
+        };
+    }
+    if let Some(s) = house {
+        for tok in s.split(',') {
+            flags |= match tok.trim() {
+                "chain" => HouseRules::CHAIN_CAPTURE,
+                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+                "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
+                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+                "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
+                other => return Err(anyhow!("unknown house rule: {other}")),
+            };
+        }
+    }
+    let flags = chess_core::rules::house::normalize(flags);
+    Ok(match seed {
+        Some(s) => RuleSet::banqi_with_seed(flags, s),
+        None => RuleSet::banqi(flags),
+    })
+}
+
+fn run(mut app: AppState) -> Result<()> {
+    let mut terminal = setup_terminal()?;
+    let result = run_loop(&mut terminal, &mut app);
+    teardown_terminal(&mut terminal).ok();
+    result
+}
+
+fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+    enable_raw_mode().context("enable raw mode")?;
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture
+    )
+    .context("enter alt screen")?;
+    let backend = CrosstermBackend::new(stdout);
+    let terminal = Terminal::new(backend).context("init terminal")?;
+    Ok(terminal)
+}
+
+fn teardown_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+    disable_raw_mode().ok();
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        crossterm::event::DisableMouseCapture
+    )
+    .ok();
+    terminal.show_cursor().ok();
+    Ok(())
+}
+
+fn run_loop(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    app: &mut AppState,
+) -> Result<()> {
+    loop {
+        terminal.draw(|frame| ui::draw(frame, app))?;
+        if app.should_quit {
+            return Ok(());
+        }
+        if event::poll(Duration::from_millis(200))? {
+            let in_picker = matches!(app.screen, app::Screen::Picker(_));
+            let action = match event::read()? {
+                Event::Key(k) if k.kind == event::KeyEventKind::Press => from_key(k, in_picker),
+                Event::Mouse(m) => from_mouse(m),
+                Event::Resize(_, _) => Action::None,
+                _ => Action::None,
+            };
+            app.dispatch(action);
+        }
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/main.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check chess-tui compiles
+
+`cargo check -p chess-tui 2>&1 | tail -50`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+warning: fields `width` and `height` are never read
+  --> clients/chess-tui/src/app.rs:93:9
+   |
+90 | pub struct RectPx {
+   |            ------ fields in this struct
+...
+93 |     pub width: u16,
+   |         ^^^^^
+94 |     pub height: u16,
+   |         ^^^^^^
+   |
+   = note: `RectPx` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `cell_at` is never used
+   --> clients/chess-tui/src/app.rs:338:8
+    |
+338 | pub fn cell_at(view: &PlayerView, sq: Square) -> &VisibleCell {
+    |        ^^^^^^^
+
+warning: function `view_shape` is never used
+   --> clients/chess-tui/src/app.rs:344:8
+    |
+344 | pub fn view_shape(view: &PlayerView) -> BoardShape {
+    |        ^^^^^^^^^^
+
+warning: function `project_cell` is never used
+  --> clients/chess-tui/src/orient.rs:20:8
+   |
+20 | pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+   |        ^^^^^^^^^^^^
+
+warning: `chess-tui` (bin "chess-tui") generated 4 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.98s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:23Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:48Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:25:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/orient.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Compile + clippy chess-tui
+
+`cargo check -p chess-tui 2>&1 | tail -30 && echo "===" && cargo clippy -p chess-tui --all-targets -- -D warnings 2>&1 | tail -60`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.55s
+===
+    Checking chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+error: large size difference between variants
+  --> clients/chess-tui/src/app.rs:70:1
+   |
+70 | / pub enum Screen {
+71 | |     Picker(PickerView),
+   | |     ------------------ the second-largest variant contains at least 8 bytes
+72 | |     Game(GameView),
+   | |     -------------- the largest variant contains at least 224 bytes
+73 | | }
+   | |_^ the entire enum is at least 224 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#large_enum_variant
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+72 -     Game(GameView),
+72 +     Game(Box<GameView>),
+   |
+
+error: this function has too many arguments (8/7)
+  --> clients/chess-tui/src/ui.rs:54:1
+   |
+54 | / fn draw_game(
+55 | |     frame: &mut Frame,
+56 | |     area: Rect,
+57 | |     observer: Side,
+...  |
+62 | |     help_open: bool,
+63 | | ) {
+   | |_^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#too_many_arguments
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: could not compile `chess-tui` (bin "chess-tui" test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `chess-tui` (bin "chess-tui") due to 2 previous errors
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:08Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/app.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:23Z)**_
+
+Now fix the too-many-args by passing the AppState directly:
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:38Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-run clippy on chess-tui
+
+`cargo clippy -p chess-tui --all-targets -- -D warnings 2>&1 | tail -80`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.42s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:48Z)**_
+
+Clean. Now run full workspace tests + clippy.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format check + workspace clippy
+
+`cargo fmt --check 2>&1 | tail -5 ; echo "===CLIPPY===" ; cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+-        )));
++        lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
+     }
+ 
+     if help_open {
+===CLIPPY===
+    Checking wait-timeout v0.2.1
+    Checking getrandom v0.3.4
+    Checking getrandom v0.4.2
+    Checking rustix v1.1.4
+    Checking console v0.16.3
+    Checking chess-engine v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-engine)
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Checking chess-cli v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-cli)
+    Checking chess-ai v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-ai)
+    Checking rand_core v0.9.5
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.4
+    Checking rand_xorshift v0.4.0
+    Checking tempfile v3.27.0
+    Checking rusty-fork v0.3.1
+    Checking insta v1.47.2
+    Checking proptest v1.11.0
+    Checking chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.04s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:56Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:26:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply rustfmt and verify
+
+`cargo fmt --all 2>&1 | tail -5 && cargo fmt --check 2>&1 | tail -3`
+
+```text
+[This command modified 5 files you've previously read: clients/chess-tui/src/app.rs, clients/chess-tui/src/orient.rs, clients/chess-tui/src/ui.rs, clients/chess-tui/src/main.rs, clients/chess-tui/src/input.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:27:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify format + clippy clean
+
+`cargo fmt --check 2>&1 | tail -3 && echo "===" && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -20`
+
+```text
+===
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.51s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:27:07Z)**_
+
+Format and clippy clean. Now run tests + verify wasm cleanliness for chess-core.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:27:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run full workspace tests
+
+`cargo test --workspace 2>&1 | tail -40`
+
+```text
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-b931080b537ec68e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_ai
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:27:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify chess-core still builds for wasm
+
+`cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -10`
+
+```text
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.18s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:27:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test summary
+
+`cargo test --workspace 2>&1 | grep -E "test result|running" | head -40`
+
+```text
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 73 tests
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 3 tests
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 9 tests
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:02Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check --help renders
+
+`cargo run -p chess-tui -- --help 2>&1 | head -25`
+
+```text
+   Compiling strsim v0.11.1
+   Compiling libc v0.2.186
+   Compiling bitflags v2.11.1
+   Compiling log v0.4.29
+   Compiling scopeguard v1.2.0
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-query v1.1.5
+   Compiling colorchoice v1.0.5
+   Compiling anstyle v1.0.14
+   Compiling equivalent v1.0.2
+   Compiling anstyle-parse v1.0.0
+   Compiling lock_api v0.4.14
+   Compiling either v1.15.0
+   Compiling allocator-api2 v0.2.21
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling foldhash v0.1.5
+   Compiling castaway v0.2.4
+   Compiling unicode-segmentation v1.13.2
+   Compiling anstream v1.0.0
+   Compiling darling_core v0.23.0
+   Compiling unicode-width v0.1.14
+   Compiling itertools v0.13.0
+   Compiling clap_lex v1.1.0
+   Compiling ryu v1.0.23
+   Compiling hashbrown v0.15.5
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check subcommand help
+
+`cargo run -p chess-tui -- xiangqi --help 2>&1 | head -10`
+
+```text
+   Compiling errno v0.3.14
+   Compiling getrandom v0.2.17
+   Compiling mio v1.2.0
+   Compiling darling_macro v0.23.0
+   Compiling parking_lot_core v0.9.12
+   Compiling static_assertions v1.1.0
+   Compiling unicode-truncate v1.1.0
+   Compiling clap_builder v4.6.0
+   Compiling strum v0.26.3
+   Compiling lru v0.12.5
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check --help output post-compile
+
+`./target/debug/chess-tui --help 2>&1 | head -25`
+
+```text
+(eval):1: no such file or directory: ./target/debug/chess-tui
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Build and show --help
+
+`cargo build -p chess-tui 2>&1 | tail -5 && ./target/debug/chess-tui --help`
+
+```text
+   Compiling instability v0.3.12
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+   Compiling ratatui v0.29.0
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.98s
+ratatui frontend for chess-core
+
+Usage: chess-tui [OPTIONS] [COMMAND]
+
+Commands:
+  xiangqi  Standard xiangqi (9×10)
+  banqi    Banqi (4×8 face-down)
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --style <STYLE>  Render style [default: cjk] [possible values: cjk, ascii]
+      --no-color       Disable ANSI color (keeps the chosen glyph set)
+      --as <OBSERVER>  Render from this side's perspective (debug; default RED) [default: red] [possible values: red, black]
+  -h, --help           Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:44Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:44Z)**_
+
+I need to remove the inline river decoration — it breaks the mouse hit-test math. Let me fix that.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:45Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-tui/src/ui.rs`
+
+```text
+110	            let sq = orient::square_at_display(display_row, display_col, observer, shape);
+111	            let (glyph_text, st) = match sq {
+112	                Some(sq) => render_cell(
+113	                    &view,
+114	                    sq,
+115	                    model_w,
+116	                    &highlight,
+117	                    g,
+118	                    style,
+119	                    use_color,
+120	                    display_row,
+121	                    display_col,
+122	                ),
+123	                None => (format!("{:>3}", "·"), TuiStyle::default()),
+124	            };
+125	            spans.push(Span::styled(glyph_text, st));
+126	        }
+127	        lines.push(Line::from(spans));
+128	    }
+129	
+130	    // River decoration for xiangqi (between display rows 4 and 5 for Red observer).
+131	    if matches!(shape, BoardShape::Xiangqi9x10) {
+132	        let banner = match style {
+133	            Style::Cjk => "    ── 楚 河    漢 界 ──",
+134	            Style::Ascii => "    -- river --",
+135	        };
+136	        // Rebuild lines: insert banner mid-board. Find the display row index.
+137	        // For Red: river is between rank 4 (display row 5) and rank 5 (display row 4).
+138	        // For Black: rank 4 at display row 4, rank 5 at row 5 — same boundary.
+139	        let banner_pos = (rows / 2) as usize + 1; // +1 for header
+140	        if banner_pos < lines.len() {
+141	            lines.insert(
+142	                banner_pos,
+143	                Line::from(Span::styled(banner, TuiStyle::default().fg(Color::DarkGray))),
+144	            );
+145	        }
+146	    }
+147	
+148	    // Footer: file labels again.
+149	    lines.push(file_header_line(observer, shape));
+150	
+151	    let para = Paragraph::new(lines);
+152	    frame.render_widget(para, inner);
+153	
+154	    *board_rect = Some(RectPx {
+155	        x: inner.x,
+156	        y: inner.y,
+157	        cell_cols: CELL_COLS,
+158	        left_pad: RANK_LABEL_COLS,
+159	        top_pad: 1, // header row
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:28:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui/src/ui.rs has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-check after river fix
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 && echo "===" && cargo fmt --check 2>&1 | tail -3`
+
+```text
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.41s
+===
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #24 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #25 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify subcommand parse
+
+`./target/debug/chess-tui xiangqi --help 2>&1 | head -10 && echo "===" && ./target/debug/chess-tui banqi --help 2>&1 | head -15`
+
+```text
+Standard xiangqi (9×10)
+
+Usage: chess-tui xiangqi
+
+Options:
+  -h, --help  Print help
+===
+Banqi (4×8 face-down)
+
+Usage: chess-tui banqi [OPTIONS]
+
+Options:
+      --preset <PRESET>  Preset bundle of house rules [possible values: purist, taiwan, aggressive]
+      --house <HOUSE>    Comma-separated house rules: chain,dark,rush,horse-diagonal,cannon-fast
+      --seed <SEED>      Deterministic shuffle seed
+  -h, --help             Print help
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:38Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:39Z)**_
+
+Now update README, CLAUDE.md, and TODO.md.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:40Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #25 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:40Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #26 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:40Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./README.md`
+
+```text
+1	# Chinese Chess
+2	
+3	A hobby Chinese chess game in Rust supporting:
+4	
+5	- **Standard Xiangqi (象棋)** — 9×10, two players
+6	- **Banqi (暗棋)** — 4×8 dark chess, rank-based capture
+7	- **Three Kingdoms Banqi (三國暗棋)** — banqi variant with three teams *(planned)*
+8	- **House rules** — toggleable: 連吃, 暗連, 車衝, 馬斜, 炮快移
+9	
+10	## Goals
+11	
+12	- Modular core (`chess-core`) reusable across native TUI and browser (WASM)
+13	- Self-hostable server for play with friends
+14	- Mouse + keyboard UX (Vim-style + coordinate input)
+15	
+16	## Layout
+17	
+18	```
+19	crates/chess-core    — pure game logic (this is where everything starts)
+20	crates/chess-engine  — search/eval (planned)
+21	crates/chess-net     — websocket protocol (planned)
+22	crates/chess-ai      — heuristic + ISMCTS for banqi (planned)
+23	clients/chess-cli    — REPL test harness for chess-core
+24	clients/chess-tui    — ratatui frontend (planned)
+25	clients/chess-web    — Leptos + WASM frontend (planned)
+26	```
+27	
+28	See [`docs/architecture.md`](docs/architecture.md) for the full design.
+29	
+30	## Build
+31	
+32	```bash
+33	cargo check --workspace
+34	cargo test -p chess-core
+35	cargo run -p chess-cli
+36	```
+37	
+38	WASM cleanliness check (proves `chess-core` has no platform deps):
+39	
+40	```bash
+41	cargo build --target wasm32-unknown-unknown -p chess-core
+42	```
+43	
+44	## License
+45	
+46	MIT OR Apache-2.0
+47	
+48	## Roadmap & lessons learned
+49	
+50	Forward-looking work — long-term ideas, deferred items, things needing
+51	evaluation — lives in [`TODO.md`](TODO.md), prioritised P1 → P3 with effort
+52	estimates (S/M/L/XL). Items with accompanying research, design notes, or paused
+53	troubleshooting link to a corresponding [`backlog/<slug>.md`](backlog/) doc.
+54	
+55	Backward-looking knowledge — past traps and non-obvious debugging — lives in
+56	[`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
+57	message and land on the root cause + workaround instead of re-debugging from
+58	scratch.
+59
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:46Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/README.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:52Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/README.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:55Z)**_
+
+Now CLAUDE.md — add chess-tui under common commands.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:29:56Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). PR 1 ships the foundational `chess-core` crate end-to-end; clients (`chess-tui`, `chess-web`), networking (`chess-net`), and AI (`chess-ai`) are scaffolded as stubs and tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+16	
+17	# Format + lint (CI requires both clean; clippy uses -D warnings)
+18	cargo fmt --check
+19	cargo clippy --workspace --all-targets -- -D warnings
+20	
+21	# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+22	cargo test -p chess-core
+23	
+24	# Run a single test
+25	cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+26	
+27	# Slow xiangqi perft depth-3 — runs in release for speed
+28	cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+29	
+30	# WASM cleanliness — proves chess-core has no platform deps
+31	cargo build --target wasm32-unknown-unknown -p chess-core
+32	
+33	# Run the REPL test harness (proves the engine end-to-end)
+34	cargo run -p chess-cli
+35	> xiangqi
+36	> moves
+37	> play h2e2
+38	> banqi --preset taiwan --seed 42
+39	> view 0
+40	> quit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:13Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find stub mentions
+
+`grep -n "stub\|chess-tui\|chess-engine" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md | head -10`
+
+```text
+7:Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end and `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs). Networking (`chess-net`), AI (`chess-ai`), and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+43:cargo run -p chess-tui                                    # variant picker
+44:cargo run -p chess-tui -- xiangqi                         # skip picker
+45:cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+46:cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+47:cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+48:cargo run -p chess-tui -- --as black xiangqi              # render as Black
+59:The engine lives entirely in `crates/chess-core`. Everything else (`chess-engine`, `chess-net`, `chess-ai`, `chess-tui`, `chess-web`, `xtask`) is a stub for follow-up PRs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+75:- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:24Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:29Z)**_
+
+Now also add a chess-tui-specific gotcha — the inline river / mouse interaction is one. And the orientation-vs-banqi note is worth surfacing.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:30Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+60	
+61	1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+62	2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+63	3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+64	4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+65	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+66	
+67	Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+68	
+69	## Gotchas worth knowing
+70	
+71	- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+72	
+73	- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+74	
+75	- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+76	
+77	- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+78	
+79	- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+80	
+81	- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+82	
+83	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+84	
+85	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+86	
+87	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+88	
+89	## Where to put new work
+90	
+91	| Kind | Where |
+92	|---|---|
+93	| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+94	| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+95	| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+96	| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+97	| Game rules reference | `docs/rules/<variant>.md` |
+98	| Architectural overview / tech analysis | `docs/architecture.md` |
+99	
+100	[`AGENTS.md`](AGENTS.md) describes the full backlog/pitfalls workflow with examples. Do **not** create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index, validated by `scripts/todo-kanban.sh`.
+101	
+102	When implementing a `TODO.md` item, in the same commit run:
+103	
+104	```bash
+105	scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+106	```
+107	
+108	## Pre-push checklist
+109
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:42Z)**_
+
+Now promote the TODO entry.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check scripts dir
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/`
+
+```text
+Exit code 2
+"/Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/": No such file or directory (os error 2)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate promote-todo.sh
+
+`find /Volumes/Data/Program/tries/2026-05-06-chinese-chess -name "promote-todo.sh" -not -path "*/target/*" 2>/dev/null | head -3`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:30:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find promote-todo.sh in skill dir
+
+`find ~/.claude -name "promote-todo.sh" 2>/dev/null | head -3`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:32:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate the script anywhere
+
+`find / -name "promote-todo.sh" 2>/dev/null | head -3`
+
+```text
+Command running in background with ID: be2j8yqc8. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d/tasks/be2j8yqc8.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:33:07Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:33:11Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:33:22Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate kanban validator
+
+`find / -name "todo-kanban.sh" 2>/dev/null | head -3`
+
+```text
+Command running in background with ID: bkmr0c4ga. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d/tasks/bkmr0c4ga.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Read background find outputs
+
+`sleep 5 && cat /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d/tasks/bkmr0c4ga.output 2>/dev/null; cat /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/221ac761-ac41-4c8e-b657-b8e686b7224d/tasks/be2j8yqc8.output 2>/dev/null`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Spot-check TODO structure
+
+`grep -n "^##\|^- \[\|^- ✅\|^- \[ \]" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md | head -40`
+
+```text
+20:## P1
+24:- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+25:- [ ] **[S] Wire DARK_CHAIN house rule** — Chain captures pass through face-down squares; auto-reveal as chain progresses. Requires changing ChainHop.captured to Option<Piece> and updating sanitize_for_observer for the network ABI. See docs/rules/banqi-house.md.
+26:- [ ] **[S] Wire HORSE_DIAGONAL house rule** — Banqi horse moves like xiangqi horse (L-shape with 馬腿 leg block) when flag enabled. Reuse pattern from rules/xiangqi.rs::gen_horse.
+27:- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+28:- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+30:## P2
+34:- [ ] **[M] chess-net: server-authoritative websocket protocol** — tokio + axum + ws. Server runs the authoritative GameState; clients only ever see PlayerView (the no-leak ABI is the whole point of view.rs). Lobby + reconnection out of scope for first cut. → [research](backlog/chess-net-protocol.md)
+35:- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+36:- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+37:- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+38:- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+39:- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+41:## P3
+45:- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+46:- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+47:- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+49:## P?
+53:- [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
+54:- [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
+56:## Done
+58:- ✅ [2026-05-06] [P2/M] chess-tui: ratatui frontend — interactive TUI for xiangqi + banqi. Vim cursor (hjkl) + arrows + mouse, Enter/Space select-or-commit, `u` undo, `f` flip (banqi). Two render styles: CJK glyphs (帥仕相俥傌炮兵 / 將士象車馬砲卒, default with color) and ASCII (--style ascii). Banqi displays in traditional 8×4 layout (transposed from 4×8 model). Variant picker on bare invocation; --as black flips xiangqi orientation for net-readiness. Engine stays presentation-free — orient.rs + glyph.rs live in the client.
+60:- ✅ [2026-05-06] [P1/S] End-condition unit tests (checkmate / stalemate / banqi no-moves / no-progress) — tests/end_conditions.rs verifies refresh_status produces Won{Checkmate} / Won{Stalemate} / Won{OnlyOneSideHasPieces} from .pos fixtures. Pattern reusable for endgame puzzles.
+70:- ✅ [2026-05-06] [P1/L] Foundational chess-core + workspace scaffolding — full xiangqi (perft-validated 1=44, 2=1920, 3=79666) + base banqi + CHAIN_CAPTURE/CHARIOT_RUSH house rules + PlayerView projection (no-leak proptest) + ICCS notation + chess-cli REPL. 8-crate workspace + WASM cleanliness in CI. 71 tests passing.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:44Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:45Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[M] chess-net: server-authoritative websocket protocol** — tokio + axum + ws. Server runs the authoritative GameState; clients only ever see PlayerView (the no-leak ABI is the whole point of view.rs). Lobby + reconnection out of scope for first cut. → [research](backlog/chess-net-protocol.md)
+35	- [ ] **[M] chess-web: Leptos + WASM frontend** — Same chess-core compiled to wasm32-unknown-unknown (already verified clean). Consumes PlayerView from chess-net. Mouse-first; vim-style keys for parity with TUI.
+36	- [ ] **[S] WXF notation (相3進5 style)** — Chinese-language traditional xiangqi notation. Pattern lives in crates/chess-core/src/notation/wxf.rs (currently empty). ICCS already implemented; mirror the same encode/decode pair.
+37	- [ ] **[M] Time controls (計時器)** — Per-side clocks: main time + increment, byo-yomi, or sudden death. Belongs in chess-net (server-authoritative tick) or as a thin state wrapper if local-only is enough. Adds GameStatus::Won { reason: Timeout } trigger — the WinReason variant already exists. Out of scope: client-side animation; servers tick authoritatively and broadcast remaining time in PlayerView.
+38	- [ ] **[S] Takeback (悔棋) request/approve protocol** — Local hot-seat undo already works via state.unmake_move() and the chess-cli 'undo' command. This TODO is the multiplayer flow: requester sends Takeback, opponent approves/rejects, server unmakes the last N plies (typically 1 or 2) and broadcasts updated PlayerView. Lives in chess-net once that crate exists.
+39	- [ ] **[S] Handicap mode (讓棋)** — Stronger player removes one or more of their own pieces from the initial setup before play begins (xiangqi tradition: 讓單馬 / 讓雙馬 / 讓單炮 / 讓單車 / 讓雙馬一炮 / 讓雙馬雙炮 / etc). Shape likely: Handicap field on RuleSet (so save/load + replay metadata preserve the choice) consumed by setup::build_xiangqi which skips placing the listed pieces. Xiangqi-only for first cut — banqi's random shuffle complicates the equivalent and can wait until someone asks.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:50Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final gate
+
+`cargo fmt --check 2>&1 | tail -3 && echo "===CLIPPY===" && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 && echo "===TESTS===" && cargo test --workspace 2>&1 | grep "test result" | head -20`
+
+```text
+===CLIPPY===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.38s
+===TESTS===
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:35:59Z)**_
+
+All green: format, clippy clean, 73 chess-core lib tests + 16 chess-core integration + 9 new chess-tui tests = 102 total. Now commit.
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Status before commit
+
+`git status`
+
+```text
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+	modified:   CLAUDE.md
+	modified:   Cargo.lock
+	modified:   README.md
+	modified:   TODO.md
+	modified:   clients/chess-tui/Cargo.toml
+	modified:   clients/chess-tui/src/main.rs
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	clients/chess-tui/src/app.rs
+	clients/chess-tui/src/glyph.rs
+	clients/chess-tui/src/input.rs
+	clients/chess-tui/src/orient.rs
+	clients/chess-tui/src/ui.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Recent commit style
+
+`git log --oneline -5`
+
+```text
+2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+f9d258f chore: scaffold chess-core foundations + variant-ready architecture
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Diff stat
+
+`git diff --stat`
+
+```text
+ .../2026-05-06_02-35-05Z-module-local-front-end.md | 8442 ++++++++++++++++++++
+ CLAUDE.md                                          |   18 +-
+ Cargo.lock                                         |  578 +-
+ README.md                                          |    8 +-
+ TODO.md                                            |    3 +-
+ clients/chess-tui/Cargo.toml                       |    6 +-
+ clients/chess-tui/src/main.rs                      |  192 +-
+ 7 files changed, 9232 insertions(+), 15 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit the chess-tui implementation
+
+```bash
+git add clients/chess-tui/Cargo.toml clients/chess-tui/src/main.rs clients/chess-tui/src/app.rs clients/chess-tui/src/glyph.rs clients/chess-tui/src/input.rs clients/chess-tui/src/orient.rs clients/chess-tui/src/ui.rs CLAUDE.md README.md TODO.md Cargo.lock && git commit -m "$(cat <<'EOF'
+feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+
+First interactive surface beyond the CLI REPL. ratatui + crossterm,
+keyboard (vim hjkl + arrows) and mouse, two render styles.
+
+- CJK glyphs by default (帥仕相俥傌炮兵 / 將士象車馬砲卒) with red/white
+  coloring; --style ascii falls back to letter glyphs; --no-color strips
+  styling.
+- Banqi displays in traditional 8×4 layout (transposed from the 4×8 model)
+  while xiangqi keeps physical orientation. Engine coords stay
+  presentation-free; the renderer's orient.rs handles transpose + per-side
+  flip. --as black flips xiangqi for visual verification.
+- Variant picker on bare invocation; CLI subcommands (xiangqi / banqi
+  --preset --house --seed) mirror chess-cli for skip-picker workflows.
+- Selection highlights legal-destination squares; Enter / Space / click
+  selects-or-commits; u undoes; f flips a banqi face-down piece.
+- 9 unit tests in chess-tui (glyph table totality + Square↔display
+  round-trip for both observer sides + banqi transpose).
+
+The orient layer is shaped so that swapping in a chess-net PlayerView for
+the local GameState is a one-line change later — observer Side already
+threads through.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && echo "===" && git status
+```
+
+```text
+[main ce20d4c] feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+ 11 files changed, 1768 insertions(+), 15 deletions(-)
+ create mode 100644 clients/chess-tui/src/app.rs
+ create mode 100644 clients/chess-tui/src/glyph.rs
+ create mode 100644 clients/chess-tui/src/input.rs
+ create mode 100644 clients/chess-tui/src/orient.rs
+ create mode 100644 clients/chess-tui/src/ui.rs
+===
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-06_02-35-05Z-module-local-front-end.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm commit
+
+`git log --oneline -5`
+
+```text
+ce20d4c feat(tui): wire chess-tui — playable xiangqi + banqi with CJK glyphs
+2b94711 docs: drop "大盤 = future variant" misclaim; add 讓棋 TODO
+7e6d031 feat(core): snapshot + replay formats; end-condition tests
+d7258ca docs: add CLAUDE.md and update transcript
+15b5412 chore: add project-knowledge-harness — TODO.md, backlog/, pitfalls/
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-06 06:36:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect hooks + specstory dir
+
+`ls -la .git/hooks/ 2>&1 | head; echo "==="; ls -la .specstory/ 2>&1 | head`
+
+```text
+.rwxr-xr-x@  478 daviddwlee84  6 May 10:28  applypatch-msg.sample
+.rwxr-xr-x@  896 daviddwlee84  6 May 10:28  commit-msg.sample
+.rwxr-xr-x@ 4.7k daviddwlee84  6 May 10:28  fsmonitor-watchman.sample
+.rwxr-xr-x@  189 daviddwlee84  6 May 10:28  post-update.sample
+.rwxr-xr-x@  424 daviddwlee84  6 May 10:28  pre-applypatch.sample
+.rwxr-xr-x@ 1.6k daviddwlee84  6 May 10:28  pre-commit.sample
+.rwxr-xr-x@  416 daviddwlee84  6 May 10:28  pre-merge-commit.sample
+.rwxr-xr-x@ 1.4k daviddwlee84  6 May 10:28  pre-push.sample
+.rwxr-xr-x@ 4.9k daviddwlee84  6 May 10:28  pre-rebase.sample
+.rwxr-xr-x@  544 daviddwlee84  6 May 10:28  pre-receive.sample
+===
+drwxr-xr-x@   - daviddwlee84  6 May 10:28  **cli
+drwxr-xr-x@   - daviddwlee84  6 May 10:35  **history
+.rw-r--r--@ 134 daviddwlee84  6 May 10:28  .project.json
 ```
 </details></tool-use>
