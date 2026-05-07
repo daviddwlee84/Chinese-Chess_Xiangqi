@@ -1028,8 +1028,13 @@ impl AppState {
                 g.cursor.1 += 1;
             }
             Action::Cancel => {
-                g.selected = None;
-                g.last_msg = None;
+                if let Some(at) = g.state.chain_lock {
+                    // Engine is in 連吃 mode — Esc ends the chain.
+                    Self::apply_move(g, Move::EndChain { at });
+                } else {
+                    g.selected = None;
+                    g.last_msg = None;
+                }
             }
             Action::SelectOrCommit => {
                 let observer = self.observer;
@@ -1088,6 +1093,30 @@ impl AppState {
 
         let view = PlayerView::project(&g.state, g.state.side_to_move);
 
+        // Engine chain mode: only the locked piece may move (captures
+        // only). Press Enter on the locked piece to end the chain.
+        if let Some(locked) = view.chain_lock {
+            if sq == locked {
+                Self::apply_move(g, Move::EndChain { at: locked });
+                return;
+            }
+            let candidate = view
+                .legal_moves
+                .iter()
+                .find(|m| m.origin_square() == locked && m.to_square() == Some(sq))
+                .cloned();
+            match candidate {
+                Some(m) => Self::apply_move(g, m),
+                None => {
+                    g.last_msg = Some(
+                        "連吃 active — capture from the locked piece, or press Enter on it to end."
+                            .into(),
+                    )
+                }
+            }
+            return;
+        }
+
         match g.selected {
             None => {
                 // Try to select a piece. Allowed if there's a legal move from this square.
@@ -1110,8 +1139,6 @@ impl AppState {
                 g.last_msg = None;
             }
             Some(from) => {
-                // Find a legal move from `from` to `sq`. Prefer Capture / CannonJump
-                // over a chain ending at sq (for banqi); take the first match.
                 let candidate = view
                     .legal_moves
                     .iter()
@@ -1171,8 +1198,17 @@ impl AppState {
                 n.cursor.1 += 1;
             }
             Action::Cancel => {
-                n.selected = None;
-                n.last_msg = None;
+                if let Some(at) = view.chain_lock {
+                    // Engine 連吃 mode: Esc → Move::EndChain.
+                    if !role.is_spectator() {
+                        let _ = n.client.cmd_tx.send(ClientMsg::Move {
+                            mv: Move::EndChain { at },
+                        });
+                    }
+                } else {
+                    n.selected = None;
+                    n.last_msg = None;
+                }
             }
             Action::SelectOrCommit => {
                 if role.is_spectator() {
@@ -1253,6 +1289,27 @@ fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
     if view.side_to_move != observer {
         return SelectOutcome::Msg("Not your turn.".into());
     }
+
+    // Engine 連吃 chain mode: only the locked piece may move (captures
+    // only). Clicking the locked piece itself ends the chain.
+    if let Some(locked) = view.chain_lock {
+        if sq == locked {
+            return SelectOutcome::Commit(Move::EndChain { at: locked });
+        }
+        let candidate = view
+            .legal_moves
+            .iter()
+            .find(|m| m.origin_square() == locked && m.to_square() == Some(sq))
+            .cloned();
+        return match candidate {
+            Some(mv) => SelectOutcome::Commit(mv),
+            None => SelectOutcome::Msg(
+                "連吃 active — capture from the locked piece, or Esc / Enter on it to end."
+                    .into(),
+            ),
+        };
+    }
+
     match n.selected {
         None => {
             if view.legal_moves.iter().any(|m| m.origin_square() == sq) {

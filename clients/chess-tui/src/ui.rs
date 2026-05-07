@@ -905,14 +905,16 @@ fn draw_sidebar(
     lines.push(line_label_value("Variant:", variant_label));
 
     // Side-to-move only makes sense while the game is ongoing; once it's
-    // Won/Drawn the banner above already shows the winner.
+    // Won/Drawn the banner above already shows the winner. Display the
+    // piece-colour (`current_color`), which diverges from `side_to_move`
+    // (the seat) after a banqi first-flip.
     if matches!(view.status, GameStatus::Ongoing) {
-        let stm_color = side_color(view.side_to_move);
+        let stm_color = side_color(view.current_color);
         lines.push(Line::from(vec![
             Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
             Span::raw(" "),
             Span::styled(
-                glyph::side_name(view.side_to_move, style),
+                glyph::side_name(view.current_color, style),
                 TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
             ),
         ]));
@@ -1051,7 +1053,11 @@ fn draw_sidebar_net(
     }
 
     if matches!(view.status, GameStatus::Ongoing) {
-        let stm_color = side_color(view.side_to_move);
+        // "Your turn?" depends on the observer's SEAT (side_to_move) but
+        // the displayed colour is the piece-colour the seat plays
+        // (`current_color`). For banqi the two diverge after the first
+        // flip; for xiangqi they're identical.
+        let stm_color = side_color(view.current_color);
         let observer_side = n.role.and_then(|r| match r {
             NetRole::Player(s) => Some(s),
             NetRole::Spectator => None,
@@ -1065,7 +1071,7 @@ fn draw_sidebar_net(
             Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
             Span::raw(" "),
             Span::styled(
-                glyph::side_name(view.side_to_move, style),
+                glyph::side_name(view.current_color, style),
                 TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
             ),
         ]));

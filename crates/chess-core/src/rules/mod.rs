@@ -128,7 +128,7 @@ mod tests {
         let r = RuleSet::banqi(HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH);
         assert!(r.house.contains(HouseRules::CHAIN_CAPTURE));
         assert!(r.house.contains(HouseRules::CHARIOT_RUSH));
-        assert!(!r.house.contains(HouseRules::DARK_CHAIN));
+        assert!(!r.house.contains(HouseRules::DARK_CAPTURE));
     }
 
     #[test]

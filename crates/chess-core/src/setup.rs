@@ -32,6 +32,7 @@ fn build_xiangqi(rules: RuleSet) -> GameState {
         status: GameStatus::Ongoing,
         side_assignment: None,
         no_progress_plies: 0,
+        chain_lock: None,
     }
 }
 
@@ -94,6 +95,7 @@ fn build_banqi(rules: RuleSet) -> GameState {
         status: GameStatus::Ongoing,
         side_assignment: None,
         no_progress_plies: 0,
+        chain_lock: None,
     }
 }
 
@@ -125,6 +127,7 @@ fn build_three_kingdom_stub(rules: RuleSet) -> GameState {
         status: GameStatus::Ongoing,
         side_assignment: None,
         no_progress_plies: 0,
+        chain_lock: None,
     }
 }
 

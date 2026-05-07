@@ -64,6 +64,7 @@ fn general_captured_triggers_won_by_general_captured() {
         status: GameStatus::Ongoing,
         side_assignment: None,
         no_progress_plies: 0,
+        chain_lock: None,
     };
 
     let capture = state

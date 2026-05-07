@@ -5,16 +5,18 @@
 //! - 1-step orthogonal `Step` / `Capture` for face-up own pieces.
 //! - Cannon `CannonJump` over exactly one screen (face-up or face-down).
 //!
-//! House-rule extensions (this PR):
+//! House-rule extensions:
 //! - `CHAIN_CAPTURE`: emit `ChainCapture` for face-up consecutive captures
 //!   along the same direction (length ≥ 2).
 //! - `CHARIOT_RUSH`: chariot uses xiangqi-style multi-square ray for both
-//!   slides and captures.
+//!   slides and captures (rank-ignoring on captures with a gap).
+//! - `DARK_CAPTURE` (`暗吃`): atomic reveal+capture against face-down
+//!   targets. `DARK_CAPTURE_TRADE` (implies DARK_CAPTURE) makes
+//!   rank-fail kill the attacker instead of probing in place.
+//! - `HORSE_DIAGONAL` (`馬斜`): horse adds 4 diagonal one-step moves;
+//!   diagonal captures ignore rank (any piece).
 //!
-//! Deferred to PR 2 (toggles ship as accepted-but-no-effect):
-//! - `DARK_CHAIN`: chain through face-down squares (requires Option<Piece>
-//!   in ChainHop and the server-authoritative reveal flow).
-//! - `HORSE_DIAGONAL`: horse moves like xiangqi.
+//! Deferred (toggles ship as accepted-but-no-effect):
 //! - `CANNON_FAST_MOVE`: cannon non-capturing slide.
 
 use smallvec::SmallVec;
@@ -30,7 +32,12 @@ pub fn generate(state: &GameState, out: &mut MoveList) {
     let house = state.rules.house;
     gen_reveals(state, out);
 
-    let me = state.side_to_move;
+    // After the first flip, the active seat may control the OPPOSITE
+    // piece-color from its seat name. `current_color()` consults the
+    // banqi side_assignment mapping; before the first reveal it falls
+    // back to side_to_move (no constraint, since only Reveal moves are
+    // generated above).
+    let me = state.current_color();
     let board = &state.board;
 
     for sq in board.squares() {
@@ -73,8 +80,10 @@ fn gen_for_face_up_piece(
                 out.push(Move::Step { from, to });
             }
             Some(target) if !target.revealed => {
-                // Face-down piece blocks (can't capture without flipping).
-                // CANNON jumps handled separately below.
+                // Face-down piece — blocks unless DARK_CAPTURE is on.
+                if house.contains(HouseRules::DARK_CAPTURE) {
+                    out.push(Move::DarkCapture { from, to, revealed: None, attacker: None });
+                }
             }
             Some(target) if target.piece.side == piece.side => {
                 // Own piece: blocked.
@@ -90,12 +99,17 @@ fn gen_for_face_up_piece(
         }
     }
 
+    // 馬斜: horse adds 4 diagonal one-step moves; diagonal captures ignore rank.
+    if piece.kind == PieceKind::Horse && house.contains(HouseRules::HORSE_DIAGONAL) {
+        gen_horse_diagonal(board, from, piece, house, out);
+    }
+
     // Chariot rush replaces the chariot's 1-step capture with a ray.
     // We've already emitted the 1-step Step/Capture above; the ray emits
     // additional sliding moves. The 1-step capture is still in the list
     // (a strict subset of CHARIOT_RUSH's possibilities).
     if piece.kind == PieceKind::Chariot && house.contains(HouseRules::CHARIOT_RUSH) {
-        gen_chariot_rush(board, from, piece.side, out);
+        gen_chariot_rush(board, from, piece.side, house, out);
     }
 
     // Cannon: jump-over-screen captures (always, this is base banqi).
@@ -104,7 +118,43 @@ fn gen_for_face_up_piece(
     }
 }
 
-fn gen_chariot_rush(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+/// 馬斜 — horse adds diagonal one-step moves alongside the orthogonal
+/// rule. Diagonal captures ignore rank (any piece). Hidden diagonal
+/// targets become DarkCapture when the dark-capture flag is on.
+fn gen_horse_diagonal(
+    board: &Board,
+    from: Square,
+    piece: Piece,
+    house: HouseRules,
+    out: &mut MoveList,
+) {
+    for &dir in &Direction::DIAGONAL {
+        let Some(to) = board.step(from, dir) else { continue };
+        match board.get(to) {
+            None => out.push(Move::Step { from, to }),
+            Some(target) if !target.revealed => {
+                if house.contains(HouseRules::DARK_CAPTURE) {
+                    out.push(Move::DarkCapture { from, to, revealed: None, attacker: None });
+                }
+            }
+            Some(target) if target.piece.side == piece.side => {
+                // Own piece: blocked.
+            }
+            Some(target) => {
+                // Any-piece diagonal capture (rank ignored).
+                out.push(Move::Capture { from, to, captured: target.piece });
+            }
+        }
+    }
+}
+
+fn gen_chariot_rush(
+    board: &Board,
+    from: Square,
+    side: Side,
+    house: HouseRules,
+    out: &mut MoveList,
+) {
     for &dir in &Direction::ORTHOGONAL {
         let (walked, blocker) = board.ray(from, dir);
         // Steps 1..N are non-capturing slides. Step 1 was already emitted
@@ -118,9 +168,21 @@ fn gen_chariot_rush(board: &Board, from: Square, side: Side, out: &mut MoveList)
             if let Some(pos) = board.get(target_sq) {
                 if pos.revealed && pos.piece.side != side {
                     // Multi-square capture (1-step capture already emitted by base rule).
+                    // Rank IGNORED: with a gap, the chariot may capture any piece.
                     if !walked.is_empty() {
                         out.push(Move::Capture { from, to: target_sq, captured: pos.piece });
                     }
+                } else if !pos.revealed
+                    && !walked.is_empty()
+                    && house.contains(HouseRules::DARK_CAPTURE)
+                {
+                    // 車衝暗吃: chariot rush onto a face-down blocker via gap.
+                    out.push(Move::DarkCapture {
+                        from,
+                        to: target_sq,
+                        revealed: None,
+                        attacker: None,
+                    });
                 }
             }
         }
@@ -187,7 +249,9 @@ fn extend_recursive(
     let Some(next) = board.step(cursor, dir) else { return };
     let Some(target) = board.get(next) else { return };
     if !target.revealed {
-        return; // face-down; without DARK_CHAIN we stop
+        // Chains stop at face-down tiles in this round. Chains-with-dark-hops
+        // (true 暗連) is deferred — see plan's Phase 2 backlog.
+        return;
     }
     if target.piece.side == moving.side {
         return; // own piece blocks

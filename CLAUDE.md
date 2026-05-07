@@ -113,7 +113,7 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
 
-- **Three deferred house rules accept the flag but no-op**: `DARK_CHAIN`, `HORSE_DIAGONAL`, `CANNON_FAST_MOVE`. Only `CHAIN_CAPTURE` and `CHARIOT_RUSH` are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. The deferred ones are P1 in `TODO.md`.
+- **One house rule still no-op**: `CANNON_FAST_MOVE`. The other five (`CHAIN_CAPTURE`, `DARK_CAPTURE`, `DARK_CAPTURE_TRADE`, `CHARIOT_RUSH`, `HORSE_DIAGONAL`) are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. (`DARK_CHAIN` was renamed to `DARK_CAPTURE` in 2026-05; `dark-chain` is still recognised on parse for back-compat. Chains-with-dark-hops — atomic chain captures that pass through hidden tiles — is a Phase 2 follow-up tracked in `TODO.md`.)
 
 - **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
 

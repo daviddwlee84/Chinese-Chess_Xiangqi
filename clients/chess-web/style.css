@@ -267,6 +267,25 @@ body {
     fill: var(--legal-bg);
     pointer-events: none;
 }
+.chain-lock {
+    fill: none;
+    stroke: #f5a623;
+    stroke-width: 3.5;
+    stroke-dasharray: 5 3;
+    pointer-events: none;
+}
+.chain-banner {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(245, 166, 35, 0.15);
+    border: 1px solid #f5a623;
+    border-radius: 0.4rem;
+    color: #f5a623;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
 
 /* Hit-test cells. Transparent but clickable. */
 .cell-hit { fill: transparent; cursor: pointer; }

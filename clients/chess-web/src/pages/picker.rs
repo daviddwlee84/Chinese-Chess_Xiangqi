@@ -69,7 +69,9 @@ fn XiangqiCard() -> impl IntoView {
 fn BanqiCard() -> impl IntoView {
     let chain = create_rw_signal(false);
     let dark = create_rw_signal(false);
+    let dark_trade = create_rw_signal(false);
     let rush = create_rw_signal(false);
+    let horse = create_rw_signal(false);
     let seed_text = create_rw_signal(String::new());
 
     let house = move || {
@@ -78,17 +80,25 @@ fn BanqiCard() -> impl IntoView {
             h.insert(HouseRules::CHAIN_CAPTURE);
         }
         if dark.get() {
-            h.insert(HouseRules::DARK_CHAIN);
+            h.insert(HouseRules::DARK_CAPTURE);
+        }
+        if dark_trade.get() {
+            h.insert(HouseRules::DARK_CAPTURE_TRADE);
         }
         if rush.get() {
             h.insert(HouseRules::CHARIOT_RUSH);
+        }
+        if horse.get() {
+            h.insert(HouseRules::HORSE_DIAGONAL);
         }
         h
     };
     let apply_preset = move |preset: HouseRules| {
         chain.set(preset.contains(HouseRules::CHAIN_CAPTURE));
-        dark.set(preset.contains(HouseRules::DARK_CHAIN));
+        dark.set(preset.contains(HouseRules::DARK_CAPTURE));
+        dark_trade.set(preset.contains(HouseRules::DARK_CAPTURE_TRADE));
         rush.set(preset.contains(HouseRules::CHARIOT_RUSH));
+        horse.set(preset.contains(HouseRules::HORSE_DIAGONAL));
     };
     let href = move || {
         let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
@@ -121,15 +131,25 @@ fn BanqiCard() -> impl IntoView {
                 <label class="check-row">
                     <input type="checkbox" prop:checked=move || dark.get()
                         on:change=move |ev| dark.set(event_target_checked(&ev))/>
-                    <span>"暗連 — chain through face-down squares (implies 連吃)"</span>
+                    <span>"暗吃 — atomic reveal+capture; on rank-fail your piece stays put (probe)"</span>
+                </label>
+                <label class="check-row">
+                    <input type="checkbox" prop:checked=move || dark_trade.get()
+                        on:change=move |ev| dark_trade.set(event_target_checked(&ev))/>
+                    <span>"暗吃·搏命 — on rank-fail your attacker dies (implies 暗吃)"</span>
                 </label>
                 <label class="check-row">
                     <input type="checkbox" prop:checked=move || rush.get()
                         on:change=move |ev| rush.set(event_target_checked(&ev))/>
-                    <span>"車衝 — chariot rays the full board on a capture"</span>
+                    <span>"車衝 — chariot rays the full board; with a gap, captures any piece"</span>
+                </label>
+                <label class="check-row">
+                    <input type="checkbox" prop:checked=move || horse.get()
+                        on:change=move |ev| horse.set(event_target_checked(&ev))/>
+                    <span>"馬斜 — horse adds diagonal one-step moves; diagonal captures any piece"</span>
                 </label>
                 <p class="hint">
-                    "馬斜 / 炮快移 are accepted by the engine but not yet wired into move-gen "
+                    "炮快移 is accepted by the engine but not yet wired into move-gen "
                     "(see "<code>"TODO.md"</code>")."
                 </p>
             </fieldset>

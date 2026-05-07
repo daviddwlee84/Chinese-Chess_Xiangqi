@@ -29,13 +29,16 @@ pub fn Sidebar(
         Variant::ThreeKingdomBanqi => "Three-Kingdom 三國暗棋",
     };
 
+    // Display the piece-colour to move, not the seat name. After a banqi
+    // first-flip the seat (`side_to_move`) and the colour the seat plays
+    // (`current_color`) diverge — players think in terms of colour.
     let turn_text = move || {
         let v = view.get();
-        glyph::side_name(v.side_to_move, style).to_string()
+        glyph::side_name(v.current_color, style).to_string()
     };
     let turn_class = move || {
         let v = view.get();
-        match v.side_to_move {
+        match v.current_color {
             Side::RED => "turn-red",
             Side::BLACK => "turn-black",
             _ => "turn-green",

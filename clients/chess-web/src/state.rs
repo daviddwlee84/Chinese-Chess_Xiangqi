@@ -74,6 +74,13 @@ pub fn legal_targets(view: &PlayerView, from: Square) -> Vec<Square> {
         .collect()
 }
 
+/// True if `view.chain_lock` is set and the click on `sq` should commit
+/// `Move::EndChain` (e.g. user clicks the locked piece itself to release
+/// the chain). Otherwise the click should attempt a further capture.
+pub fn end_chain_move(view: &PlayerView) -> Option<Move> {
+    view.chain_lock.map(|at| Move::EndChain { at })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +137,53 @@ mod tests {
         assert_eq!(ClientRole::Spectator.observer(), Side::RED);
         assert!(ClientRole::Spectator.is_spectator());
         assert!(ClientRole::Player(Side::RED).is_player());
+    }
+
+    #[test]
+    fn end_chain_move_returns_some_when_chain_lock_set() {
+        use chess_core::board::Board;
+        use chess_core::coord::{File, Rank, Square};
+        use chess_core::piece::{Piece, PieceKind, PieceOnSquare};
+        use chess_core::rules::{HouseRules, RuleSet};
+        use chess_core::state::{GameState, SideAssignment};
+        use smallvec::smallvec;
+
+        let mut state = GameState::new(RuleSet::banqi_with_seed(HouseRules::CHAIN_CAPTURE, 0));
+        let squares: Vec<Square> = state.board.squares().collect();
+        for sq in squares {
+            state.board.set(sq, None);
+        }
+        state.side_assignment = Some(SideAssignment { mapping: smallvec![Side::RED, Side::BLACK] });
+        let _ = Board::new(state.board.shape()); // sanity
+
+        let h = state.board.sq(File(1), Rank(1));
+        let s1 = state.board.sq(File(1), Rank(2));
+        let s2 = state.board.sq(File(1), Rank(3));
+        state.board.set(h, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::Horse))));
+        state
+            .board
+            .set(s1, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+        state
+            .board
+            .set(s2, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+
+        let cap = Move::Capture {
+            from: h,
+            to: s1,
+            captured: Piece::new(Side::BLACK, PieceKind::Soldier),
+        };
+        state.make_move(&cap).unwrap();
+        assert!(state.chain_lock.is_some());
+
+        let view = chess_core::view::PlayerView::project(&state, Side::RED);
+        assert_eq!(view.chain_lock, Some(s1));
+        assert!(matches!(end_chain_move(&view), Some(Move::EndChain { at }) if at == s1));
+    }
+
+    #[test]
+    fn end_chain_move_returns_none_when_no_chain_lock() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        let view = chess_core::view::PlayerView::project(&state, state.side_to_move);
+        assert!(end_chain_move(&view).is_none());
     }
 }

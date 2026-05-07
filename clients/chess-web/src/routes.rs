@@ -32,8 +32,8 @@ pub struct LocalRulesParams {
     /// Xiangqi only. `false` (default) = casual / no self-check filter;
     /// `true` = standard rules where leaving your general in check is illegal.
     pub strict: bool,
-    /// Banqi only. Bitflag set; `DARK_CHAIN` auto-implies `CHAIN_CAPTURE`
-    /// after [`house::normalize`] in the parser.
+    /// Banqi only. Bitflag set; `DARK_CAPTURE_TRADE` auto-implies
+    /// `DARK_CAPTURE` after [`house::normalize`] in the parser.
     pub house: HouseRules,
     /// Banqi only. `None` = engine picks (non-deterministic on native;
     /// browser uses `getrandom` JS feature).
@@ -132,7 +132,11 @@ fn house_csv(rules: HouseRules) -> String {
 }
 
 fn parse_house_token(tok: &str) -> Option<HouseRules> {
-    HOUSE_TOKENS.iter().find(|(_, t)| t.eq_ignore_ascii_case(tok)).map(|(f, _)| *f)
+    HOUSE_TOKENS
+        .iter()
+        .chain(HOUSE_TOKEN_ALIASES.iter())
+        .find(|(_, t)| t.eq_ignore_ascii_case(tok))
+        .map(|(f, _)| *f)
 }
 
 fn parse_preset_token(tok: &str) -> Option<HouseRules> {
@@ -146,11 +150,16 @@ fn parse_preset_token(tok: &str) -> Option<HouseRules> {
 
 const HOUSE_TOKENS: &[(HouseRules, &str)] = &[
     (HouseRules::CHAIN_CAPTURE, "chain"),
-    (HouseRules::DARK_CHAIN, "dark"),
+    (HouseRules::DARK_CAPTURE, "dark"),
     (HouseRules::CHARIOT_RUSH, "rush"),
     (HouseRules::HORSE_DIAGONAL, "horse"),
     (HouseRules::CANNON_FAST_MOVE, "cannon"),
+    (HouseRules::DARK_CAPTURE_TRADE, "dark-trade"),
 ];
+
+/// Aliases recognised on parse only (older URLs / pre-rename snapshots).
+/// Encoding uses the canonical `HOUSE_TOKENS` only.
+const HOUSE_TOKEN_ALIASES: &[(HouseRules, &str)] = &[(HouseRules::DARK_CAPTURE, "dark-chain")];
 
 #[cfg(test)]
 mod tests {
@@ -209,10 +218,22 @@ mod tests {
     }
 
     #[test]
-    fn banqi_dark_chain_normalizes_to_include_chain() {
+    fn banqi_dark_capture_token_parses() {
         let p = parse_local_rules(from_pairs(&[("house", "dark")]));
-        assert!(p.house.contains(HouseRules::DARK_CHAIN));
-        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
+    }
+
+    #[test]
+    fn banqi_dark_chain_alias_still_parses_to_dark_capture() {
+        let p = parse_local_rules(from_pairs(&[("house", "dark-chain")]));
+        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
+    }
+
+    #[test]
+    fn banqi_dark_trade_implies_dark_capture() {
+        let p = parse_local_rules(from_pairs(&[("house", "dark-trade")]));
+        assert!(p.house.contains(HouseRules::DARK_CAPTURE_TRADE));
+        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
     }
 
     #[test]

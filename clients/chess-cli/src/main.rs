@@ -126,9 +126,10 @@ fn parse_banqi_args(rest: &str) -> Result<RuleSet, String> {
                 for flag in val.split(',') {
                     house |= match flag {
                         "chain" => HouseRules::CHAIN_CAPTURE,
-                        "dark-chain" | "dark" => HouseRules::DARK_CHAIN,
+                        "dark-chain" | "dark" | "dark-capture" => HouseRules::DARK_CAPTURE,
+                        "dark-trade" | "trade" => HouseRules::DARK_CAPTURE_TRADE,
                         "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
-                        "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+                        "horse" | "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
                         "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
                         other => return Err(format!("unknown house flag: {other}")),
                     };

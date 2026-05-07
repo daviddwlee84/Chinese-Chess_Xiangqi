@@ -165,8 +165,8 @@ fn emit_house(h: HouseRules) -> String {
     if h.contains(HouseRules::CHAIN_CAPTURE) {
         parts.push("chain");
     }
-    if h.contains(HouseRules::DARK_CHAIN) {
-        parts.push("dark-chain");
+    if h.contains(HouseRules::DARK_CAPTURE) {
+        parts.push("dark");
     }
     if h.contains(HouseRules::CHARIOT_RUSH) {
         parts.push("rush");
@@ -176,6 +176,9 @@ fn emit_house(h: HouseRules) -> String {
     }
     if h.contains(HouseRules::CANNON_FAST_MOVE) {
         parts.push("cannon-fast");
+    }
+    if h.contains(HouseRules::DARK_CAPTURE_TRADE) {
+        parts.push("dark-trade");
     }
     parts.join(",")
 }
@@ -325,6 +328,7 @@ fn parse_pos_text(input: &str) -> Result<GameState, CoreError> {
         status: GameStatus::Ongoing,
         side_assignment,
         no_progress_plies,
+        chain_lock: None,
     })
 }
 
@@ -393,9 +397,10 @@ fn parse_house_list(s: &str) -> Result<HouseRules, CoreError> {
     for tok in s.split(',') {
         h |= match tok.trim() {
             "chain" | "chain-capture" => HouseRules::CHAIN_CAPTURE,
-            "dark-chain" | "dark" => HouseRules::DARK_CHAIN,
+            "dark-chain" | "dark" | "dark-capture" => HouseRules::DARK_CAPTURE,
+            "dark-trade" | "trade" => HouseRules::DARK_CAPTURE_TRADE,
             "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
-            "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+            "horse" | "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
             "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
             other => return Err(CoreError::BadNotation(format!("unknown house rule: {other}"))),
         };

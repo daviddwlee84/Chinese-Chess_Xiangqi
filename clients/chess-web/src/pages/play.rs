@@ -14,7 +14,7 @@ use crate::components::end_overlay::EndOverlay;
 use crate::config::room_url;
 use crate::prefs::Prefs;
 use crate::routes::variant_slug;
-use crate::state::{find_move, truncate_front, ClientRole};
+use crate::state::{end_chain_move, find_move, truncate_front, ClientRole};
 use crate::ws::{connect, ConnState, WsHandle};
 
 const CHAT_HISTORY_CAP: usize = 50;
@@ -161,6 +161,14 @@ fn BoardWrapper(
     // Spectators see-only — no click handlers on the board for them.
     let is_spectator = resolved_role.is_spectator();
 
+    // Surface engine chain_lock as the highlighted "selected" piece, so
+    // legal-target dots render around it during chain mode.
+    let effective_selected: Signal<Option<Square>> = Signal::derive(move || {
+        let v = view.get();
+        v.chain_lock.or_else(|| selected.get())
+    });
+
+    let click_handle = handle.clone();
     let on_click: Callback<Square> = Callback::new(move |sq: Square| {
         if is_spectator {
             return;
@@ -169,6 +177,25 @@ fn BoardWrapper(
         if v.observer != v.side_to_move {
             return;
         }
+
+        // Chain mode: only the locked piece may move (captures only).
+        // Clicking the locked piece itself releases the chain.
+        if let Some(locked) = v.chain_lock {
+            if sq == locked {
+                if let Some(mv) = end_chain_move(&v) {
+                    click_handle.send(ClientMsg::Move { mv });
+                }
+                selected.set(None);
+                return;
+            }
+            if let Some(mv) = find_move(&v, locked, sq) {
+                click_handle.send(ClientMsg::Move { mv });
+                selected.set(None);
+                return;
+            }
+            return;
+        }
+
         let cur = selected.get();
         if cur == Some(sq) {
             selected.set(None);
@@ -176,34 +203,51 @@ fn BoardWrapper(
         }
         if let Some(from) = cur {
             if let Some(mv) = find_move(&v, from, sq) {
-                handle.send(ClientMsg::Move { mv });
+                click_handle.send(ClientMsg::Move { mv });
                 selected.set(None);
                 return;
             }
         }
         let cell = v.cells[sq.0 as usize];
-        match cell {
-            VisibleCell::Revealed(p) if p.piece.side == v.side_to_move => {
-                selected.set(Some(sq));
+        let is_selectable_revealed = matches!(cell, VisibleCell::Revealed(_))
+            && v.legal_moves.iter().any(|m| m.origin_square() == sq);
+        if is_selectable_revealed {
+            selected.set(Some(sq));
+        } else if matches!(cell, VisibleCell::Hidden) {
+            if let Some(mv) = find_move(&v, sq, sq) {
+                click_handle.send(ClientMsg::Move { mv });
+                selected.set(None);
             }
-            VisibleCell::Hidden => {
-                if let Some(mv) = find_move(&v, sq, sq) {
-                    handle.send(ClientMsg::Move { mv });
-                    selected.set(None);
-                }
-            }
-            _ => selected.set(None),
+        } else {
+            selected.set(None);
         }
     });
+
+    let chain_active = Signal::derive(move || view.with(|v| v.chain_lock.is_some()));
+    let end_handle = handle.clone();
+    let on_end_chain = move |_| {
+        let v = view.get();
+        if let Some(mv) = end_chain_move(&v) {
+            end_handle.send(ClientMsg::Move { mv });
+        }
+    };
 
     view! {
         <Board
             shape=shape
             observer=obs
             view=view
-            selected=selected
+            selected=effective_selected
             on_click=on_click
         />
+        <Show when=move || chain_active.get() && !is_spectator>
+            <div class="chain-banner">
+                <span>"連吃 — 繼續吃 or "</span>
+                <button class="btn btn-ghost btn-sm" on:click=on_end_chain.clone()>
+                    "End chain"
+                </button>
+            </div>
+        </Show>
     }
 }
 
@@ -234,7 +278,7 @@ fn OnlineSidebar(
     };
 
     let turn_label = move || match view_signal.get() {
-        Some(v) => match v.side_to_move {
+        Some(v) => match v.current_color {
             Side::RED => "Red 紅 to move",
             Side::BLACK => "Black 黑 to move",
             _ => "Green 綠 to move",

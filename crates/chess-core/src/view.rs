@@ -9,6 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::board::BoardShape;
+use crate::coord::Square;
 use crate::moves::{Move, MoveList};
 use crate::piece::{PieceOnSquare, Side};
 use crate::state::{GameState, GameStatus};
@@ -28,6 +29,13 @@ pub struct PlayerView {
     pub width: u8,
     pub height: u8,
     pub cells: Vec<VisibleCell>,
+    /// The seat / turn-order index whose turn it currently is. For
+    /// xiangqi this matches the piece-colour exactly; for banqi after
+    /// the first flip it may differ from `current_color` (the seat name
+    /// is fixed at room-join time, but who plays which colour is
+    /// decided by the first reveal). Use `current_color` for
+    /// "Red/Black to move" labels and `side_to_move` for seat-routing
+    /// (e.g. is it MY turn).
     pub side_to_move: Side,
     pub status: GameStatus,
     /// Legal moves for the observer if it's their turn; empty otherwise.
@@ -38,6 +46,27 @@ pub struct PlayerView {
     /// protocol v4; older clients see the default via `serde(default)`.
     #[serde(default)]
     pub in_check: bool,
+    /// Banqi 連吃 chain-mode lock: when `Some(sq)`, the player whose
+    /// turn it is must continue capturing with the piece at `sq` or
+    /// issue `Move::EndChain { at: sq }` to release the lock. The
+    /// `legal_moves` list is already filtered for this case. Added in
+    /// protocol v5; older clients see the default `None` via
+    /// `serde(default)`.
+    #[serde(default)]
+    pub chain_lock: Option<Square>,
+    /// Piece-colour the active seat actually controls. Equal to
+    /// `side_to_move` until a banqi first-flip locks `side_assignment`;
+    /// from then on it reflects the *colour* being played. UIs use this
+    /// for "Red 紅 / Black 黑 to move" labels. Added in protocol v5;
+    /// `serde(default = "default_red")` so older payloads (which lacked
+    /// the field) still deserialise — Red was always the starter
+    /// pre-v5, so the default is correct for fresh games.
+    #[serde(default = "default_red_side")]
+    pub current_color: Side,
+}
+
+fn default_red_side() -> Side {
+    Side::RED
 }
 
 impl PlayerView {
@@ -76,18 +105,23 @@ impl PlayerView {
             status: state.status,
             legal_moves,
             in_check,
+            chain_lock: state.chain_lock,
+            current_color: state.current_color(),
         }
     }
 }
 
-/// Strip identity from `Reveal` moves before they reach the network.
-/// Even the side-to-move sees `revealed: None` because the engine resolves
-/// the identity authoritatively when the move is applied.
+/// Strip identity from `Reveal` / `DarkCapture` moves before they reach
+/// the network. Even the side-to-move sees `revealed: None` because the
+/// engine resolves the identity authoritatively when the move is applied.
 fn sanitize_for_observer(moves: MoveList, _observer: Side) -> MoveList {
     moves
         .into_iter()
         .map(|m| match m {
             Move::Reveal { at, revealed: _ } => Move::Reveal { at, revealed: None },
+            Move::DarkCapture { from, to, .. } => {
+                Move::DarkCapture { from, to, revealed: None, attacker: None }
+            }
             other => other,
         })
         .collect()

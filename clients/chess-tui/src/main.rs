@@ -199,9 +199,10 @@ fn build_banqi_rules(
         for tok in s.split(',') {
             flags |= match tok.trim() {
                 "chain" => HouseRules::CHAIN_CAPTURE,
-                "dark" | "dark-chain" => HouseRules::DARK_CHAIN,
+                "dark" | "dark-chain" | "dark-capture" => HouseRules::DARK_CAPTURE,
+                "dark-trade" | "trade" => HouseRules::DARK_CAPTURE_TRADE,
                 "rush" | "chariot-rush" => HouseRules::CHARIOT_RUSH,
-                "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
+                "horse" | "horse-diagonal" | "diag" => HouseRules::HORSE_DIAGONAL,
                 "cannon-fast" | "fast-cannon" => HouseRules::CANNON_FAST_MOVE,
                 other => return Err(anyhow!("unknown house rule: {other}")),
             };

@@ -47,15 +47,20 @@ fn parse_square(board: &Board, s: &str) -> Result<Square, CoreError> {
 }
 
 /// Encode a move as ICCS. `Reveal` becomes `flip <sq>`. `ChainCapture`
-/// chains squares with `x` separators.
+/// chains squares with `x` separators. `DarkCapture` uses `x?` to mark
+/// the hidden target (e.g. `b2x?b3`). `EndChain` becomes `end <sq>`.
 pub fn encode_move(board: &Board, m: &Move) -> String {
     match m {
         Move::Reveal { at, .. } => format!("flip {}", encode_square(board, *at)),
+        Move::EndChain { at } => format!("end {}", encode_square(board, *at)),
         Move::Step { from, to } => {
             format!("{}{}", encode_square(board, *from), encode_square(board, *to))
         }
         Move::Capture { from, to, .. } | Move::CannonJump { from, to, .. } => {
             format!("{}x{}", encode_square(board, *from), encode_square(board, *to))
+        }
+        Move::DarkCapture { from, to, .. } => {
+            format!("{}x?{}", encode_square(board, *from), encode_square(board, *to))
         }
         Move::ChainCapture { from, path } => {
             let mut s = encode_square(board, *from);
@@ -93,6 +98,21 @@ fn decode_move_with(board: &Board, legal: &[Move], input: &str) -> Result<Move, 
     if let Some(rest) = trimmed.strip_prefix("flip ") {
         let at = parse_square(board, rest.trim())?;
         return Ok(Move::Reveal { at, revealed: None });
+    }
+    if let Some(rest) = trimmed.strip_prefix("end ") {
+        let at = parse_square(board, rest.trim())?;
+        return Ok(Move::EndChain { at });
+    }
+
+    // Dark capture: `<from>x?<to>`. Single hop only — chains-with-dark-hops
+    // are deferred (see banqi.rs comments).
+    if let Some((lhs, rhs)) = trimmed.split_once("x?") {
+        let from = parse_square(board, lhs.trim())?;
+        let to = parse_square(board, rhs.trim())?;
+        let candidate = legal.iter().find(
+            |m| matches!(m, Move::DarkCapture { from: f, to: t, .. } if *f == from && *t == to),
+        );
+        return candidate.cloned().ok_or(CoreError::Illegal("no dark capture matches notation"));
     }
 
     // Split into squares: handle both 'h2e2' (no separator) and 'h2xe2'.

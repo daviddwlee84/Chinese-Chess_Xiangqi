@@ -35,6 +35,22 @@ pub enum Move {
 
     /// Cannon capture-by-jump. `screen` is the piece jumped over.
     CannonJump { from: Square, to: Square, screen: Square, captured: Piece },
+
+    /// Banqi house rule `暗吃` (DARK_CAPTURE): atomically reveal a
+    /// face-down piece and resolve a capture against it.
+    /// `revealed` and `attacker` are `None` on the wire (client → server)
+    /// and `Some(_)` once the authoritative engine has filled them in.
+    /// Outcome (capture / probe / trade) is decided at apply-time from
+    /// banqi rank rules + `DARK_CAPTURE_TRADE` flag.
+    DarkCapture { from: Square, to: Square, revealed: Option<Piece>, attacker: Option<Piece> },
+
+    /// Banqi 連吃 chain-mode terminator. After a chain-eligible capture,
+    /// `state.chain_lock` is set and the turn does NOT auto-advance —
+    /// the player keeps moving the same piece via further captures.
+    /// `Move::EndChain { at }` is the explicit "I'm done" pass: it clears
+    /// `chain_lock` and advances the turn. `at` is the locked piece's
+    /// square (carried so undo can restore).
+    EndChain { at: Square },
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -48,31 +64,37 @@ pub type MoveList = SmallVec<[Move; 32]>;
 
 impl Move {
     /// Origin square of the move (where the moving piece started).
-    /// `Reveal` returns the flip square.
+    /// `Reveal` returns the flip square. `EndChain` returns the locked
+    /// piece's square (the piece doesn't move).
     #[inline]
     pub fn origin_square(&self) -> Square {
         match self {
             Move::Reveal { at, .. } => *at,
+            Move::EndChain { at } => *at,
             Move::Step { from, .. }
             | Move::Capture { from, .. }
             | Move::ChainCapture { from, .. }
-            | Move::CannonJump { from, .. } => *from,
+            | Move::CannonJump { from, .. }
+            | Move::DarkCapture { from, .. } => *from,
         }
     }
 
-    /// Destination square (where the moving piece ended). `Reveal` has none.
+    /// Destination square (where the moving piece ended). `Reveal` and
+    /// `EndChain` have none (the piece doesn't move).
     #[inline]
     pub fn to_square(&self) -> Option<Square> {
         match self {
-            Move::Reveal { .. } => None,
-            Move::Step { to, .. } | Move::Capture { to, .. } | Move::CannonJump { to, .. } => {
-                Some(*to)
-            }
+            Move::Reveal { .. } | Move::EndChain { .. } => None,
+            Move::Step { to, .. }
+            | Move::Capture { to, .. }
+            | Move::CannonJump { to, .. }
+            | Move::DarkCapture { to, .. } => Some(*to),
             Move::ChainCapture { path, .. } => path.last().map(|h| h.to),
         }
     }
 
     /// Whether this move resets the no-progress counter (capture or reveal).
+    /// `EndChain` is a turn pass — it does NOT reset no_progress.
     #[inline]
     pub fn resets_no_progress(&self) -> bool {
         matches!(
@@ -81,6 +103,7 @@ impl Move {
                 | Move::Capture { .. }
                 | Move::ChainCapture { .. }
                 | Move::CannonJump { .. }
+                | Move::DarkCapture { .. }
         )
     }
 }

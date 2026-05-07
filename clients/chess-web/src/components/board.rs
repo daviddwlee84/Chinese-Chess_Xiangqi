@@ -39,6 +39,7 @@ pub fn Board(
             <g class="river-layer">{river_text(shape, cols)}</g>
             <g class="palace-layer">{palace_diagonals(shape)}</g>
             <g class="overlay-layer">
+                {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
                 {move || selection_marker(selected.get(), observer, shape)}
                 {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
             </g>
@@ -173,6 +174,20 @@ fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape)
             if square_at_display(row, col, observer, shape) == Some(sq) {
                 let (cx, cy) = intersection(row, col);
                 return view! { <circle class="selection" cx=cx cy=cy r="28"/> }.into_view();
+            }
+        }
+    }
+    ().into_view()
+}
+
+fn chain_lock_marker(locked: Option<Square>, observer: Side, shape: BoardShape) -> View {
+    let Some(sq) = locked else { return ().into_view() };
+    let (rows, cols) = display_dims(shape);
+    for row in 0..rows {
+        for col in 0..cols {
+            if square_at_display(row, col, observer, shape) == Some(sq) {
+                let (cx, cy) = intersection(row, col);
+                return view! { <circle class="chain-lock" cx=cx cy=cy r="30"/> }.into_view();
             }
         }
     }
