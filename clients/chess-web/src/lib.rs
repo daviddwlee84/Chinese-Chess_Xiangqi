@@ -1,16 +1,19 @@
-//! `chess-web` — Leptos + WASM frontend for chess-core. Scaffold commit:
-//! variant picker + routes + page stubs. The board renderer and online
-//! play wire up in follow-up commits.
+//! `chess-web` — Leptos + WASM frontend for chess-core.
 //!
 //! Native (`cargo check --workspace`) compiles only the pure-logic modules
-//! (`routes`); the leptos UI is wasm32-gated so the workspace target check
-//! stays clean. Build for the browser with `trunk serve` (or
-//! `cargo build --target wasm32-unknown-unknown -p chess-web`).
+//! (orient, glyph, routes, state); the leptos UI is wasm32-gated so the
+//! workspace target check stays clean. Build for the browser with `trunk
+//! serve` (or `cargo build --target wasm32-unknown-unknown -p chess-web`).
 
+pub mod glyph;
+pub mod orient;
 pub mod routes;
+pub mod state;
 
 #[cfg(target_arch = "wasm32")]
 mod app;
+#[cfg(target_arch = "wasm32")]
+mod components;
 #[cfg(target_arch = "wasm32")]
 mod pages;
 

@@ -9,6 +9,11 @@
     --green: #228b22;
     --accent: #d4a55c;
     --muted: #7a6c5a;
+    --select-bg: rgba(80, 60, 20, 0.85);
+    --legal-bg: rgba(40, 80, 40, 0.65);
+    --tile-back: #d8a96b;
+    --tile-disc: #fffbe6;
+    --river: #5a8fbf;
     font-family: ui-sans-serif, "Noto Sans CJK SC", "Noto Sans CJK TC", system-ui, sans-serif;
 }
 
@@ -68,3 +73,85 @@ body {
     text-decoration: none;
 }
 .back-link:hover { color: var(--accent); }
+
+/* Board pane + SVG. */
+.board-pane {
+    background: var(--board);
+    border: 4px solid var(--board-edge);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.board {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+}
+.board-bg { fill: var(--board); }
+.grid { stroke: var(--grid); stroke-width: 1.5; }
+.palace { stroke: var(--grid); stroke-width: 1.2; opacity: 0.85; }
+.river-text {
+    fill: var(--river);
+    font-size: 28px;
+    letter-spacing: 0.6em;
+    font-weight: 600;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Pieces — discs with a centered glyph. */
+.tile { pointer-events: none; }
+.tile-disc { fill: var(--tile-disc); stroke: var(--grid); stroke-width: 1.5; }
+.tile-glyph { font-size: 30px; font-weight: 700; user-select: none; }
+.tile.piece.red .tile-glyph { fill: var(--red); }
+.tile.piece.black .tile-glyph { fill: var(--black); }
+.tile.piece.green .tile-glyph { fill: var(--green); }
+
+.selection {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    pointer-events: none;
+}
+.move-dot {
+    fill: var(--legal-bg);
+    pointer-events: none;
+}
+
+/* Hit-test cells. Transparent but clickable. */
+.cell-hit { fill: transparent; cursor: pointer; }
+.cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+
+/* Sidebar. */
+.sidebar {
+    background: rgba(244, 210, 163, 0.04);
+    border: 1px solid var(--grid);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    display: grid;
+    gap: 0.65rem;
+}
+.variant-label { margin: 0; font-size: 1.1rem; }
+.turn-row { display: flex; align-items: baseline; gap: 0.4rem; }
+.turn-prefix { color: var(--muted); }
+.turn-red { color: var(--red); font-weight: 700; }
+.turn-black { color: var(--fg); font-weight: 700; }
+.turn-green { color: var(--green); font-weight: 700; }
+.status { margin: 0; font-weight: 600; }
+.status.ongoing { color: var(--muted); font-weight: 400; }
+.status.won { color: var(--accent); }
+.status.drawn { color: var(--muted); }
+.muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.btn {
+    background: rgba(244, 210, 163, 0.08);
+    color: var(--fg);
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font: inherit;
+}
+.btn:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.16); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
