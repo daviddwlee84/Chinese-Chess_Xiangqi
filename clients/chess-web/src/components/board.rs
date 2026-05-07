@@ -135,10 +135,7 @@ fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Styl
                     out.push(
                         view! {
                             <g class="tile hidden" transform=format!("translate({}, {})", cx, cy)>
-                                <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
-                                <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
-                                    {glyph::hidden(style)}
-                                </text>
+                                <circle class="tile-back" r=TILE_RADIUS cx="0" cy="0"/>
                             </g>
                         }
                         .into_view(),

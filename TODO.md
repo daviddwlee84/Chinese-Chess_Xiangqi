@@ -31,6 +31,7 @@ Likely next batch — items you'd reach for if you sat down to work today.
 
 Worth doing, no rush.
 
+- [ ] **[S] chess-web: in-game rule editor (gear icon → modal)** — Picker-side form already encodes rules into the URL (`?strict=1`, `?house=chain,rush&seed=N`). Add a sidebar gear that opens a pre-filled modal reusing the picker components, navigates to the new query, and starts a fresh game. → [research](backlog/web-ingame-rules-modal.md)
 - [ ] **[S] chess-web: WS auto-reconnect with backoff** — PR-1 surfaces "Disconnected — refresh" when the WS read pump closes. Add an exponential-backoff retry that reuses the URL+password and resets the `Hello` flow on success. → [research](backlog/web-ws-reconnect.md)
 - [ ] **[S] chess-web: CJK/ASCII glyph toggle in UI** — `glyph::Style` is already plumbed; expose a sidebar toggle + persist in `localStorage`. Shares no logic with chess-tui's `--style` flag.
 - [ ] **[M] Promote orient.rs / glyph.rs to a shared client crate** — Both `clients/chess-tui/src/orient.rs` and `clients/chess-web/src/orient.rs` (likewise `glyph.rs`) are byte-identical. Pull into `clients/chess-client-shared` once a third client appears or the copies first diverge. → [research](backlog/promote-client-shared.md)

@@ -1,6 +1,12 @@
-//! Variant-slug parsing for `/local/:variant`. Pure logic — native-testable.
+//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+//!
+//! Pure logic — native-testable. The picker page builds a query string from
+//! its form state via [`build_local_query`]; the local page parses it back
+//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
 
-use chess_core::rules::Variant;
+use chess_core::rules::{
+    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+};
 
 pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
     match slug {
@@ -19,9 +25,140 @@ pub fn variant_slug(variant: Variant) -> &'static str {
     }
 }
 
+/// URL-derived rule choices for `/local/:variant`. Used as an intermediate
+/// between the picker form and the engine `RuleSet`.
+#[derive(Clone, Eq, PartialEq, Debug, Default)]
+pub struct LocalRulesParams {
+    /// Xiangqi only. `false` (default) = casual / no self-check filter;
+    /// `true` = standard rules where leaving your general in check is illegal.
+    pub strict: bool,
+    /// Banqi only. Bitflag set; `DARK_CHAIN` auto-implies `CHAIN_CAPTURE`
+    /// after [`house::normalize`] in the parser.
+    pub house: HouseRules,
+    /// Banqi only. `None` = engine picks (non-deterministic on native;
+    /// browser uses `getrandom` JS feature).
+    pub seed: Option<u64>,
+}
+
+/// Parse `?strict=1&house=chain,rush&preset=taiwan&seed=42` into a
+/// [`LocalRulesParams`]. Unknown tokens are silently dropped — this is a
+/// best-effort decoder for shareable URLs.
+///
+/// `house=` overrides `preset=` when both are present; the picker only
+/// emits `house=` so this just covers manually-typed URLs.
+pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesParams {
+    let strict = matches!(get("strict").as_deref(), Some("1") | Some("true"));
+    let preset = get("preset").as_deref().and_then(parse_preset_token);
+    let house_csv = get("house").as_deref().map(parse_house_csv);
+    let house = house_csv.or(preset).unwrap_or_else(HouseRules::empty);
+    let seed = get("seed").and_then(|s| s.parse::<u64>().ok());
+    LocalRulesParams { strict, house: house::normalize(house), seed }
+}
+
+/// Inverse of [`parse_local_rules`] — emits a stable canonical query string
+/// (no leading `?`). Empty result means "use defaults" — the picker drops the
+/// `?` entirely so `/local/xiangqi` with no query is the default-casual URL.
+pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    match variant {
+        Variant::Xiangqi => {
+            if params.strict {
+                parts.push("strict=1".to_string());
+            }
+        }
+        Variant::Banqi => {
+            let csv = house_csv(params.house);
+            if !csv.is_empty() {
+                parts.push(format!("house={}", csv));
+            }
+            if let Some(seed) = params.seed {
+                parts.push(format!("seed={}", seed));
+            }
+        }
+        Variant::ThreeKingdomBanqi => {}
+    }
+    parts.join("&")
+}
+
+/// Build the full path for the picker's "Start" link given the current form.
+/// Always returns `"/local/<slug>"` with the query string appended only when
+/// non-empty.
+pub fn build_local_href(variant: Variant, params: &LocalRulesParams) -> String {
+    let q = build_local_query(variant, params);
+    if q.is_empty() {
+        format!("/local/{}", variant_slug(variant))
+    } else {
+        format!("/local/{}?{}", variant_slug(variant), q)
+    }
+}
+
+/// Convert parsed [`LocalRulesParams`] into the engine `RuleSet` for the
+/// chosen variant. The picker → URL → page flow is the only call site.
+pub fn build_rule_set(variant: Variant, params: &LocalRulesParams) -> RuleSet {
+    match variant {
+        Variant::Xiangqi => {
+            if params.strict {
+                RuleSet::xiangqi()
+            } else {
+                RuleSet::xiangqi_casual()
+            }
+        }
+        Variant::Banqi => match params.seed {
+            Some(seed) => RuleSet::banqi_with_seed(params.house, seed),
+            None => RuleSet::banqi(params.house),
+        },
+        Variant::ThreeKingdomBanqi => RuleSet::three_kingdom(),
+    }
+}
+
+fn parse_house_csv(s: &str) -> HouseRules {
+    let mut out = HouseRules::empty();
+    for tok in s.split(',').map(str::trim).filter(|t| !t.is_empty()) {
+        if let Some(flag) = parse_house_token(tok) {
+            out.insert(flag);
+        }
+    }
+    out
+}
+
+fn house_csv(rules: HouseRules) -> String {
+    let mut parts: Vec<&'static str> = Vec::new();
+    for (flag, tok) in HOUSE_TOKENS {
+        if rules.contains(*flag) {
+            parts.push(tok);
+        }
+    }
+    parts.join(",")
+}
+
+fn parse_house_token(tok: &str) -> Option<HouseRules> {
+    HOUSE_TOKENS.iter().find(|(_, t)| t.eq_ignore_ascii_case(tok)).map(|(f, _)| *f)
+}
+
+fn parse_preset_token(tok: &str) -> Option<HouseRules> {
+    match tok.to_ascii_lowercase().as_str() {
+        "purist" => Some(PRESET_PURIST),
+        "taiwan" => Some(PRESET_TAIWAN),
+        "aggressive" => Some(PRESET_AGGRESSIVE),
+        _ => None,
+    }
+}
+
+const HOUSE_TOKENS: &[(HouseRules, &str)] = &[
+    (HouseRules::CHAIN_CAPTURE, "chain"),
+    (HouseRules::DARK_CHAIN, "dark"),
+    (HouseRules::CHARIOT_RUSH, "rush"),
+    (HouseRules::HORSE_DIAGONAL, "horse"),
+    (HouseRules::CANNON_FAST_MOVE, "cannon"),
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn from_pairs<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
+        move |k: &str| pairs.iter().find(|(pk, _)| *pk == k).map(|(_, v)| v.to_string())
+    }
 
     #[test]
     fn known_slugs_parse() {
@@ -42,5 +179,89 @@ mod tests {
         for v in [Variant::Xiangqi, Variant::Banqi, Variant::ThreeKingdomBanqi] {
             assert_eq!(parse_variant_slug(variant_slug(v)), Some(v));
         }
+    }
+
+    #[test]
+    fn xiangqi_default_is_casual() {
+        let p = parse_local_rules(from_pairs(&[]));
+        assert!(!p.strict);
+        let r = build_rule_set(Variant::Xiangqi, &p);
+        assert!(r.xiangqi_allow_self_check);
+    }
+
+    #[test]
+    fn xiangqi_strict_query_yields_strict_ruleset() {
+        let p = parse_local_rules(from_pairs(&[("strict", "1")]));
+        assert!(p.strict);
+        let r = build_rule_set(Variant::Xiangqi, &p);
+        assert!(!r.xiangqi_allow_self_check);
+    }
+
+    #[test]
+    fn banqi_house_csv_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("house", "chain,rush"), ("seed", "42")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+        assert_eq!(p.seed, Some(42));
+        let q = build_local_query(Variant::Banqi, &p);
+        assert!(q.contains("house=chain,rush"));
+        assert!(q.contains("seed=42"));
+    }
+
+    #[test]
+    fn banqi_dark_chain_normalizes_to_include_chain() {
+        let p = parse_local_rules(from_pairs(&[("house", "dark")]));
+        assert!(p.house.contains(HouseRules::DARK_CHAIN));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+    }
+
+    #[test]
+    fn banqi_preset_taiwan_picks_chain_and_rush() {
+        let p = parse_local_rules(from_pairs(&[("preset", "taiwan")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+    }
+
+    #[test]
+    fn banqi_house_overrides_preset_when_both_set() {
+        let p = parse_local_rules(from_pairs(&[("preset", "taiwan"), ("house", "")]));
+        // Empty house= still wins → no flags.
+        assert!(p.house.is_empty());
+    }
+
+    #[test]
+    fn unknown_house_token_is_dropped_silently() {
+        let p = parse_local_rules(from_pairs(&[("house", "chain,bogus,rush")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+    }
+
+    #[test]
+    fn build_local_href_skips_query_when_defaults() {
+        let p = LocalRulesParams::default();
+        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi");
+        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi");
+    }
+
+    #[test]
+    fn build_local_href_includes_query_when_non_default() {
+        let p = LocalRulesParams { strict: true, ..Default::default() };
+        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi?strict=1");
+        let p = LocalRulesParams {
+            strict: false,
+            house: HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH,
+            seed: Some(7),
+        };
+        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi?house=chain,rush&seed=7");
+    }
+
+    #[test]
+    fn three_kingdom_ignores_query() {
+        let p =
+            parse_local_rules(from_pairs(&[("strict", "1"), ("house", "chain"), ("seed", "5")]));
+        let r = build_rule_set(Variant::ThreeKingdomBanqi, &p);
+        assert_eq!(r.variant, Variant::ThreeKingdomBanqi);
+        assert!(r.house.is_empty());
+        assert!(build_local_query(Variant::ThreeKingdomBanqi, &p).is_empty());
     }
 }

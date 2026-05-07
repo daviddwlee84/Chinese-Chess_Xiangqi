@@ -135,6 +135,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
 
+- **Rules are configured via URL query string on `/local/:variant`.** The picker page (`pages/picker.rs`) builds these from a reactive form; manually-typed URLs are also valid. Encoding lives in `routes.rs::{parse_local_rules, build_local_query, build_rule_set}` (pure-logic, native-tested): `?strict=1` for strict xiangqi (default = casual), `?house=chain,rush&seed=42` for banqi house rules + deterministic shuffle, `?preset=taiwan|aggressive|purist` as an alt to `house=`. Tokens: `chain`/`dark`/`rush`/`horse`/`cannon` map 1:1 to `HouseRules` flags (only `chain` + `rush` are wired in move-gen — see banqi gotcha above). Unknown tokens are dropped silently. Three-kingdom ignores all params. In-game rule editing (gear icon) is a P2 follow-up — see `backlog/web-ingame-rules-modal.md`.
+
 ## Where to put new work
 
 | Kind | Where |

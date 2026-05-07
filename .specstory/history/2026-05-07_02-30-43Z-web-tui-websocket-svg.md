@@ -16347,3 +16347,5195 @@ test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:12Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage Phase 5 files
+
+`git add crates/chess-net/Cargo.toml crates/chess-net/src/lib.rs crates/chess-net/src/server.rs crates/chess-net/src/bin/server.rs clients/chess-web/Trunk.toml Makefile scripts/play-web.sh CLAUDE.md TODO.md backlog/promote-client-shared.md backlog/web-ws-reconnect.md backlog/web-playwright.md .specstory/history/ .claude/plans/web-gentle-island.md Cargo.lock && git status --short`
+
+```text
+A  .claude/plans/web-gentle-island.md
+M  .specstory/history/2026-05-07_01-43-21Z-https-github-com-daviddwlee84.md
+A  .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+M  CLAUDE.md
+M  Cargo.lock
+M  Makefile
+M  TODO.md
+A  backlog/promote-client-shared.md
+A  backlog/web-playwright.md
+A  backlog/web-ws-reconnect.md
+M  clients/chess-web/Trunk.toml
+M  crates/chess-net/Cargo.toml
+M  crates/chess-net/src/bin/server.rs
+M  crates/chess-net/src/lib.rs
+M  crates/chess-net/src/server.rs
+A  scripts/play-web.sh
+?? .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit Phase 5
+
+```bash
+git -c commit.gpgsign=false commit -m "$(cat <<'EOF'
+chess-net static-serve + Make targets + docs + TODO promote
+
+chess-net gains a `static-serve` feature (default-on, off in chess-web's
+WASM build via `default-features = false`). When `chess-net-server` is
+started with `--static-dir <path>` (or `CHESS_NET_STATIC_DIR=<path>`),
+`tower_http::services::ServeDir` mounts at the route fallback with a
+`ServeFile` for `index.html` so SPA paths (`/local/xiangqi`, `/lobby`,
+`/play/foo`) all resolve to the chess-web bundle. The four explicit
+routes (`/ws`, `/ws/<room>`, `/lobby`, `/rooms`) match first because
+axum tries routes before fallback. New `ServeOpts` builder + `run_with`
++ `serve_with` keep `serve(listener, rules)` unchanged for existing
+tests.
+
+Trade-off documented in CLAUDE.md: enabling `--static-dir` re-routes
+`GET /` to serve `index.html`, so v1 chess-tui clients pointing at
+`ws://host` (no path) need to switch to `--connect ws://host/ws`.
+
+Also lands Trunk dev-server proxy entries (`/ws*`, `/lobby`, `/rooms` →
+:7878), `make play-web` / `make build-web` / `make stop-web` mirroring
+`play-local`/`play-lobby`, `scripts/play-web.sh` tmux harness, full
+CLAUDE.md update (project-at-a-glance, commands, gotchas), three new
+backlog notes (promote-client-shared, web-ws-reconnect, web-playwright),
+and TODO.md promote of the chess-web entry plus follow-up P2/P3/P?
+items.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -8 && git log --oneline -6
+```
+
+```text
+[main 740cb96] chess-net static-serve + Make targets + docs + TODO promote
+ 16 files changed, 17162 insertions(+), 15 deletions(-)
+ create mode 100644 .claude/plans/web-gentle-island.md
+ create mode 100644 .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+ create mode 100644 backlog/promote-client-shared.md
+ create mode 100644 backlog/web-playwright.md
+ create mode 100644 backlog/web-ws-reconnect.md
+ create mode 100755 scripts/play-web.sh
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+f0e0d62 chess-web + chess-net: online play via WebSocket
+45a33cc chess-web: banqi local play + three-kingdom WIP overlay
+b3dde9b chess-web: SVG xiangqi local play
+ca13ee0 chess-web: scaffold Leptos + Trunk SPA with variant picker
+6c0576f fix(tui): collapse nested if blocks into match guards to satisfy clippy 1.95
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:36Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:36Z)**_
+
+All 5 commits landed. Final verification.
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final summary
+
+`echo "===git log===" && git log --oneline -6 && echo "===git status===" && git status --short && echo "===final gates===" && cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3 && cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3 && cargo test --workspace 2>&1 | grep "test result: ok" | wc -l | xargs -I{} echo "Test suites passing: {}"`
+
+```text
+===git log===
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+f0e0d62 chess-web + chess-net: online play via WebSocket
+45a33cc chess-web: banqi local play + three-kingdom WIP overlay
+b3dde9b chess-web: SVG xiangqi local play
+ca13ee0 chess-web: scaffold Leptos + Trunk SPA with variant picker
+6c0576f fix(tui): collapse nested if blocks into match guards to satisfy clippy 1.95
+===git status===
+ M .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+?? .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+===final gates===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s
+Test suites passing: 23
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 03:39:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 03:40:01Z)**_
+
+All 5 phase commits landed cleanly on `main`. Final state:
+
+```
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+f0e0d62 chess-web + chess-net: online play via WebSocket
+45a33cc chess-web: banqi local play + three-kingdom WIP overlay
+b3dde9b chess-web: SVG xiangqi local play
+ca13ee0 chess-web: scaffold Leptos + Trunk SPA with variant picker
+6c0576f (previous HEAD)
+```
+
+**Pre-push gates** all green:
+- `cargo fmt --check` ✓
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo build --target wasm32-unknown-unknown -p chess-web` ✓
+- `cargo test --workspace` — 23 test suites passing
+- (each commit individually verified to build + test before its commit)
+
+**Working tree** has only the pending SpecStory transcript (auto-updates as I work) and one leftover `.claude/plans/web-gentle-island-agent-*.md` artifact from the Plan agent — both intentional skips.
+
+**Remaining manual step** before merging: install trunk and do the browser smoke.
+
+```bash
+cargo install trunk
+rustup target add wasm32-unknown-unknown
+make play-web  # opens chess-net + Trunk on :7878 / :8080
+# Then open http://127.0.0.1:8080/ in two browser tabs and try
+# the local + lobby + online flows from the verification checklist
+# in .claude/plans/web-gentle-island.md.
+```
+
+If you find anything off in the browser, paste what you see and I'll fix forward (a 6th commit) — easier than rewriting any of the 5 phase commits.
+
+---
+
+_**User (2026-05-07 04:06:55Z)**_
+
+Trunk 這部分Rust web development等等相關的 也幫我記一下docs
+
+```
+2026-05-06-chinese-chess on  main [!?] via  v1.93.0 took 6m17s
+❯ cargo install trunk && rustup target add wasm32-unknown-unknown
+    Updating `tuna` index
+  Downloaded trunk v0.21.14 (registry `tuna`)
+  Downloaded 1 crate (209.2KiB) in 2.96s
+  Installing trunk v0.21.14
+    Updating `tuna` index
+     Locking 500 packages to latest compatible versions
+      Adding axum-server v0.7.3 (available: v0.8.0)
+      Adding cargo-lock v10.1.0 (available: v11.0.1)
+      Adding cargo_metadata v0.19.2 (available: v0.23.1)
+      Adding console v0.15.11 (available: v0.16.3)
+      Adding crates_io_api v0.11.0 (available: v0.12.0)
+      Adding generic-array v0.14.7 (available: v0.14.9)
+      Adding hickory-resolver v0.25.2 (available: v0.26.1)
+      Adding lightningcss v1.0.0-alpha.65 (available: v1.0.0-alpha.71)
+      Adding lol_html v1.2.1 (available: v2.9.0)
+      Adding matchit v0.8.4 (available: v0.8.6)
+      Adding minify-html v0.15.0 (available: v0.18.1)
+      Adding minify-js v0.5.6 (available: v0.6.0)
+      Adding notify-debouncer-full v0.5.0 (available: v0.7.0)
+      Adding nu-ansi-term v0.46.0 (available: v0.50.3)
+      Adding oxipng v9.1.5 (available: v10.1.1)
+      Adding rand v0.9.4 (available: v0.10.1)
+      Adding reqwest v0.12.28 (available: v0.13.3)
+      Adding schemars v0.8.22 (available: v1.2.1)
+      Adding serde_yaml v0.9.33 (available: v0.9.34+deprecated)
+      Adding sha2 v0.10.9 (available: v0.11.0)
+      Adding strum v0.27.2 (available: v0.28.0)
+      Adding tokio-tungstenite v0.26.2 (available: v0.29.0)
+      Adding toml v0.8.23 (available: v1.1.2+spec-1.1.0)
+      Adding which v7.0.3 (available: v8.0.2)
+      Adding zip v2.4.2 (available: v8.6.0)
+  Downloaded adler2 v2.0.1 (registry `tuna`)
+  Downloaded ahash v0.7.8 (registry `tuna`)
+  Downloaded quinn-udp v0.5.14 (registry `tuna`)
+  Downloaded rgb v0.8.53 (registry `tuna`)
+  Downloaded resolv-conf v0.7.6 (registry `tuna`)
+  Downloaded radium v0.7.0 (registry `tuna`)
+  Downloaded axum-core v0.5.6 (registry `tuna`)
+  Downloaded rustc-hash v2.1.2 (registry `tuna`)
+  Downloaded phf_generator v0.11.3 (registry `tuna`)
+  Downloaded ptr_meta_derive v0.1.4 (registry `tuna`)
+  Downloaded precomputed-hash v0.1.1 (registry `tuna`)
+  Downloaded ptr_meta v0.1.4 (registry `tuna`)
+  Downloaded phf_shared v0.8.0 (registry `tuna`)
+  Downloaded simd-abstraction v0.7.1 (registry `tuna`)
+  Downloaded rand_chacha v0.2.2 (registry `tuna`)
+  Downloaded servo_arc v0.1.1 (registry `tuna`)
+  Downloaded phf_generator v0.8.0 (registry `tuna`)
+  Downloaded proc-macro-hack v0.5.20+deprecated (registry `tuna`)
+  Downloaded phf_codegen v0.8.0 (registry `tuna`)
+  Downloaded rand_pcg v0.2.1 (registry `tuna`)
+  Downloaded phf_macros v0.8.0 (registry `tuna`)
+  Downloaded rustc_version v0.4.1 (registry `tuna`)
+  Downloaded phf_codegen v0.11.3 (registry `tuna`)
+  Downloaded rend v0.4.2 (registry `tuna`)
+  Downloaded siphasher v0.3.11 (registry `tuna`)
+  Downloaded tagptr v0.2.0 (registry `tuna`)
+  Downloaded terminal_size v0.4.4 (registry `tuna`)
+  Downloaded phf v0.8.0 (registry `tuna`)
+  Downloaded strum v0.27.2 (registry `tuna`)
+  Downloaded pbkdf2 v0.12.2 (registry `tuna`)
+  Downloaded zeroize_derive v1.4.3 (registry `tuna`)
+  Downloaded thin-slice v0.1.1 (registry `tuna`)
+  Downloaded phf_shared v0.11.3 (registry `tuna`)
+  Downloaded siphasher v1.0.3 (registry `tuna`)
+  Downloaded dtoa-short v0.3.5 (registry `tuna`)
+  Downloaded rand_core v0.5.1 (registry `tuna`)
+  Downloaded phf_macros v0.11.3 (registry `tuna`)
+  Downloaded seahash v4.1.0 (registry `tuna`)
+  Downloaded security-framework-sys v2.17.0 (registry `tuna`)
+  Downloaded pkg-config v0.3.33 (registry `tuna`)
+  Downloaded remove_dir_all v1.0.0 (registry `tuna`)
+  Downloaded schemars_derive v0.8.22 (registry `tuna`)
+  Downloaded rustls-native-certs v0.8.3 (registry `tuna`)
+  Downloaded rkyv_derive v0.7.46 (registry `tuna`)
+  Downloaded phf v0.11.3 (registry `tuna`)
+  Downloaded zstd-safe v7.2.4 (registry `tuna`)
+  Downloaded zstd v0.13.3 (registry `tuna`)
+  Downloaded zeroize v1.8.2 (registry `tuna`)
+  Downloaded xz2 v0.1.7 (registry `tuna`)
+  Downloaded xattr v1.6.1 (registry `tuna`)
+  Downloaded wyz v0.5.1 (registry `tuna`)
+  Downloaded vlq v0.5.1 (registry `tuna`)
+  Downloaded tokio-tungstenite v0.29.0 (registry `tuna`)
+  Downloaded tokio-tungstenite v0.26.2 (registry `tuna`)
+  Downloaded strum_macros v0.27.2 (registry `tuna`)
+  Downloaded simd-adler32 v0.3.9 (registry `tuna`)
+  Downloaded semver v1.0.28 (registry `tuna`)
+  Downloaded sha2 v0.10.9 (registry `tuna`)
+  Downloaded serde_derive_internals v0.29.1 (registry `tuna`)
+  Downloaded selectors v0.22.0 (registry `tuna`)
+  Downloaded bytecheck v0.6.12 (registry `tuna`)
+  Downloaded which v7.0.3 (registry `tuna`)
+  Downloaded simdutf8 v0.1.5 (registry `tuna`)
+  Downloaded tokio-rustls v0.26.4 (registry `tuna`)
+  Downloaded rustls-pki-types v1.14.1 (registry `tuna`)
+  Downloaded parcel_selectors v0.28.2 (registry `tuna`)
+  Downloaded tinyvec v1.11.0 (registry `tuna`)
+  Downloaded tungstenite v0.26.2 (registry `tuna`)
+  Downloaded zopfli v0.8.3 (registry `tuna`)
+  Downloaded serde_yaml v0.9.33 (registry `tuna`)
+  Downloaded schemars v0.8.22 (registry `tuna`)
+  Downloaded parse-js v0.17.0 (registry `tuna`)
+  Downloaded tar v0.4.45 (registry `tuna`)
+  Downloaded unsafe-libyaml v0.2.11 (registry `tuna`)
+  Downloaded security-framework v3.7.0 (registry `tuna`)
+  Downloaded rustls-webpki v0.103.13 (registry `tuna`)
+  Downloaded tungstenite v0.29.0 (registry `tuna`)
+  Downloaded quinn v0.11.9 (registry `tuna`)
+  Downloaded rand v0.7.3 (registry `tuna`)
+  Downloaded crc v3.4.0 (registry `tuna`)
+  Downloaded zip v2.4.2 (registry `tuna`)
+  Downloaded rkyv v0.7.46 (registry `tuna`)
+  Downloaded reqwest v0.12.28 (registry `tuna`)
+  Downloaded tower-http v0.6.10 (registry `tuna`)
+  Downloaded webpki-roots v1.0.7 (registry `tuna`)
+  Downloaded portable-atomic v1.13.1 (registry `tuna`)
+  Downloaded rayon v1.12.0 (registry `tuna`)
+  Downloaded quinn-proto v0.11.14 (registry `tuna`)
+  Downloaded unicode-width v0.2.2 (registry `tuna`)
+  Downloaded rustls v0.23.40 (registry `tuna`)
+  Downloaded env_filter v1.0.1 (registry `tuna`)
+  Downloaded zstd-sys v2.0.16+zstd.1.5.7 (registry `tuna`)
+  Downloaded cssparser-color v0.1.0 (registry `tuna`)
+  Downloaded fsevent-sys v4.1.0 (registry `tuna`)
+  Downloaded ring v0.17.14 (registry `tuna`)
+  Downloaded enum-as-inner v0.6.1 (registry `tuna`)
+  Downloaded dunce v1.0.5 (registry `tuna`)
+  Downloaded dyn-clone v1.0.20 (registry `tuna`)
+  Downloaded file-id v0.2.3 (registry `tuna`)
+  Downloaded funty v2.0.0 (registry `tuna`)
+  Downloaded constant_time_eq v0.3.1 (registry `tuna`)
+  Downloaded cssparser-macros v0.6.1 (registry `tuna`)
+  Downloaded const-str-proc-macro v0.3.2 (registry `tuna`)
+  Downloaded env_home v0.1.0 (registry `tuna`)
+  Downloaded cvt v0.1.2 (registry `tuna`)
+  Downloaded base64-simd v0.7.0 (registry `tuna`)
+  Downloaded convert_case v0.4.0 (registry `tuna`)
+  Downloaded cargo-platform v0.1.9 (registry `tuna`)
+  Downloaded outref v0.1.0 (registry `tuna`)
+  Downloaded itoa v0.4.8 (registry `tuna`)
+  Downloaded lru-slab v0.1.2 (registry `tuna`)
+  Downloaded humantime-serde v1.1.1 (registry `tuna`)
+  Downloaded fxhash v0.2.1 (registry `tuna`)
+  Downloaded num-conv v0.2.1 (registry `tuna`)
+  Downloaded lazycell v1.3.0 (registry `tuna`)
+  Downloaded lightningcss-derive v1.0.0-alpha.43 (registry `tuna`)
+  Downloaded nodrop v0.1.14 (registry `tuna`)
+  Downloaded inout v0.1.4 (registry `tuna`)
+  Downloaded bytecheck_derive v0.6.12 (registry `tuna`)
+  Downloaded cipher v0.4.4 (registry `tuna`)
+  Downloaded dtoa v1.0.11 (registry `tuna`)
+  Downloaded cfg_aliases v0.2.1 (registry `tuna`)
+  Downloaded cargo_metadata v0.19.2 (registry `tuna`)
+  Downloaded fs-err v3.3.0 (registry `tuna`)
+  Downloaded data-url v0.1.1 (registry `tuna`)
+  Downloaded critical-section v1.2.0 (registry `tuna`)
+  Downloaded directories v6.0.0 (registry `tuna`)
+  Downloaded const-str v0.3.2 (registry `tuna`)
+  Downloaded crc-catalog v2.5.0 (registry `tuna`)
+  Downloaded filetime v0.2.27 (registry `tuna`)
+  Downloaded core-foundation v0.10.1 (registry `tuna`)
+  Downloaded env_logger v0.11.10 (registry `tuna`)
+  Downloaded open v5.3.4 (registry `tuna`)
+  Downloaded notify-debouncer-full v0.5.0 (registry `tuna`)
+  Downloaded notify-types v2.1.0 (registry `tuna`)
+  Downloaded minify-js v0.5.6 (registry `tuna`)
+  Downloaded ipnet v2.12.0 (registry `tuna`)
+  Downloaded jobserver v0.1.34 (registry `tuna`)
+  Downloaded normpath v1.5.1 (registry `tuna`)
+  Downloaded libdeflater v1.25.2 (registry `tuna`)
+  Downloaded getrandom v0.1.16 (registry `tuna`)
+  Downloaded lzma-rs v0.3.0 (registry `tuna`)
+  Downloaded local-ip-address v0.6.12 (registry `tuna`)
+  Downloaded minify-html v0.15.0 (registry `tuna`)
+  Downloaded homedir v0.3.6 (registry `tuna`)
+  Downloaded hyper-rustls v0.27.9 (registry `tuna`)
+  Downloaded ahash v0.8.12 (registry `tuna`)
+  Downloaded crc32fast v1.5.0 (registry `tuna`)
+  Downloaded axum-server v0.7.3 (registry `tuna`)
+  Downloaded deflate64 v0.1.12 (registry `tuna`)
+  Downloaded console v0.15.11 (registry `tuna`)
+  Downloaded cargo-lock v10.1.0 (registry `tuna`)
+  Downloaded fs_at v0.2.1 (registry `tuna`)
+  Downloaded crates_io_api v0.11.0 (registry `tuna`)
+  Downloaded bzip2 v0.5.2 (registry `tuna`)
+  Downloaded notify v8.2.0 (registry `tuna`)
+  Downloaded hmac v0.12.1 (registry `tuna`)
+  Downloaded derive_more v0.99.20 (registry `tuna`)
+  Downloaded cssparser v0.27.2 (registry `tuna`)
+  Downloaded htmlescape v0.3.1 (registry `tuna`)
+  Downloaded minify-html-common v0.0.2 (registry `tuna`)
+  Downloaded matchit v0.8.4 (registry `tuna`)
+  Downloaded arc-swap v1.9.1 (registry `tuna`)
+  Downloaded cssparser v0.33.0 (registry `tuna`)
+  Downloaded oxipng v9.1.5 (registry `tuna`)
+  Downloaded cc v1.2.61 (registry `tuna`)
+  Downloaded crossbeam-channel v0.5.15 (registry `tuna`)
+  Downloaded miniz_oxide v0.8.9 (registry `tuna`)
+  Downloaded aes v0.8.4 (registry `tuna`)
+  Downloaded flate2 v1.1.9 (registry `tuna`)
+  Downloaded hashbrown v0.13.2 (registry `tuna`)
+  Downloaded hickory-resolver v0.25.2 (registry `tuna`)
+  Downloaded aho-corasick v0.7.20 (registry `tuna`)
+  Downloaded itertools v0.10.5 (registry `tuna`)
+  Downloaded h2 v0.4.14 (registry `tuna`)
+  Downloaded axum v0.8.9 (registry `tuna`)
+  Downloaded libdeflate-sys v1.25.2 (registry `tuna`)
+  Downloaded bitvec v1.0.1 (registry `tuna`)
+  Downloaded moka v0.12.15 (registry `tuna`)
+  Downloaded nix v0.29.0 (registry `tuna`)
+  Downloaded nix v0.30.1 (registry `tuna`)
+  Downloaded hickory-proto v0.25.2 (registry `tuna`)
+  Downloaded lol_html v1.2.1 (registry `tuna`)
+  Downloaded bzip2-sys v0.1.13+1.0.8 (registry `tuna`)
+  Downloaded lzma-sys v0.1.20 (registry `tuna`)
+  Downloaded parcel_sourcemap v2.1.1 (registry `tuna`)
+  Downloaded lightningcss v1.0.0-alpha.65 (registry `tuna`)
+  Downloaded 187 crates (19.6MiB) in 2m 30s (largest was `lightningcss` at 7.1MiB)
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling portable-atomic v1.13.1
+   Compiling smallvec v1.15.1
+   Compiling serde_core v1.0.228
+   Compiling critical-section v1.2.0
+   Compiling version_check v0.9.5
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v1.3.0
+   Compiling memchr v2.8.0
+   Compiling log v0.4.29
+   Compiling zerocopy v0.8.48
+   Compiling itoa v1.0.18
+   Compiling bitflags v2.11.1
+   Compiling crossbeam-utils v0.8.21
+   Compiling pin-project-lite v0.2.17
+   Compiling parking_lot_core v0.9.12
+   Compiling serde v1.0.228
+   Compiling bytes v1.11.1
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling futures-core v0.3.32
+   Compiling stable_deref_trait v1.2.1
+   Compiling either v1.15.0
+   Compiling getrandom v0.3.4
+   Compiling futures-sink v0.3.32
+   Compiling rayon-core v1.13.0
+   Compiling crossbeam-epoch v0.9.18
+   Compiling crossbeam-deque v0.8.6
+   Compiling syn v1.0.109
+   Compiling equivalent v1.0.2
+   Compiling jobserver v0.1.34
+   Compiling cc v1.2.61
+   Compiling once_cell v1.21.4
+   Compiling generic-array v0.14.7
+   Compiling slab v0.4.12
+   Compiling typenum v1.20.0
+   Compiling errno v0.3.14
+   Compiling signal-hook-registry v1.4.8
+   Compiling syn v2.0.117
+   Compiling mio v1.2.0
+   Compiling socket2 v0.6.3
+   Compiling parking_lot v0.12.5
+   Compiling subtle v2.6.1
+   Compiling hashbrown v0.17.0
+   Compiling zmij v1.0.21
+   Compiling getrandom v0.2.17
+   Compiling tracing-core v0.1.36
+   Compiling futures-channel v0.3.32
+   Compiling http v1.4.0
+   Compiling futures-io v0.3.32
+   Compiling pkg-config v0.3.33
+   Compiling futures-task v0.3.32
+   Compiling getrandom v0.1.16
+   Compiling litemap v0.8.2
+   Compiling writeable v0.6.3
+   Compiling percent-encoding v2.3.2
+   Compiling rayon v1.12.0
+   Compiling httparse v1.10.1
+   Compiling ring v0.17.14
+   Compiling icu_normalizer_data v2.2.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_properties_data v2.2.0
+   Compiling synstructure v0.13.2
+   Compiling rand_core v0.6.4
+   Compiling siphasher v1.0.3
+   Compiling phf_shared v0.11.3
+   Compiling rand v0.8.6
+   Compiling crypto-common v0.1.7
+   Compiling rand_core v0.5.1
+   Compiling block-buffer v0.10.4
+   Compiling thiserror v2.0.18
+   Compiling indexmap v2.14.0
+   Compiling serde_derive v1.0.228
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling tokio-macros v2.7.0
+   Compiling zerovec-derive v0.11.3
+   Compiling displaydoc v0.2.5
+   Compiling zerofrom v0.1.7
+   Compiling tokio v1.52.2
+   Compiling tracing-attributes v0.1.31
+   Compiling futures-macro v0.3.32
+   Compiling yoke v0.8.2
+   Compiling zeroize_derive v1.4.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.2.2
+   Compiling zeroize v1.8.2
+   Compiling thiserror-impl v2.0.18
+   Compiling futures-util v0.3.32
+   Compiling digest v0.10.7
+   Compiling rand_pcg v0.2.1
+   Compiling phf_generator v0.11.3
+   Compiling http-body v1.0.1
+   Compiling tracing v0.1.44
+   Compiling siphasher v0.3.11
+   Compiling zerovec v0.11.6
+   Compiling zerotrie v0.2.4
+   Compiling rustls-pki-types v1.14.1
+   Compiling untrusted v0.9.0
+   Compiling serde_json v1.0.149
+   Compiling phf_shared v0.8.0
+   Compiling rand v0.7.3
+   Compiling form_urlencoded v1.2.2
+   Compiling rand_core v0.9.5
+   Compiling cpufeatures v0.2.17
+   Compiling data-encoding v2.11.0
+   Compiling rustix v1.1.4
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling icu_collections v2.2.0
+   Compiling icu_locale_core v2.2.0
+   Compiling tower-service v0.3.3
+   Compiling dtoa v1.0.11
+   Compiling autocfg v1.5.0
+   Compiling tokio-util v0.7.18
+   Compiling cfg_aliases v0.2.1
+   Compiling rustls v0.23.40
+   Compiling dtoa-short v0.3.5
+   Compiling rand_chacha v0.9.0
+   Compiling phf_generator v0.8.0
+   Compiling icu_provider v2.2.0
+   Compiling cssparser-macros v0.6.1
+   Compiling icu_normalizer v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling ahash v0.8.12
+   Compiling ipnet v2.12.0
+   Compiling core-foundation-sys v0.8.7
+   Compiling bumpalo v3.20.2
+   Compiling try-lock v0.2.5
+   Compiling heck v0.5.0
+   Compiling fnv v1.0.7
+   Compiling lazy_static v1.5.0
+   Compiling httpdate v1.0.3
+   Compiling atomic-waker v1.1.2
+   Compiling rustls-webpki v0.103.13
+   Compiling h2 v0.4.14
+   Compiling want v0.3.1
+   Compiling rand v0.9.4
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling ahash v0.7.8
+   Compiling matches v0.1.10
+   Compiling mime v0.3.17
+   Compiling proc-macro-hack v0.5.20+deprecated
+   Compiling url v2.5.8
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling sha1 v0.10.6
+   Compiling phf_macros v0.11.3
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling sync_wrapper v1.0.2
+   Compiling utf8parse v0.2.2
+   Compiling base64 v0.22.1
+   Compiling tower-layer v0.3.3
+   Compiling crc32fast v1.5.0
+   Compiling unicase v2.9.0
+   Compiling phf v0.11.3
+   Compiling mime_guess v2.0.5
+   Compiling anstyle-parse v1.0.0
+   Compiling security-framework v3.7.0
+   Compiling http-body-util v0.1.3
+   Compiling phf_codegen v0.11.3
+   Compiling ptr_meta_derive v0.1.4
+   Compiling simd-adler32 v0.3.9
+   Compiling getrandom v0.4.2
+   Compiling ryu v1.0.23
+   Compiling anstyle v1.0.14
+   Compiling outref v0.1.0
+   Compiling anstyle-query v1.1.5
+   Compiling rkyv v0.7.46
+   Compiling colorchoice v1.0.5
+   Compiling byteorder v1.5.0
+   Compiling precomputed-hash v0.1.1
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling itertools v0.12.1
+   Compiling anstream v1.0.0
+   Compiling ptr_meta v0.1.4
+   Compiling simd-abstraction v0.7.1
+   Compiling rustls-native-certs v0.8.3
+   Compiling phf_macros v0.8.0
+   Compiling parcel_selectors v0.28.2
+   Compiling cssparser v0.33.0
+   Compiling hashbrown v0.12.3
+   Compiling tower v0.5.3
+   Compiling hyper v1.9.0
+   Compiling hashbrown v0.13.2
+   Compiling phf_codegen v0.8.0
+   Compiling nix v0.29.0
+   Compiling num-traits v0.2.19
+   Compiling rkyv_derive v0.7.46
+   Compiling tokio-rustls v0.26.4
+   Compiling cssparser v0.27.2
+   Compiling lzma-sys v0.1.20
+   Compiling bzip2-sys v0.1.13+1.0.8
+   Compiling libdeflate-sys v1.25.2
+   Compiling aho-corasick v1.1.4
+   Compiling aho-corasick v0.7.20
+   Compiling zstd-safe v7.2.4
+   Compiling regex-syntax v0.8.10
+   Compiling paste v1.0.15
+   Compiling radium v0.7.0
+   Compiling rustc-hash v2.1.2
+   Compiling rustversion v1.0.22
+   Compiling seahash v4.1.0
+   Compiling hyper-util v0.1.20
+   Compiling unicode-segmentation v1.13.2
+   Compiling convert_case v0.6.0
+   Compiling regex-automata v0.4.14
+   Compiling selectors v0.22.0
+   Compiling minify-html-common v0.0.2
+   Compiling phf v0.8.0
+   Compiling base64-simd v0.7.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling terminal_size v0.4.4
+   Compiling data-url v0.1.1
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling nix v0.30.1
+   Compiling fs-err v3.3.0
+   Compiling webpki-roots v1.0.7
+   Compiling const-str-proc-macro v0.3.2
+   Compiling inout v0.1.4
+   Compiling crossbeam-channel v0.5.15
+   Compiling itoa v0.4.8
+   Compiling camino v1.2.2
+   Compiling tinyvec_macros v0.1.1
+   Compiling winnow v0.7.15
+   Compiling toml_write v0.1.2
+   Compiling http-range-header v0.4.2
+   Compiling thiserror v1.0.69
+   Compiling strsim v0.11.1
+   Compiling convert_case v0.4.0
+   Compiling nodrop v0.1.14
+   Compiling same-file v1.0.6
+   Compiling powerfmt v0.2.0
+   Compiling adler2 v2.0.1
+   Compiling tap v1.0.1
+   Compiling crc-catalog v2.5.0
+   Compiling hashbrown v0.14.5
+   Compiling clap_lex v1.1.0
+   Compiling pathdiff v0.2.3
+   Compiling vlq v0.5.1
+   Compiling derive_more v0.99.20
+   Compiling parcel_sourcemap v2.1.1
+   Compiling clap_builder v4.6.0
+   Compiling crc v3.4.0
+   Compiling wyz v0.5.1
+   Compiling miniz_oxide v0.8.9
+   Compiling dashmap v5.5.3
+   Compiling deranged v0.5.8
+   Compiling walkdir v2.5.0
+   Compiling toml_edit v0.22.27
+   Compiling servo_arc v0.1.1
+   Compiling tower-http v0.6.10
+   Compiling const-str v0.3.2
+   Compiling tinyvec v1.11.0
+   Compiling cipher v0.4.4
+   Compiling hyper-rustls v0.27.9
+   Compiling uuid v1.23.1
+   Compiling lightningcss-derive v1.0.0-alpha.43
+   Compiling parse-js v0.17.0
+   Compiling cssparser-color v0.1.0
+   Compiling zopfli v0.8.3
+   Compiling fxhash v0.2.1
+   Compiling tungstenite v0.29.0
+   Compiling enum-as-inner v0.6.1
+   Compiling clap_derive v4.6.1
+   Compiling futures-executor v0.3.32
+   Compiling hmac v0.12.1
+   Compiling thiserror-impl v1.0.69
+   Compiling async-trait v0.1.89
+   Compiling serde_derive_internals v0.29.1
+   Compiling fsevent-sys v4.1.0
+   Compiling filetime v0.2.27
+   Compiling serde_path_to_error v0.1.20
+   Compiling semver v1.0.28
+   Compiling itertools v0.10.5
+   Compiling notify-types v2.1.0
+   Compiling env_filter v1.0.1
+   Compiling cvt v0.1.2
+   Compiling zip v2.4.2
+   Compiling thin-slice v0.1.1
+   Compiling bitflags v1.3.2
+   Compiling funty v2.0.0
+   Compiling num-conv v0.2.1
+   Compiling option-ext v0.2.0
+   Compiling tagptr v0.2.0
+   Compiling anyhow v1.0.102
+   Compiling schemars v0.8.22
+   Compiling bytemuck v1.25.0
+   Compiling rustc-hash v1.1.0
+   Compiling utf-8 v0.7.6
+   Compiling time-core v0.1.8
+   Compiling rgb v0.8.53
+   Compiling tungstenite v0.26.2
+   Compiling time v0.3.47
+   Compiling lightningcss v1.0.0-alpha.65
+   Compiling bitvec v1.0.1
+   Compiling moka v0.12.15
+   Compiling dirs-sys v0.5.0
+   Compiling env_logger v0.11.10
+   Compiling notify v8.2.0
+   Compiling fs_at v0.2.1
+   Compiling clap v4.6.1
+   Compiling schemars_derive v0.8.22
+   Compiling hickory-proto v0.25.2
+   Compiling pbkdf2 v0.12.2
+   Compiling tokio-tungstenite v0.29.0
+   Compiling minify-js v0.5.6
+   Compiling futures v0.3.32
+   Compiling arc-swap v1.9.1
+   Compiling toml v0.8.23
+   Compiling bzip2 v0.5.2
+   Compiling xz2 v0.1.7
+   Compiling chrono v0.4.44
+   Compiling reqwest v0.12.28
+   Compiling aes v0.8.4
+   Compiling zstd v0.13.3
+   Compiling libdeflater v1.25.2
+   Compiling flate2 v1.1.9
+   Compiling matchers v0.2.0
+   Compiling lzma-rs v0.3.0
+   Compiling axum-core v0.5.6
+   Compiling xattr v1.6.1
+   Compiling sharded-slab v0.1.7
+   Compiling strum_macros v0.27.2
+   Compiling cargo-platform v0.1.9
+   Compiling rustls-pemfile v2.2.0
+   Compiling tracing-log v0.2.0
+   Compiling encoding_rs v0.8.35
+   Compiling thread_local v1.1.9
+   Compiling dyn-clone v1.0.20
+   Compiling env_home v0.1.0
+   Compiling resolv-conf v0.7.6
+   Compiling normpath v1.5.1
+   Compiling file-id v0.2.3
+   Compiling humantime v2.3.0
+   Compiling matchit v0.8.4
+   Compiling unsafe-libyaml v0.2.11
+   Compiling unicode-width v0.2.2
+   Compiling lazycell v1.3.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling constant_time_eq v0.3.1
+   Compiling deflate64 v0.1.12
+   Compiling lol_html v1.2.1
+   Compiling hickory-resolver v0.25.2
+   Compiling strum v0.27.2
+   Compiling axum v0.8.9
+   Compiling serde_yaml v0.9.33
+   Compiling tracing-subscriber v0.3.23
+   Compiling console v0.15.11
+   Compiling humantime-serde v1.1.1
+   Compiling crates_io_api v0.11.0
+   Compiling notify-debouncer-full v0.5.0
+   Compiling remove_dir_all v1.0.0
+   Compiling which v7.0.3
+   Compiling axum-server v0.7.3
+   Compiling cargo_metadata v0.19.2
+   Compiling tar v0.4.45
+   Compiling oxipng v9.1.5
+   Compiling homedir v0.3.6
+   Compiling cargo-lock v10.1.0
+   Compiling directories v6.0.0
+   Compiling tokio-tungstenite v0.26.2
+   Compiling regex v1.12.3
+   Compiling open v5.3.4
+   Compiling tokio-stream v0.1.18
+   Compiling sha2 v0.10.9
+   Compiling local-ip-address v0.6.12
+   Compiling htmlescape v0.3.1
+   Compiling dunce v1.0.5
+   Compiling minify-html v0.15.0
+   Compiling trunk v0.21.14
+    Finished `release` profile [optimized] target(s) in 6m 51s
+  Installing /Users/daviddwlee84/.cargo/bin/trunk
+   Installed package `trunk v0.21.14` (executable `trunk`)
+info: component rust-std for target wasm32-unknown-unknown is up to date
+```
+
+make play-web 跑了一下 trunk build完過一陣子就crash了 (tmux pane也自己關了 沒看到log 你可能要跑一下驗證一下)
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:13Z)**_
+
+Let me first run trunk directly to see what's failing, then document.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:14Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm trunk install
+
+`trunk --version && which trunk`
+
+```text
+trunk 0.21.14
+/Users/daviddwlee84/.cargo/bin/trunk
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run trunk build directly to see error
+
+`cd /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web && trunk build 2>&1 | tail -60`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+2026-05-07T04:07:15.277842Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T04:07:15.287604Z  WARN The field `address` in the configuration is deprecated and will be removed in a future version. Migrate to the `addresses` field, which allows adding more than one.
+2026-05-07T04:07:15.287874Z  INFO 📦 starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+2026-05-07T04:07:16.563691Z  INFO applying new distribution
+2026-05-07T04:07:16.564895Z  INFO ✅ success
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:20Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify dist/ output
+
+`ls -la /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/dist/ 2>&1 | head -10`
+
+```text
+.rw-r--r--@  57k daviddwlee84  7 May 12:07  **chess-web-fd74b901ef97afce.js
+.rw-r--r--@ 5.0M daviddwlee84  7 May 12:07  chess-web-fd74b901ef97afce_bg.wasm
+.rw-r--r--@ 1.0k daviddwlee84  7 May 12:07  index.html
+.rw-r--r--@ 7.8k daviddwlee84  7 May 12:07  **style-1278de92cae5cfab.css
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Any leftover sessions
+
+`tmux ls 2>&1 | head -5`
+
+```text
+chess-web: 1 windows (created Thu May  7 11:42:05 2026) (attached)
+chezmoi: 5 windows (created Wed May  6 11:30:27 2026) (attached)
+coding-agent/libkdc-simple-demo: 4 windows (created Wed May  6 16:24:21 2026) (attached)
+vibe/2026-04-29-ssh-bbs: 6 windows (created Wed Apr 29 14:25:32 2026) (attached)
+vibe/2026-05-06-chinese-chess: 5 windows (created Wed May  6 10:28:57 2026) (attached)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:28Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect leftover tmux session
+
+`tmux list-windows -t chess-web 2>&1 && echo "---" && tmux capture-pane -t chess-web:server -p 2>&1 | tail -25`
+
+```text
+1: server* (1 panes) [237x59] [layout 6aab,237x59,0,0,79] @66 (active)
+---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:39Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run trunk serve briefly to check it starts
+
+`timeout 5 trunk serve 2>&1 | tail -30 || true`
+
+```text
+2026-05-07T04:07:40.084761Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T04:07:40.091774Z  WARN The field `address` in the configuration is deprecated and will be removed in a future version. Migrate to the `addresses` field, which allows adding more than one.
+2026-05-07T04:07:40.099310Z  INFO 📦 starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+2026-05-07T04:07:41.393413Z  INFO applying new distribution
+2026-05-07T04:07:41.394002Z  INFO ✅ success
+2026-05-07T04:07:41.398252Z  INFO 📡 serving static assets at -> /
+2026-05-07T04:07:41.398268Z  INFO 📡 proxying websocket /ws/ -> ws://127.0.0.1:7878/ws/
+2026-05-07T04:07:41.398284Z  INFO 📡 proxying websocket /ws -> ws://127.0.0.1:7878/ws
+
+thread 'tokio-rt-worker' (46079039) panicked at /Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/trunk-0.21.14/src/proxy.rs:269:16:
+Invalid route "/ws/{*__private__axum_nest_tail_param}": Insertion failed due to conflict with previously registered route: /ws/{*__private__axum_nest_tail_param}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:07:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check server window output + processes
+
+`tmux capture-pane -t chess-web:server -p 2>&1 | tail -10 ; echo "---" ; ps aux | grep -E "chess-net-server|trunk" | grep -v grep | head -5`
+
+```text
+---
+daviddwlee84     18285   0.0  0.0 435334448    560 s062  Ss+  11:42AM   0:00.01 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/target/debug/chess-net-server --port 7878 xiangqi
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:03Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:04Z)**_
+
+Found it — the Trunk 0.21 proxy panics because the two `/ws` and `/ws/` entries both register as the same axum nest route. Let me fix Trunk.toml and kill the stale tmux.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Cleanup tmux + dist
+
+`tmux kill-session -t chess-web 2>&1 ; echo "killed"; rm -rf /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/dist`
+
+```text
+killed
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```toml
+# Trunk dev-server config. The single `/ws` proxy entry covers BOTH
+# `/ws` (default-room upgrade for v1 chess-tui clients) and `/ws/<room>`
+# (named room) because Trunk nests the proxy as a prefix route in axum.
+# Registering separate `/ws` and `/ws/` entries panics on startup with
+# "conflict with previously registered route" — see the gotcha note in
+# `docs/trunk-leptos-wasm.md`.
+#
+# `addresses` is the new (Trunk 0.21+) replacement for the deprecated
+# `address` scalar. Production-mode prod is chess-net's `--static-dir`
+# path; Trunk is dev-only.
+
+[build]
+target  = "index.html"
+release = false
+
+[serve]
+addresses = ["127.0.0.1"]
+port      = 8080
+open      = false
+
+# WebSocket upgrades — chess-net's /ws and /ws/<room> routes.
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws"
+ws      = true
+rewrite = "/ws"
+
+# Lobby push channel.
+[[proxy]]
+backend = "ws://127.0.0.1:7878/lobby"
+ws      = true
+rewrite = "/lobby"
+
+# Snapshot endpoint (debug; the SPA itself uses the lobby ws).
+[[proxy]]
+backend = "http://127.0.0.1:7878/rooms"
+rewrite = "/rooms"
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/Trunk.toml has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify trunk serve starts without panic
+
+`timeout 6 trunk serve 2>&1 | tail -25 ; true`
+
+```text
+2026-05-07T04:08:15.275701Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T04:08:15.286734Z  INFO 📦 starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.42s
+2026-05-07T04:08:18.729085Z  INFO applying new distribution
+2026-05-07T04:08:18.729462Z  INFO ✅ success
+2026-05-07T04:08:18.730523Z  INFO 📡 serving static assets at -> /
+2026-05-07T04:08:18.730677Z  INFO 📡 proxying websocket /ws -> ws://127.0.0.1:7878/ws
+2026-05-07T04:08:18.730871Z  INFO 📡 proxying websocket /lobby -> ws://127.0.0.1:7878/lobby
+2026-05-07T04:08:18.840104Z  INFO 📡 proxying /rooms -> http://127.0.0.1:7878/rooms  
+2026-05-07T04:08:18.840185Z  INFO 📡 server listening at:
+2026-05-07T04:08:18.840188Z  INFO     🏠 http://127.0.0.1:8080/
+2026-05-07T04:08:18.842266Z  INFO     🏠 http://localhost.:8080/
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:30Z)**_
+
+Trunk serve is healthy. Let me verify the full proxy + load flow and document.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Start chess-net in background
+
+`cargo run -p chess-net -- --port 7878 xiangqi 2>&1 | head -5`
+
+```text
+Command running in background with ID: booqprl6d. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/booqprl6d.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Trunk dev server in background
+
+`trunk serve 2>&1`
+
+```text
+Command running in background with ID: bjsfyowow. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bjsfyowow.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait for both servers ready
+
+`until curl -s -f http://127.0.0.1:8080/ > /dev/null 2>&1; do sleep 1; done && echo "trunk up"; until curl -s http://127.0.0.1:7878/rooms > /dev/null 2>&1; do sleep 1; done && echo "chess-net up"`
+
+```text
+trunk up
+chess-net up
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Smoke test SPA + proxy
+
+`echo "=== / (SPA index) ===" && curl -s http://127.0.0.1:8080/ | head -10 && echo "=== /rooms (proxied) ===" && curl -s http://127.0.0.1:8080/rooms | head -3 && echo "=== direct chess-net /rooms ===" && curl -s http://127.0.0.1:7878/rooms`
+
+```text
+=== / (SPA index) ===
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Chinese Chess</title>
+    
+<script type="module">
+import init, * as bindings from '/chess-web-fd74b901ef97afce.js';
+const wasm = await init({ module_or_path: '/chess-web-fd74b901ef97afce_bg.wasm' });
+=== /rooms (proxied) ===
+[]=== direct chess-net /rooms ===
+[]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:55Z)**_
+
+Full proxy chain works. Let me kill the bg servers and write the docs.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stop background servers
+
+`pkill -f "trunk serve" 2>/dev/null; pkill -f "chess-net-server" 2>/dev/null; sleep 1; ps aux | grep -E "trunk serve|chess-net-server" | grep -v grep | head -3 ; echo "killed"`
+
+```text
+killed
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:08:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect existing docs/pitfalls layout
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/ /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/ 2>&1 | head -30`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/:
+ **adr
+ **rules
+ architecture.md
+ notation.md
+ snapshot-format.md
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/:
+󰂺 README.md
+ wasm-getrandom-unresolved-imp.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:09:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:09:10Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./pitfalls/README.md`
+
+```text
+1	# Pitfalls
+2	
+3	Past traps we've stepped on. **Symptoms-first** knowledge base — when a
+4	problem recurs (on a new machine, after an upgrade, with a new tool combo),
+5	grepping the symptom here lands you on the root cause and workaround in
+6	seconds, instead of re-debugging from scratch.
+7	
+8	This folder is excluded from <DEPLOYMENT/PACKAGING MECHANISM, e.g. chezmoi via
+9	.chezmoiignore.tmpl, Python via MANIFEST.in, npm via .npmignore> — it is repo
+10	metadata for maintainers, not user-facing config to deploy.
+11	
+12	## Pitfalls vs the rest
+13	
+14	| Surface | Time direction | Question it answers | Access pattern |
+15	|---|---|---|---|
+16	| `docs/<tool>.md` | Present | "How does this tool work / how do I configure it?" | Read top to bottom |
+17	| `pitfalls/<slug>.md` | **Past** | **"I see error X — has this happened before?"** | **Grep symptoms** |
+18	| `backlog/<slug>.md` | Future | "We thought about doing Y — what was the analysis?" | Index in `TODO.md` |
+19	| `AGENTS.md` Hard invariants | Present | "What rules MUST agents follow?" | Read top to bottom |
+20	
+21	A pitfall **graduates** to a Hard invariant when the trap is serious enough
+22	that you can't rely on memory or grep — typically when (a) it recurs across
+23	machines, (b) it silently corrupts state, or (c) the workaround is non-obvious
+24	and easy to undo by accident. When graduating, leave a `pitfalls/<slug>.md`
+25	as historical record and link to it from the new invariant.
+26	
+27	## When to add a pitfall doc
+28	
+29	Add `pitfalls/<slug>.md` when you've spent more than ~15 minutes on something
+30	that wasn't googleable, AND any of:
+31	
+32	- The symptom is non-obvious from the root cause (silent state, weird side
+33	  effect, behaviour change without error)
+34	- The fix is "do nothing different but in a specific order"
+35	- The same trap could be hit by a new agent / new machine / new contributor
+36	- An upstream bug exists with no ETA — workaround needs to outlive memory
+37	- A specific tool version is required (or forbidden) and failure at the
+38	  wrong version is silent / confusing
+39	
+40	## When NOT to add a pitfall doc
+41	
+42	- Trivially googleable (next person solves in 30 seconds)
+43	- Already covered in `docs/<tool>.md` — cross-link from this README's
+44	  "Cross-referenced pitfalls" table below instead of duplicating
+45	- Already a Hard invariant (cross-link only)
+46	- One-off transient (network glitch, machine-specific config rot)
+47	
+48	## File template
+49	
+50	See [`pitfall-doc.md.template`] in the
+51	[`project-knowledge-harness` skill](https://github.com/daviddwlee84/agent-skills/tree/main/skills/local/project-knowledge-harness)
+52	for the per-doc template.
+53	
+54	Key sections (different from `backlog/` template — symptom-first, not
+55	context-first):
+56	
+57	```markdown
+58	# <Title describing the SYMPTOM, not the root cause>
+59	
+60	**Symptoms** (grep this section): <verbatim error messages, observable behaviour>
+61	**First seen**: YYYY-MM
+62	**Affects**: <tool/version/OS combo>
+63	**Status**: workaround documented / fixed upstream in vX.Y / WONTFIX
+64	
+65	## Symptom
+66	
+67	Full error messages (verbatim — preserves grep-ability).
+68	
+69	## Root cause
+70	
+71	Why this happens, with source/docs/upstream issue link.
+72	
+73	## Workaround
+74	
+75	Copy-pasteable commands or config diff.
+76	
+77	## Prevention
+78	
+79	How to avoid stepping on this again.
+80	
+81	## Related
+82	
+83	Links to docs, sibling pitfalls, TODO entries, upstream issues.
+84	```
+85	
+86	## Index
+87	
+88	Pitfalls owned by this folder. Keep alphabetical.
+89	
+90	| Slug | Symptom keywords | Status |
+91	|---|---|---|
+92	| [`wasm-getrandom-unresolved-imp`](wasm-getrandom-unresolved-imp.md) | `unresolved module imp`, getrandom, wasm32-unknown-unknown, E0433 | workaround documented |
+93	
+94	## Cross-referenced pitfalls (still in their original homes)
+95	
+96	These traps are documented elsewhere and aren't duplicated here — the table
+97	exists so grepping `pitfalls/` still finds them. Move into this folder only
+98	if their original location stops being a natural reading flow.
+99	
+100	| Trap | Lives in | Why not here |
+101	|---|---|---|
+102	| (example: Tool X version Y bug) | `docs/tool-x.md` → "Known issues" | Already part of the tool's normal config narrative |
+103
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:09:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./pitfalls/wasm-getrandom-unresolved-imp.md`
+
+```text
+1	# `chess-core` fails to build for `wasm32-unknown-unknown`: getrandom `unresolved module imp`
+2	
+3	**Symptom**
+4	
+5	```
+6	$ cargo build --target wasm32-unknown-unknown -p chess-core
+7	...
+8	error[E0433]: failed to resolve: use of unresolved module or unlinked crate `imp`
+9	   --> .../getrandom-0.2.17/src/lib.rs:402:9
+10	    |
+11	402 |         imp::getrandom_inner(dest)?;
+12	    |         ^^^ use of unresolved module or unlinked crate `imp`
+13	error: could not compile `getrandom`
+14	```
+15	
+16	Triggered when adding `rand` (transitively pulling in `getrandom 0.2`) to a workspace that builds for `wasm32-unknown-unknown` (the bare WASM target with no host backend, used by browser frameworks like Leptos / Yew).
+17	
+18	## Root cause
+19	
+20	`getrandom 0.2` ships several backends (`linux`, `darwin`, `windows`, `wasi`, …). For `wasm32-unknown-unknown` it has no default backend — that target is "unknown" by definition. The user must opt into a backend by enabling a feature on `getrandom` directly:
+21	
+22	- `js` — bridges to Web Crypto API via `wasm-bindgen` (browser only)
+23	- `custom` — caller provides a `register_custom_getrandom!` shim (manual)
+24	
+25	Since `getrandom` is a transitive dep, you can't enable the feature on it from the using crate's `[dependencies]` block — Cargo features merge across the dep graph but only when the feature is named directly. You must declare `getrandom` as a direct dep with the desired feature.
+26	
+27	## Fix
+28	
+29	In `crates/chess-core/Cargo.toml`, add a target-specific dep:
+30	
+31	```toml
+32	[target.'cfg(target_arch = "wasm32")'.dependencies]
+33	getrandom = { version = "0.2", features = ["js"] }
+34	```
+35	
+36	This is target-conditional, so native builds aren't affected. The browser WASM build now compiles cleanly.
+37	
+38	## Why it surfaced late
+39	
+40	Pure `cargo test` runs everything for the host target, where `getrandom` works fine. The WASM cleanliness check (`cargo build --target wasm32-unknown-unknown -p chess-core`) was the only step that exercised this path — added to the CI workflow for exactly this reason.
+41	
+42	## Caveat
+43	
+44	The `js` feature pulls in `wasm-bindgen` and `js-sys`, which means `chess-core` is no longer "completely WASM-clean" in the WASI/no-host sense. It's clean for the **browser** WASM target, which is what we actually want for `chess-web`. If a future contributor wants `chess-core` runnable in pure WASI / Cloudflare Workers, this needs revisiting (probably by pushing the randomness boundary out of `chess-core` and into the caller).
+45	
+46	## Related
+47	
+48	- TODO.md `[M] Threefold repetition draw detection` — when adding Zobrist, prefer a deterministic seed over `OsRng` so we don't deepen the WASM-host coupling.
+49	- `docs/architecture.md` "WASM cleanliness" goal.
+50
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:09:19Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:10:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# `chess-web` — Rust web stack (Leptos + Trunk + WASM)
+
+Reference for the toolchain, project layout, and dev/prod workflows
+that ship the browser frontend. For *why* (vs. JS frameworks, vs. Yew /
+Dioxus), see [`architecture.md`](architecture.md). For *what shipped
+in PR-1*, see the `chess-web` Done entry in [`../TODO.md`](../TODO.md).
+For traps that have bitten us, see [`../pitfalls/`](../pitfalls/).
+
+## Toolchain
+
+\```bash
+rustup target add wasm32-unknown-unknown    # one-time, per machine
+cargo install trunk                          # one-time, per machine
+\```
+
+`trunk --version` should print **0.21.x or newer**. Older Trunks lack
+`addresses` (replaces deprecated `address`) and `ws = true` proxy support.
+
+If your rustup mirror lacks the `wasm32-unknown-unknown` component (e.g.
+the tuna mirror occasionally drops it), prefix the target install with
+`RUSTUP_DIST_SERVER=https://static.rust-lang.org`. See
+[`../pitfalls/wasm-getrandom-unresolved-imp.md`](../pitfalls/wasm-getrandom-unresolved-imp.md)
+for a sibling rustup pitfall.
+
+`cargo install trunk` pulls ~500 deps and compiles for several minutes
+on first run; the binary lands in `~/.cargo/bin/trunk`.
+
+## Crate layout
+
+\```
+clients/chess-web/
+├── Cargo.toml          # split deps: native vs target_arch="wasm32"
+├── Trunk.toml          # build target + dev-server proxies
+├── index.html          # Trunk entry — <link data-trunk rel="rust"/>
+├── style.css           # CSS custom-property palette
+├── src/
+│   ├── lib.rs          # mounts Leptos via #[wasm_bindgen(start)]
+│   ├── app.rs          # <App>: leptos_router routes
+│   ├── routes.rs       # variant slug parser  ── pure-logic, native
+│   ├── orient.rs       # display orientation  ── pure-logic, native (copy of chess-tui)
+│   ├── glyph.rs        # piece glyph tables   ── pure-logic, native (copy of chess-tui)
+│   ├── state.rs        # ClientGame helpers   ── pure-logic, native
+│   ├── config.rs       # ws_url() helpers     ── wasm32 only
+│   ├── ws.rs           # gloo-net WS pump     ── wasm32 only
+│   ├── components/     # SVG board + sidebar  ── wasm32 only
+│   └── pages/          # Picker / Local / Lobby / Play  ── wasm32 only
+└── dist/               # trunk build output (gitignored)
+\```
+
+`crate-type = ["cdylib", "rlib"]` is required: `cdylib` for
+`wasm-bindgen` to produce a `.wasm` module, `rlib` so unit tests in
+the pure-logic modules compile against the host target.
+
+## Cargo.toml conventions
+
+The crate **must** stay buildable on the host target so `cargo check
+--workspace` (the default CI gate) passes for all 8 workspace crates.
+We achieve that by gating browser-only deps behind a target predicate:
+
+\```toml
+# Native — only chess-core, chess-net protocol, serde.
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+chess-net  = { path = "../../crates/chess-net", default-features = false }
+
+# Browser-only — leptos, gloo-net, web-sys, wasm-bindgen.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+leptos        = { version = "0.6", features = ["csr"] }
+leptos_router = { version = "0.6", features = ["csr"] }
+gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+web-sys       = { version = "0.3", features = ["Window", "Location"] }
+wasm-bindgen  = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys        = "0.3"
+console_error_panic_hook = "0.1.7"
+futures-util  = { workspace = true }
+futures       = "0.3"
+\```
+
+Two non-obvious points:
+
+1. **`chess-net` is pulled in with `default-features = false`.** That
+   selects the `protocol-only` subset of the crate (just `ServerMsg` /
+   `ClientMsg` / friends). With default features it would drag in
+   axum + tokio, which do not compile to WASM.
+2. **`gloo-net` itself is `default-features = false, features = ["websocket"]`.**
+   The `http` feature pulls in `reqwest`-flavoured machinery the SPA
+   doesn't need; trimming it shrinks the WASM bundle measurably.
+
+`lib.rs` mirrors the gating:
+
+\```rust
+pub mod glyph;     // pure-logic, native + wasm
+pub mod orient;    // pure-logic, native + wasm
+pub mod routes;    // pure-logic, native + wasm
+pub mod state;    // pure-logic, native + wasm
+
+#[cfg(target_arch = "wasm32")] mod app;
+#[cfg(target_arch = "wasm32")] mod components;
+#[cfg(target_arch = "wasm32")] mod config;
+#[cfg(target_arch = "wasm32")] mod pages;
+#[cfg(target_arch = "wasm32")] mod ws;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    console_error_panic_hook::set_once();
+    leptos::mount_to_body(app::App);
+}
+\```
+
+If you import a leptos type inside `state.rs` or any pure-logic module,
+the workspace check breaks. Keep leptos/web-sys/gloo strictly inside
+the wasm32-gated tree.
+
+## Trunk.toml — dev server + proxies
+
+\```toml
+[build]
+target  = "index.html"
+release = false
+
+[serve]
+addresses = ["127.0.0.1"]   # 0.21+; the singular `address` is deprecated
+port      = 8080
+open      = false
+
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws"
+ws      = true
+rewrite = "/ws"
+
+[[proxy]]
+backend = "ws://127.0.0.1:7878/lobby"
+ws      = true
+rewrite = "/lobby"
+
+[[proxy]]
+backend = "http://127.0.0.1:7878/rooms"
+rewrite = "/rooms"
+\```
+
+A single `/ws` proxy entry covers BOTH the bare `/ws` route and
+`/ws/<room>` (Trunk nests proxies as prefix routes in axum). Adding a
+separate `/ws/` entry alongside `/ws` panics on startup with `Invalid
+route … conflict with previously registered route` — see
+[`../pitfalls/trunk-proxy-route-conflict.md`](../pitfalls/trunk-proxy-route-conflict.md).
+
+The proxies exist so the SPA can use **same-origin URLs** for both
+the dev server and prod (where chess-net's `--static-dir` mounts the
+SPA at the same origin as the WS endpoints). `config::ws_base()` reads
+`window.location.host`; nothing is hardcoded.
+
+## Dev loop
+
+\```bash
+make play-web        # tmux: pane 0 = chess-net :7878, pane 1 = trunk serve :8080
+make stop-web        # tear down the tmux session
+
+# or run them yourself:
+cargo run -p chess-net -- --port 7878 xiangqi    # in one terminal
+(cd clients/chess-web && trunk serve)             # in another
+\```
+
+`trunk serve` watches `src/`, `index.html`, `style.css`, and `Cargo.toml`.
+On any change it recompiles, regenerates the WASM bundle, and pushes a
+reload over its own websocket to every connected browser tab. The first
+build takes 2–3 minutes (leptos compilation); incremental builds
+typically finish in a couple of seconds.
+
+Open `http://127.0.0.1:8080/` once trunk reports `📡 server listening`.
+The SPA's hash-routing (`#/local/xiangqi`, `#/lobby`, …) means
+deep-linking to a route survives a hard reload.
+
+## Production build
+
+\```bash
+make build-web                                   # = (cd clients/chess-web && trunk build --release)
+cargo run -p chess-net -- --port 7878 \
+    --static-dir clients/chess-web/dist xiangqi  # one binary, both endpoints
+\```
+
+`trunk build --release`:
+
+- Sets `--release` on the cargo invocation (so `[profile.release]` from
+  the workspace root applies — `lto = "thin"`, `codegen-units = 1`,
+  `panic = "abort"`).
+- Runs `wasm-opt` if available on `$PATH` for additional size shrinkage.
+- Writes hashed asset filenames under `clients/chess-web/dist/`:
+  `index.html`, `chess-web-<hash>.js`, `chess-web-<hash>_bg.wasm`,
+  `style-<hash>.css`.
+
+A debug build is around **5 MB** of `.wasm`; release is around 800 KB
+–1.2 MB depending on `wasm-opt` availability. Either is fine on
+broadband — these are one-time downloads cached aggressively by the
+browser thanks to the content-hashed filenames.
+
+When chess-net is started with `--static-dir`, it mounts
+`tower_http::services::ServeDir` as the route fallback with a
+`ServeFile::new(dir/"index.html")` backstop, so any path that doesn't
+match `/ws*` / `/lobby` / `/rooms` falls through to `index.html` and
+the SPA's client-side router takes over. **One trade-off**: enabling
+`--static-dir` re-routes `GET /` to `index.html`, which means
+`chess-tui --connect ws://host` (no path) breaks. v1 chess-tui
+clients must switch to `--connect ws://host/ws` when talking to a
+chess-net that's also serving the SPA. The `make play-local` /
+`make play-lobby` flows do not enable `--static-dir`, so back-compat
+is preserved unless you opt in.
+
+## Bundle size — what's in the 5 MB?
+
+About 60% leptos + leptos_router (reactive runtime + router DSL),
+20% chess-core (board/state/move generation), 10% gloo-net + futures
+plumbing, 10% wasm-bindgen + serde glue. `wasm-opt -Oz` strips that
+to ~800 KB. If sizes climb, a `cargo bloat --release --crates` run is
+the right starting point.
+
+## Common errors
+
+- **`error: linking with 'cc' failed: undefined symbol: __wbindgen_*`** —
+  The `wasm-bindgen` CLI version that Trunk auto-installs doesn't match
+  the `wasm-bindgen` version in your `Cargo.lock`. Trunk normally fetches
+  the matching CLI from the Trunk asset cache; on first run with a new
+  `wasm-bindgen` version, this can take a minute. Symptoms include the
+  startup hanging at `applying new distribution`. Wait it out, or
+  `cargo install -f wasm-bindgen-cli --version <X.Y.Z>` matching your
+  lock.
+- **`Invalid route ... conflict with previously registered route`** —
+  Two Trunk proxy entries register the same axum nest path. Documented
+  in [`../pitfalls/trunk-proxy-route-conflict.md`](../pitfalls/trunk-proxy-route-conflict.md).
+- **The SPA loads but `Disconnected` appears immediately** — chess-net
+  isn't running or isn't reachable on `127.0.0.1:7878`. The browser's
+  network tab will show a 502 from Trunk's proxy. Start chess-net
+  (`make play-web` does both) or set `CHESS_WEB_WS_BASE` if pointing
+  at a remote host.
+
+## Why these tools
+
+- **Leptos vs Yew**: Leptos is fine-grained reactive (no VDOM diff);
+  smaller runtime and the macros feel more like SwiftUI/SolidJS than
+  React. The cost is a less mature ecosystem; we hit no blockers in
+  PR-1.
+- **Trunk vs `wasm-pack` + `webpack` / `vite`**: Trunk is single-binary,
+  watches/builds/serves with one config file, and has no node toolchain
+  in the loop. The trade-off is JS-ecosystem things (PostCSS plugins,
+  fancy bundling) aren't available — but a Rust-rendered SVG SPA
+  doesn't need them.
+- **`gloo-net` vs raw `web_sys::WebSocket`**: gloo-net wraps the browser
+  WS in a real `Stream`/`Sink` so we can use `futures-util` combinators
+  the same way a tokio app would. The cost is one extra crate; the
+  alternative is wiring `JsValue` callbacks by hand.
+
+## Related
+
+- [`architecture.md`](architecture.md) — why Rust+WASM at all
+- [`../CLAUDE.md`](../CLAUDE.md) "Gotchas worth knowing" — chess-web
+  + chess-net interaction notes
+- [`../backlog/promote-client-shared.md`](../backlog/promote-client-shared.md)
+  — when to factor `orient.rs` / `glyph.rs` out of the duplicated
+  client copies
+- [`../backlog/web-ws-reconnect.md`](../backlog/web-ws-reconnect.md) —
+  planned auto-reconnect work
+- [`../backlog/web-playwright.md`](../backlog/web-playwright.md) — E2E
+  smoke recipe
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/trunk-leptos-wasm.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:10:59Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# `trunk serve` panics: Invalid route "/ws/{*__private__axum_nest_tail_param}" — conflict with previously registered route
+
+**Symptoms** (grep this section): `trunk-rt-worker` panic, `Invalid route`,
+`__private__axum_nest_tail_param`, `conflict with previously registered route`,
+silent tmux pane close after `make play-web`.
+
+**First seen**: 2026-05
+**Affects**: `trunk 0.21.x`, any `Trunk.toml` that registers two `[[proxy]]`
+entries whose `rewrite` paths collide as axum nest prefixes.
+**Status**: workaround documented (consolidate to a single `/ws` proxy)
+
+## Symptom
+
+`make play-web` opens a tmux session with two windows: `server` (chess-net)
+and `web` (trunk serve). The `web` window flashes briefly then closes — the
+pane was running `trunk serve`, which panicked, returned non-zero, and tmux
+auto-killed the dead pane. No log makes it to the tmux scrollback.
+
+Running `trunk serve` directly from `clients/chess-web/` reveals the panic:
+
+\```
+2026-05-07T04:07:41.398252Z  INFO 📡 serving static assets at -> /
+2026-05-07T04:07:41.398268Z  INFO 📡 proxying websocket /ws/ -> ws://127.0.0.1:7878/ws/
+2026-05-07T04:07:41.398284Z  INFO 📡 proxying websocket /ws -> ws://127.0.0.1:7878/ws
+
+thread 'tokio-rt-worker' panicked at .../trunk-0.21.14/src/proxy.rs:269:16:
+Invalid route "/ws/{*__private__axum_nest_tail_param}":
+Insertion failed due to conflict with previously registered route:
+/ws/{*__private__axum_nest_tail_param}
+\```
+
+The `static asset` and first two `proxying` lines print successfully — the
+panic happens when axum's router tries to commit the second `/ws*` proxy
+entry.
+
+## Root cause
+
+Trunk 0.21 wraps each `[[proxy]]` entry as an axum nested router via
+`Router::nest()`. Internally, axum represents a nested route as a path
+matcher of the form `<prefix>/{*__private__axum_nest_tail_param}`. Both
+of the following entries collapse to the same matcher:
+
+\```toml
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws/"
+ws      = true
+rewrite = "/ws/"
+
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws"
+ws      = true
+rewrite = "/ws"
+\```
+
+axum requires distinct nest prefixes; registering two that compile to
+the same wildcard route triggers an `InsertError::Conflict` panic at
+`Router::nest()`.
+
+The original intent was to forward both `/ws` (the chess-net default-room
+upgrade for v1 clients) and `/ws/<room>` (named room) — splitting them
+into two entries seemed natural but is unnecessary because Trunk's
+proxy already matches as a prefix.
+
+## Workaround
+
+Use a **single** proxy entry rooted at `/ws`. It catches both the bare
+path and any sub-path:
+
+\```toml
+# Trunk.toml
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws"
+ws      = true
+rewrite = "/ws"
+\```
+
+This forwards `/ws` to `ws://127.0.0.1:7878/ws` and any `/ws/<room>` to
+`ws://127.0.0.1:7878/ws/<room>` (Trunk preserves the trailing path
+verbatim).
+
+## Prevention
+
+- One proxy entry per nest prefix. If you need two distinct backends
+  for `/ws` vs. `/ws/`, route them through different prefixes
+  (e.g. `/ws-default` and `/ws-room`) or proxy at a higher level
+  (`/` → upstream, no Trunk-side splitting).
+- When `make play-web` exits silently, run `trunk serve` directly from
+  `clients/chess-web/` to see the actual error. The tmux pane in
+  `scripts/play-web.sh` runs the command without a `--remain-on-exit`
+  shim, so panics get swallowed by the auto-kill.
+
+## Related
+
+- [`../docs/trunk-leptos-wasm.md`](../docs/trunk-leptos-wasm.md) — Trunk
+  config narrative and the working `[[proxy]]` block
+- [`../scripts/play-web.sh`](../scripts/play-web.sh) — could be hardened
+  with `tmux set-option remain-on-exit on` so panics stay visible
+  (deferred — the doc + this pitfall is enough breadcrumb for now)
+- Upstream: trunk-rs/trunk does not currently surface a clearer error
+  for this case; consider filing if it recurs across users
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/trunk-proxy-route-conflict.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:02Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:13Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final verify trunk build clean after fix
+
+`trunk build 2>&1 | tail -8`
+
+```text
+2026-05-07T04:11:17.371109Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T04:11:17.382555Z  INFO 📦 starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s
+2026-05-07T04:11:18.536677Z  INFO applying new distribution
+2026-05-07T04:11:18.537606Z  INFO ✅ success
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:26Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Working tree + ignore check
+
+`git status --short && echo "===dist gitignored?===" && git check-ignore clients/chess-web/dist/index.html 2>&1 ; echo "exit $?"`
+
+```text
+ M ../../.specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+ M ../../CLAUDE.md
+ M Trunk.toml
+ M ../../pitfalls/README.md
+?? ../../.claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+?? dist/
+?? ../../docs/trunk-leptos-wasm.md
+?? ../../pitfalls/trunk-proxy-route-conflict.md
+===dist gitignored?===
+exit 1
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect .gitignore
+
+`cat /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.gitignore 2>&1`
+
+```text
+/target
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Insta pending snapshots
+**/*.snap.new
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm dist/ is now ignored
+
+`cd /Volumes/Data/Program/tries/2026-05-06-chinese-chess && git status --short`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+ M .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+ M CLAUDE.md
+ M clients/chess-web/Trunk.toml
+ M pitfalls/README.md
+?? .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+?? clients/chess-web/dist/
+?? docs/trunk-leptos-wasm.md
+?? pitfalls/trunk-proxy-route-conflict.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:41Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./.gitignore`
+
+```text
+1	/target
+2	**/*.rs.bk
+3	
+4	# IDE
+5	.idea/
+6	.vscode/
+7	*.iml
+8	
+9	# OS
+10	.DS_Store
+11	Thumbs.db
+12	
+13	# Insta pending snapshots
+14	**/*.snap.new
+15
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:47Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/.gitignore has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:11:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage commit 6 files
+
+`git status --short && echo "===staging===" && git add clients/chess-web/Trunk.toml docs/trunk-leptos-wasm.md pitfalls/trunk-proxy-route-conflict.md pitfalls/README.md CLAUDE.md .gitignore && git status --short`
+
+```text
+ M .gitignore
+ M .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+ M CLAUDE.md
+ M clients/chess-web/Trunk.toml
+ M pitfalls/README.md
+?? .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+?? docs/trunk-leptos-wasm.md
+?? pitfalls/trunk-proxy-route-conflict.md
+===staging===
+M  .gitignore
+ M .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+M  CLAUDE.md
+M  clients/chess-web/Trunk.toml
+A  docs/trunk-leptos-wasm.md
+M  pitfalls/README.md
+A  pitfalls/trunk-proxy-route-conflict.md
+?? .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:12:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit 6: trunk fix + docs
+
+```bash
+git -c commit.gpgsign=false commit -m "$(cat <<'EOF'
+fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+
+`make play-web` was crashing trunk silently because the dev-server
+panicked at startup with a route-conflict and the tmux pane auto-killed.
+Two `[[proxy]]` entries (`/ws` and `/ws/`) collapsed to the same axum
+nest matcher (`/ws/{*__private__axum_nest_tail_param}`); registering
+the second one panics on `Router::nest()`. A single `/ws` entry catches
+both the bare path and any sub-path because Trunk forwards prefix
+matches verbatim — verified end-to-end (chess-net :7878 + trunk :8080,
+SPA loads, /rooms proxies, no panic).
+
+Also drops the `address = "..."` deprecation by switching to the
+`addresses = [...]` array form supported in Trunk 0.21+.
+
+Documentation:
+
+- `docs/trunk-leptos-wasm.md` — toolchain (rustup target + trunk),
+  cargo target_arch="wasm32" gating pattern, Trunk.toml proxy config,
+  dev/prod loops, bundle-size guidance, common errors.
+- `pitfalls/trunk-proxy-route-conflict.md` — symptom-titled (verbatim
+  panic message + silent tmux pane close) so future grep lands on
+  the workaround.
+- `pitfalls/README.md` index updated.
+- `CLAUDE.md` "Project at a glance" cross-links the new doc.
+- `.gitignore` now ignores `clients/chess-web/dist/` (trunk build output).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -8 && git log --oneline -7
+```
+
+```text
+[main bb7fd87] fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+ 6 files changed, 387 insertions(+), 15 deletions(-)
+ create mode 100644 docs/trunk-leptos-wasm.md
+ create mode 100644 pitfalls/trunk-proxy-route-conflict.md
+bb7fd87 fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+f0e0d62 chess-web + chess-net: online play via WebSocket
+45a33cc chess-web: banqi local play + three-kingdom WIP overlay
+b3dde9b chess-web: SVG xiangqi local play
+ca13ee0 chess-web: scaffold Leptos + Trunk SPA with variant picker
+6c0576f fix(tui): collapse nested if blocks into match guards to satisfy clippy 1.95
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:12:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:12:21Z)**_
+
+Verified end-to-end. Here's what I found and fixed:
+
+**Root cause of the silent crash**
+
+Trunk 0.21 wraps each `[[proxy]]` entry as an axum nest, matching paths against `<prefix>/{*__private__axum_nest_tail_param}`. The two `/ws` and `/ws/` entries I'd added in commit 5 collapsed to the same matcher and `Router::nest()` panicked at startup with `Invalid route ... conflict with previously registered route`. The tmux pane auto-killed on the panic so no log made it to the scrollback. Running `trunk serve` directly surfaced the message.
+
+A single `/ws` proxy entry forwards both `/ws` and `/ws/<room>` because Trunk preserves the trailing path verbatim. Also switched the deprecated `address = "..."` to the `addresses = ["..."]` array form supported in Trunk 0.21+.
+
+**Verified after the fix:** `trunk build` clean, `trunk serve` starts and registers proxies cleanly, chess-net + trunk + curl smoke all pass (`/` returns the SPA, `/rooms` proxies through to chess-net).
+
+**Commit 6 (`bb7fd87`) ships:**
+- `clients/chess-web/Trunk.toml` — single `/ws` proxy + `addresses` form
+- `docs/trunk-leptos-wasm.md` — full Rust+web stack reference (toolchain, Cargo.toml gating pattern, Trunk.toml, dev/prod loops, bundle sizes, common errors)
+- `pitfalls/trunk-proxy-route-conflict.md` — symptom-titled with the verbatim panic so future greps land on the workaround
+- `pitfalls/README.md` — index updated
+- `CLAUDE.md` — project-at-a-glance cross-links the new doc
+- `.gitignore` — ignores `clients/chess-web/dist/`
+
+`make play-web` should now work end-to-end. If you'd like, I can also harden `scripts/play-web.sh` with `tmux set-option remain-on-exit on` so any future panic stays visible in the pane (deferred — the pitfall doc points at it as a follow-up).
+
+---
+
+_**User (2026-05-07 04:14:36Z)**_
+
+好啊 加一下  tmux set-option remain-on-exit on
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-07 04:14:45Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:14:46Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./scripts/play-web.sh`
+
+```text
+1	#!/usr/bin/env bash
+2	# Launch one chess-net-server + one Trunk dev server in a tmux session.
+3	# Browser opens to http://127.0.0.1:8080 (Trunk serves the SPA, proxies WS
+4	# at /ws and /lobby to chess-net at :7878).
+5	#
+6	# Usage:
+7	#   scripts/play-web.sh [SESSION] [PORT] [VARIANT] [SERVER_ARGS...]
+8	#
+9	# Examples:
+10	#   scripts/play-web.sh                          # xiangqi casual on :7878
+11	#   scripts/play-web.sh chess-web 9000 banqi --preset taiwan --seed 42
+12	#
+13	# Detach with Ctrl-b d. Kill with `make stop-web`.
+14	
+15	set -euo pipefail
+16	
+17	SESSION="${1:-chess-web}"
+18	PORT="${2:-7878}"
+19	VARIANT="${3:-xiangqi}"
+20	shift 3 2>/dev/null || true
+21	SERVER_EXTRA=("$@")
+22	
+23	if ! command -v tmux >/dev/null 2>&1; then
+24	  echo "tmux not found on PATH. Install tmux to use this launcher." >&2
+25	  exit 1
+26	fi
+27	if ! command -v trunk >/dev/null 2>&1; then
+28	  echo "trunk not found on PATH. Install with:" >&2
+29	  echo "  cargo install trunk" >&2
+30	  echo "  rustup target add wasm32-unknown-unknown" >&2
+31	  exit 1
+32	fi
+33	
+34	REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+35	cd "$REPO_ROOT"
+36	
+37	echo "==> building chess-net-server (debug)..."
+38	cargo build -p chess-net
+39	
+40	SERVER_BIN="$REPO_ROOT/target/debug/chess-net-server"
+41	if [[ ! -x "$SERVER_BIN" ]]; then
+42	  echo "build did not produce $SERVER_BIN" >&2
+43	  exit 1
+44	fi
+45	
+46	tmux kill-session -t "$SESSION" 2>/dev/null || true
+47	
+48	SERVER_CMD="$SERVER_BIN --port $PORT $VARIANT ${SERVER_EXTRA[*]:-}"
+49	TRUNK_CMD="cd $REPO_ROOT/clients/chess-web && trunk serve"
+50	
+51	tmux new-session  -d -s "$SESSION" -n server "$SERVER_CMD"
+52	tmux new-window   -t "$SESSION" -n web "$TRUNK_CMD"
+53	tmux select-window -t "${SESSION}:web"
+54	
+55	cat <<EOF
+56	
+57	  chess-web tmux session '$SESSION' is running.
+58	
+59	    server : ws://127.0.0.1:$PORT     (window 'server')
+60	    SPA    : http://127.0.0.1:8080    (window 'web')
+61	
+62	  Trunk recompiles chess-web on save. The browser auto-reloads via WS
+63	  to Trunk's port (8080). Switch windows with prefix + n / prefix + p.
+64	
+65	EOF
+66	
+67	if [[ -n "${TMUX:-}" ]]; then
+68	  exec tmux switch-client -t "$SESSION"
+69	else
+70	  exec tmux attach -t "$SESSION"
+71	fi
+72
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:16Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-web.sh has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify tmux version + script syntax
+
+`tmux -V && bash -n /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/play-web.sh && echo "syntax ok"`
+
+```text
+tmux 3.6a
+syntax ok
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Smoke test: option actually applies to both windows
+
+`tmux kill-session -t chess-web-test 2>/dev/null ; bash -c 'SERVER_BIN=/bin/false tmux new-session -d -s chess-web-test -n server /bin/sh && tmux new-window -t chess-web-test -n web /bin/sh && tmux set-option -w -t chess-web-test:server remain-on-exit on && tmux set-option -w -t chess-web-test:web remain-on-exit on && tmux show-window-options -t chess-web-test:server | grep remain-on-exit && tmux show-window-options -t chess-web-test:web | grep remain-on-exit && tmux kill-session -t chess-web-test'`
+
+```text
+remain-on-exit on
+remain-on-exit on
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:36Z)**_
+
+Both windows pick up `remain-on-exit on`. Also update the pitfall doc since the workaround/prevention now lives in the script.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:49Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/trunk-proxy-route-conflict.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:15:53Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit 7: remain-on-exit hardening
+
+```bash
+git add scripts/play-web.sh pitfalls/trunk-proxy-route-conflict.md && git -c commit.gpgsign=false commit -m "$(cat <<'EOF'
+chore(scripts): keep play-web tmux panes alive on exit
+
+Sets `remain-on-exit on` per window in scripts/play-web.sh so a future
+panic in chess-net or trunk doesn't auto-kill the pane before the log
+scrolls. Verified the option lands on both `server` and `web` windows.
+
+Updated pitfalls/trunk-proxy-route-conflict.md "Prevention" + "Related"
+to reflect the script change (was previously listed as a deferred
+follow-up).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -5 && git log --oneline -3
+```
+
+```text
+[main c8e51a1] chore(scripts): keep play-web tmux panes alive on exit
+ 2 files changed, 16 insertions(+), 7 deletions(-)
+c8e51a1 chore(scripts): keep play-web tmux panes alive on exit
+bb7fd87 fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:16:00Z)**_
+
+Done. `c8e51a1` adds `remain-on-exit on` to both the `server` and `web` windows in `scripts/play-web.sh`. Verified via a tmux smoke test that the option lands on both windows. Pitfall doc updated so the script change is no longer listed as a deferred follow-up.
+
+Next time anything in the play-web tmux session crashes, the pane stays open with the panic message visible — `tmux attach -t chess-web` and switch to the dead window to read it (Enter dismisses).
+
+---
+
+_**User (2026-05-07 04:16:10Z)**_
+
+<command-name>/compact</command-name>
+            <command-message>compact</command-message>
+            <command-args></command-args>
+
+_**User (2026-05-07 04:16:10Z)**_
+
+<local-command-caveat>Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.</local-command-caveat>
+
+_**User (2026-05-07 04:18:03Z)**_
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Implement a web version of an existing Rust+WASM Chinese chess project (`/Volumes/Data/Program/tries/2026-05-06-chinese-chess`).
+   - User's specific concerns: should it be WS-based like TUI (worried that's redundant for solo play), they referenced SVG rendering from a Python xiangqi project, and wanted code-expressible rendering to reduce art-asset dependency.
+   - After approval, user explicitly chose: Leptos+Trunk framework, both local (pure WASM, no server) + online (WS) modes, all three variants in one PR, Trunk dev-server + chess-net serving dist/ in prod.
+   - User chose to commit as 5 separate commits matching the plan phases.
+   - User reported `make play-web` crashed silently and requested I document Trunk/Rust web dev in docs/ and verify the crash.
+   - Most recent request: "好啊 加一下 tmux set-option remain-on-exit on" — add `remain-on-exit on` to scripts/play-web.sh so future panics stay visible.
+
+2. Key Technical Concepts:
+   - Leptos 0.6 + leptos_router (CSR mode) with `wasm-bindgen(start)` entry
+   - Trunk 0.21 dev server (`addresses` field replaces deprecated `address`)
+   - WASM gating via `[target.'cfg(target_arch = "wasm32")'.dependencies]` so `cargo check --workspace` passes natively
+   - Module gating in lib.rs: `#[cfg(target_arch = "wasm32")] mod app;` etc.
+   - chess-net `protocol-only` consumption via `default-features = false` (avoids axum/tokio in WASM bundle)
+   - chess-net `static-serve` feature with `tower_http::services::ServeDir` + `ServeFile` SPA fallback
+   - `ServeOpts` builder + `run_with`/`serve_with` keeping `serve(listener, rules)` API stable
+   - SVG intersection-layout board (mirrors chess-tui's `orient.rs`/`glyph.rs` byte-copies, not promoted to chess-core per ADR-0001)
+   - gloo-net WebSocket with split read/write pumps via futures `Stream`/`Sink`
+   - Trunk proxy routes nested as axum prefix matchers (single `/ws` entry catches `/ws` and `/ws/<room>`)
+   - `tmux set-option -w remain-on-exit on` per window for crash visibility
+   - Path-based routing (not hash) — works because Trunk fallback + axum ServeFile both serve index.html for unknown paths
+   - 7 phased commits ending at c8e51a1
+
+3. Files and Code Sections:
+
+   - `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.claude/plans/web-gentle-island.md`
+     - Final plan file written during plan mode, approved by user
+   
+   - `clients/chess-web/Cargo.toml`
+     - Wasm32-gated leptos deps; chess-net pulled with `default-features = false`
+     ```toml
+     [dependencies]
+     chess-core = { path = "../../crates/chess-core" }
+     serde      = { workspace = true }
+     serde_json = { workspace = true }
+     chess-net  = { path = "../../crates/chess-net", default-features = false }
+     [target.'cfg(target_arch = "wasm32")'.dependencies]
+     leptos        = { version = "0.6", features = ["csr"] }
+     leptos_router = { version = "0.6", features = ["csr"] }
+     gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+     # ...
+     ```
+
+   - `clients/chess-web/Trunk.toml`
+     - Was crashing — fixed in commit 6 by consolidating `/ws` + `/ws/` into single `/ws` entry
+     ```toml
+     [serve]
+     addresses = ["127.0.0.1"]
+     port      = 8080
+     [[proxy]]
+     backend = "ws://127.0.0.1:7878/ws"
+     ws      = true
+     rewrite = "/ws"
+     ```
+
+   - `clients/chess-web/src/lib.rs` — Pure-logic modules native, leptos UI wasm32-gated
+     ```rust
+     pub mod glyph; pub mod orient; pub mod routes; pub mod state;
+     #[cfg(target_arch = "wasm32")] mod app;
+     #[cfg(target_arch = "wasm32")] mod components;
+     #[cfg(target_arch = "wasm32")] mod config;
+     #[cfg(target_arch = "wasm32")] mod pages;
+     #[cfg(target_arch = "wasm32")] mod ws;
+     #[cfg(target_arch = "wasm32")]
+     #[wasm_bindgen(start)]
+     pub fn start() {
+         console_error_panic_hook::set_once();
+         leptos::mount_to_body(app::App);
+     }
+     ```
+
+   - `clients/chess-web/src/components/board.rs` — SVG board renderer with `intersection(row, col)` helper, `CELL=60`, `PAD=30`, river text "楚 河 漢 界", palace diagonals, hit-test rects
+   - `clients/chess-web/src/orient.rs`, `glyph.rs` — byte-copies of chess-tui modules with cloned tests
+   - `clients/chess-web/src/state.rs` — `find_move()`, `legal_targets()` pure helpers (3 tests)
+   - `clients/chess-web/src/ws.rs` — gloo-net WebSocket pump with `connect()` returning `(WsHandle, ReadSignal<Option<ServerMsg>>, ReadSignal<ConnState>)`
+   - `clients/chess-web/src/pages/{picker,local,lobby,play}.rs`
+   - `clients/chess-web/src/components/sidebar.rs` — has `wip` prop for three-kingdom
+
+   - `crates/chess-net/Cargo.toml`
+     ```toml
+     [features]
+     default = ["server", "static-serve"]
+     server = ["dep:tokio", "dep:axum", "dep:futures-util", "dep:clap", "dep:anyhow"]
+     static-serve = ["server", "dep:tower-http"]
+     ```
+
+   - `crates/chess-net/src/server.rs` — Added `ServeOpts` struct + `run_with`/`serve_with` with cfg-gated `ServeDir.fallback(ServeFile::new(index))`
+
+   - `crates/chess-net/src/bin/server.rs` — Added `--static-dir` flag + `CHESS_NET_STATIC_DIR` env var fallback
+
+   - `scripts/play-web.sh` — MOST RECENT EDIT. Added `remain-on-exit on` per window:
+     ```bash
+     tmux new-session  -d -s "$SESSION" -n server "$SERVER_CMD"
+     tmux new-window   -t "$SESSION" -n web "$TRUNK_CMD"
+     # Keep panes visible after the command exits so panics stay readable.
+     tmux set-option -w -t "${SESSION}:server" remain-on-exit on
+     tmux set-option -w -t "${SESSION}:web" remain-on-exit on
+     tmux select-window -t "${SESSION}:web"
+     ```
+
+   - `Makefile` — Added play-web/build-web/stop-web targets
+   - `CLAUDE.md` — Project-at-a-glance, Common commands, Gotchas (chess-net features, chess-web native compile, orient/glyph duplication, path-based routing)
+   - `TODO.md` — Promoted chess-web entry to Done; added P2/P3/P? follow-ups
+   - `docs/trunk-leptos-wasm.md` — New full reference doc (toolchain, Cargo gating, Trunk.toml, dev/prod loops, bundle sizes, common errors)
+   - `pitfalls/trunk-proxy-route-conflict.md` — Symptom-titled pitfall, updated in last commit to reflect the script's `remain-on-exit` fix
+   - `backlog/{promote-client-shared,web-ws-reconnect,web-playwright}.md`
+   - `.gitignore` — Added `clients/chess-web/dist/`
+
+4. Errors and fixes:
+   - **Two compile errors during initial Phase 4 implementation**: 
+     - `lobby.rs:92` — closure FnOnce due to `go_to_room.clone()` move. Fixed by converting `go_to_room` to a `Callback<String>` (Copy via StoredValue).
+     - `play.rs:74` — `handle` borrowed after move into Show closure. Fixed by cloning upfront: `let handle_for_board = handle.clone(); let handle_for_sidebar = handle;`
+   - **fmt complaints** auto-fixed via `cargo fmt`.
+   - **Trunk silent crash** (user-reported): The tmux pane closed without logs. Investigated by running `trunk serve` directly. Found panic: `Invalid route "/ws/{*__private__axum_nest_tail_param}": Insertion failed due to conflict with previously registered route`. Root cause: two `[[proxy]]` entries (`/ws` and `/ws/`) both registered as the same axum nest matcher. Fixed by consolidating to a single `/ws` entry — verified single entry catches both bare path and sub-paths.
+   - **Deprecated `address` field warning**: Switched to `addresses = ["127.0.0.1"]` array form.
+   - **`git restore` returning files to HEAD**: After Phase 1 commit, I had to re-edit chess-net source files because git restore brought them back to HEAD; required re-reading before re-applying Phase 5 edits.
+
+5. Problem Solving:
+   - **Solved**: Splitting one big change into 5 reviewable commits by writing intermediate file states for each phase, verifying build at each step.
+   - **Solved**: chess-web native compile concerns — wasm32-gating ensures `cargo check --workspace` passes.
+   - **Solved**: WASM bundle size — chess-net's protocol-only feature avoids dragging axum/tokio into WASM build.
+   - **Solved**: SPA fallback in production — `ServeDir.fallback(ServeFile)` handles unknown paths.
+   - **Solved**: Trunk proxy panic — single `/ws` entry instead of two.
+   - **Solved**: Silent tmux pane death — `remain-on-exit on` per window.
+
+6. All user messages:
+   - Initial Chinese request: "這輪我們來實現web版 可能考慮怎麽實現 比如主要連一個網頁就能直接操作創房間 加入遊戲 配置等等 (還是說變成跟TUI那樣 還是要連個websocket啥的 雖然感覺這樣有點冗 不好操作？) 然後關於整體遊戲展示 我看有人用SVG繪製 https://github.com/windshadow233/python-chinese-chess 總之 如果都能用code表達 (前期可以減少藝術素材的依賴) 應該會好一點"
+   - Tool acknowledgement after ToolSearch
+   - User answered AskUserQuestion: chose Leptos + Trunk, Both local + online, All variants in one PR, Trunk + chess-net serves dist
+   - User approved plan via ExitPlanMode
+   - User answered next-step question: "Commit as 5 separate commits matching the plan phases"
+   - User reported crash with terminal log of trunk install + crash report: "make play-web 跑了一下 trunk build完過一陣子就crash了 (tmux pane也自己關了 沒看到log 你可能要跑一下驗證一下)" + "Trunk 這部分Rust web development等等相關的 也幫我記一下docs"
+   - Most recent: "好啊 加一下  tmux set-option remain-on-exit on"
+
+7. Pending Tasks:
+   - None explicitly pending. The user's most recent request (add `remain-on-exit on`) was implemented and committed.
+
+8. Current Work:
+   Just completed commit `c8e51a1` (`chore(scripts): keep play-web tmux panes alive on exit`):
+   - Edited `scripts/play-web.sh` to add `tmux set-option -w remain-on-exit on` for both `server` and `web` windows after creating them
+   - Verified tmux 3.6a supports the option via smoke test that showed both windows correctly inheriting `remain-on-exit on`
+   - Updated `pitfalls/trunk-proxy-route-conflict.md` "Prevention" and "Related" sections to reflect the script change (was previously listed as a deferred follow-up)
+   - Committed: `2 files changed, 16 insertions(+), 7 deletions(-)`
+   - Final commit log shows: `c8e51a1 chore(scripts): keep play-web tmux panes alive on exit / bb7fd87 fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs / 740cb96 chess-net static-serve + Make targets + docs + TODO promote`
+
+9. Optional Next Step:
+   The user's most recent request ("好啊 加一下 tmux set-option remain-on-exit on") has been completed and committed in c8e51a1. No further action is implied by the user's last message — the task is concluded. 
+
+   If the user wants to continue, the natural next step would be a manual browser smoke test of `make play-web` (which I cannot do without their input — they would need to install trunk if not already, run `make play-web`, open http://127.0.0.1:8080/, and verify the variant picker, local play for xiangqi/banqi, three-kingdom WIP overlay, lobby+online flows). But I should NOT proactively push or take further action without the user's direction.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/daviddwlee84/.claude/projects/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+_**User (2026-05-07 04:18:04Z)**_
+
+<local-command-stdout>[2mCompacted (ctrl+o to see full summary)[22m
+[2mPreCompact [~/.codeisland/codeisland-hook.sh] completed successfully[22m</local-command-stdout>
+
+_**User (2026-05-07 04:19:27Z)**_
+
+1. 暗棋的web版 棋子 可以不用寫「暗」 就直接是空的圓形即可
+2. 我記得暗棋是先翻的那個人翻到什麼顏色就是扮演那個顏色？
+3. 目前是否能夠設置規則等？
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:32Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:33Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/glyph.rs`
+
+```text
+1	//! Piece glyph tables. Two render styles: traditional CJK (帥/將 etc.) and
+2	//! ASCII single-letter (uppercase = Red, lowercase = Black). The engine has
+3	//! no concept of glyphs — presentation lives entirely in the client.
+4	//!
+5	//! Verbatim copy of `clients/chess-tui/src/glyph.rs` (see orient.rs note).
+6	
+7	use chess_core::piece::{PieceKind, Side};
+8	
+9	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+10	pub enum Style {
+11	    Cjk,
+12	    Ascii,
+13	}
+14	
+15	pub fn glyph(kind: PieceKind, side: Side, style: Style) -> &'static str {
+16	    match style {
+17	        Style::Cjk => cjk(kind, side),
+18	        Style::Ascii => ascii(kind, side),
+19	    }
+20	}
+21	
+22	fn cjk(kind: PieceKind, side: Side) -> &'static str {
+23	    match (side, kind) {
+24	        (Side::RED, PieceKind::General) => "帥",
+25	        (Side::RED, PieceKind::Advisor) => "仕",
+26	        (Side::RED, PieceKind::Elephant) => "相",
+27	        (Side::RED, PieceKind::Chariot) => "俥",
+28	        (Side::RED, PieceKind::Horse) => "傌",
+29	        (Side::RED, PieceKind::Cannon) => "炮",
+30	        (Side::RED, PieceKind::Soldier) => "兵",
+31	        (Side::BLACK, PieceKind::General) => "將",
+32	        (Side::BLACK, PieceKind::Advisor) => "士",
+33	        (Side::BLACK, PieceKind::Elephant) => "象",
+34	        (Side::BLACK, PieceKind::Chariot) => "車",
+35	        (Side::BLACK, PieceKind::Horse) => "馬",
+36	        (Side::BLACK, PieceKind::Cannon) => "砲",
+37	        (Side::BLACK, PieceKind::Soldier) => "卒",
+38	        (_, PieceKind::General) => "將",
+39	        (_, PieceKind::Advisor) => "士",
+40	        (_, PieceKind::Elephant) => "象",
+41	        (_, PieceKind::Chariot) => "車",
+42	        (_, PieceKind::Horse) => "馬",
+43	        (_, PieceKind::Cannon) => "砲",
+44	        (_, PieceKind::Soldier) => "卒",
+45	    }
+46	}
+47	
+48	fn ascii(kind: PieceKind, side: Side) -> &'static str {
+49	    match (side, kind) {
+50	        (Side::RED, PieceKind::General) => "K",
+51	        (Side::RED, PieceKind::Advisor) => "A",
+52	        (Side::RED, PieceKind::Elephant) => "B",
+53	        (Side::RED, PieceKind::Chariot) => "R",
+54	        (Side::RED, PieceKind::Horse) => "N",
+55	        (Side::RED, PieceKind::Cannon) => "C",
+56	        (Side::RED, PieceKind::Soldier) => "P",
+57	        (Side::BLACK, PieceKind::General) => "k",
+58	        (Side::BLACK, PieceKind::Advisor) => "a",
+59	        (Side::BLACK, PieceKind::Elephant) => "b",
+60	        (Side::BLACK, PieceKind::Chariot) => "r",
+61	        (Side::BLACK, PieceKind::Horse) => "n",
+62	        (Side::BLACK, PieceKind::Cannon) => "c",
+63	        (Side::BLACK, PieceKind::Soldier) => "p",
+64	        (_, PieceKind::General) => "K*",
+65	        (_, PieceKind::Advisor) => "A*",
+66	        (_, PieceKind::Elephant) => "B*",
+67	        (_, PieceKind::Chariot) => "R*",
+68	        (_, PieceKind::Horse) => "N*",
+69	        (_, PieceKind::Cannon) => "C*",
+70	        (_, PieceKind::Soldier) => "P*",
+71	    }
+72	}
+73	
+74	/// Hidden / face-down piece (banqi pre-flip).
+75	pub fn hidden(style: Style) -> &'static str {
+76	    match style {
+77	        Style::Cjk => "暗",
+78	        Style::Ascii => "?",
+79	    }
+80	}
+81	
+82	/// Human-readable side label.
+83	pub fn side_name(side: Side, style: Style) -> &'static str {
+84	    match (side, style) {
+85	        (Side::RED, Style::Cjk) => "Red 紅",
+86	        (Side::BLACK, Style::Cjk) => "Black 黑",
+87	        (Side::RED, Style::Ascii) => "Red",
+88	        (Side::BLACK, Style::Ascii) => "Black",
+89	        (_, Style::Cjk) => "Green 綠",
+90	        (_, Style::Ascii) => "Green",
+91	    }
+92	}
+93	
+94	#[cfg(test)]
+95	mod tests {
+96	    use super::*;
+97	
+98	    #[test]
+99	    fn glyph_table_total_for_red_and_black() {
+100	        for kind in PieceKind::ALL {
+101	            for side in [Side::RED, Side::BLACK] {
+102	                assert!(!glyph(kind, side, Style::Cjk).is_empty());
+103	                assert!(!glyph(kind, side, Style::Ascii).is_empty());
+104	            }
+105	        }
+106	    }
+107	
+108	    #[test]
+109	    fn red_and_black_distinct_in_cjk() {
+110	        for kind in PieceKind::ALL {
+111	            assert_ne!(
+112	                glyph(kind, Side::RED, Style::Cjk),
+113	                glyph(kind, Side::BLACK, Style::Cjk),
+114	                "Red and Black share a CJK glyph for {:?}",
+115	                kind
+116	            );
+117	        }
+118	    }
+119	
+120	    #[test]
+121	    fn hidden_renders() {
+122	        assert_eq!(hidden(Style::Ascii), "?");
+123	        assert!(!hidden(Style::Cjk).is_empty());
+124	    }
+125	}
+126
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/board.rs`
+
+```text
+1	//! SVG board renderer. Variant-agnostic: takes a `PlayerView` + observer +
+2	//! a click callback, and lays cells on the intersection grid that the TUI
+3	//! also uses (see `crate::orient`).
+4	
+5	use chess_core::board::BoardShape;
+6	use chess_core::coord::Square;
+7	use chess_core::piece::Side;
+8	use chess_core::view::{PlayerView, VisibleCell};
+9	use leptos::*;
+10	
+11	use crate::glyph::{self, Style};
+12	use crate::orient::{display_dims, square_at_display};
+13	use crate::state::legal_targets;
+14	
+15	pub const CELL: i32 = 60;
+16	pub const PAD: i32 = 30;
+17	const RIVER_TOP_ROW: u8 = 4;
+18	const RIVER_BOT_ROW: u8 = 5;
+19	const TILE_RADIUS: i32 = 24;
+20	
+21	#[component]
+22	pub fn Board(
+23	    shape: BoardShape,
+24	    observer: Side,
+25	    #[prop(into)] view: Signal<PlayerView>,
+26	    #[prop(into)] selected: Signal<Option<Square>>,
+27	    #[prop(into)] on_click: Callback<Square>,
+28	) -> impl IntoView {
+29	    let (rows, cols) = display_dims(shape);
+30	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+31	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+32	    let viewbox = format!("0 0 {} {}", view_w, view_h);
+33	    let style = Style::Cjk;
+34	
+35	    view! {
+36	        <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
+37	            <rect class="board-bg" x="0" y="0" width="100%" height="100%"/>
+38	            <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
+39	            <g class="river-layer">{river_text(shape, cols)}</g>
+40	            <g class="palace-layer">{palace_diagonals(shape)}</g>
+41	            <g class="overlay-layer">
+42	                {move || selection_marker(selected.get(), observer, shape)}
+43	                {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
+44	            </g>
+45	            <g class="pieces-layer">
+46	                {move || pieces_view(&view.get(), observer, shape, style)}
+47	            </g>
+48	            <g class="cells-layer">
+49	                {hit_cells(rows, cols, observer, shape, on_click)}
+50	            </g>
+51	        </svg>
+52	    }
+53	}
+54	
+55	#[inline]
+56	fn intersection(row: u8, col: u8) -> (i32, i32) {
+57	    (PAD + col as i32 * CELL, PAD + row as i32 * CELL)
+58	}
+59	
+60	fn grid_lines(shape: BoardShape, rows: u8, cols: u8) -> View {
+61	    let is_xiangqi = matches!(shape, BoardShape::Xiangqi9x10);
+62	    let mut out: Vec<View> = Vec::with_capacity(rows as usize + cols as usize * 2);
+63	    for r in 0..rows {
+64	        let y = PAD + r as i32 * CELL;
+65	        let x1 = PAD;
+66	        let x2 = PAD + (cols as i32 - 1) * CELL;
+67	        out.push(view! { <line class="grid" x1=x1 y1=y x2=x2 y2=y/> }.into_view());
+68	    }
+69	    for c in 0..cols {
+70	        let x = PAD + c as i32 * CELL;
+71	        let is_border = c == 0 || c == cols - 1;
+72	        let y_top = PAD;
+73	        let y_bot = PAD + (rows as i32 - 1) * CELL;
+74	        if is_xiangqi && !is_border {
+75	            let y_river_top = PAD + RIVER_TOP_ROW as i32 * CELL;
+76	            let y_river_bot = PAD + RIVER_BOT_ROW as i32 * CELL;
+77	            out.push(
+78	                view! {
+79	                    <line class="grid" x1=x y1=y_top x2=x y2=y_river_top/>
+80	                    <line class="grid" x1=x y1=y_river_bot x2=x y2=y_bot/>
+81	                }
+82	                .into_view(),
+83	            );
+84	        } else {
+85	            out.push(view! { <line class="grid" x1=x y1=y_top x2=x y2=y_bot/> }.into_view());
+86	        }
+87	    }
+88	    out.into_view()
+89	}
+90	
+91	fn river_text(shape: BoardShape, cols: u8) -> View {
+92	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+93	        return ().into_view();
+94	    }
+95	    let cx = PAD + (cols as i32 - 1) * CELL / 2;
+96	    let cy = PAD + (RIVER_TOP_ROW as i32 * CELL + RIVER_BOT_ROW as i32 * CELL) / 2;
+97	    view! {
+98	        <text class="river-text" x=cx y=cy text-anchor="middle" dominant-baseline="central">
+99	            "楚 河 漢 界"
+100	        </text>
+101	    }
+102	    .into_view()
+103	}
+104	
+105	fn palace_diagonals(shape: BoardShape) -> View {
+106	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+107	        return ().into_view();
+108	    }
+109	    // Files 3..5; top palace = display rows 0..2; bottom palace = rows 7..9.
+110	    // Symmetric for both observers because the palace box is centered on the file axis.
+111	    let segments = [
+112	        (intersection(0, 3), intersection(2, 5)),
+113	        (intersection(0, 5), intersection(2, 3)),
+114	        (intersection(7, 3), intersection(9, 5)),
+115	        (intersection(7, 5), intersection(9, 3)),
+116	    ];
+117	    segments
+118	        .into_iter()
+119	        .map(|(a, b)| view! { <line class="palace" x1=a.0 y1=a.1 x2=b.0 y2=b.1/> }.into_view())
+120	        .collect::<Vec<View>>()
+121	        .into_view()
+122	}
+123	
+124	fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Style) -> View {
+125	    let (rows, cols) = display_dims(shape);
+126	    let mut out: Vec<View> = Vec::new();
+127	    for row in 0..rows {
+128	        for col in 0..cols {
+129	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+130	            let cell = view.cells[sq.0 as usize];
+131	            let (cx, cy) = intersection(row, col);
+132	            match cell {
+133	                VisibleCell::Empty => {}
+134	                VisibleCell::Hidden => {
+135	                    out.push(
+136	                        view! {
+137	                            <g class="tile hidden" transform=format!("translate({}, {})", cx, cy)>
+138	                                <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
+139	                                <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
+140	                                    {glyph::hidden(style)}
+141	                                </text>
+142	                            </g>
+143	                        }
+144	                        .into_view(),
+145	                    );
+146	                }
+147	                VisibleCell::Revealed(p) => {
+148	                    let side_class = match p.piece.side {
+149	                        Side::RED => "red",
+150	                        Side::BLACK => "black",
+151	                        _ => "green",
+152	                    };
+153	                    out.push(
+154	                        view! {
+155	                            <g class=format!("tile piece {}", side_class) transform=format!("translate({}, {})", cx, cy)>
+156	                                <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
+157	                                <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
+158	                                    {glyph::glyph(p.piece.kind, p.piece.side, style)}
+159	                                </text>
+160	                            </g>
+161	                        }
+162	                        .into_view(),
+163	                    );
+164	                }
+165	            }
+166	        }
+167	    }
+168	    out.into_view()
+169	}
+170	
+171	fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape) -> View {
+172	    let Some(sq) = selected else { return ().into_view() };
+173	    let (rows, cols) = display_dims(shape);
+174	    for row in 0..rows {
+175	        for col in 0..cols {
+176	            if square_at_display(row, col, observer, shape) == Some(sq) {
+177	                let (cx, cy) = intersection(row, col);
+178	                return view! { <circle class="selection" cx=cx cy=cy r="28"/> }.into_view();
+179	            }
+180	        }
+181	    }
+182	    ().into_view()
+183	}
+184	
+185	fn move_dots_view(
+186	    view: &PlayerView,
+187	    selected: Option<Square>,
+188	    observer: Side,
+189	    shape: BoardShape,
+190	) -> View {
+191	    let Some(from) = selected else { return ().into_view() };
+192	    let targets = legal_targets(view, from);
+193	    if targets.is_empty() {
+194	        return ().into_view();
+195	    }
+196	    let (rows, cols) = display_dims(shape);
+197	    let mut out: Vec<View> = Vec::new();
+198	    for row in 0..rows {
+199	        for col in 0..cols {
+200	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+201	            if targets.contains(&sq) {
+202	                let (cx, cy) = intersection(row, col);
+203	                // Distinct dot for "move to my own square" (banqi reveal) — same
+204	                // visual treatment for now; refined in commit 3.
+205	                out.push(view! { <circle class="move-dot" cx=cx cy=cy r="9"/> }.into_view());
+206	            }
+207	        }
+208	    }
+209	    out.into_view()
+210	}
+211	
+212	fn hit_cells(
+213	    rows: u8,
+214	    cols: u8,
+215	    observer: Side,
+216	    shape: BoardShape,
+217	    on_click: Callback<Square>,
+218	) -> View {
+219	    let mut out: Vec<View> = Vec::with_capacity(rows as usize * cols as usize);
+220	    for row in 0..rows {
+221	        for col in 0..cols {
+222	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+223	            let x = col as i32 * CELL;
+224	            let y = row as i32 * CELL;
+225	            out.push(
+226	                view! {
+227	                    <rect
+228	                        class="cell-hit"
+229	                        x=x y=y width=CELL height=CELL
+230	                        on:click=move |_| on_click.call(sq)
+231	                    />
+232	                }
+233	                .into_view(),
+234	            );
+235	        }
+236	    }
+237	    out.into_view()
+238	}
+239
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:34Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/picker.rs`
+
+```text
+1	use leptos::*;
+2	use leptos_router::A;
+3	
+4	#[component]
+5	pub fn Picker() -> impl IntoView {
+6	    view! {
+7	        <section class="picker">
+8	            <h1>"Chinese Chess"</h1>
+9	            <p class="subtitle">
+10	                "Pick a variant for local pass-and-play, or join the online lobby."
+11	            </p>
+12	            <div class="picker-grid">
+13	                <A href="/local/xiangqi" class="variant-card">
+14	                    <h2>"Xiangqi 象棋"</h2>
+15	                    <p>"Standard 9×10 Chinese chess."</p>
+16	                </A>
+17	                <A href="/local/banqi" class="variant-card">
+18	                    <h2>"Banqi 暗棋"</h2>
+19	                    <p>"Hidden-piece variant on a 4×8 board."</p>
+20	                </A>
+21	                <A href="/local/three-kingdom" class="variant-card">
+22	                    <h2>"Three-Kingdom 三國暗棋"</h2>
+23	                    <p>"3-player banqi (engine still WIP)."</p>
+24	                </A>
+25	                <A href="/lobby" class="variant-card variant-card--online">
+26	                    <h2>"Online"</h2>
+27	                    <p>"Browse rooms or create your own."</p>
+28	                </A>
+29	            </div>
+30	        </section>
+31	    }
+32	}
+33
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:38Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+1	use chess_core::coord::Square;
+2	use chess_core::piece::Side;
+3	use chess_core::rules::{HouseRules, RuleSet, Variant};
+4	use chess_core::state::GameState;
+5	use chess_core::view::{PlayerView, VisibleCell};
+6	use leptos::*;
+7	use leptos_router::use_params_map;
+8	
+9	use crate::components::board::Board;
+10	use crate::components::sidebar::Sidebar;
+11	use crate::routes::parse_variant_slug;
+12	use crate::state::find_move;
+13	
+14	#[component]
+15	pub fn LocalPage() -> impl IntoView {
+16	    let params = use_params_map();
+17	    let resolved = move || -> Result<(Variant, RuleSet, bool), String> {
+18	        let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
+19	        match parse_variant_slug(&slug) {
+20	            Some(Variant::Xiangqi) => Ok((Variant::Xiangqi, RuleSet::xiangqi_casual(), false)),
+21	            Some(Variant::Banqi) => {
+22	                Ok((Variant::Banqi, RuleSet::banqi_with_seed(HouseRules::empty(), 42), false))
+23	            }
+24	            // Three-kingdom: engine ships an empty 4×8 board. Render it but
+25	            // disable interaction and overlay a "WIP" banner — see
+26	            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
+27	            Some(Variant::ThreeKingdomBanqi) => {
+28	                Ok((Variant::ThreeKingdomBanqi, RuleSet::three_kingdom(), true))
+29	            }
+30	            None => Err(format!("Unknown variant: {}", slug)),
+31	        }
+32	    };
+33	
+34	    move || match resolved() {
+35	        Ok((variant, rules, wip)) => {
+36	            view! { <LocalGame variant=variant rules=rules wip=wip/> }.into_view()
+37	        }
+38	        Err(msg) => view! {
+39	            <section class="game-page game-page--single">
+40	                <div>
+41	                    <a href="/" class="back-link">"← Back to picker"</a>
+42	                    <h2>"Variant unavailable"</h2>
+43	                    <p class="subtitle">{msg}</p>
+44	                </div>
+45	            </section>
+46	        }
+47	        .into_view(),
+48	    }
+49	}
+50	
+51	#[component]
+52	fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
+53	    let initial_rules = rules.clone();
+54	    let state = create_rw_signal(GameState::new(rules));
+55	    let selected = create_rw_signal::<Option<Square>>(None);
+56	
+57	    // Local pass-and-play renders from a fixed Red-side observer (board never
+58	    // flips on turn change). Legal moves come from the projection for the
+59	    // *current* side-to-move so click-to-move uses the right list.
+60	    let observer = Side::RED;
+61	    let shape = state.with_untracked(|s| s.board.shape());
+62	
+63	    let view = create_memo(move |_| state.with(|s| PlayerView::project(s, s.side_to_move)));
+64	
+65	    let on_click: Callback<Square> = Callback::new(move |sq: Square| {
+66	        if wip {
+67	            return;
+68	        }
+69	        let v = view.get();
+70	        let cur = selected.get();
+71	
+72	        if cur == Some(sq) {
+73	            selected.set(None);
+74	            return;
+75	        }
+76	
+77	        if let Some(from) = cur {
+78	            if let Some(mv) = find_move(&v, from, sq) {
+79	                state.update(|s| {
+80	                    s.make_move(&mv).expect("legal move from view");
+81	                    s.refresh_status();
+82	                });
+83	                selected.set(None);
+84	                return;
+85	            }
+86	        }
+87	
+88	        let cell = v.cells[sq.0 as usize];
+89	        match cell {
+90	            VisibleCell::Revealed(p) if p.piece.side == v.side_to_move => {
+91	                selected.set(Some(sq));
+92	            }
+93	            VisibleCell::Hidden => {
+94	                // Banqi flip — engine emits `Reveal { at }` whose origin and
+95	                // target both equal `sq`. Apply directly.
+96	                if let Some(mv) = find_move(&v, sq, sq) {
+97	                    state.update(|s| {
+98	                        s.make_move(&mv).expect("legal reveal");
+99	                        s.refresh_status();
+100	                    });
+101	                    selected.set(None);
+102	                }
+103	            }
+104	            _ => {
+105	                selected.set(None);
+106	            }
+107	        }
+108	    });
+109	
+110	    let on_undo: Callback<()> = Callback::new(move |_| {
+111	        if wip {
+112	            return;
+113	        }
+114	        state.update(|s| {
+115	            let _ = s.unmake_move();
+116	            s.refresh_status();
+117	        });
+118	        selected.set(None);
+119	    });
+120	
+121	    let on_new_game: Callback<()> = Callback::new({
+122	        let initial_rules = initial_rules.clone();
+123	        move |_| {
+124	            state.set(GameState::new(initial_rules.clone()));
+125	            selected.set(None);
+126	        }
+127	    });
+128	
+129	    view! {
+130	        <section class="game-page">
+131	            <div class="board-pane">
+132	                <Board
+133	                    shape=shape
+134	                    observer=observer
+135	                    view=view
+136	                    selected=selected
+137	                    on_click=on_click
+138	                />
+139	                <Show when=move || wip>
+140	                    <div class="wip-overlay">
+141	                        <div class="wip-banner">
+142	                            <h3>"Three-Kingdom Banqi 三國暗棋"</h3>
+143	                            <p>
+144	                                "Engine still WIP — pieces, rules, and 3-seat turn order land in PR-2. "
+145	                                "See "
+146	                                <code>"backlog/three-kingdoms-banqi.md"</code>
+147	                                "."
+148	                            </p>
+149	                        </div>
+150	                    </div>
+151	                </Show>
+152	            </div>
+153	            <Sidebar
+154	                variant=variant
+155	                view=view
+156	                on_new_game=on_new_game
+157	                on_undo=on_undo
+158	                wip=wip
+159	            />
+160	        </section>
+161	    }
+162	}
+163
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:38Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+1	:root {
+2	    --bg: #1a1614;
+3	    --fg: #f4d2a3;
+4	    --board: #f0c98c;
+5	    --board-edge: #6b4a1f;
+6	    --grid: #5a3b1c;
+7	    --red: #b22222;
+8	    --black: #1a1a1a;
+9	    --green: #228b22;
+10	    --accent: #d4a55c;
+11	    --muted: #7a6c5a;
+12	    --select-bg: rgba(80, 60, 20, 0.85);
+13	    --legal-bg: rgba(40, 80, 40, 0.65);
+14	    --tile-back: #d8a96b;
+15	    --tile-disc: #fffbe6;
+16	    --river: #5a8fbf;
+17	    font-family: ui-sans-serif, "Noto Sans CJK SC", "Noto Sans CJK TC", system-ui, sans-serif;
+18	}
+19	
+20	* { box-sizing: border-box; }
+21	
+22	body {
+23	    margin: 0;
+24	    background: var(--bg);
+25	    color: var(--fg);
+26	    min-height: 100vh;
+27	    display: grid;
+28	    place-items: start center;
+29	}
+30	
+31	.app-shell {
+32	    width: min(1100px, 100%);
+33	    padding: 2rem 1rem;
+34	}
+35	
+36	.picker h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 0.5rem; }
+37	.subtitle { color: var(--muted); margin: 0 0 2rem; }
+38	
+39	.picker-grid {
+40	    display: grid;
+41	    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+42	    gap: 1rem;
+43	}
+44	
+45	.variant-card {
+46	    display: block;
+47	    padding: 1.25rem;
+48	    background: rgba(244, 210, 163, 0.06);
+49	    border: 1px solid var(--grid);
+50	    border-radius: 0.75rem;
+51	    color: inherit;
+52	    text-decoration: none;
+53	    transition: background 0.12s ease, border-color 0.12s ease;
+54	}
+55	.variant-card:hover { background: rgba(244, 210, 163, 0.12); border-color: var(--accent); }
+56	.variant-card h2 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+57	.variant-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+58	.variant-card--online { background: rgba(178, 34, 34, 0.1); }
+59	.variant-card--online:hover { background: rgba(178, 34, 34, 0.2); }
+60	
+61	.game-page {
+62	    display: grid;
+63	    grid-template-columns: minmax(0, 1fr) 280px;
+64	    gap: 1.5rem;
+65	    align-items: start;
+66	}
+67	.game-page--single { grid-template-columns: 1fr; }
+68	@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+69	
+70	.back-link {
+71	    display: inline-block;
+72	    color: var(--muted);
+73	    text-decoration: none;
+74	}
+75	.back-link:hover { color: var(--accent); }
+76	
+77	/* Board pane + SVG. */
+78	.board-pane {
+79	    position: relative;
+80	    background: var(--board);
+81	    border: 4px solid var(--board-edge);
+82	    border-radius: 0.5rem;
+83	    padding: 0.5rem;
+84	    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+85	}
+86	
+87	/* Three-kingdom WIP overlay. */
+88	.wip-overlay {
+89	    position: absolute;
+90	    inset: 0;
+91	    background: rgba(26, 22, 20, 0.78);
+92	    display: grid;
+93	    place-items: center;
+94	    border-radius: 0.5rem;
+95	    pointer-events: none;
+96	}
+97	.wip-banner {
+98	    background: var(--bg);
+99	    color: var(--fg);
+100	    border: 1px solid var(--accent);
+101	    border-radius: 0.5rem;
+102	    padding: 1.25rem 1.5rem;
+103	    max-width: 80%;
+104	    text-align: center;
+105	    pointer-events: auto;
+106	}
+107	.wip-banner h3 { margin: 0 0 0.4rem; color: var(--accent); }
+108	.wip-banner p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+109	.wip-banner code {
+110	    background: rgba(244, 210, 163, 0.1);
+111	    padding: 0.05rem 0.3rem;
+112	    border-radius: 0.2rem;
+113	    color: var(--fg);
+114	}
+115	.board {
+116	    display: block;
+117	    width: 100%;
+118	    height: auto;
+119	    max-height: 80vh;
+120	}
+121	.board-bg { fill: var(--board); }
+122	.grid { stroke: var(--grid); stroke-width: 1.5; }
+123	.palace { stroke: var(--grid); stroke-width: 1.2; opacity: 0.85; }
+124	.river-text {
+125	    fill: var(--river);
+126	    font-size: 28px;
+127	    letter-spacing: 0.6em;
+128	    font-weight: 600;
+129	    user-select: none;
+130	    pointer-events: none;
+131	}
+132	
+133	/* Pieces — discs with a centered glyph. */
+134	.tile { pointer-events: none; }
+135	.tile-disc { fill: var(--tile-disc); stroke: var(--grid); stroke-width: 1.5; }
+136	.tile-glyph { font-size: 30px; font-weight: 700; user-select: none; }
+137	.tile.piece.red .tile-glyph { fill: var(--red); }
+138	.tile.piece.black .tile-glyph { fill: var(--black); }
+139	.tile.piece.green .tile-glyph { fill: var(--green); }
+140	
+141	.selection {
+142	    fill: none;
+143	    stroke: var(--accent);
+144	    stroke-width: 3;
+145	    pointer-events: none;
+146	}
+147	.move-dot {
+148	    fill: var(--legal-bg);
+149	    pointer-events: none;
+150	}
+151	
+152	/* Hit-test cells. Transparent but clickable. */
+153	.cell-hit { fill: transparent; cursor: pointer; }
+154	.cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+155	
+156	/* Sidebar. */
+157	.sidebar {
+158	    background: rgba(244, 210, 163, 0.04);
+159	    border: 1px solid var(--grid);
+160	    border-radius: 0.5rem;
+161	    padding: 1rem 1.25rem;
+162	    display: grid;
+163	    gap: 0.65rem;
+164	}
+165	.variant-label { margin: 0; font-size: 1.1rem; }
+166	.turn-row { display: flex; align-items: baseline; gap: 0.4rem; }
+167	.turn-prefix { color: var(--muted); }
+168	.turn-red { color: var(--red); font-weight: 700; }
+169	.turn-black { color: var(--fg); font-weight: 700; }
+170	.turn-green { color: var(--green); font-weight: 700; }
+171	.status { margin: 0; font-weight: 600; }
+172	.status.ongoing { color: var(--muted); font-weight: 400; }
+173	.status.won { color: var(--accent); }
+174	.status.drawn { color: var(--muted); }
+175	.muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+176	.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+177	.btn {
+178	    background: rgba(244, 210, 163, 0.08);
+179	    color: var(--fg);
+180	    border: 1px solid var(--grid);
+181	    border-radius: 0.4rem;
+182	    padding: 0.4rem 0.8rem;
+183	    cursor: pointer;
+184	    font: inherit;
+185	}
+186	.btn:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.16); }
+187	.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+188	.btn-primary {
+189	    background: rgba(178, 34, 34, 0.6);
+190	    border-color: var(--red);
+191	    color: #fffbe6;
+192	    font-weight: 600;
+193	}
+194	.btn-primary:hover { background: rgba(178, 34, 34, 0.78); }
+195	
+196	/* Lobby. */
+197	.lobby { display: grid; gap: 1rem; }
+198	.lobby h2 { margin: 0; }
+199	.lobby h3 { margin: 1rem 0 0; }
+200	.lobby-form {
+201	    display: grid;
+202	    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+203	    gap: 0.5rem;
+204	    align-items: stretch;
+205	}
+206	@media (max-width: 600px) {
+207	    .lobby-form { grid-template-columns: 1fr; }
+208	}
+209	.text-input {
+210	    background: rgba(244, 210, 163, 0.06);
+211	    color: var(--fg);
+212	    border: 1px solid var(--grid);
+213	    border-radius: 0.4rem;
+214	    padding: 0.5rem 0.75rem;
+215	    font: inherit;
+216	}
+217	.text-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+218	
+219	.rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+220	.room-row {
+221	    display: grid;
+222	    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto auto;
+223	    gap: 0.75rem;
+224	    align-items: center;
+225	    padding: 0.6rem 0.9rem;
+226	    background: rgba(244, 210, 163, 0.04);
+227	    border: 1px solid var(--grid);
+228	    border-radius: 0.4rem;
+229	    cursor: pointer;
+230	}
+231	.room-row:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.1); }
+232	.room-id { font-weight: 600; }
+233	.room-variant { color: var(--muted); font-size: 0.9rem; }
+234	.room-seats { color: var(--muted); font-size: 0.9rem; }
+235	.room-lock { font-size: 0.85rem; }
+236	.room-status { font-size: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 0.2rem; }
+237	.room-status.lobby { background: rgba(122, 108, 90, 0.3); color: var(--fg); }
+238	.room-status.playing { background: rgba(40, 120, 60, 0.4); color: #d6f3d8; }
+239	.room-status.finished { background: rgba(178, 34, 34, 0.3); color: #f3d6d6; }
+240	
+241	/* Connection banner. */
+242	.conn-banner { margin: 0; padding: 0.4rem 0.75rem; border-radius: 0.3rem; font-size: 0.9rem; }
+243	.conn-banner.ok { background: rgba(40, 120, 60, 0.18); color: #d6f3d8; }
+244	.conn-banner.pending { background: rgba(212, 165, 92, 0.15); color: var(--accent); }
+245	.conn-banner.error { background: rgba(178, 34, 34, 0.2); color: #f3d6d6; }
+246	
+247	/* Online play placeholder + toast. */
+248	.conn-placeholder {
+249	    aspect-ratio: 9 / 10;
+250	    display: grid;
+251	    place-items: center;
+252	    text-align: center;
+253	    color: var(--muted);
+254	    padding: 2rem;
+255	}
+256	.toast {
+257	    position: absolute;
+258	    left: 50%;
+259	    bottom: 1rem;
+260	    transform: translateX(-50%);
+261	    background: rgba(178, 34, 34, 0.92);
+262	    color: #fffbe6;
+263	    padding: 0.6rem 1rem;
+264	    border-radius: 0.4rem;
+265	    font-weight: 500;
+266	    cursor: pointer;
+267	    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+268	}
+269
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Look for first-flip rule comments
+
+`grep -rn "first" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/banqi.rs | head -40`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/banqi.rs:47:    // regardless of which side controls the seat. The first flip locks
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/banqi.rs:132:        // Find the screen (first occupied square in this direction).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Trace how reveal assigns side
+
+`grep -rn "Reveal\|first.*flip\|side_to_move\|side =" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state.rs | head -40`
+
+```text
+ugrep: warning: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state.rs: No such file or directory
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List the available rule presets
+
+`grep -rn "HouseRules\b\|banqi_with_seed\|xiangqi_casual\|xiangqi_strict" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs | head -40`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:4://! on `Variant` and consulting `HouseRules` bitflags. See ADR-0003.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:11:pub use house::{HouseRules, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:42:    pub house: HouseRules,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:59:            house: HouseRules::empty(),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:69:    pub fn xiangqi_casual() -> Self {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:73:    pub fn banqi(house: HouseRules) -> Self {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:83:    pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:96:            house: HouseRules::empty(),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:128:        let r = RuleSet::banqi(HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH);
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:129:        assert!(r.house.contains(HouseRules::CHAIN_CAPTURE));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:130:        assert!(r.house.contains(HouseRules::CHARIOT_RUSH));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:131:        assert!(!r.house.contains(HouseRules::DARK_CHAIN));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/rules/mod.rs:136:        let r = RuleSet::banqi_with_seed(HouseRules::empty(), 42);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:55Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/banqi.rs`
+
+```text
+30	    let house = state.rules.house;
+31	    gen_reveals(state, out);
+32	
+33	    let me = state.side_to_move;
+34	    let board = &state.board;
+35	
+36	    for sq in board.squares() {
+37	        let Some(pos) = board.get(sq) else { continue };
+38	        if !pos.revealed || pos.piece.side != me {
+39	            continue;
+40	        }
+41	        gen_for_face_up_piece(state, sq, pos.piece, house, out);
+42	    }
+43	}
+44	
+45	fn gen_reveals(state: &GameState, out: &mut MoveList) {
+46	    // Banqi rule: ANY face-down piece can be flipped on a player's turn,
+47	    // regardless of which side controls the seat. The first flip locks
+48	    // the side assignment (handled in state::make_move).
+49	    for sq in state.board.squares() {
+50	        if let Some(pos) = state.board.get(sq) {
+51	            if !pos.revealed {
+52	                out.push(Move::Reveal { at: sq, revealed: None });
+53	            }
+54	        }
+55	    }
+56	}
+57	
+58	fn gen_for_face_up_piece(
+59	    state: &GameState,
+60	    from: Square,
+61	    piece: Piece,
+62	    house: HouseRules,
+63	    out: &mut MoveList,
+64	) {
+65	    let board = &state.board;
+66	
+67	    // 1-step orthogonal (and the 連吃 chains it seeds).
+68	    for &dir in &Direction::ORTHOGONAL {
+69	        let Some(to) = board.step(from, dir) else { continue };
+70	        match board.get(to) {
+71	            None => {
+72	                // Empty: 1-step slide.
+73	                out.push(Move::Step { from, to });
+74	            }
+75	            Some(target) if !target.revealed => {
+76	                // Face-down piece blocks (can't capture without flipping).
+77	                // CANNON jumps handled separately below.
+78	            }
+79	            Some(target) if target.piece.side == piece.side => {
+80	                // Own piece: blocked.
+81	            }
+82	            Some(target) => {
+83	                if can_capture(piece.kind, target.piece.kind) {
+84	                    out.push(Move::Capture { from, to, captured: target.piece });
+85	                    if house.contains(HouseRules::CHAIN_CAPTURE) {
+86	                        gen_chain_extensions(board, piece, from, to, dir, target.piece, out);
+87	                    }
+88	                }
+89	            }
+90	        }
+91	    }
+92	
+93	    // Chariot rush replaces the chariot's 1-step capture with a ray.
+94	    // We've already emitted the 1-step Step/Capture above; the ray emits
+95	    // additional sliding moves. The 1-step capture is still in the list
+96	    // (a strict subset of CHARIOT_RUSH's possibilities).
+97	    if piece.kind == PieceKind::Chariot && house.contains(HouseRules::CHARIOT_RUSH) {
+98	        gen_chariot_rush(board, from, piece.side, out);
+99	    }
+100	
+101	    // Cannon: jump-over-screen captures (always, this is base banqi).
+102	    if piece.kind == PieceKind::Cannon {
+103	        gen_cannon_jumps(board, from, piece.side, out);
+104	    }
+105	}
+106	
+107	fn gen_chariot_rush(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+108	    for &dir in &Direction::ORTHOGONAL {
+109	        let (walked, blocker) = board.ray(from, dir);
+110	        // Steps 1..N are non-capturing slides. Step 1 was already emitted
+111	        // by the base rule, but it's harmless to push duplicates — `make_move`
+112	        // is idempotent w.r.t. matching moves and the legal-moves consumer
+113	        // dedups via SmallVec ordering. Actually let's avoid duplicates:
+114	        for sq in walked.iter().skip(1) {
+115	            out.push(Move::Step { from, to: *sq });
+116	        }
+117	        if let Some(target_sq) = blocker {
+118	            if let Some(pos) = board.get(target_sq) {
+119	                if pos.revealed && pos.piece.side != side {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:19:55Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/mod.rs`
+
+```text
+1	//! Rules.
+2	//!
+3	//! `RuleSet` is plain data; move generation is free functions dispatching
+4	//! on `Variant` and consulting `HouseRules` bitflags. See ADR-0003.
+5	
+6	pub mod banqi;
+7	pub mod house;
+8	pub mod three_kingdom;
+9	pub mod xiangqi;
+10	
+11	pub use house::{HouseRules, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+12	
+13	use serde::{Deserialize, Serialize};
+14	
+15	use crate::moves::MoveList;
+16	use crate::state::GameState;
+17	
+18	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+19	pub enum Variant {
+20	    Xiangqi,
+21	    Banqi,
+22	    /// 三國暗棋. Move-gen lands in PR 2; type exists from PR 1.
+23	    ThreeKingdomBanqi,
+24	}
+25	
+26	#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+27	pub struct DrawPolicy {
+28	    /// Plies without progress (capture/reveal) before a draw is forced.
+29	    pub no_progress_plies: u16,
+30	    /// How many position repetitions trigger a draw.
+31	    pub repetition_threshold: u8,
+32	}
+33	
+34	impl DrawPolicy {
+35	    pub const XIANGQI: DrawPolicy = DrawPolicy { no_progress_plies: 60, repetition_threshold: 3 };
+36	    pub const BANQI: DrawPolicy = DrawPolicy { no_progress_plies: 40, repetition_threshold: 3 };
+37	}
+38	
+39	#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+40	pub struct RuleSet {
+41	    pub variant: Variant,
+42	    pub house: HouseRules,
+43	    pub draw_policy: DrawPolicy,
+44	    /// Seed for banqi shuffling. `None` = nondeterministic.
+45	    pub banqi_seed: Option<u64>,
+46	    /// Casual / training mode for xiangqi: when true, the legality filter
+47	    /// no longer rejects moves that leave the mover's own general in check.
+48	    /// The game ends only when a general is actually captured
+49	    /// (`WinReason::GeneralCaptured`). Default `false` (standard rules).
+50	    /// `#[serde(default)]` keeps older snapshots loadable.
+51	    #[serde(default)]
+52	    pub xiangqi_allow_self_check: bool,
+53	}
+54	
+55	impl RuleSet {
+56	    pub fn xiangqi() -> Self {
+57	        Self {
+58	            variant: Variant::Xiangqi,
+59	            house: HouseRules::empty(),
+60	            draw_policy: DrawPolicy::XIANGQI,
+61	            banqi_seed: None,
+62	            xiangqi_allow_self_check: false,
+63	        }
+64	    }
+65	
+66	    /// Xiangqi without the self-check legality filter — moves that expose
+67	    /// your own general are permitted; you lose when the general is actually
+68	    /// captured. Useful for casual / "let me lose if I want" play.
+69	    pub fn xiangqi_casual() -> Self {
+70	        Self { xiangqi_allow_self_check: true, ..Self::xiangqi() }
+71	    }
+72	
+73	    pub fn banqi(house: HouseRules) -> Self {
+74	        Self {
+75	            variant: Variant::Banqi,
+76	            house,
+77	            draw_policy: DrawPolicy::BANQI,
+78	            banqi_seed: None,
+79	            xiangqi_allow_self_check: false,
+80	        }
+81	    }
+82	
+83	    pub fn banqi_with_seed(house: HouseRules, seed: u64) -> Self {
+84	        Self {
+85	            variant: Variant::Banqi,
+86	            house,
+87	            draw_policy: DrawPolicy::BANQI,
+88	            banqi_seed: Some(seed),
+89	            xiangqi_allow_self_check: false,
+90	        }
+91	    }
+92	
+93	    pub fn three_kingdom() -> Self {
+94	        Self {
+95	            variant: Variant::ThreeKingdomBanqi,
+96	            house: HouseRules::empty(),
+97	            draw_policy: DrawPolicy::BANQI,
+98	            banqi_seed: None,
+99	            xiangqi_allow_self_check: false,
+100	        }
+101	    }
+102	}
+103	
+104	/// Single dispatch point for move generation. Each variant's `generate`
+105	/// fills `out` with all legal moves for the side to move.
+106	pub fn generate_moves(state: &GameState, out: &mut MoveList) {
+107	    match state.rules.variant {
+108	        Variant::Xiangqi => xiangqi::generate(state, out),
+109	        Variant::Banqi => banqi::generate(state, out),
+110	        Variant::ThreeKingdomBanqi => three_kingdom::generate(state, out),
+111	    }
+112	}
+113	
+114	#[cfg(test)]
+115	mod tests {
+116	    use super::*;
+117	
+118	    #[test]
+119	    fn xiangqi_ruleset_defaults() {
+120	        let r = RuleSet::xiangqi();
+121	        assert_eq!(r.variant, Variant::Xiangqi);
+122	        assert!(r.house.is_empty());
+123	        assert_eq!(r.draw_policy.no_progress_plies, 60);
+124	    }
+125	
+126	    #[test]
+127	    fn banqi_ruleset_carries_house_rules() {
+128	        let r = RuleSet::banqi(HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH);
+129	        assert!(r.house.contains(HouseRules::CHAIN_CAPTURE));
+130	        assert!(r.house.contains(HouseRules::CHARIOT_RUSH));
+131	        assert!(!r.house.contains(HouseRules::DARK_CHAIN));
+132	    }
+133	
+134	    #[test]
+135	    fn banqi_ruleset_with_seed() {
+136	        let r = RuleSet::banqi_with_seed(HouseRules::empty(), 42);
+137	        assert_eq!(r.banqi_seed, Some(42));
+138	    }
+139	}
+140
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find side-locking on first reveal
+
+`grep -rn "Reveal\|first.*flip\|locked\|assign" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/ | head -30`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:48:/// Side ↔ piece-color assignment for banqi (set after the first flip).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:63:    /// Banqi only: established after first flip. `None` until then.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:64:    pub side_assignment: Option<SideAssignment>,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:81:    /// Returns the move pushed to history (with `Reveal` payloads filled in).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:89:        // Normalize the move (fill in Reveal payload from board if missing).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:126:            Move::Reveal { at, revealed: None } => {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:127:                let pos = self.board.get(*at).ok_or(CoreError::Illegal("Reveal: empty"))?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:129:                    return Err(CoreError::Illegal("Reveal: already revealed"));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:131:                Ok(Move::Reveal { at: *at, revealed: Some(pos.piece) })
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:139:            Move::Reveal { at, revealed } => {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:140:                let mut pos = self.board.get(*at).ok_or(CoreError::Illegal("Reveal: empty"))?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:142:                    return Err(CoreError::Illegal("Reveal: already revealed"));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:146:                // First flip in banqi locks side assignment.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:147:                if self.side_assignment.is_none() && self.rules.variant == Variant::Banqi {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:149:                        self.side_assignment =
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:150:                            Some(banqi_side_assignment(self.side_to_move, p.side));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:190:            Move::Reveal { at, .. } => {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:192:                    self.board.get(*at).ok_or(CoreError::Illegal("Undo Reveal: empty"))?;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:195:                // First-flip might have set side_assignment; if this was the first move, clear it.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:197:                    self.side_assignment = None;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:307:fn banqi_side_assignment(flipper: Side, revealed_side: Side) -> SideAssignment {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core/src/state/mod.rs:360:        let m = state.legal_moves().into_iter().find(|m| matches!(m, Move::Reveal { .. })).unwrap();
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:27Z)**_
+
+Let me address each point:
+
+**2. Banqi 翻棋規則** — 引擎已經實作了「首翻定色」: `crates/chess-core/src/state/mod.rs:146-150` —第一個 `Move::Reveal` 觸發 `banqi_side_assignment(flipper, revealed_side)`，把翻棋者鎖定為被翻出的顏色。Web/TUI/net 都跑同一個 engine，所以行為一致。
+
+**3. 規則設定** — 目前 chess-web UI **還沒**暴露任何規則開關：
+- `clients/chess-web/src/pages/local.rs:20-22` 把 xiangqi 寫死 `xiangqi_casual()`、banqi 寫死 `HouseRules::empty()` + `seed=42`。
+- Picker 也只是四個直連卡片，沒有任何 form。
+- engine 那層其實已經支援 xiangqi strict/casual + banqi `HouseRules` (CHAIN_CAPTURE/CHARIOT_RUSH 已實作；DARK_CHAIN/HORSE_DIAGONAL/CANNON_FAST_MOVE 是 P1 stub) + 自訂 seed。
+
+**1. 暗棋空圓形** — 先做這個。`board.rs:135-145` 把 `<text>{glyph::hidden(style)}</text>` 拿掉，只留 `<circle>` 並換個 class 讓 CSS 用木紋色填它，這樣 TUI 那邊還在用的 `glyph::hidden` 不受影響。
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:38Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Sanity-check native compile after the edit
+
+`cargo check -p chess-web 2>&1 | tail -20`
+
+```text
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.65s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:20:50Z)**_
+
+Native check clean. The edit only touched the SVG render path; the wasm32-only deps still typecheck identically since we only changed which class names the markup emits.
+
+對於 **#3 規則設定**，這需要一個 UI 設計決定。我建議以下幾種方向，看你想要哪個：
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:10Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="AskUserQuestion"><details>
+<summary>Tool use: **AskUserQuestion**</summary>
+**Where should rule configuration live in the chess-web UI?**
+
+Options:
+- **Picker form expansion (Recommended)** - Add a small config form below each variant card on the home page (xiangqi: strict/casual radio; banqi: house-rules checkboxes + seed input). Pass through URL query strings (?strict=1&seed=42&house=chain,rush) so links are shareable.
+- **In-game gear icon** - Keep picker simple. Add a settings button on the local page that opens a modal — change rules mid-session triggers a 'new game required' prompt.
+- **Both, picker first** - Build picker form now (PR-A); add the in-game gear later as a follow-up. URL params are the single source of truth.
+- **Skip for now, document only** - Add a TODO entry but don't ship UI in this round. You'll specify rule sets via the URL query string only (advanced users).
+
+**Which rule axes should the picker actually expose?** _(select multiple)_
+
+Options:
+- **Xiangqi: strict vs casual (Recommended)** - Single radio. Strict = standard self-check filter; casual = currently default in TUI/web.
+- **Banqi: house-rules checkboxes (Recommended)** - CHAIN_CAPTURE / CHARIOT_RUSH (both wired); DARK_CHAIN / HORSE_DIAGONAL / CANNON_FAST_MOVE shown as disabled with 'WIP' tooltip per the CLAUDE.md gotcha.
+- **Banqi: seed input** - Number field; blank = use thread_rng (non-deterministic). Useful for reproducing positions / sharing puzzles.
+- **Banqi: preset dropdown** - Apply PRESET_TAIWAN / PRESET_AGGRESSIVE / PRESET_PURIST as one-click recipes that just toggle the checkboxes.
+
+
+**Answer:** Both, picker first, Xiangqi: strict vs casual (Recommended), Banqi: house-rules checkboxes (Recommended), Banqi: seed input, Banqi: preset dropdown
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:36Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:37Z)**_
+
+Picker-first + all four axes. Let me build it: pure-logic parser in `routes.rs` (with tests, since that module is native), reactive form in `picker.rs`, and `local.rs` reading the query map.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:38Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/routes.rs`
+
+```text
+1	//! Variant-slug parsing for `/local/:variant`. Pure logic — native-testable.
+2	
+3	use chess_core::rules::Variant;
+4	
+5	pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+6	    match slug {
+7	        "xiangqi" => Some(Variant::Xiangqi),
+8	        "banqi" => Some(Variant::Banqi),
+9	        "three-kingdom" => Some(Variant::ThreeKingdomBanqi),
+10	        _ => None,
+11	    }
+12	}
+13	
+14	pub fn variant_slug(variant: Variant) -> &'static str {
+15	    match variant {
+16	        Variant::Xiangqi => "xiangqi",
+17	        Variant::Banqi => "banqi",
+18	        Variant::ThreeKingdomBanqi => "three-kingdom",
+19	    }
+20	}
+21	
+22	#[cfg(test)]
+23	mod tests {
+24	    use super::*;
+25	
+26	    #[test]
+27	    fn known_slugs_parse() {
+28	        assert!(matches!(parse_variant_slug("xiangqi"), Some(Variant::Xiangqi)));
+29	        assert!(matches!(parse_variant_slug("banqi"), Some(Variant::Banqi)));
+30	        assert!(matches!(parse_variant_slug("three-kingdom"), Some(Variant::ThreeKingdomBanqi)));
+31	    }
+32	
+33	    #[test]
+34	    fn unknown_slug_returns_none() {
+35	        assert!(parse_variant_slug("chess").is_none());
+36	        assert!(parse_variant_slug("").is_none());
+37	        assert!(parse_variant_slug("XIANGQI").is_none());
+38	    }
+39	
+40	    #[test]
+41	    fn slug_round_trip() {
+42	        for v in [Variant::Xiangqi, Variant::Banqi, Variant::ThreeKingdomBanqi] {
+43	            assert_eq!(parse_variant_slug(variant_slug(v)), Some(v));
+44	        }
+45	    }
+46	}
+47
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:38Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./crates/chess-core/src/rules/house.rs`
+
+```text
+1	//! Banqi house rules.
+2	//!
+3	//! Five independent toggles + three named presets. See `docs/rules/banqi-house.md`.
+4	
+5	use bitflags::bitflags;
+6	
+7	bitflags! {
+8	    /// Toggleable banqi house rules. Combine with `|`.
+9	    #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+10	    #[derive(serde::Serialize, serde::Deserialize)]
+11	    pub struct HouseRules: u32 {
+12	        /// 連吃 — chain captures along the same line.
+13	        const CHAIN_CAPTURE     = 1 << 0;
+14	        /// 暗連 — chain through face-down squares (implies CHAIN_CAPTURE).
+15	        const DARK_CHAIN        = 1 << 1;
+16	        /// 車衝 — chariot moves multi-square in a line.
+17	        const CHARIOT_RUSH      = 1 << 2;
+18	        /// 馬斜 — horse moves like xiangqi (L with leg).
+19	        const HORSE_DIAGONAL    = 1 << 3;
+20	        /// 炮快移 — cannon non-capturing move slides any distance.
+21	        const CANNON_FAST_MOVE  = 1 << 4;
+22	    }
+23	}
+24	
+25	/// Classic banqi, no house rules.
+26	pub const PRESET_PURIST: HouseRules = HouseRules::empty();
+27	
+28	/// Common Taiwanese house ruleset: chain captures + chariot rush.
+29	pub const PRESET_TAIWAN: HouseRules = HouseRules::CHAIN_CAPTURE.union(HouseRules::CHARIOT_RUSH);
+30	
+31	/// Aggressive ruleset enabling chain (with dark), chariot rush, horse diagonal.
+32	pub const PRESET_AGGRESSIVE: HouseRules = HouseRules::CHAIN_CAPTURE
+33	    .union(HouseRules::DARK_CHAIN)
+34	    .union(HouseRules::CHARIOT_RUSH)
+35	    .union(HouseRules::HORSE_DIAGONAL);
+36	
+37	/// `DARK_CHAIN` implies `CHAIN_CAPTURE`. Returns the canonical form.
+38	pub fn normalize(mut rules: HouseRules) -> HouseRules {
+39	    if rules.contains(HouseRules::DARK_CHAIN) {
+40	        rules.insert(HouseRules::CHAIN_CAPTURE);
+41	    }
+42	    rules
+43	}
+44	
+45	#[cfg(test)]
+46	mod tests {
+47	    use super::*;
+48	
+49	    #[test]
+50	    fn presets_are_distinct() {
+51	        assert_ne!(PRESET_PURIST, PRESET_TAIWAN);
+52	        assert_ne!(PRESET_TAIWAN, PRESET_AGGRESSIVE);
+53	        assert_ne!(PRESET_PURIST, PRESET_AGGRESSIVE);
+54	    }
+55	
+56	    #[test]
+57	    fn taiwan_preset_has_chain_and_rush() {
+58	        assert!(PRESET_TAIWAN.contains(HouseRules::CHAIN_CAPTURE));
+59	        assert!(PRESET_TAIWAN.contains(HouseRules::CHARIOT_RUSH));
+60	        assert!(!PRESET_TAIWAN.contains(HouseRules::DARK_CHAIN));
+61	    }
+62	
+63	    #[test]
+64	    fn dark_chain_normalizes_to_include_chain() {
+65	        let r = normalize(HouseRules::DARK_CHAIN);
+66	        assert!(r.contains(HouseRules::CHAIN_CAPTURE));
+67	        assert!(r.contains(HouseRules::DARK_CHAIN));
+68	    }
+69	}
+70
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:59Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:24:59Z)**_
+
+I'll add `LocalRulesParams` + parser/builder to `routes.rs`, then wire the picker form and the local-page query reader.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:25:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+//!
+//! Pure logic — native-testable. The picker page builds a query string from
+//! its form state via [`build_local_query`]; the local page parses it back
+//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
+
+use chess_core::rules::{
+    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+};
+
+pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+    match slug {
+        "xiangqi" => Some(Variant::Xiangqi),
+        "banqi" => Some(Variant::Banqi),
+        "three-kingdom" => Some(Variant::ThreeKingdomBanqi),
+        _ => None,
+    }
+}
+
+pub fn variant_slug(variant: Variant) -> &'static str {
+    match variant {
+        Variant::Xiangqi => "xiangqi",
+        Variant::Banqi => "banqi",
+        Variant::ThreeKingdomBanqi => "three-kingdom",
+    }
+}
+
+/// URL-derived rule choices for `/local/:variant`. Used as an intermediate
+/// between the picker form and the engine `RuleSet`.
+#[derive(Clone, Eq, PartialEq, Debug, Default)]
+pub struct LocalRulesParams {
+    /// Xiangqi only. `false` (default) = casual / no self-check filter;
+    /// `true` = standard rules where leaving your general in check is illegal.
+    pub strict: bool,
+    /// Banqi only. Bitflag set; `DARK_CHAIN` auto-implies `CHAIN_CAPTURE`
+    /// after [`house::normalize`] in the parser.
+    pub house: HouseRules,
+    /// Banqi only. `None` = engine picks (non-deterministic on native;
+    /// browser uses `getrandom` JS feature).
+    pub seed: Option<u64>,
+}
+
+/// Parse `?strict=1&house=chain,rush&preset=taiwan&seed=42` into a
+/// [`LocalRulesParams`]. Unknown tokens are silently dropped — this is a
+/// best-effort decoder for shareable URLs.
+///
+/// `house=` overrides `preset=` when both are present; the picker only
+/// emits `house=` so this just covers manually-typed URLs.
+pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesParams {
+    let strict = matches!(get("strict").as_deref(), Some("1") | Some("true"));
+    let preset = get("preset").as_deref().and_then(parse_preset_token);
+    let house_csv = get("house").as_deref().map(parse_house_csv);
+    let house = house_csv.or(preset).unwrap_or_else(HouseRules::empty);
+    let seed = get("seed").and_then(|s| s.parse::<u64>().ok());
+    LocalRulesParams { strict, house: house::normalize(house), seed }
+}
+
+/// Inverse of [`parse_local_rules`] — emits a stable canonical query string
+/// (no leading `?`). Empty result means "use defaults" — the picker drops the
+/// `?` entirely so `/local/xiangqi` with no query is the default-casual URL.
+pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    match variant {
+        Variant::Xiangqi => {
+            if params.strict {
+                parts.push("strict=1".to_string());
+            }
+        }
+        Variant::Banqi => {
+            let csv = house_csv(params.house);
+            if !csv.is_empty() {
+                parts.push(format!("house={}", csv));
+            }
+            if let Some(seed) = params.seed {
+                parts.push(format!("seed={}", seed));
+            }
+        }
+        Variant::ThreeKingdomBanqi => {}
+    }
+    parts.join("&")
+}
+
+/// Build the full path for the picker's "Start" link given the current form.
+/// Always returns `"/local/<slug>"` with the query string appended only when
+/// non-empty.
+pub fn build_local_href(variant: Variant, params: &LocalRulesParams) -> String {
+    let q = build_local_query(variant, params);
+    if q.is_empty() {
+        format!("/local/{}", variant_slug(variant))
+    } else {
+        format!("/local/{}?{}", variant_slug(variant), q)
+    }
+}
+
+/// Convert parsed [`LocalRulesParams`] into the engine `RuleSet` for the
+/// chosen variant. The picker → URL → page flow is the only call site.
+pub fn build_rule_set(variant: Variant, params: &LocalRulesParams) -> RuleSet {
+    match variant {
+        Variant::Xiangqi => {
+            if params.strict {
+                RuleSet::xiangqi()
+            } else {
+                RuleSet::xiangqi_casual()
+            }
+        }
+        Variant::Banqi => match params.seed {
+            Some(seed) => RuleSet::banqi_with_seed(params.house, seed),
+            None => RuleSet::banqi(params.house),
+        },
+        Variant::ThreeKingdomBanqi => RuleSet::three_kingdom(),
+    }
+}
+
+fn parse_house_csv(s: &str) -> HouseRules {
+    let mut out = HouseRules::empty();
+    for tok in s.split(',').map(str::trim).filter(|t| !t.is_empty()) {
+        if let Some(flag) = parse_house_token(tok) {
+            out.insert(flag);
+        }
+    }
+    out
+}
+
+fn house_csv(rules: HouseRules) -> String {
+    let mut parts: Vec<&'static str> = Vec::new();
+    for (flag, tok) in HOUSE_TOKENS {
+        if rules.contains(*flag) {
+            parts.push(tok);
+        }
+    }
+    parts.join(",")
+}
+
+fn parse_house_token(tok: &str) -> Option<HouseRules> {
+    HOUSE_TOKENS.iter().find(|(_, t)| t.eq_ignore_ascii_case(tok)).map(|(f, _)| *f)
+}
+
+fn parse_preset_token(tok: &str) -> Option<HouseRules> {
+    match tok.to_ascii_lowercase().as_str() {
+        "purist" => Some(PRESET_PURIST),
+        "taiwan" => Some(PRESET_TAIWAN),
+        "aggressive" => Some(PRESET_AGGRESSIVE),
+        _ => None,
+    }
+}
+
+const HOUSE_TOKENS: &[(HouseRules, &str)] = &[
+    (HouseRules::CHAIN_CAPTURE, "chain"),
+    (HouseRules::DARK_CHAIN, "dark"),
+    (HouseRules::CHARIOT_RUSH, "rush"),
+    (HouseRules::HORSE_DIAGONAL, "horse"),
+    (HouseRules::CANNON_FAST_MOVE, "cannon"),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn from_pairs(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> + '_ {
+        move |k: &str| pairs.iter().find(|(pk, _)| *pk == k).map(|(_, v)| v.to_string())
+    }
+
+    #[test]
+    fn known_slugs_parse() {
+        assert!(matches!(parse_variant_slug("xiangqi"), Some(Variant::Xiangqi)));
+        assert!(matches!(parse_variant_slug("banqi"), Some(Variant::Banqi)));
+        assert!(matches!(parse_variant_slug("three-kingdom"), Some(Variant::ThreeKingdomBanqi)));
+    }
+
+    #[test]
+    fn unknown_slug_returns_none() {
+        assert!(parse_variant_slug("chess").is_none());
+        assert!(parse_variant_slug("").is_none());
+        assert!(parse_variant_slug("XIANGQI").is_none());
+    }
+
+    #[test]
+    fn slug_round_trip() {
+        for v in [Variant::Xiangqi, Variant::Banqi, Variant::ThreeKingdomBanqi] {
+            assert_eq!(parse_variant_slug(variant_slug(v)), Some(v));
+        }
+    }
+
+    #[test]
+    fn xiangqi_default_is_casual() {
+        let p = parse_local_rules(from_pairs(&[]));
+        assert!(!p.strict);
+        let r = build_rule_set(Variant::Xiangqi, &p);
+        assert!(r.xiangqi_allow_self_check);
+    }
+
+    #[test]
+    fn xiangqi_strict_query_yields_strict_ruleset() {
+        let p = parse_local_rules(from_pairs(&[("strict", "1")]));
+        assert!(p.strict);
+        let r = build_rule_set(Variant::Xiangqi, &p);
+        assert!(!r.xiangqi_allow_self_check);
+    }
+
+    #[test]
+    fn banqi_house_csv_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("house", "chain,rush"), ("seed", "42")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+        assert_eq!(p.seed, Some(42));
+        let q = build_local_query(Variant::Banqi, &p);
+        assert!(q.contains("house=chain,rush"));
+        assert!(q.contains("seed=42"));
+    }
+
+    #[test]
+    fn banqi_dark_chain_normalizes_to_include_chain() {
+        let p = parse_local_rules(from_pairs(&[("house", "dark")]));
+        assert!(p.house.contains(HouseRules::DARK_CHAIN));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+    }
+
+    #[test]
+    fn banqi_preset_taiwan_picks_chain_and_rush() {
+        let p = parse_local_rules(from_pairs(&[("preset", "taiwan")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+    }
+
+    #[test]
+    fn banqi_house_overrides_preset_when_both_set() {
+        let p = parse_local_rules(from_pairs(&[("preset", "taiwan"), ("house", "")]));
+        // Empty house= still wins → no flags.
+        assert!(p.house.is_empty());
+    }
+
+    #[test]
+    fn unknown_house_token_is_dropped_silently() {
+        let p = parse_local_rules(from_pairs(&[("house", "chain,bogus,rush")]));
+        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+    }
+
+    #[test]
+    fn build_local_href_skips_query_when_defaults() {
+        let p = LocalRulesParams::default();
+        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi");
+        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi");
+    }
+
+    #[test]
+    fn build_local_href_includes_query_when_non_default() {
+        let p = LocalRulesParams { strict: true, ..Default::default() };
+        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi?strict=1");
+        let p = LocalRulesParams {
+            strict: false,
+            house: HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH,
+            seed: Some(7),
+        };
+        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi?house=chain,rush&seed=7");
+    }
+
+    #[test]
+    fn three_kingdom_ignores_query() {
+        let p = parse_local_rules(from_pairs(&[("strict", "1"), ("house", "chain"), ("seed", "5")]));
+        let r = build_rule_set(Variant::ThreeKingdomBanqi, &p);
+        assert_eq!(r.variant, Variant::ThreeKingdomBanqi);
+        assert!(r.house.is_empty());
+        assert!(build_local_query(Variant::ThreeKingdomBanqi, &p).is_empty());
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:25:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run new routes tests
+
+`cargo test -p chess-web --lib routes:: 2>&1 | tail -30`
+
+```text
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+error[E0106]: missing lifetime specifier
+   --> clients/chess-web/src/routes.rs:159:80
+    |
+159 |     fn from_pairs(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> + '_ {
+    |                          ---------------                                       ^^ expected named lifetime parameter
+    |
+    = help: this function's return type contains a borrowed value, but the signature does not say which one of `pairs`'s 3 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+    |
+159 -     fn from_pairs(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> + '_ {
+159 +     fn from_pairs<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
+    |
+
+For more information about this error, try `rustc --explain E0106`.
+error: could not compile `chess-web` (lib test) due to 1 previous error
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:25:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-run after lifetime fix
+
+`cargo test -p chess-web --lib routes:: 2>&1 | tail -25`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `test` profile [optimized + debuginfo] target(s) in 5.16s
+     Running unittests src/lib.rs (target/debug/deps/chess_web-f2a6a313409e1b2e)
+
+running 13 tests
+test routes::tests::banqi_dark_chain_normalizes_to_include_chain ... ok
+test routes::tests::banqi_house_csv_round_trips ... ok
+test routes::tests::banqi_preset_taiwan_picks_chain_and_rush ... ok
+test routes::tests::banqi_house_overrides_preset_when_both_set ... ok
+test routes::tests::build_local_href_includes_query_when_non_default ... ok
+test routes::tests::build_local_href_skips_query_when_defaults ... ok
+test routes::tests::known_slugs_parse ... ok
+test routes::tests::slug_round_trip ... ok
+test routes::tests::three_kingdom_ignores_query ... ok
+test routes::tests::unknown_house_token_is_dropped_silently ... ok
+test routes::tests::unknown_slug_returns_none ... ok
+test routes::tests::xiangqi_default_is_casual ... ok
+test routes::tests::xiangqi_strict_query_yields_strict_ruleset ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:07Z)**_
+
+All 13 route tests pass. Now wire the picker form and the local-page reader.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:33Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+use leptos::*;
+use leptos_router::A;
+
+use crate::routes::{build_local_href, LocalRulesParams};
+
+#[component]
+pub fn Picker() -> impl IntoView {
+    view! {
+        <section class="picker">
+            <h1>"Chinese Chess"</h1>
+            <p class="subtitle">
+                "Pick a variant for local pass-and-play, or join the online lobby. "
+                "Form choices encode into the URL so you can share or bookmark a configuration."
+            </p>
+            <div class="picker-grid">
+                <XiangqiCard/>
+                <BanqiCard/>
+                <ThreeKingdomCard/>
+                <OnlineCard/>
+            </div>
+        </section>
+    }
+}
+
+#[component]
+fn XiangqiCard() -> impl IntoView {
+    let strict = create_rw_signal(false);
+    let href = move || {
+        let params = LocalRulesParams { strict: strict.get(), ..Default::default() };
+        build_local_href(Variant::Xiangqi, &params)
+    };
+    view! {
+        <div class="variant-card variant-card--form">
+            <h2>"Xiangqi 象棋"</h2>
+            <p>"Standard 9×10 Chinese chess."</p>
+            <fieldset class="card-fieldset">
+                <legend>"Rules"</legend>
+                <label class="radio-row">
+                    <input
+                        type="radio"
+                        name="xiangqi-strict"
+                        prop:checked=move || !strict.get()
+                        on:change=move |_| strict.set(false)
+                    />
+                    <span>"Casual — leaving your general in check is allowed; you lose if it's actually captured."</span>
+                </label>
+                <label class="radio-row">
+                    <input
+                        type="radio"
+                        name="xiangqi-strict"
+                        prop:checked=move || strict.get()
+                        on:change=move |_| strict.set(true)
+                    />
+                    <span>"Strict — standard rules; self-check moves are illegal."</span>
+                </label>
+            </fieldset>
+            <A href=href class="btn btn-primary card-cta">"Start Xiangqi →"</A>
+        </div>
+    }
+}
+
+#[component]
+fn BanqiCard() -> impl IntoView {
+    let chain = create_rw_signal(false);
+    let dark = create_rw_signal(false);
+    let rush = create_rw_signal(false);
+    let seed_text = create_rw_signal(String::new());
+
+    let house = move || {
+        let mut h = HouseRules::empty();
+        if chain.get() {
+            h.insert(HouseRules::CHAIN_CAPTURE);
+        }
+        if dark.get() {
+            h.insert(HouseRules::DARK_CHAIN);
+        }
+        if rush.get() {
+            h.insert(HouseRules::CHARIOT_RUSH);
+        }
+        h
+    };
+    let apply_preset = move |preset: HouseRules| {
+        chain.set(preset.contains(HouseRules::CHAIN_CAPTURE));
+        dark.set(preset.contains(HouseRules::DARK_CHAIN));
+        rush.set(preset.contains(HouseRules::CHARIOT_RUSH));
+    };
+    let href = move || {
+        let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
+        let params = LocalRulesParams { strict: false, house: house(), seed };
+        build_local_href(Variant::Banqi, &params)
+    };
+
+    view! {
+        <div class="variant-card variant-card--form">
+            <h2>"Banqi 暗棋"</h2>
+            <p>"Hidden-piece variant on a 4×8 board. Whoever flips first plays that color."</p>
+            <fieldset class="card-fieldset">
+                <legend>"Preset"</legend>
+                <div class="preset-row">
+                    <button class="btn btn-ghost" type="button"
+                        on:click=move |_| apply_preset(PRESET_PURIST)>"Purist"</button>
+                    <button class="btn btn-ghost" type="button"
+                        on:click=move |_| apply_preset(PRESET_TAIWAN)>"Taiwan"</button>
+                    <button class="btn btn-ghost" type="button"
+                        on:click=move |_| apply_preset(PRESET_AGGRESSIVE)>"Aggressive"</button>
+                </div>
+            </fieldset>
+            <fieldset class="card-fieldset">
+                <legend>"House rules"</legend>
+                <label class="check-row">
+                    <input type="checkbox" prop:checked=move || chain.get()
+                        on:change=move |ev| chain.set(event_target_checked(&ev))/>
+                    <span>"連吃 — chain captures along a line"</span>
+                </label>
+                <label class="check-row">
+                    <input type="checkbox" prop:checked=move || dark.get()
+                        on:change=move |ev| dark.set(event_target_checked(&ev))/>
+                    <span>"暗連 — chain through face-down squares (implies 連吃)"</span>
+                </label>
+                <label class="check-row">
+                    <input type="checkbox" prop:checked=move || rush.get()
+                        on:change=move |ev| rush.set(event_target_checked(&ev))/>
+                    <span>"車衝 — chariot rays the full board on a capture"</span>
+                </label>
+                <p class="hint">
+                    "馬斜 / 炮快移 are accepted by the engine but not yet wired into move-gen "
+                    "(see "<code>"TODO.md"</code>")."
+                </p>
+            </fieldset>
+            <fieldset class="card-fieldset">
+                <legend>"Seed (optional)"</legend>
+                <input
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="leave blank for random"
+                    class="text-input"
+                    prop:value=move || seed_text.get()
+                    on:input=move |ev| seed_text.set(event_target_value(&ev))
+                />
+                <p class="hint">"Same seed = same shuffle, useful for puzzles or rematches."</p>
+            </fieldset>
+            <A href=href class="btn btn-primary card-cta">"Start Banqi →"</A>
+        </div>
+    }
+}
+
+#[component]
+fn ThreeKingdomCard() -> impl IntoView {
+    view! {
+        <A href="/local/three-kingdom" class="variant-card">
+            <h2>"Three-Kingdom 三國暗棋"</h2>
+            <p>"3-player banqi. Engine still WIP — board renders but moves are gated."</p>
+        </A>
+    }
+}
+
+#[component]
+fn OnlineCard() -> impl IntoView {
+    view! {
+        <A href="/lobby" class="variant-card variant-card--online">
+            <h2>"Online"</h2>
+            <p>"Browse rooms or create your own."</p>
+        </A>
+    }
+}
+
+```
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/picker.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:37Z)**_
+
+Now wire `local.rs` to read the URL query and use it to build the ruleset.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:49Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:26:52Z)**_
+
+Now small CSS additions for the form controls and a sanity-check build.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Native compile check
+
+`cargo check -p chess-web 2>&1 | tail -25`
+
+```text
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.26s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM build to catch leptos signature issues
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -25`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.46s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:12Z)**_
+
+Both clean. Run the full workspace gates and then add the in-game-gear backlog + TODO follow-up.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run fmt + clippy across the workspace
+
+`cargo fmt --check 2>&1 | tail -10 && echo "--- clippy ---" && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+Diff in /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:257:
+ 
+     #[test]
+     fn three_kingdom_ignores_query() {
+-        let p = parse_local_rules(from_pairs(&[("strict", "1"), ("house", "chain"), ("seed", "5")]));
++        let p =
++            parse_local_rules(from_pairs(&[("strict", "1"), ("house", "chain"), ("seed", "5")]));
+         let r = build_rule_set(Variant::ThreeKingdomBanqi, &p);
+         assert_eq!(r.variant, Variant::ThreeKingdomBanqi);
+         assert!(r.house.is_empty());
+--- clippy ---
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.86s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply fmt and verify clean
+
+`cargo fmt 2>&1 | tail -5 && cargo fmt --check && echo "fmt clean"`
+
+```text
+fmt clean
+[This command modified 2 files you've previously read: clients/chess-web/src/pages/local.rs, clients/chess-web/src/routes.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chess-web full test suite
+
+`cargo test -p chess-web 2>&1 | tail -10`
+
+```text
+test state::tests::legal_targets_for_chariot_in_corner ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:26Z)**_
+
+25 tests passing. Now run the full pre-push gates and add the in-game-gear backlog + TODO follow-up.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace clippy with -D warnings
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -20`
+
+```text
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.67s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM builds for chess-web + chess-core
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -10 && echo "--- chess-core wasm ---" && cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -5`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.11s
+--- chess-core wasm ---
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run full workspace tests
+
+`cargo test --workspace 2>&1 | tail -25`
+
+```text
+   Doc-tests chess_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Summarize test results across workspace
+
+`cargo test --workspace 2>&1 | grep -E "test result:" | tail -20`
+
+```text
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:44Z)**_
+
+All four pre-push gates pass (fmt, clippy, full test suite, WASM build). Now add the in-game-gear backlog entry and TODO follow-up.
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check backlog dir and a sibling entry as template
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/ | head -20 && echo "---" && head -40 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/web-ws-reconnect.md`
+
+```text
+ chess-ai-search.md
+ chess-net-protocol.md
+ inbox.md
+ promote-client-shared.md
+󰂺 README.md
+ three-kingdoms-banqi.md
+ web-playwright.md
+ web-ws-reconnect.md
+---
+# chess-web WS auto-reconnect
+
+## Why this is in backlog
+
+PR-1 ships a single-shot WS pump (`clients/chess-web/src/ws.rs::connect`).
+On disconnect or read-pump error it sets `ConnState::Closed` / `Error` and
+the page surfaces a "refresh to reconnect" toast. That's deliberate: it
+keeps the protocol surface and the failure modes obvious for review. But
+in practice users will close laptops, switch networks, and watch their
+session evaporate.
+
+## What good looks like
+
+A reconnect helper that:
+
+1. Holds onto the original `(url, password)` tuple so it can rebuild the URL.
+2. Uses exponential backoff (250ms, 500ms, 1s, … capped at ~10s).
+3. Resets the `Hello` flow on reconnect — the client expects a fresh
+   `Hello { observer, rules, view }` from the server, then `Update`s.
+4. Gives up after N consecutive failures (e.g. 8) and surfaces the toast
+   with a manual "retry" button.
+
+## Notes
+
+- chess-net's room state survives a brief disconnect because the room is
+  GC'd only when the *last* seat leaves. For a single client reconnect,
+  the server should just reassign the seat. **Verify** — the server may
+  currently treat reconnect as a new joiner getting `room full`. If so
+  this depends on a server-side reconnect-by-token handshake too (TODO.md
+  has a P2 entry for chess-net spectator slots which is adjacent — both
+  want some form of session token).
+- `gloo-net::websocket::futures::WebSocket` doesn't expose connection
+  state directly; we infer from the read-pump's `Result<Message>`. Switch
+  to raw `web_sys::WebSocket` if we need `onopen` / `onclose` callbacks.
+- The reconnect logic should live entirely in `ws.rs` — pages should keep
+  consuming `(handle, incoming, conn)` unchanged.
+
+## Test plan
+
+- Two browser tabs joined to the same room. Pause the chess-net process
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find where chess-web entries live in TODO.md
+
+`grep -n "chess-web\|web-" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md | head -30`
+
+```text
+34:- [ ] **[S] chess-web: WS auto-reconnect with backoff** — PR-1 surfaces "Disconnected — refresh" when the WS read pump closes. Add an exponential-backoff retry that reuses the URL+password and resets the `Hello` flow on success. → [research](backlog/web-ws-reconnect.md)
+35:- [ ] **[S] chess-web: CJK/ASCII glyph toggle in UI** — `glyph::Style` is already plumbed; expose a sidebar toggle + persist in `localStorage`. Shares no logic with chess-tui's `--style` flag.
+36:- [ ] **[M] Promote orient.rs / glyph.rs to a shared client crate** — Both `clients/chess-tui/src/orient.rs` and `clients/chess-web/src/orient.rs` (likewise `glyph.rs`) are byte-identical. Pull into `clients/chess-client-shared` once a third client appears or the copies first diverge. → [research](backlog/promote-client-shared.md)
+37:- [ ] **[S] chess-web: Playwright E2E smoke** — Headless two-tab flow that creates a room, plays a few moves, resigns, and rematches. Cheaper than `wasm-bindgen-test` for full-app smoke. → [research](backlog/web-playwright.md)
+53:- [ ] **[S] chess-web: move animations** — CSS transitions on piece translate-translate as a `<g transform>` interpolation. Cheap visual polish; doesn't change protocol. Care needed: the SVG renders pieces by display row/col, so animation needs to track piece identity across renders (key-by-square is wrong for moves).
+54:- [ ] **[S] chess-web: history scrubber + undo via UI** — Engine already has `unmake_move` and `Replay::play_to`. Need a sidebar timeline that replays positions visually without committing to engine state. Reuse `Replay::from_game` so server replays + client scrubbing share one path.
+55:- [ ] **[S] chess-web: mobile layout** — Sidebar collapses below the board on narrow viewports; piece tap target enlarged. Touch input already works via SVG `on:click`; this is purely CSS + viewport meta.
+56:- [ ] **[S] chess-web: PWA / offline cache** — Service worker caches `dist/` so local pass-and-play works offline. Online play needs the server, so PWA only helps the local-only flows.
+57:- [ ] **[S] chess-web: i18n strings table** — All copy is currently inline English+CJK. Pull into a strings module keyed by locale, switch via `?lang=zh-Hant` or browser locale.
+65:- [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
+67:- [ ] **[?/M] WebRTC peer-to-peer fallback for chess-web** — Lets two browsers play without chess-net hosting. Needs a signalling step (could reuse chess-net briefly for handshake). Big UX delta: NAT traversal failures are the user's problem, not the server's. Worth it only if hosting cost ever becomes a concern.
+71:- ✅ [2026-05-07] [P2/M] chess-web: Leptos + WASM frontend — `clients/chess-web` ships as a single-page Leptos+Trunk SPA covering all three variants (xiangqi local + online; banqi local + online; three-kingdom renders the empty 4×8 stub with a "WIP" overlay per CLAUDE.md). SVG-only rendering — no art assets — code-as-presentation, mirroring chess-tui's intersection layout. Both modes share one `<Board>` component: local mode owns `GameState` and projects `PlayerView` after every move; online mode receives `PlayerView` via `gloo-net` WS to `chess-net`'s `/ws/<room>` and `/lobby` endpoints. `orient.rs` + `glyph.rs` are byte-copies of the chess-tui modules with cloned tests (drift caught by both crates' CI). chess-net gains a `static-serve` feature (default-on) and `--static-dir <path>` flag that mounts `tower_http::services::ServeDir` as the route fallback so a single binary serves the SPA + WS in production; chess-web depends on chess-net with `default-features = false` so axum/tokio do not leak into the WASM build. New `make play-web` / `make build-web` / `make stop-web` targets + `scripts/play-web.sh` mirror the existing tmux harnesses. Trunk dev-server proxies `/ws*` and `/lobby` to chess-net at :7878. Reconnect / mobile layout / move animations / Playwright E2E / promote-orient-glyph-to-shared-crate are separate follow-ups in P2/P3.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:27:51Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+28	- [ ] **[M] Threefold repetition draw detection** — Add Zobrist hashing on Board + (side_to_move) and a position-count map. Update on make_move/unmake_move. Triggers GameStatus::Drawn when count >= rules.draw_policy.repetition_threshold. See state/repetition.rs (currently a stub).
+29	
+30	## P2
+31	
+32	Worth doing, no rush.
+33	
+34	- [ ] **[S] chess-web: WS auto-reconnect with backoff** — PR-1 surfaces "Disconnected — refresh" when the WS read pump closes. Add an exponential-backoff retry that reuses the URL+password and resets the `Hello` flow on success. → [research](backlog/web-ws-reconnect.md)
+35	- [ ] **[S] chess-web: CJK/ASCII glyph toggle in UI** — `glyph::Style` is already plumbed; expose a sidebar toggle + persist in `localStorage`. Shares no logic with chess-tui's `--style` flag.
+36	- [ ] **[M] Promote orient.rs / glyph.rs to a shared client crate** — Both `clients/chess-tui/src/orient.rs` and `clients/chess-web/src/orient.rs` (likewise `glyph.rs`) are byte-identical. Pull into `clients/chess-client-shared` once a third client appears or the copies first diverge. → [research](backlog/promote-client-shared.md)
+37	- [ ] **[S] chess-web: Playwright E2E smoke** — Headless two-tab flow that creates a room, plays a few moves, resigns, and rematches. Cheaper than `wasm-bindgen-test` for full-app smoke. → [research](backlog/web-playwright.md)
+38	- [ ] **[M] chess-net: mixed-variant rooms** — Today one server boots with one `--variant` and every auto-created room copies it. Move to per-room `RuleSet` (a chooser inside the `CreateRoom` form). Architecture supports it (`RoomState` already owns its `GameState`); blocks on UX decisions about a variant filter inside the lobby and what default to apply when joining via a URL with no variant hint.
+39	- [ ] **[M] chess-net: spectator slots** — Third+ connection currently gets `room full`. Replace with a read-only spectator role: receives `Update` like the seats but `Move`/`Resign`/`Rematch` get `Error{"spectators can't play"}`. Adds `RoomSummary.spectators: u8` and a watcher count to the lobby UI.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# chess-web in-game rule editor (gear icon → modal)
+
+## Why this is in backlog
+
+PR-1 ships a picker-side rules form that builds the URL query string
+(`/local/banqi?house=chain,rush&seed=42`, `/local/xiangqi?strict=1`).
+Re-configuring rules mid-session means navigating back to the picker,
+re-filling the form, and clicking "Start" — all the form state is lost,
+and the in-progress game is abandoned without a confirmation.
+
+The follow-up: an in-game gear icon next to the variant label that opens
+a modal showing the same controls, pre-filled from the current
+`RuleSet`. Apply rebuilds the URL (so it stays shareable) and starts a
+fresh game; cancel does nothing.
+
+## What good looks like
+
+1. Gear button on the sidebar (chess-tui has none — this is web-only).
+2. Modal reuses the same Leptos components as the picker cards. Don't
+   reinvent the form — refactor `XiangqiCard` / `BanqiCard` so the form
+   bodies are extractable into `<XiangqiRuleForm/>` / `<BanqiRuleForm/>`
+   that take an initial `LocalRulesParams` and emit on submit.
+3. Pre-fill: read `state.rules` (which is what `build_rule_set` produced)
+   and reverse-derive a `LocalRulesParams`. The reverse mapping is
+   trivial since `LocalRulesParams` is the URL-shape of `RuleSet`:
+   - `xiangqi_allow_self_check` ↔ `!strict`
+   - `house` is identical
+   - `banqi_seed` ↔ `seed`
+4. On submit, call `leptos_router`'s `use_navigate()` with the new path
+   (e.g. `/local/banqi?house=chain&seed=99`). The page re-renders
+   `<LocalGame/>` from scratch — `LocalRulesParams` → `RuleSet` →
+   `GameState::new(rules)` — and the modal closes.
+5. Confirmation: if the in-progress game has any history, show a
+   "Discard current game?" check before navigating.
+
+## Notes
+
+- Apply-without-restart is **not** a goal. Banqi seed change mid-game is
+  meaningless (the shuffle is fixed at `GameState::new`); xiangqi
+  strict/casual change mid-game would require revalidating history.
+- The picker form already encodes everything in the URL. The modal is
+  just a second editor of the same query — no new state shape.
+- For online play, the gear should be hidden / disabled. Rule changes
+  are a server concern; see `backlog/chess-net-protocol.md` and the
+  P2 entry for mixed-variant rooms.
+
+## Test plan
+
+- Open `/local/banqi`, gear → modal pre-checks default flags + seed
+  blank. Toggle `chain`, set seed=7, apply → URL becomes
+  `/local/banqi?house=chain&seed=7` and a fresh game starts.
+- Open `/local/xiangqi?strict=1`, gear → strict radio is selected.
+  Switch to casual, apply → URL strips `?strict=1`.
+- Mid-game with moves played: gear → toggle, apply → confirmation
+  prompt fires. Cancel keeps state.
+
+## Related
+
+- `clients/chess-web/src/routes.rs` — `LocalRulesParams` + parser
+- `clients/chess-web/src/pages/picker.rs` — XiangqiCard / BanqiCard
+  (extract `<XiangqiRuleForm/>` / `<BanqiRuleForm/>` here)
+- `clients/chess-web/src/pages/local.rs` — `<LocalGame/>` (host of the
+  gear button)
+- `docs/trunk-leptos-wasm.md` — for `use_query_map` / `use_navigate`
+  patterns
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/backlog/web-ingame-rules-modal.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:23Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/TODO.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Validate TODO.md
+
+`scripts/todo-kanban.sh 2>&1 | tail -10`
+
+```text
+(eval):1: no such file or directory: scripts/todo-kanban.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List scripts dir
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/scripts/ 2>&1 | head -20`
+
+```text
+ play-lobby.sh
+ play-local.sh
+ play-web.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:28:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:01Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+115	
+116	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+117	
+118	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+119	
+120	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+121	
+122	- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+123	
+124	- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+125	
+126	- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+127	
+128	- **`chess-net` is multi-room (ADR-0005).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room to whoever sets it first; subsequent joiners with the wrong password get `ServerMsg::Error{"bad password"}` before any `Hello`. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. The server (`server.rs` + `bin/server.rs`) holds an `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` plus a parallel `summaries` cache so `notify_lobby` can build a `Rooms` snapshot without holding any inner lock. Within a room, first connection = Red, second = Black, third+ still gets `room full`. `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / spectators / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
+129
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate the chess-web routing line
+
+`grep -n "chess-web routing is path-based" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md`
+
+```text
+136:- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:08Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+136	- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
+137	
+138	## Where to put new work
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:22Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/CLAUDE.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final pre-push verification
+
+`cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 && echo "--- final check ---" && cargo test --workspace 2>&1 | grep "test result" | tail -5`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.53s
+--- final check ---
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:29:48Z)**_
+
+All gates clean. Summary of this turn:
+
+**#1 (暗棋空圓形)** — `clients/chess-web/src/components/board.rs:135-145` — dropped the `<text>{glyph::hidden}</text>` from the `Hidden` arm; tile is now a single `<circle class="tile-back">` filled with `var(--tile-back)` (warm wood tone) so it reads as a face-down disc. The `glyph::hidden` function still ships for the TUI; web doesn't reference it any more.
+
+**#2 (首翻定色)** — already correct in the engine: `crates/chess-core/src/state/mod.rs:146-150` calls `banqi_side_assignment(flipper, revealed_side)` on the first `Reveal` and locks the assignment for the rest of the game. Web/TUI/net all share that engine.
+
+**#3 (規則設定)** — was a "no" before this turn; now wired:
+- `routes.rs` (+125 LOC, +13 tests) — `LocalRulesParams` + `parse_local_rules` / `build_rule_set` / `build_local_href`. Tokens: `chain`/`dark`/`rush`/`horse`/`cannon`; `DARK_CHAIN` auto-implies `CHAIN_CAPTURE`. Unknown tokens dropped.
+- `pages/picker.rs` — reactive form with xiangqi strict/casual radio, banqi preset buttons (Purist/Taiwan/Aggressive), 3 house-rule checkboxes, optional seed input. Form state encodes into `<A href>` so the link is always shareable.
+- `pages/local.rs` — reads via `use_query_map()` and feeds into `build_rule_set`.
+- `style.css` — fieldsets, radio/check rows, ghost preset buttons.
+- `backlog/web-ingame-rules-modal.md` + TODO P2 entry — for the deferred in-game gear icon, with reverse-mapping notes so a follow-up can extract the form into `<XiangqiRuleForm/>` / `<BanqiRuleForm/>`.
+- `CLAUDE.md` — one-line gotcha pointing future agents at the URL format and the routes.rs helpers.
+
+URL examples:
+- `/local/xiangqi` → casual (default); `/local/xiangqi?strict=1` → strict
+- `/local/banqi?house=chain,rush&seed=42` → Taiwan-style, deterministic shuffle
+- `/local/banqi?preset=aggressive` → expands to chain+dark+rush+horse (only chain+rush actually take effect today)
+
+Pre-push gates: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (109 tests across the workspace, including 13 new route tests), `cargo build --target wasm32-unknown-unknown -p chess-web` — all clean. Nothing committed yet — run `make play-web` and click around if you want to eyeball before I commit.
+
+---
+
+_**User (2026-05-07 04:35:32Z)**_
+
+git commit
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Show working tree status
+
+`git status`
+
+```text
+On branch main
+Your branch is ahead of 'origin/main' by 7 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+	modified:   CLAUDE.md
+	modified:   TODO.md
+	modified:   clients/chess-web/src/components/board.rs
+	modified:   clients/chess-web/src/pages/local.rs
+	modified:   clients/chess-web/src/pages/picker.rs
+	modified:   clients/chess-web/src/routes.rs
+	modified:   clients/chess-web/style.css
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+	backlog/web-ingame-rules-modal.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Diff stat for staged + unstaged
+
+`git diff --stat`
+
+```text
+ .../2026-05-07_02-30-43Z-web-tui-websocket-svg.md  | 4883 ++++++++++++++++++++
+ CLAUDE.md                                          |    2 +
+ TODO.md                                            |    1 +
+ clients/chess-web/src/components/board.rs          |    5 +-
+ clients/chess-web/src/pages/local.rs               |   29 +-
+ clients/chess-web/src/pages/picker.rs              |  168 +-
+ clients/chess-web/src/routes.rs                    |  225 +-
+ clients/chess-web/style.css                        |   55 +
+ 8 files changed, 5329 insertions(+), 39 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Recent commits for style reference
+
+`git log --oneline -8`
+
+```text
+c8e51a1 chore(scripts): keep play-web tmux panes alive on exit
+bb7fd87 fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+f0e0d62 chess-web + chess-net: online play via WebSocket
+45a33cc chess-web: banqi local play + three-kingdom WIP overlay
+b3dde9b chess-web: SVG xiangqi local play
+ca13ee0 chess-web: scaffold Leptos + Trunk SPA with variant picker
+6c0576f fix(tui): collapse nested if blocks into match guards to satisfy clippy 1.95
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:43Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check if .claude/plans were ever committed
+
+`git log --all --diff-filter=A --name-only --pretty=format: -- '.claude/plans/*' 2>&1 | sort -u | head -20`
+
+```text
+.claude/plans/magical-honking-book.md
+.claude/plans/web-gentle-island.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:35:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See if path is ignored
+
+`git check-ignore -v .claude/plans/web-gentle-island-agent-a0c0196361eee6786.md 2>&1 ; echo "---" ; cat .gitignore | grep -i claude`
+
+```text
+---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check whether transcript was bundled or separate in prior commit
+
+`git show --stat bb7fd87 | head -15`
+
+```text
+commit bb7fd87c4e88ed2501edc715c39d80b760434ecc
+Author: Da-Wei Lee <daviddwlee84@gmail.com>
+Date:   Thu May 7 12:12:05 2026 +0800
+
+    fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+    
+    `make play-web` was crashing trunk silently because the dev-server
+    panicked at startup with a route-conflict and the tmux pane auto-killed.
+    Two `[[proxy]]` entries (`/ws` and `/ws/`) collapsed to the same axum
+    nest matcher (`/ws/{*__private__axum_nest_tail_param}`); registering
+    the second one panics on `Router::nest()`. A single `/ws` entry catches
+    both the bare path and any sub-path because Trunk forwards prefix
+    matches verbatim — verified end-to-end (chess-net :7878 + trunk :8080,
+    SPA loads, /rooms proxies, no panic).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See if previous commit included transcript or plan
+
+`git show --stat bb7fd87 | grep -E "specstory|claude/plans" | head -5`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check git history for .specstory and .claude/plans tracking
+
+`git log --all --oneline -- .specstory/ 2>&1 | head -5 ; echo "---" ; git log --all --oneline -- '.claude/plans/*.md' 2>&1 | head -5`
+
+```text
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+6c0576f fix(tui): collapse nested if blocks into match guards to satisfy clippy 1.95
+2645cac feat(net): multi-room lobby + optional password
+e0570e2 chore: bundle SpecStory transcript for chess-net-mvp PR
+1be48f2 chore: bundle SpecStory transcript for tui-polish PR
+---
+740cb96 chess-net static-serve + Make targets + docs + TODO promote
+2645cac feat(net): multi-room lobby + optional password
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Compare on-disk plans vs tracked
+
+`ls -la .claude/plans/ 2>&1 ; echo "---" ; git ls-files .claude/plans/`
+
+```text
+.rw-r--r--@ 19k daviddwlee84  6 May 17:17  magical-honking-book.md
+.rw-r--r--@ 19k daviddwlee84  7 May 10:42  web-gentle-island-agent-a0c0196361eee6786.md
+.rw-r--r--@ 12k daviddwlee84  7 May 10:45  web-gentle-island.md
+---
+.claude/plans/magical-honking-book.md
+.claude/plans/web-gentle-island.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:36Z)**_
+
+Stage the code + docs + transcript explicitly; skip the duplicate auto-named plan file (the original `.claude/plans/web-gentle-island.md` is already tracked).
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage the change set
+
+```bash
+git add CLAUDE.md TODO.md \
+  clients/chess-web/src/components/board.rs \
+  clients/chess-web/src/pages/local.rs \
+  clients/chess-web/src/pages/picker.rs \
+  clients/chess-web/src/routes.rs \
+  clients/chess-web/style.css \
+  backlog/web-ingame-rules-modal.md \
+  .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md && \
+git status
+```
+
+```text
+On branch main
+Your branch is ahead of 'origin/main' by 7 commits.
+  (use "git push" to publish your local commits)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+	modified:   CLAUDE.md
+	modified:   TODO.md
+	new file:   backlog/web-ingame-rules-modal.md
+	modified:   clients/chess-web/src/components/board.rs
+	modified:   clients/chess-web/src/pages/local.rs
+	modified:   clients/chess-web/src/pages/picker.rs
+	modified:   clients/chess-web/src/routes.rs
+	modified:   clients/chess-web/style.css
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Create the commit
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(chess-web): URL-encoded rules picker + empty banqi face-down
+
+Variant cards on the picker now expose a reactive form instead of
+plain links: xiangqi gets a strict/casual radio; banqi gets preset
+buttons (Purist/Taiwan/Aggressive), three house-rule checkboxes, and
+an optional seed input. Form state encodes into the destination href
+so /local/banqi?house=chain,rush&seed=42 (or ?strict=1 for xiangqi)
+stays shareable. The local page reads the query via use_query_map()
+and feeds it through new pure-logic helpers in routes.rs
+(parse_local_rules / build_rule_set / build_local_href, native-tested
+with 13 cases covering defaults, presets, csv round-trips, dark-chain
+normalization, and three-kingdom param-ignore).
+
+Banqi face-down tiles drop the "暗" glyph for a wood-toned circle
+(--tile-back). The TUI keeps glyph::hidden since it has no SVG
+fallback.
+
+In-game rule editing (gear -> modal) is deferred to P2 with
+backlog/web-ingame-rules-modal.md capturing the form-extraction
+recipe so the picker form components can be reused.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main bf5f8f1] feat(chess-web): URL-encoded rules picker + empty banqi face-down
+ 9 files changed, 5581 insertions(+), 39 deletions(-)
+ create mode 100644 backlog/web-ingame-rules-modal.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify commit landed
+
+`git status && echo "---" && git log --oneline -3`
+
+```text
+On branch main
+Your branch is ahead of 'origin/main' by 8 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.claude/plans/web-gentle-island-agent-a0c0196361eee6786.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+---
+bf5f8f1 feat(chess-web): URL-encoded rules picker + empty banqi face-down
+c8e51a1 chore(scripts): keep play-web tmux panes alive on exit
+bb7fd87 fix(chess-web): consolidate Trunk WS proxy + add Trunk/Leptos docs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 04:36:58Z)**_
+
+Committed as `bf5f8f1`. The transcript file picked up another live update during the commit — that and the auto-named plan file are tooling artefacts, leaving them unstaged.

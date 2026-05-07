@@ -1,34 +1,31 @@
 use chess_core::coord::Square;
 use chess_core::piece::Side;
-use chess_core::rules::{HouseRules, RuleSet, Variant};
+use chess_core::rules::{RuleSet, Variant};
 use chess_core::state::GameState;
 use chess_core::view::{PlayerView, VisibleCell};
 use leptos::*;
-use leptos_router::use_params_map;
+use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
 use crate::components::sidebar::Sidebar;
-use crate::routes::parse_variant_slug;
+use crate::routes::{build_rule_set, parse_local_rules, parse_variant_slug};
 use crate::state::find_move;
 
 #[component]
 pub fn LocalPage() -> impl IntoView {
     let params = use_params_map();
+    let query = use_query_map();
     let resolved = move || -> Result<(Variant, RuleSet, bool), String> {
         let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
-        match parse_variant_slug(&slug) {
-            Some(Variant::Xiangqi) => Ok((Variant::Xiangqi, RuleSet::xiangqi_casual(), false)),
-            Some(Variant::Banqi) => {
-                Ok((Variant::Banqi, RuleSet::banqi_with_seed(HouseRules::empty(), 42), false))
-            }
-            // Three-kingdom: engine ships an empty 4×8 board. Render it but
-            // disable interaction and overlay a "WIP" banner — see
-            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
-            Some(Variant::ThreeKingdomBanqi) => {
-                Ok((Variant::ThreeKingdomBanqi, RuleSet::three_kingdom(), true))
-            }
-            None => Err(format!("Unknown variant: {}", slug)),
-        }
+        let variant =
+            parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
+        let parsed = query.with(|q| parse_local_rules(|k| q.get(k).cloned()));
+        let rules = build_rule_set(variant, &parsed);
+        // Three-kingdom: engine ships an empty 4×8 board. Render it but
+        // disable interaction and overlay a "WIP" banner — see
+        // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
+        let wip = matches!(variant, Variant::ThreeKingdomBanqi);
+        Ok((variant, rules, wip))
     };
 
     move || match resolved() {
