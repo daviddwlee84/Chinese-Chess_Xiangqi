@@ -1,6 +1,6 @@
 [package]
 name        = "chess-web"
-description = "Leptos + WASM frontend. Stub for a follow-up PR."
+description = "Leptos + WASM frontend for chess-core. SPA scaffold — board renderer + online play follow in later commits."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -11,5 +11,17 @@ authors.workspace      = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# Native (cargo check --workspace) sees only the pure-logic modules
+# (routes); leptos and the browser-only deps are wasm32-gated so the
+# workspace check passes.
 [dependencies]
 chess-core = { path = "../../crates/chess-core" }
+serde      = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+leptos        = { version = "0.6", features = ["csr"] }
+leptos_router = { version = "0.6", features = ["csr"] }
+console_error_panic_hook = "0.1.7"
+wasm-bindgen  = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys       = { version = "0.3", features = ["Window", "Location"] }

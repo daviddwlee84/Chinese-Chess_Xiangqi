@@ -1,0 +1,11 @@
+# Trunk dev-server config. Online-mode WS proxies (`/ws`, `/lobby`, `/rooms`)
+# get added in the commit that wires online play.
+
+[build]
+target  = "index.html"
+release = false
+
+[serve]
+address = "127.0.0.1"
+port    = 8080
+open    = false
