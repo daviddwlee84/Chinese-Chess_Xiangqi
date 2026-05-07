@@ -311,6 +311,41 @@ body {
 .status.won { color: var(--accent); }
 .status.drawn { color: var(--muted); }
 .muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+.captured-panel {
+    display: grid;
+    gap: 0.3rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--grid);
+}
+.captured-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.captured-header h4 { margin: 0; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+.captured-toggle {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+    line-height: 1.2;
+}
+.captured-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+    min-height: 1.4rem;
+}
+.captured-label {
+    color: var(--muted);
+    font-size: 0.8rem;
+    width: 2.4rem;
+    flex-shrink: 0;
+}
+.captured-piece { font-size: 1.05rem; font-weight: 700; line-height: 1; }
+.captured-row.red .captured-piece { color: var(--red); }
+.captured-row.black .captured-piece { color: var(--fg); }
+.captured-empty { color: var(--muted); font-size: 0.85rem; }
 .sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .btn {
     background: rgba(244, 210, 163, 0.08);

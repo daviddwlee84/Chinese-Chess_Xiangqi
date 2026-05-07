@@ -13,8 +13,8 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
 use crate::app::{
-    AppState, CreateRoomField, CreateRoomView, GameView, HostPromptView, LobbyView, NetRole,
-    NetView, PickerEntry, PickerView, RectPx, Screen,
+    self, AppState, CapturedSort, CreateRoomField, CreateRoomView, GameView, HostPromptView,
+    LobbyView, NetRole, NetView, PickerEntry, PickerView, RectPx, Screen,
 };
 use crate::banner::{self, BannerKind, NeutralSide};
 use crate::confetti::ConfettiAnim;
@@ -114,7 +114,17 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         &mut rect,
     );
     app.board_rect = rect;
-    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open, show_check_banner);
+    let captured_sort = app.captured_sort;
+    draw_sidebar(
+        frame,
+        chunks[1],
+        g_ref,
+        &view,
+        style,
+        help_open,
+        show_check_banner,
+        captured_sort,
+    );
 
     // Confetti + endgame banner. The board area is `chunks[0]`. We do this
     // after the sidebar render so the layer paints on top of the board only,
@@ -157,7 +167,17 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 &mut rect,
             );
             app.board_rect = rect;
-            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open, show_check_banner);
+            let captured_sort = app.captured_sort;
+            draw_sidebar_net(
+                frame,
+                chunks[1],
+                n_ref,
+                view,
+                style,
+                help_open,
+                show_check_banner,
+                captured_sort,
+            );
 
             let board_area = chunks[0];
             let endgame_kind = endgame_kind_net(&view_status, role);
@@ -866,6 +886,49 @@ fn side_color(side: Side) -> Color {
     }
 }
 
+/// Append the "Captured pieces" block to `lines`. Two rows
+/// (Red / Black) of glyph spans coloured by side. Compact layout
+/// designed for the 36-col sidebar; long lists wrap via the parent
+/// `Paragraph::wrap`. The header echoes the active sort label so the
+/// user can see at a glance whether they're in time- or rank-mode.
+fn push_captured_lines(
+    lines: &mut Vec<Line<'static>>,
+    captured: &[chess_core::piece::Piece],
+    sort: CapturedSort,
+    style: Style,
+) {
+    let header = format!("Captured ({}):", sort.label());
+    lines.push(Line::from(Span::styled(header, TuiStyle::default().fg(Color::DarkGray))));
+
+    let (red, black) = app::split_and_sort_captured(captured, sort);
+    lines.push(captured_row(" R 紅:", &red, Color::Red, style));
+    lines.push(captured_row(" B 黑:", &black, Color::Gray, style));
+}
+
+fn captured_row(
+    label: &'static str,
+    pieces: &[chess_core::piece::Piece],
+    color: Color,
+    style: Style,
+) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::with_capacity(pieces.len() * 2 + 2);
+    spans.push(Span::styled(label, TuiStyle::default().fg(Color::DarkGray)));
+    if pieces.is_empty() {
+        spans.push(Span::styled(" —", TuiStyle::default().fg(Color::DarkGray)));
+    } else {
+        for p in pieces {
+            spans.push(Span::raw(" "));
+            let g = glyph::glyph(p.kind, p.side, style);
+            spans.push(Span::styled(
+                g.to_string(),
+                TuiStyle::default().fg(color).add_modifier(Modifier::BOLD),
+            ));
+        }
+    }
+    Line::from(spans)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn draw_sidebar(
     frame: &mut Frame,
     area: Rect,
@@ -874,6 +937,7 @@ fn draw_sidebar(
     style: Style,
     help_open: bool,
     show_check_banner: bool,
+    captured_sort: CapturedSort,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
@@ -945,6 +1009,8 @@ fn draw_sidebar(
     };
     lines.push(line_label_value("Selected:", &selected_label));
 
+    push_captured_lines(&mut lines, &view.captured, captured_sort, style);
+
     lines.push(Line::from(""));
     if let Some(msg) = &g.last_msg {
         lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
@@ -978,6 +1044,7 @@ fn draw_sidebar(
     frame.render_widget(para, inner);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_sidebar_net(
     frame: &mut Frame,
     area: Rect,
@@ -986,6 +1053,7 @@ fn draw_sidebar_net(
     style: Style,
     help_open: bool,
     show_check_banner: bool,
+    captured_sort: CapturedSort,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status (net) ");
     let inner = block.inner(area);
@@ -1106,6 +1174,8 @@ fn draw_sidebar_net(
     };
     lines.push(line_label_value("Selected:", &selected_label));
 
+    push_captured_lines(&mut lines, &view.captured, captured_sort, style);
+
     lines.push(line_label_value("Server:", &n.url));
     lines.push(line_label_value("Connection:", if n.connected { "live" } else { "disconnected" }));
 
@@ -1144,7 +1214,7 @@ fn draw_sidebar_net(
     draw_chat_pane(frame, chunks[1], n, chat_input_active);
 }
 
-const MIN_META_ROWS: u16 = 14;
+const MIN_META_ROWS: u16 = 17;
 const MIN_CHAT_ROWS: u16 = 6;
 
 fn draw_chat_pane(frame: &mut Frame, area: Rect, n: &NetView, input_active: bool) {
@@ -1224,6 +1294,7 @@ const HELP_LINES_NET: &[&str] = &[
     "f               flip (banqi)",
     "n               request rematch (after game over; needs both sides)",
     "t               open chat input (players only; Enter sends, Esc cancels)",
+    "g               toggle captured-pieces sort (time / rank)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",
@@ -1522,6 +1593,7 @@ const HELP_LINES: &[&str] = &[
     "u               undo last move",
     "f               flip (banqi)",
     "n               new game (back to picker)",
+    "g               toggle captured-pieces sort (time / rank)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",

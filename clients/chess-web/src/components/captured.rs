@@ -1,0 +1,80 @@
+//! Sidebar "captured pieces" panel ("graveyard").
+//!
+//! Two rows — Red dead / Black dead — rendered as glyph spans coloured
+//! by side. The header includes a tiny toggle that flips the active
+//! sort order between chronological (default) and rank. The signal
+//! lives on `Prefs` so the choice persists in `localStorage`.
+
+use chess_core::piece::Piece;
+use chess_core::view::PlayerView;
+use leptos::*;
+
+use crate::glyph::{self, Style};
+use crate::prefs::Prefs;
+use crate::state::{split_and_sort_captured, CapturedSort};
+
+#[component]
+pub fn CapturedPanel(#[prop(into)] view: Signal<PlayerView>) -> impl IntoView {
+    let prefs = expect_context::<Prefs>();
+    let sort_signal = prefs.captured_sort;
+    let style = Style::Cjk;
+
+    let red_pieces = move || {
+        let v = view.get();
+        let (red, _black) = split_and_sort_captured(&v.captured, sort_signal.get());
+        red
+    };
+    let black_pieces = move || {
+        let v = view.get();
+        let (_red, black) = split_and_sort_captured(&v.captured, sort_signal.get());
+        black
+    };
+
+    let toggle_label = move || match sort_signal.get() {
+        CapturedSort::Time => "⏱ time",
+        CapturedSort::Rank => "📊 rank",
+    };
+    let on_toggle = move |_| sort_signal.update(|s| *s = s.toggled());
+
+    view! {
+        <section class="captured-panel">
+            <div class="captured-header">
+                <h4>"Captured 死亡"</h4>
+                <button class="captured-toggle btn" on:click=on_toggle title="Toggle sort: time / rank">
+                    {toggle_label}
+                </button>
+            </div>
+            <CapturedRow side_class="red"   label="R 紅" pieces=Signal::derive(red_pieces)   style=style/>
+            <CapturedRow side_class="black" label="B 黑" pieces=Signal::derive(black_pieces) style=style/>
+        </section>
+    }
+}
+
+#[component]
+fn CapturedRow(
+    side_class: &'static str,
+    label: &'static str,
+    #[prop(into)] pieces: Signal<Vec<Piece>>,
+    style: Style,
+) -> impl IntoView {
+    let row_class = format!("captured-row {side_class}");
+    let glyphs = move || {
+        let ps = pieces.get();
+        if ps.is_empty() {
+            view! { <span class="captured-empty">"—"</span> }.into_view()
+        } else {
+            ps.into_iter()
+                .map(|p| {
+                    let g = glyph::glyph(p.kind, p.side, style).to_string();
+                    view! { <span class="captured-piece">{g}</span> }
+                })
+                .collect_view()
+        }
+    };
+    view! {
+        <div class=row_class>
+            <span class="captured-label">{label}</span>
+            {glyphs}
+        </div>
+    }
+}

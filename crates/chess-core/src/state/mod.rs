@@ -542,6 +542,38 @@ impl GameState {
             None => self.side_to_move,
         }
     }
+
+    /// All pieces captured so far, in chronological (history) order.
+    ///
+    /// Powers the sidebar "graveyard" panel in both clients. Returns
+    /// each captured piece's full identity — safe under ADR-0004
+    /// because every captured piece was revealed at capture time.
+    /// `Move::DarkCapture` outcomes are recomputed (Probe contributes
+    /// nothing, Trade contributes the dead attacker, Capture contributes
+    /// the revealed defender), matching `unmake_move`'s recomputation.
+    pub fn captured_pieces(&self) -> Vec<Piece> {
+        let mut out = Vec::new();
+        for record in &self.history {
+            match &record.the_move {
+                Move::Capture { captured, .. } | Move::CannonJump { captured, .. } => {
+                    out.push(*captured);
+                }
+                Move::ChainCapture { path, .. } => {
+                    out.extend(path.iter().map(|hop| hop.captured));
+                }
+                Move::DarkCapture { revealed, attacker, .. } => {
+                    let (Some(rev), Some(att)) = (*revealed, *attacker) else { continue };
+                    match dark_capture_outcome(att, rev, self.rules.house) {
+                        DarkCaptureOutcome::Capture => out.push(rev),
+                        DarkCaptureOutcome::Trade => out.push(att),
+                        DarkCaptureOutcome::Probe => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+        out
+    }
 }
 
 /// Outcome of a 暗吃 (`Move::DarkCapture`) once the target is revealed.

@@ -3,7 +3,7 @@
 
 use chess_core::coord::Square;
 use chess_core::moves::Move;
-use chess_core::piece::Side;
+use chess_core::piece::{Piece, PieceKind, Side};
 use chess_core::view::PlayerView;
 
 /// Role assigned by the server on `Hello` (player) or `Spectating`
@@ -79,6 +79,58 @@ pub fn legal_targets(view: &PlayerView, from: Square) -> Vec<Square> {
 /// the chain). Otherwise the click should attempt a further capture.
 pub fn end_chain_move(view: &PlayerView) -> Option<Move> {
     view.chain_lock.map(|at| Move::EndChain { at })
+}
+
+/// Sort order for the sidebar "captured pieces" panel.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+pub enum CapturedSort {
+    /// Chronological — order returned by `GameState::captured_pieces()`.
+    #[default]
+    Time,
+    /// Largest piece first (General > Advisor > Elephant > Chariot >
+    /// Horse > Cannon > Soldier).
+    Rank,
+}
+
+impl CapturedSort {
+    pub fn toggled(self) -> Self {
+        match self {
+            CapturedSort::Time => CapturedSort::Rank,
+            CapturedSort::Rank => CapturedSort::Time,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            CapturedSort::Time => "time",
+            CapturedSort::Rank => "rank",
+        }
+    }
+}
+
+/// Rank value used by `CapturedSort::Rank`. Higher = stronger piece.
+pub fn piece_rank_value(kind: PieceKind) -> u8 {
+    match kind {
+        PieceKind::General => 6,
+        PieceKind::Advisor => 5,
+        PieceKind::Elephant => 4,
+        PieceKind::Chariot => 3,
+        PieceKind::Horse => 2,
+        PieceKind::Cannon => 1,
+        PieceKind::Soldier => 0,
+    }
+}
+
+/// Split `pieces` (chronological from the engine) into per-side rows
+/// for the sidebar panel, sorting each row according to `sort`.
+pub fn split_and_sort_captured(pieces: &[Piece], sort: CapturedSort) -> (Vec<Piece>, Vec<Piece>) {
+    let mut red: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::RED).copied().collect();
+    let mut black: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::BLACK).copied().collect();
+    if sort == CapturedSort::Rank {
+        red.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
+        black.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
+    }
+    (red, black)
 }
 
 #[cfg(test)]
@@ -185,5 +237,47 @@ mod tests {
         let state = GameState::new(RuleSet::xiangqi_casual());
         let view = chess_core::view::PlayerView::project(&state, state.side_to_move);
         assert!(end_chain_move(&view).is_none());
+    }
+
+    #[test]
+    fn captured_sort_time_preserves_chronological_order() {
+        use chess_core::piece::{Piece, PieceKind};
+        let chronological = vec![
+            Piece::new(Side::BLACK, PieceKind::Soldier),
+            Piece::new(Side::RED, PieceKind::Cannon),
+            Piece::new(Side::BLACK, PieceKind::Horse),
+            Piece::new(Side::RED, PieceKind::Chariot),
+        ];
+        let (red, black) = split_and_sort_captured(&chronological, CapturedSort::Time);
+        assert_eq!(
+            red.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::Cannon, PieceKind::Chariot]
+        );
+        assert_eq!(
+            black.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::Soldier, PieceKind::Horse]
+        );
+    }
+
+    #[test]
+    fn captured_sort_rank_orders_largest_first() {
+        use chess_core::piece::{Piece, PieceKind};
+        let chronological = vec![
+            Piece::new(Side::RED, PieceKind::Soldier),
+            Piece::new(Side::RED, PieceKind::Chariot),
+            Piece::new(Side::RED, PieceKind::Horse),
+            Piece::new(Side::RED, PieceKind::General),
+        ];
+        let (red, _black) = split_and_sort_captured(&chronological, CapturedSort::Rank);
+        assert_eq!(
+            red.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::General, PieceKind::Chariot, PieceKind::Horse, PieceKind::Soldier]
+        );
+    }
+
+    #[test]
+    fn captured_sort_toggle_round_trips() {
+        assert_eq!(CapturedSort::Time.toggled(), CapturedSort::Rank);
+        assert_eq!(CapturedSort::Rank.toggled(), CapturedSort::Time);
     }
 }

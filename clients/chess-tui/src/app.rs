@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::moves::Move;
-use chess_core::piece::Side;
+use chess_core::piece::{Piece, PieceKind, Side};
 use chess_core::rules::{HouseRules, RuleSet};
 use chess_core::state::{GameState, GameStatus};
 use chess_core::view::{PlayerView, VisibleCell};
@@ -245,6 +245,64 @@ pub struct AppState {
     /// `prev_status_local` but tracked separately because a Net rematch
     /// resets the status without dropping the screen.
     pub prev_status_net: Option<GameStatus>,
+    /// User pref: sort order for the sidebar captured-pieces panel.
+    /// Default `Time`, toggle with `g`. Preserved across screens.
+    pub captured_sort: CapturedSort,
+}
+
+/// Sort order for the sidebar "captured pieces" panel. `Time` keeps
+/// the chronological order returned by `GameState::captured_pieces()`;
+/// `Rank` re-sorts each side's row by piece value (largest first).
+/// User toggles via `g` in `Game` mode and `--captured-sort` on the
+/// CLI; preserved across screen transitions like the FX prefs.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+pub enum CapturedSort {
+    #[default]
+    Time,
+    Rank,
+}
+
+impl CapturedSort {
+    pub fn toggled(self) -> Self {
+        match self {
+            CapturedSort::Time => CapturedSort::Rank,
+            CapturedSort::Rank => CapturedSort::Time,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            CapturedSort::Time => "time",
+            CapturedSort::Rank => "rank",
+        }
+    }
+}
+
+/// Rank-ordering for `CapturedSort::Rank`. Larger value = stronger piece
+/// (General > Advisor > Elephant > Chariot > Horse > Cannon > Soldier).
+/// Used by both the TUI panel and a future shared client crate.
+pub fn piece_rank_value(kind: PieceKind) -> u8 {
+    match kind {
+        PieceKind::General => 6,
+        PieceKind::Advisor => 5,
+        PieceKind::Elephant => 4,
+        PieceKind::Chariot => 3,
+        PieceKind::Horse => 2,
+        PieceKind::Cannon => 1,
+        PieceKind::Soldier => 0,
+    }
+}
+
+/// Sort `pieces` (chronological order from the engine) into a per-side
+/// view appropriate for the sidebar panel. Returns `(red, black)`.
+pub fn split_and_sort_captured(pieces: &[Piece], sort: CapturedSort) -> (Vec<Piece>, Vec<Piece>) {
+    let mut red: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::RED).copied().collect();
+    let mut black: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::BLACK).copied().collect();
+    if sort == CapturedSort::Rank {
+        red.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
+        black.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
+    }
+    (red, black)
 }
 
 /// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
@@ -302,6 +360,7 @@ impl AppState {
             confetti_pending: false,
             prev_status_local: None,
             prev_status_net: None,
+            captured_sort: CapturedSort::Time,
         }
     }
 
@@ -449,9 +508,11 @@ impl AppState {
     fn replace_preserving_prefs(&mut self, fresh: AppState) {
         let confetti = self.show_confetti;
         let check = self.show_check_banner;
+        let captured_sort = self.captured_sort;
         *self = fresh;
         self.show_confetti = confetti;
         self.show_check_banner = check;
+        self.captured_sort = captured_sort;
     }
 
     /// Drain ws events from the worker thread(s) and apply them to the
@@ -515,6 +576,15 @@ impl AppState {
             }
             Action::HelpToggle => self.help_open = !self.help_open,
             Action::RulesToggle => self.rules_open = !self.rules_open,
+            Action::CapturedSortToggle => {
+                self.captured_sort = self.captured_sort.toggled();
+                let msg = format!("Captured sort: {}", self.captured_sort.label());
+                match &mut self.screen {
+                    Screen::Game(g) => g.last_msg = Some(msg),
+                    Screen::Net(n) => n.last_msg = Some(msg),
+                    _ => {}
+                }
+            }
             Action::NewGame => {
                 if matches!(self.screen, Screen::Net(_)) {
                     // In Net mode, 'n' requests a rematch via the server
@@ -1201,9 +1271,7 @@ impl AppState {
                 if let Some(at) = view.chain_lock {
                     // Engine 連吃 mode: Esc → Move::EndChain.
                     if !role.is_spectator() {
-                        let _ = n.client.cmd_tx.send(ClientMsg::Move {
-                            mv: Move::EndChain { at },
-                        });
+                        let _ = n.client.cmd_tx.send(ClientMsg::Move { mv: Move::EndChain { at } });
                     }
                 } else {
                     n.selected = None;
@@ -1304,8 +1372,7 @@ fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
         return match candidate {
             Some(mv) => SelectOutcome::Commit(mv),
             None => SelectOutcome::Msg(
-                "連吃 active — capture from the locked piece, or Esc / Enter on it to end."
-                    .into(),
+                "連吃 active — capture from the locked piece, or Esc / Enter on it to end.".into(),
             ),
         };
     }

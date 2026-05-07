@@ -34,7 +34,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
-use crate::app::AppState;
+use crate::app::{AppState, CapturedSort};
 use crate::glyph::Style;
 use crate::input::{from_key, from_mouse, Action};
 use crate::url::{normalize_connect_url, normalize_lobby_url};
@@ -59,6 +59,12 @@ struct Cli {
     /// has no general so the banner never fires there anyway.
     #[arg(long)]
     no_check_banner: bool,
+
+    /// Initial sort order for the sidebar captured-pieces panel
+    /// ("graveyard"). Toggle in-game with `g`. Default `time`
+    /// (chronological — useful for following 暗連 chains live).
+    #[arg(long, value_enum, default_value_t = CapturedSortArg::Time)]
+    captured_sort: CapturedSortArg,
 
     /// Render from this side's perspective (debug; default RED). Ignored
     /// when `--connect` is set — the server assigns a side on join.
@@ -128,6 +134,12 @@ enum SideArg {
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
+enum CapturedSortArg {
+    Time,
+    Rank,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
 enum PresetArg {
     Purist,
     Taiwan,
@@ -149,6 +161,10 @@ fn main() -> Result<()> {
 
     let show_confetti = !cli.no_confetti;
     let show_check_banner = !cli.no_check_banner;
+    let captured_sort = match cli.captured_sort {
+        CapturedSortArg::Time => CapturedSort::Time,
+        CapturedSortArg::Rank => CapturedSort::Rank,
+    };
 
     let mut app = if let Some(host) = cli.lobby.as_deref() {
         let url = normalize_lobby_url(host).map_err(|e| anyhow!(e))?;
@@ -179,6 +195,7 @@ fn main() -> Result<()> {
 
     app.show_confetti = show_confetti;
     app.show_check_banner = show_check_banner;
+    app.captured_sort = captured_sort;
     run(app)
 }
 

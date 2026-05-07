@@ -38,6 +38,9 @@ pub enum Action {
     /// "Back one screen" — Esc semantics outside game/picker. The
     /// dispatcher decides what to back into per screen.
     Back,
+    /// Toggle the captured-pieces panel sort order (Time ↔ Rank).
+    /// Bound to `g` ("graveyard") in `Game` mode; Picker / Lobby ignore.
+    CapturedSortToggle,
     // Picker / Lobby (list-cursor)
     PickerUp,
     PickerDown,
@@ -131,6 +134,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('u') => Action::Undo,
             KeyCode::Char('f') => Action::Flip,
             KeyCode::Char('n') => Action::NewGame,
+            KeyCode::Char('g') => Action::CapturedSortToggle,
             KeyCode::Char('t') => Action::ChatStart,
             KeyCode::Char(':') => Action::CoordStart(CoordKind::Instant),
             KeyCode::Char('m') => Action::CoordStart(CoordKind::Live),

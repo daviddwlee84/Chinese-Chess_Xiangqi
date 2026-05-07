@@ -18,13 +18,19 @@
 
 use leptos::*;
 
+use crate::state::CapturedSort;
+
 const KEY_CONFETTI: &str = "chess.fx.confetti";
 const KEY_CHECK_BANNER: &str = "chess.fx.checkBanner";
+const KEY_CAPTURED_SORT: &str = "chess.ui.capturedSort";
 
 #[derive(Copy, Clone)]
 pub struct Prefs {
     pub fx_confetti: RwSignal<bool>,
     pub fx_check_banner: RwSignal<bool>,
+    /// Sort order for the sidebar captured-pieces panel. Persists
+    /// across sessions; toggled via the panel header button.
+    pub captured_sort: RwSignal<CapturedSort>,
 }
 
 impl Prefs {
@@ -34,6 +40,7 @@ impl Prefs {
     pub fn hydrate() -> Self {
         let fx_confetti = create_rw_signal(read_bool(KEY_CONFETTI, true));
         let fx_check_banner = create_rw_signal(read_bool(KEY_CHECK_BANNER, true));
+        let captured_sort = create_rw_signal(read_captured_sort());
 
         // Persist on change. The closures only run inside the browser, so
         // calling `localStorage` on every flip is safe and cheap.
@@ -45,8 +52,12 @@ impl Prefs {
             let v = fx_check_banner.get();
             write_bool(KEY_CHECK_BANNER, v);
         });
+        create_effect(move |_| {
+            let v = captured_sort.get();
+            write_captured_sort(v);
+        });
 
-        Self { fx_confetti, fx_check_banner }
+        Self { fx_confetti, fx_check_banner, captured_sort }
     }
 }
 
@@ -65,5 +76,23 @@ fn read_bool(key: &str, default_value: bool) -> bool {
 fn write_bool(key: &str, value: bool) {
     if let Some(storage) = local_storage() {
         let _ = storage.set_item(key, if value { "1" } else { "0" });
+    }
+}
+
+fn read_captured_sort() -> CapturedSort {
+    let Some(storage) = local_storage() else { return CapturedSort::default() };
+    match storage.get_item(KEY_CAPTURED_SORT) {
+        Ok(Some(s)) if s == "rank" => CapturedSort::Rank,
+        _ => CapturedSort::Time,
+    }
+}
+
+fn write_captured_sort(value: CapturedSort) {
+    if let Some(storage) = local_storage() {
+        let s = match value {
+            CapturedSort::Time => "time",
+            CapturedSort::Rank => "rank",
+        };
+        let _ = storage.set_item(KEY_CAPTURED_SORT, s);
     }
 }

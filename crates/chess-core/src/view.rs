@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::board::BoardShape;
 use crate::coord::Square;
 use crate::moves::{Move, MoveList};
-use crate::piece::{PieceOnSquare, Side};
+use crate::piece::{Piece, PieceOnSquare, Side};
 use crate::state::{GameState, GameStatus};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -63,6 +63,12 @@ pub struct PlayerView {
     /// pre-v5, so the default is correct for fresh games.
     #[serde(default = "default_red_side")]
     pub current_color: Side,
+    /// Pieces captured so far, in chronological (history) order.
+    /// Clients sort/group as they wish for the sidebar graveyard panel.
+    /// Added in protocol v5.1; older clients see the empty default via
+    /// `serde(default)`.
+    #[serde(default)]
+    pub captured: Vec<Piece>,
 }
 
 fn default_red_side() -> Side {
@@ -107,6 +113,7 @@ impl PlayerView {
             in_check,
             chain_lock: state.chain_lock,
             current_color: state.current_color(),
+            captured: state.captured_pieces(),
         }
     }
 }

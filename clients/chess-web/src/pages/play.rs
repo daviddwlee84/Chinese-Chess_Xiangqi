@@ -9,6 +9,7 @@ use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
+use crate::components::captured::CapturedPanel;
 use crate::components::chat_panel::ChatPanel;
 use crate::components::end_overlay::EndOverlay;
 use crate::config::room_url;
@@ -338,6 +339,14 @@ fn OnlineSidebar(
             </Show>
             <p>{turn_label}</p>
             <p class="muted">{conn_label}</p>
+            <Show when=move || view_signal.get().is_some()>
+                {
+                    let view_for_panel = Signal::derive(move || {
+                        view_signal.get().expect("Show gate ensures Some")
+                    });
+                    view! { <CapturedPanel view=view_for_panel/> }
+                }
+            </Show>
             <div class="sidebar-actions">
                 <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
                 <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>

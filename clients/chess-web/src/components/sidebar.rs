@@ -11,6 +11,7 @@ use chess_core::state::{DrawReason, GameStatus, WinReason};
 use chess_core::view::PlayerView;
 use leptos::*;
 
+use crate::components::captured::CapturedPanel;
 use crate::glyph::{self, Style};
 use crate::prefs::Prefs;
 
@@ -100,6 +101,7 @@ pub fn Sidebar(
                 </div>
                 {status_view}
                 <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
+                <CapturedPanel view=view/>
             </Show>
             <div class="sidebar-actions">
                 <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>

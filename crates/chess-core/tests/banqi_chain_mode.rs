@@ -37,11 +37,8 @@ fn capture_into_chain_keeps_turn_with_same_player() {
     place(&mut state.board, s1, Side::BLACK, PieceKind::Soldier);
     place(&mut state.board, s2, Side::BLACK, PieceKind::Soldier);
 
-    let single = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let single =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&single).unwrap();
 
     assert_eq!(state.chain_lock, Some(s1), "chain_lock activates on capturing piece's new square");
@@ -63,11 +60,8 @@ fn chain_legal_moves_filter_to_captures_from_locked_square_plus_end_chain() {
     place(&mut state.board, s_side, Side::BLACK, PieceKind::Soldier);
     place(&mut state.board, other, Side::RED, PieceKind::Chariot);
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
 
     let legal = state.legal_moves();
@@ -75,7 +69,9 @@ fn chain_legal_moves_filter_to_captures_from_locked_square_plus_end_chain() {
     for m in legal.iter() {
         match m {
             Move::EndChain { at } => assert_eq!(*at, s1),
-            other => assert_eq!(other.origin_square(), s1, "all locked legal moves must start at s1"),
+            other => {
+                assert_eq!(other.origin_square(), s1, "all locked legal moves must start at s1")
+            }
         }
     }
     // Specifically, the other Red chariot at `other` must NOT be movable.
@@ -87,12 +83,8 @@ fn chain_legal_moves_filter_to_captures_from_locked_square_plus_end_chain() {
     assert!(legal.iter().any(|m| matches!(m, Move::EndChain { .. })));
     // Captures in the SAME line (s2) AND in a perpendicular direction
     // (s_side) should both be legal.
-    assert!(legal
-        .iter()
-        .any(|m| matches!(m, Move::Capture { to, .. } if *to == s2)));
-    assert!(legal
-        .iter()
-        .any(|m| matches!(m, Move::Capture { to, .. } if *to == s_side)));
+    assert!(legal.iter().any(|m| matches!(m, Move::Capture { to, .. } if *to == s2)));
+    assert!(legal.iter().any(|m| matches!(m, Move::Capture { to, .. } if *to == s_side)));
 }
 
 #[test]
@@ -105,11 +97,8 @@ fn end_chain_advances_turn_and_clears_lock() {
     place(&mut state.board, s1, Side::BLACK, PieceKind::Soldier);
     place(&mut state.board, s2, Side::BLACK, PieceKind::Soldier);
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
     assert!(state.chain_lock.is_some());
 
@@ -127,11 +116,8 @@ fn capture_with_no_followup_advances_turn_normally() {
     place(&mut state.board, h, Side::RED, PieceKind::Horse);
     place(&mut state.board, s1, Side::BLACK, PieceKind::Soldier);
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
     assert_eq!(state.chain_lock, None, "no further captures from a2 → no chain lock");
     assert_eq!(state.side_to_move, Side::BLACK, "turn advanced normally");
@@ -147,11 +133,8 @@ fn chain_mode_does_not_activate_without_chain_capture_flag() {
     place(&mut state.board, s1, Side::BLACK, PieceKind::Soldier);
     place(&mut state.board, s2, Side::BLACK, PieceKind::Soldier);
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
     assert_eq!(state.chain_lock, None, "no chain mode without CHAIN_CAPTURE flag");
     assert_eq!(state.side_to_move, Side::BLACK, "turn advanced normally");
@@ -206,11 +189,8 @@ fn chain_make_unmake_round_trip() {
     place(&mut state.board, s2, Side::BLACK, PieceKind::Soldier);
     let snapshot = state.clone();
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
     assert!(state.chain_lock.is_some());
 
@@ -235,17 +215,11 @@ fn dark_capture_probe_against_own_piece_does_not_activate_chain_lock() {
     let attacker_sq = state.board.sq(File(1), Rank(1));
     let hidden_sq = state.board.sq(File(1), Rank(2));
     place(&mut state.board, attacker_sq, Side::RED, PieceKind::Soldier);
-    state.board.set(
-        hidden_sq,
-        Some(PieceOnSquare::hidden(Piece::new(Side::RED, PieceKind::General))),
-    );
+    state
+        .board
+        .set(hidden_sq, Some(PieceOnSquare::hidden(Piece::new(Side::RED, PieceKind::General))));
 
-    let mv = Move::DarkCapture {
-        from: attacker_sq,
-        to: hidden_sq,
-        revealed: None,
-        attacker: None,
-    };
+    let mv = Move::DarkCapture { from: attacker_sq, to: hidden_sq, revealed: None, attacker: None };
     state.make_move(&mv).unwrap();
 
     assert_eq!(
@@ -272,17 +246,11 @@ fn dark_capture_trade_against_stronger_enemy_does_not_activate_chain_lock() {
     let attacker_sq = state.board.sq(File(1), Rank(1));
     let hidden_sq = state.board.sq(File(1), Rank(2));
     place(&mut state.board, attacker_sq, Side::RED, PieceKind::Soldier);
-    state.board.set(
-        hidden_sq,
-        Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::Elephant))),
-    );
+    state
+        .board
+        .set(hidden_sq, Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::Elephant))));
 
-    let mv = Move::DarkCapture {
-        from: attacker_sq,
-        to: hidden_sq,
-        revealed: None,
-        attacker: None,
-    };
+    let mv = Move::DarkCapture { from: attacker_sq, to: hidden_sq, revealed: None, attacker: None };
     state.make_move(&mv).unwrap();
 
     assert_eq!(state.chain_lock, None, "trade outcome (attacker died) must not chain-lock");
@@ -304,10 +272,9 @@ fn dark_capture_success_can_activate_chain_lock() {
     let hidden = state.board.sq(File(1), Rank(2));
     let next = state.board.sq(File(1), Rank(3));
     place(&mut state.board, h, Side::RED, PieceKind::Horse);
-    state.board.set(
-        hidden,
-        Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::Soldier))),
-    );
+    state
+        .board
+        .set(hidden, Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::Soldier))));
     place(&mut state.board, next, Side::BLACK, PieceKind::Soldier);
 
     let mv = Move::DarkCapture { from: h, to: hidden, revealed: None, attacker: None };
@@ -326,11 +293,8 @@ fn end_chain_make_unmake_round_trip() {
     place(&mut state.board, s1, Side::BLACK, PieceKind::Soldier);
     place(&mut state.board, s2, Side::BLACK, PieceKind::Soldier);
 
-    let cap = Move::Capture {
-        from: h,
-        to: s1,
-        captured: Piece::new(Side::BLACK, PieceKind::Soldier),
-    };
+    let cap =
+        Move::Capture { from: h, to: s1, captured: Piece::new(Side::BLACK, PieceKind::Soldier) };
     state.make_move(&cap).unwrap();
     let snapshot_after_cap = state.clone();
 
