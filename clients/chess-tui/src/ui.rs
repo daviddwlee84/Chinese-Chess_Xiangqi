@@ -101,6 +101,10 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let show_check_banner = app.show_check_banner;
 
     let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
+    // Engine 連吃 chain_lock takes precedence as the "effective selection"
+    // so the locked piece + its legal next-hops light up automatically —
+    // the user doesn't have to re-click their attacker between hops.
+    let effective_selected = view.chain_lock.or(g_ref.selected);
     let mut rect = app.board_rect;
     draw_board(
         frame,
@@ -110,7 +114,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         use_color,
         &view,
         g_ref.cursor,
-        g_ref.selected,
+        effective_selected,
         &mut rect,
     );
     app.board_rect = rect;
@@ -154,6 +158,9 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
         Some(view) => {
             let view_status = view.status;
             let role = n_ref.role;
+            // Engine 連吃 chain_lock takes precedence as the "effective
+            // selection" — chain-locked piece + next-hops auto-highlighted.
+            let effective_selected = view.chain_lock.or(n_ref.selected);
             let mut rect = app.board_rect;
             draw_board(
                 frame,
@@ -163,7 +170,7 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 use_color,
                 view,
                 n_ref.cursor,
-                n_ref.selected,
+                effective_selected,
                 &mut rect,
             );
             app.board_rect = rect;
@@ -616,6 +623,11 @@ fn intersection_or_piece(
     let is_cursor = (display_row, display_col) == cursor;
     let is_selected = selected == Some(sq);
     let is_target = highlight.contains(&sq);
+    // Engine 連吃 chain mode: the locked piece gets a distinct
+    // orange-ish highlight so the user sees that it's the engine
+    // forcing this selection (not their own click) and can recall
+    // that Esc / Enter on it ends the chain.
+    let is_chain_locked = view.chain_lock == Some(sq);
 
     let (text, is_glyph_w2) = match cell {
         VisibleCell::Empty => {
@@ -650,7 +662,10 @@ fn intersection_or_piece(
         s = s.bg(Color::Rgb(40, 80, 40));
     }
     if is_selected {
-        s = s.bg(Color::Rgb(80, 60, 20)).add_modifier(Modifier::BOLD);
+        // Brown for a regular user-driven selection, brighter orange
+        // when the same square is also the chain-lock (engine-driven).
+        let bg = if is_chain_locked { Color::Rgb(140, 80, 20) } else { Color::Rgb(80, 60, 20) };
+        s = s.bg(bg).add_modifier(Modifier::BOLD);
     }
     if is_cursor {
         s = s.bg(Color::Rgb(60, 60, 100)).add_modifier(Modifier::REVERSED);
@@ -1009,6 +1024,18 @@ fn draw_sidebar(
     };
     lines.push(line_label_value("Selected:", &selected_label));
 
+    if let Some(lock) = view.chain_lock {
+        let sq_label = chess_core::notation::iccs::encode_square(&g.state.board, lock);
+        lines.push(Line::from(Span::styled(
+            format!("⛓ 連吃 chain on {sq_label}"),
+            TuiStyle::default().fg(Color::Rgb(245, 166, 35)).add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  Enter / click locked = end chain · Esc = end · capture target = continue",
+            TuiStyle::default().fg(Color::Rgb(245, 166, 35)),
+        )));
+    }
+
     push_captured_lines(&mut lines, &view.captured, captured_sort, style);
 
     lines.push(Line::from(""));
@@ -1173,6 +1200,17 @@ fn draw_sidebar_net(
         None => "—".into(),
     };
     lines.push(line_label_value("Selected:", &selected_label));
+
+    if let Some(lock) = view.chain_lock {
+        lines.push(Line::from(Span::styled(
+            format!("⛓ 連吃 chain on sq {}", lock.0),
+            TuiStyle::default().fg(Color::Rgb(245, 166, 35)).add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  Enter / click locked = end · Esc = end · target = continue",
+            TuiStyle::default().fg(Color::Rgb(245, 166, 35)),
+        )));
+    }
 
     push_captured_lines(&mut lines, &view.captured, captured_sort, style);
 
