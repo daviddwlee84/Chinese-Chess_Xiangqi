@@ -165,6 +165,18 @@ fn BoardWrapper(
     // Spectators see-only — no click handlers on the board for them.
     let is_spectator = resolved_role.is_spectator();
 
+    // Clear stale selection when the seat-to-move flips (mirrors the
+    // local page) — covers the chain-mode tail and any other path that
+    // forgets to reset `selected` on its own.
+    let side_signal = Signal::derive(move || view.get().side_to_move);
+    create_effect(move |prev: Option<Side>| {
+        let cur = side_signal.get();
+        if prev.is_some_and(|p| p != cur) {
+            selected.set(None);
+        }
+        cur
+    });
+
     // Surface engine chain_lock as the highlighted "selected" piece, so
     // legal-target dots render around it during chain mode.
     let effective_selected: Signal<Option<Square>> = Signal::derive(move || {

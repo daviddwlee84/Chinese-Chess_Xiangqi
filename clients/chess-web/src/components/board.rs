@@ -212,12 +212,23 @@ fn move_dots_view(
     for row in 0..rows {
         for col in 0..cols {
             let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
-            if targets.contains(&sq) {
-                let (cx, cy) = intersection(row, col);
-                // Distinct dot for "move to my own square" (banqi reveal) — same
-                // visual treatment for now; refined in commit 3.
-                out.push(view! { <circle class="move-dot" cx=cx cy=cy r="9"/> }.into_view());
+            if !targets.contains(&sq) {
+                continue;
             }
+            let (cx, cy) = intersection(row, col);
+            // Empty target → small dot. Capturable target (revealed
+            // enemy piece OR face-down tile under DARK_CAPTURE) →
+            // larger ring framing the piece, so the player sees at a
+            // glance which enemies / hidden tiles can be taken — not
+            // just where to slide to. Same data the TUI surfaces with
+            // its green-highlighted attackable squares.
+            let cell = view.cells[sq.0 as usize];
+            let class = match cell {
+                VisibleCell::Empty => "move-dot",
+                _ => "move-target",
+            };
+            let r = if class == "move-dot" { "9" } else { "26" };
+            out.push(view! { <circle class=class cx=cx cy=cy r=r/> }.into_view());
         }
     }
     out.into_view()

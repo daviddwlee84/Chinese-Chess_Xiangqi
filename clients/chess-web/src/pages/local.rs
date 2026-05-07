@@ -62,6 +62,20 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
 
     let view = create_memo(move |_| state.with(|s| PlayerView::project(s, s.side_to_move)));
 
+    // Clear any held selection when the seat-to-move flips. Catches the
+    // chain-mode tail where the last hop ends the chain and switches
+    // sides — the previous player's `selected` is meaningless for the
+    // next one. Also a safety net for any future click path that
+    // forgets its own `selected.set(None)`.
+    let side_signal = Signal::derive(move || view.with(|v| v.side_to_move));
+    create_effect(move |prev: Option<Side>| {
+        let cur = side_signal.get();
+        if prev.is_some_and(|p| p != cur) {
+            selected.set(None);
+        }
+        cur
+    });
+
     // The chain-locked piece (if any) renders with the same affordance as
     // a manually-selected piece, so the user sees it visually highlighted.
     let chain_locked_signal: Signal<Option<Square>> =

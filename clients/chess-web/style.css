@@ -337,6 +337,12 @@ body {
     fill: var(--legal-bg);
     pointer-events: none;
 }
+.move-target {
+    fill: rgba(60, 140, 60, 0.20);
+    stroke: rgba(80, 200, 80, 0.85);
+    stroke-width: 2.5;
+    pointer-events: none;
+}
 .chain-lock {
     fill: none;
     stroke: #f5a623;
