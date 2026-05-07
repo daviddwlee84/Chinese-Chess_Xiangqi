@@ -89,6 +89,7 @@ Pitfalls owned by this folder. Keep alphabetical.
 
 | Slug | Symptom keywords | Status |
 |---|---|---|
+| [`trunk-proxy-route-conflict`](trunk-proxy-route-conflict.md) | trunk panic, `__private__axum_nest_tail_param`, `conflict with previously registered route`, silent tmux pane close | workaround documented |
 | [`wasm-getrandom-unresolved-imp`](wasm-getrandom-unresolved-imp.md) | `unresolved module imp`, getrandom, wasm32-unknown-unknown, E0433 | workaround documented |
 
 ## Cross-referenced pitfalls (still in their original homes)

@@ -1,6 +1,9 @@
 /target
 **/*.rs.bk
 
+# Trunk build output (chess-web)
+clients/chess-web/dist/
+
 # IDE
 .idea/
 .vscode/

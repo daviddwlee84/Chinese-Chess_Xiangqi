@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), `chess-net` ships a multi-room websocket server (`chess-net-server`) with an in-TUI lobby browser, optional per-room password, and live `Rooms` push to lobby viewers, and `chess-web` (Leptos + Trunk + SVG-only rendering) is a single-page browser client that handles both local pass-and-play (pure WASM, no server) and online play (WS to chess-net). AI (`chess-ai`) is still a stub tracked in [`TODO.md`](TODO.md).
 
-For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for the chess-web Rust+web stack (Leptos + Trunk + WASM) see [`docs/trunk-leptos-wasm.md`](docs/trunk-leptos-wasm.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 
 ## Common commands
 
