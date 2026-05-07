@@ -1,3 +1,4 @@
+use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
@@ -9,7 +10,9 @@ use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
 use crate::components::chat_panel::ChatPanel;
+use crate::components::end_overlay::EndOverlay;
 use crate::config::room_url;
+use crate::prefs::Prefs;
 use crate::routes::variant_slug;
 use crate::state::{find_move, truncate_front, ClientRole};
 use crate::ws::{connect, ConnState, WsHandle};
@@ -76,6 +79,14 @@ pub fn PlayPage() -> impl IntoView {
     let handle_for_sidebar = handle;
     let room_label = room();
 
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
+    // The overlay needs a non-`Option` view signal once the welcome lands.
+    // Wrap in a `Show` so we don't mount it pre-welcome (and so the watcher
+    // inside doesn't see a fake "transition" on first connect).
+    let view_for_overlay = Signal::derive(move || view_signal.get());
+    let role_for_overlay: Signal<Option<ClientRole>> = role.into();
+
     view! {
         <section class="game-page">
             <div class="board-pane">
@@ -87,6 +98,11 @@ pub fn PlayPage() -> impl IntoView {
                         view_signal=view_signal
                         role=role
                         handle=handle_for_board.clone()
+                    />
+                    <EndOverlay
+                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+                        role=role_for_overlay
+                        enabled=fx_confetti
                     />
                 </Show>
                 <Show when=move || toast.get().is_some()>
@@ -257,16 +273,48 @@ fn OnlineSidebar(
         }
     };
 
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti = prefs.fx_confetti;
+    let fx_check_banner = prefs.fx_check_banner;
+    let show_check = move || {
+        let Some(v) = view_signal.get() else { return false };
+        fx_check_banner.get()
+            && matches!(v.shape, BoardShape::Xiangqi9x10)
+            && v.in_check
+            && matches!(v.status, GameStatus::Ongoing)
+    };
+
     view! {
         <aside class="sidebar">
             <h3 class="variant-label">{format!("Online — room {}", room)}</h3>
             <p class="muted">{variant_label}</p>
             <p class=role_class>{role_label}</p>
+            <Show when=show_check>
+                <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+            </Show>
             <p>{turn_label}</p>
             <p class="muted">{conn_label}</p>
             <div class="sidebar-actions">
                 <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
                 <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
+            </div>
+            <div class="fx-toggles">
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_confetti.get()
+                        on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+                    />
+                    <span>"Victory effects (confetti + banner)"</span>
+                </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_check_banner.get()
+                        on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
+                    />
+                    <span>"將軍 / CHECK warning"</span>
+                </label>
             </div>
             <a class="back-link" href="/lobby">"← Back to lobby"</a>
         </aside>

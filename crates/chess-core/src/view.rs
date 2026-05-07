@@ -32,6 +32,12 @@ pub struct PlayerView {
     pub status: GameStatus,
     /// Legal moves for the observer if it's their turn; empty otherwise.
     pub legal_moves: MoveList,
+    /// Whether the observer's own general is currently under attack.
+    /// Always `false` for banqi/three-kingdom (no in-check concept) and
+    /// for spectator-style observers without a real seat. Added in
+    /// protocol v4; older clients see the default via `serde(default)`.
+    #[serde(default)]
+    pub in_check: bool,
 }
 
 impl PlayerView {
@@ -56,6 +62,10 @@ impl PlayerView {
             MoveList::new()
         };
 
+        // Only the observer's own general counts. Banqi/3K have no general,
+        // so `is_in_check` returns false naturally — no variant gate needed.
+        let in_check = state.is_in_check(observer);
+
         Self {
             observer,
             shape: board.shape(),
@@ -65,6 +75,7 @@ impl PlayerView {
             side_to_move: state.side_to_move,
             status: state.status,
             legal_moves,
+            in_check,
         }
     }
 }
@@ -121,6 +132,37 @@ mod tests {
             if let Move::Reveal { revealed, .. } = m {
                 assert!(revealed.is_none(), "Reveal payload must be stripped in view");
             }
+        }
+    }
+
+    #[test]
+    fn fresh_xiangqi_view_has_neither_side_in_check() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let red = PlayerView::project(&state, Side::RED);
+        let black = PlayerView::project(&state, Side::BLACK);
+        assert!(!red.in_check, "starting xiangqi: red not in check");
+        assert!(!black.in_check, "starting xiangqi: black not in check");
+    }
+
+    #[test]
+    fn xiangqi_in_check_view_flags_observer() {
+        // Three-chariot mating net (same as tests/fixtures/xiangqi/three-chariot-mate.pos):
+        // Red rooks on d8/e8/f8, Black general on e9, Red general on e0.
+        // Black is in check; red is not.
+        let pos = "variant: xiangqi\nside_to_move: black\n\nboard:\n  . . . . k . . . .\n  . . . R R R . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . K . . . .\n";
+        let state = GameState::from_pos_text(pos).expect("parse pos");
+        let black_view = PlayerView::project(&state, Side::BLACK);
+        let red_view = PlayerView::project(&state, Side::RED);
+        assert!(black_view.in_check, "black observer must see in_check = true");
+        assert!(!red_view.in_check, "red observer must see in_check = false");
+    }
+
+    #[test]
+    fn banqi_view_never_flags_in_check() {
+        let state = GameState::new(RuleSet::banqi_with_seed(HouseRules::empty(), 13));
+        for side in [Side::RED, Side::BLACK] {
+            let view = PlayerView::project(&state, side);
+            assert!(!view.in_check, "banqi has no general; in_check must be false");
         }
     }
 

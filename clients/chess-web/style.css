@@ -384,3 +384,160 @@ body {
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * End-of-game overlay + confetti + check banner. See `prefs.rs` for
+ * the localStorage toggles that gate these.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* Centered VICTORY/DEFEAT/DRAW banner over the board area. The container
+ * is `position: absolute` so it lives inside `.board-pane`'s positioning
+ * context (same as `.wip-overlay`). The banner card uses the existing
+ * accent palette so it reads as part of the theme rather than a popover. */
+.endgame-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 40;
+    pointer-events: none;
+    background: rgba(26, 22, 20, 0.45);
+    border-radius: 0.5rem;
+    animation: endgame-fade-in 0.25s ease-out;
+}
+.endgame-banner {
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    border-radius: 0.6rem;
+    padding: 1.25rem 2rem;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    animation: pulse-banner 1.6s ease-in-out infinite;
+}
+.endgame-title {
+    margin: 0;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    letter-spacing: 0.18em;
+    font-weight: 800;
+}
+.endgame-title--victory { color: #fcd34d; text-shadow: 0 0 12px rgba(252, 211, 77, 0.5); }
+.endgame-title--defeat  { color: #f87171; text-shadow: 0 0 12px rgba(248, 113, 113, 0.5); }
+.endgame-title--draw    { color: var(--muted); }
+.endgame-title--red     { color: var(--red); }
+.endgame-title--black   { color: #f4d2a3; }
+.endgame-title--green   { color: #6ad28d; }
+.endgame-reason {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+/* Confetti — pure CSS particles. The container fills the viewport so
+ * particles can fall past the board edge naturally. Each particle reads
+ * `--x` (start x %), `--drift` (lateral drift in px), `--delay` (stagger),
+ * `--rotate-end` (final rotation), `--color` (fill). */
+.confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    overflow: hidden;
+}
+.confetti-particle {
+    position: absolute;
+    top: -16px;
+    left: var(--x);
+    width: 8px;
+    height: 14px;
+    background: var(--color);
+    border-radius: 1px;
+    transform-origin: 50% 50%;
+    animation: confetti-fall 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation-delay: var(--delay);
+    opacity: 0.95;
+}
+
+@keyframes confetti-fall {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translate(var(--drift), 110vh) rotate(var(--rotate-end)); opacity: 0; }
+}
+
+@keyframes pulse-banner {
+    0%, 100% { transform: scale(1.0); }
+    50%      { transform: scale(1.04); }
+}
+
+@keyframes endgame-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* "將軍 / CHECK" sidebar badge — only mounts when the side-to-move's
+ * general is under attack (xiangqi only) and the user hasn't disabled it. */
+.check-badge {
+    margin: 0.4rem 0 0.6rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(178, 34, 34, 0.18);
+    border-left: 3px solid var(--red);
+    color: #ffd3d3;
+    font-weight: 700;
+    border-radius: 0.25rem;
+    animation: pulse-banner 1.4s ease-in-out infinite;
+}
+
+/* FX toggle row in the sidebar footer. Compact so it doesn't crowd the
+ * action buttons. */
+.fx-toggles {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+.fx-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+}
+
+/* Picker hero — a tiny header above the variant grid so the page feels
+ * like a landing screen rather than a bare form. SVG icon scales with
+ * the heading; tagline stays muted. */
+.picker-hero {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(212, 165, 92, 0.15), rgba(178, 34, 34, 0.05));
+    border: 1px solid rgba(212, 165, 92, 0.25);
+    border-radius: 0.6rem;
+}
+.picker-hero__glyph {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--red);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    color: var(--red);
+    font-size: 2.2rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
+}
+.picker-hero__copy h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+}
+.picker-hero__copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}

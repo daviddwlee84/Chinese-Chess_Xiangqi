@@ -25,7 +25,15 @@ use serde::{Deserialize, Serialize};
 /// chat variants are additive). `RoomSummary` gains a `spectators` field
 /// with `#[serde(default)]` so v2 lobby clients deserializing a v3 server
 /// snapshot ignore the new column.
-pub const PROTOCOL_VERSION: u16 = 3;
+///
+/// v3 → v4: added `PlayerView.in_check: bool` so clients can render a
+/// "將軍 / CHECK" warning without having to recompute it from the board.
+/// Wire-compatible — `#[serde(default)]` on the new field means a v3
+/// client deserializing a v4 message reads `in_check = false` and a v4
+/// client deserializing a v3 message gets the same default. The bump is
+/// for documentation, not enforcement; the handshake still uses lenient
+/// equality. See ADR-0007.
+pub const PROTOCOL_VERSION: u16 = 4;
 
 /// Server → client.
 #[derive(Clone, Debug, Serialize, Deserialize)]

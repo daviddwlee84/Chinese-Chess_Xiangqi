@@ -20,6 +20,8 @@ mod config;
 #[cfg(target_arch = "wasm32")]
 mod pages;
 #[cfg(target_arch = "wasm32")]
+mod prefs;
+#[cfg(target_arch = "wasm32")]
 mod ws;
 
 #[cfg(target_arch = "wasm32")]

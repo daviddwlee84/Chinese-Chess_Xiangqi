@@ -8,11 +8,16 @@ use crate::routes::{build_local_href, LocalRulesParams};
 pub fn Picker() -> impl IntoView {
     view! {
         <section class="picker">
-            <h1>"Chinese Chess"</h1>
-            <p class="subtitle">
-                "Pick a variant for local pass-and-play, or join the online lobby. "
-                "Form choices encode into the URL so you can share or bookmark a configuration."
-            </p>
+            <header class="picker-hero">
+                <div class="picker-hero__glyph" aria-hidden="true">"帥"</div>
+                <div class="picker-hero__copy">
+                    <h1>"Chinese Chess 中國象棋"</h1>
+                    <p>
+                        "Pick a variant for local pass-and-play, or join the online lobby. "
+                        "Rule choices encode into the URL — bookmark to share a configuration."
+                    </p>
+                </div>
+            </header>
             <div class="picker-grid">
                 <XiangqiCard/>
                 <BanqiCard/>

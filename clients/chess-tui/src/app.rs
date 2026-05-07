@@ -16,6 +16,7 @@ const CHAT_HISTORY_CAP: usize = 50;
 const CHAT_INPUT_MAX: usize = 256;
 const COORD_INPUT_MAX: usize = 16;
 
+use crate::confetti::ConfettiAnim;
 use crate::glyph::Style;
 use crate::input::{Action, CoordKind, InputMode};
 use crate::net::{NetClient, NetEvent};
@@ -222,6 +223,28 @@ pub struct AppState {
     /// mouse-click hit-testing. ui.rs writes this each frame.
     pub board_rect: Option<RectPx>,
     pub should_quit: bool,
+    /// User pref: render confetti + big banner on game end. Default true,
+    /// disable via `--no-confetti`. Preserved across screen transitions.
+    pub show_confetti: bool,
+    /// User pref: render the "將軍 / CHECK" banner when the side-to-move's
+    /// general is under attack. Default true, disable via `--no-check-banner`.
+    /// Xiangqi-only — banqi never sets `in_check`.
+    pub show_check_banner: bool,
+    /// Active confetti burst. Spawned by `ui.rs` once the board area is
+    /// known (so we can place particles in the board sub-rect); cleared
+    /// when the burst expires.
+    pub confetti_anim: Option<ConfettiAnim>,
+    /// Set by `note_status_transition` when the game just ended and a
+    /// confetti burst should fire on the next draw. `ui.rs` consumes the
+    /// flag once the board rect is known.
+    pub confetti_pending: bool,
+    /// Last observed status of the local game (`Game` screen) — used to
+    /// detect Ongoing → ended transitions for the confetti trigger.
+    pub prev_status_local: Option<GameStatus>,
+    /// Last observed status of the net game (`Net` screen) — same as
+    /// `prev_status_local` but tracked separately because a Net rematch
+    /// resets the status without dropping the screen.
+    pub prev_status_net: Option<GameStatus>,
 }
 
 /// Minimal Rect copy so app.rs doesn't depend on ratatui types directly.
@@ -251,6 +274,34 @@ impl AppState {
             quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
+            ..Self::fx_defaults()
+        }
+    }
+
+    /// Default values for the FX-related fields, factored out so each
+    /// constructor can `..Self::fx_defaults()` instead of repeating five
+    /// lines of init. Both `show_*` flags default to true; `main.rs`
+    /// flips them back off when the user passes `--no-*`.
+    fn fx_defaults() -> Self {
+        // Construct a placeholder; only the FX fields are read via the
+        // `..` syntax. The other fields are immediately overridden by the
+        // caller, so picking arbitrary defaults here is fine.
+        Self {
+            screen: Screen::Picker(PickerView { cursor: 0 }),
+            style: Style::Cjk,
+            use_color: true,
+            observer: Side::RED,
+            help_open: false,
+            rules_open: false,
+            quit_confirm_open: false,
+            board_rect: None,
+            should_quit: false,
+            show_confetti: true,
+            show_check_banner: true,
+            confetti_anim: None,
+            confetti_pending: false,
+            prev_status_local: None,
+            prev_status_net: None,
         }
     }
 
@@ -278,6 +329,7 @@ impl AppState {
             quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
+            ..Self::fx_defaults()
         }
     }
 
@@ -307,6 +359,7 @@ impl AppState {
             quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
+            ..Self::fx_defaults()
         }
     }
 
@@ -325,6 +378,7 @@ impl AppState {
             quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
+            ..Self::fx_defaults()
         }
     }
 
@@ -349,7 +403,55 @@ impl AppState {
             quit_confirm_open: false,
             board_rect: None,
             should_quit: false,
+            ..Self::fx_defaults()
         }
+    }
+
+    /// Detect Ongoing → ended transitions and arm the confetti burst for the
+    /// next draw. Called automatically at the end of `dispatch` (Local) and
+    /// `tick_net` (Net); rematches that move from Won/Drawn → Ongoing are
+    /// silent (we update the remembered status without firing).
+    fn note_status_transition(&mut self, cur: Option<GameStatus>, is_net: bool) {
+        let prev = if is_net { self.prev_status_net } else { self.prev_status_local };
+        let was_ongoing = matches!(prev, Some(GameStatus::Ongoing));
+        let now_ended =
+            matches!(cur, Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }));
+        if was_ongoing && now_ended && self.show_confetti {
+            self.confetti_pending = true;
+        }
+        if is_net {
+            self.prev_status_net = cur;
+        } else {
+            self.prev_status_local = cur;
+        }
+    }
+
+    fn current_local_status(&self) -> Option<GameStatus> {
+        match &self.screen {
+            Screen::Game(g) => Some(g.state.status),
+            _ => None,
+        }
+    }
+
+    fn current_net_status(&self) -> Option<GameStatus> {
+        match &self.screen {
+            Screen::Net(n) => n.last_view.as_ref().map(|v| v.status),
+            _ => None,
+        }
+    }
+
+    /// Replace `self` with `fresh` while preserving the user's FX prefs
+    /// (`show_confetti`, `show_check_banner`). Constructors always default
+    /// FX to ON; this helper carries the user's actual choices across screen
+    /// transitions like `NewGame` → picker, lobby → game, etc. Tracking
+    /// state (`prev_status_*`, active `confetti_anim`) is reset because the
+    /// new screen is starting fresh.
+    fn replace_preserving_prefs(&mut self, fresh: AppState) {
+        let confetti = self.show_confetti;
+        let check = self.show_check_banner;
+        *self = fresh;
+        self.show_confetti = confetti;
+        self.show_check_banner = check;
     }
 
     /// Drain ws events from the worker thread(s) and apply them to the
@@ -369,6 +471,10 @@ impl AppState {
             }
             _ => {}
         }
+        // Server pushes can change the game outcome at any time; check after
+        // every drained batch so the next draw sees the confetti flag.
+        let cur = self.current_net_status();
+        self.note_status_transition(cur, true);
     }
 
     /// Compute the input mode for the current screen so main.rs can drive
@@ -439,7 +545,7 @@ impl AppState {
                     let style = self.style;
                     let use_color = self.use_color;
                     let observer = self.observer;
-                    *self = AppState::new_picker(style, use_color, observer);
+                    self.replace_preserving_prefs(AppState::new_picker(style, use_color, observer));
                 }
             }
             Action::Back => self.dispatch_back(),
@@ -474,6 +580,12 @@ impl AppState {
                 | Screen::CreateRoom(_) => {}
             },
         }
+        // Local moves go through dispatch_game / dispatch_coord_*, both of
+        // which can land us on a terminal status. Re-check after every
+        // dispatch so the confetti trigger fires reliably regardless of the
+        // entry path. Net status is checked separately in `tick_net`.
+        let cur = self.current_local_status();
+        self.note_status_transition(cur, false);
     }
 
     fn dispatch_back(&mut self) {
@@ -482,7 +594,7 @@ impl AppState {
         let observer = self.observer;
         match &mut self.screen {
             Screen::HostPrompt(_) => {
-                *self = AppState::new_picker(style, use_color, observer);
+                self.replace_preserving_prefs(AppState::new_picker(style, use_color, observer));
             }
             Screen::Lobby(l) => {
                 if l.pending_join.is_some() {
@@ -490,11 +602,13 @@ impl AppState {
                     l.last_msg = None;
                     return;
                 }
-                *self = AppState::new_picker(style, use_color, observer);
+                self.replace_preserving_prefs(AppState::new_picker(style, use_color, observer));
             }
             Screen::CreateRoom(c) => {
                 let host = c.host.clone();
-                *self = AppState::new_lobby(host, style, use_color, observer);
+                self.replace_preserving_prefs(AppState::new_lobby(
+                    host, style, use_color, observer,
+                ));
             }
             // Esc inside Game / Net while a coord-input prompt is open: close
             // the prompt and (Live mode only) restore the snapshotted cursor +
@@ -608,7 +722,7 @@ impl AppState {
         let style = self.style;
         let use_color = self.use_color;
         let url = format!("{host}/ws/{}?role=spectator", room.id);
-        *self = AppState::new_net(url, style, use_color);
+        self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
     }
 
     fn is_game_in_progress(&self) -> bool {
@@ -642,12 +756,16 @@ impl AppState {
                 let use_color = self.use_color;
                 match entry {
                     PickerEntry::ConnectToServer => {
-                        *self = AppState::new_host_prompt(style, use_color, observer);
+                        self.replace_preserving_prefs(AppState::new_host_prompt(
+                            style, use_color, observer,
+                        ));
                     }
                     PickerEntry::Quit => self.should_quit = true,
                     other => {
                         if let Some(rules) = other.rules() {
-                            *self = AppState::new_game(rules, style, use_color, observer);
+                            self.replace_preserving_prefs(AppState::new_game(
+                                rules, style, use_color, observer,
+                            ));
                         }
                     }
                 }
@@ -695,7 +813,11 @@ impl AppState {
                 let host = l.host.clone();
                 let style = self.style;
                 let use_color = self.use_color;
-                *self = AppState::new_net(format!("{host}/ws/{}", room.id), style, use_color);
+                self.replace_preserving_prefs(AppState::new_net(
+                    format!("{host}/ws/{}", room.id),
+                    style,
+                    use_color,
+                ));
             }
             Action::LobbyCreate => {
                 let host = l.host.clone();
@@ -732,7 +854,9 @@ impl AppState {
                     let style = self.style;
                     let use_color = self.use_color;
                     let observer = self.observer;
-                    *self = AppState::new_lobby(host, style, use_color, observer);
+                    self.replace_preserving_prefs(AppState::new_lobby(
+                        host, style, use_color, observer,
+                    ));
                 }
                 _ => {}
             },
@@ -780,7 +904,7 @@ impl AppState {
                     };
                     let style = self.style;
                     let use_color = self.use_color;
-                    *self = AppState::new_net(url, style, use_color);
+                    self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
                 }
                 _ => {}
             },
@@ -804,7 +928,7 @@ impl AppState {
                         }
                         let style = self.style;
                         let use_color = self.use_color;
-                        *self = AppState::new_net(url, style, use_color);
+                        self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
                     }
                     _ => {}
                 }
@@ -1322,9 +1446,8 @@ where
     } else {
         None
     };
-    let cursor_jump = dest_str
-        .and_then(parse_sq)
-        .map(|dest| orient::project_cell(dest, observer, shape));
+    let cursor_jump =
+        dest_str.and_then(parse_sq).map(|dest| orient::project_cell(dest, observer, shape));
     LivePreview { selected: Some(origin), cursor_jump }
 }
 

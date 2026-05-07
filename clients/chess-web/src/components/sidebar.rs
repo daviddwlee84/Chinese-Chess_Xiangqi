@@ -4,6 +4,7 @@
 //! legal-move counts and disables the action buttons — the board overlay
 //! tells the user what's happening; the sidebar just stays out of the way.
 
+use chess_core::board::BoardShape;
 use chess_core::piece::Side;
 use chess_core::rules::Variant;
 use chess_core::state::{DrawReason, GameStatus, WinReason};
@@ -11,6 +12,7 @@ use chess_core::view::PlayerView;
 use leptos::*;
 
 use crate::glyph::{self, Style};
+use crate::prefs::Prefs;
 
 #[component]
 pub fn Sidebar(
@@ -65,12 +67,30 @@ pub fn Sidebar(
 
     let legal_count = move || view.with(|v| v.legal_moves.len());
 
+    // Pull FX prefs from context (provided by `app.rs::App`). Both signals
+    // default to true on first visit and persist via localStorage.
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti = prefs.fx_confetti;
+    let fx_check_banner = prefs.fx_check_banner;
+
+    let show_check = move || {
+        let v = view.get();
+        // Check banner is xiangqi-only and gated by the user pref.
+        fx_check_banner.get()
+            && matches!(v.shape, BoardShape::Xiangqi9x10)
+            && v.in_check
+            && matches!(v.status, GameStatus::Ongoing)
+    };
+
     view! {
         <aside class="sidebar">
             <h3 class="variant-label">{variant_label}</h3>
             <Show when=move || !wip fallback=|| view! {
                 <p class="status drawn">"Engine WIP — board interaction disabled."</p>
             }>
+                <Show when=show_check>
+                    <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+                </Show>
                 <div class="turn-row">
                     <span class="turn-prefix">"Turn: "</span>
                     <span class=turn_class>{turn_text}</span>
@@ -82,8 +102,33 @@ pub fn Sidebar(
                 <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
                 <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
             </div>
+            <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
             <a class="back-link" href="/">"← Back to picker"</a>
         </aside>
+    }
+}
+
+#[component]
+fn FxToggles(fx_confetti: RwSignal<bool>, fx_check_banner: RwSignal<bool>) -> impl IntoView {
+    view! {
+        <div class="fx-toggles">
+            <label>
+                <input
+                    type="checkbox"
+                    prop:checked=move || fx_confetti.get()
+                    on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+                />
+                <span>"Victory effects (confetti + banner)"</span>
+            </label>
+            <label>
+                <input
+                    type="checkbox"
+                    prop:checked=move || fx_check_banner.get()
+                    on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
+                />
+                <span>"將軍 / CHECK warning"</span>
+            </label>
+        </div>
     }
 }
 

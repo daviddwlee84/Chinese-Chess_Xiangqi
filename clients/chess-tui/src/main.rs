@@ -9,6 +9,8 @@
 //!   chess-tui --as black xiangqi                    # debug: render as Black
 
 mod app;
+mod banner;
+mod confetti;
 mod glyph;
 mod input;
 mod net;
@@ -47,6 +49,16 @@ struct Cli {
     /// Disable ANSI color (keeps the chosen glyph set).
     #[arg(long)]
     no_color: bool,
+
+    /// Disable end-of-game confetti + big VICTORY/DEFEAT/DRAW overlay.
+    /// Sidebar status text is unaffected.
+    #[arg(long)]
+    no_confetti: bool,
+
+    /// Disable the "將軍 / CHECK" sidebar warning. Xiangqi-only — banqi
+    /// has no general so the banner never fires there anyway.
+    #[arg(long)]
+    no_check_banner: bool,
 
     /// Render from this side's perspective (debug; default RED). Ignored
     /// when `--connect` is set — the server assigns a side on join.
@@ -135,7 +147,10 @@ fn main() -> Result<()> {
     };
     let use_color = !cli.no_color;
 
-    let app = if let Some(host) = cli.lobby.as_deref() {
+    let show_confetti = !cli.no_confetti;
+    let show_check_banner = !cli.no_check_banner;
+
+    let mut app = if let Some(host) = cli.lobby.as_deref() {
         let url = normalize_lobby_url(host).map_err(|e| anyhow!(e))?;
         // Strip the /lobby suffix before storing as `host` so the lobby
         // can re-derive `/ws/<id>` for joins.
@@ -162,6 +177,8 @@ fn main() -> Result<()> {
         }
     };
 
+    app.show_confetti = show_confetti;
+    app.show_check_banner = show_check_banner;
     run(app)
 }
 
@@ -235,8 +252,13 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppStat
 
         // Shorter poll in Net / Lobby modes keeps server pushes feeling
         // snappy (we redraw at most every poll interval). 200ms in
-        // single-process modes is fine — no async source to drain.
-        let poll_ms = if matches!(app.screen, app::Screen::Net(_) | app::Screen::Lobby(_)) {
+        // single-process modes is fine — no async source to drain. While
+        // a confetti burst is active (or pending), drop to ~20fps so the
+        // particles animate smoothly.
+        let animating = app.confetti_anim.is_some() || app.confetti_pending;
+        let poll_ms = if animating {
+            50
+        } else if matches!(app.screen, app::Screen::Net(_) | app::Screen::Lobby(_)) {
             60
         } else {
             200

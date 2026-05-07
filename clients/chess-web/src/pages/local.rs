@@ -7,7 +7,9 @@ use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
+use crate::components::end_overlay::EndOverlay;
 use crate::components::sidebar::Sidebar;
+use crate::prefs::Prefs;
 use crate::routes::{build_rule_set, parse_local_rules, parse_variant_slug};
 use crate::state::find_move;
 
@@ -123,6 +125,12 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
         }
     });
 
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
+    // Local pass-and-play: no `ClientRole`, so the overlay falls back to
+    // the neutral "Red Wins" / "Black Wins" framing.
+    let role_signal: Signal<Option<crate::state::ClientRole>> = Signal::derive(|| None);
+
     view! {
         <section class="game-page">
             <div class="board-pane">
@@ -145,6 +153,9 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                             </p>
                         </div>
                     </div>
+                </Show>
+                <Show when=move || !wip>
+                    <EndOverlay view=view role=role_signal enabled=fx_confetti/>
                 </Show>
             </div>
             <Sidebar

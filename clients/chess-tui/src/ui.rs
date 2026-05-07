@@ -16,6 +16,8 @@ use crate::app::{
     AppState, CreateRoomField, CreateRoomView, GameView, HostPromptView, LobbyView, NetRole,
     NetView, PickerEntry, PickerView, RectPx, Screen,
 };
+use crate::banner::{self, BannerKind, NeutralSide};
+use crate::confetti::ConfettiAnim;
 use crate::glyph::{self, Style};
 use crate::orient;
 use crate::text_input;
@@ -26,8 +28,9 @@ const RANK_LABEL_COLS: u16 = 3;
 
 pub fn draw(frame: &mut Frame, app: &mut AppState) {
     let area = frame.area();
+    let app_style = app.style;
     match &app.screen {
-        Screen::Picker(p) => draw_picker(frame, area, p),
+        Screen::Picker(p) => draw_picker(frame, area, p, app_style),
         Screen::Game(_) => draw_game(frame, area, app),
         Screen::Net(_) => draw_net(frame, area, app),
         Screen::HostPrompt(h) => draw_host_prompt(frame, area, h, app.help_open),
@@ -43,21 +46,38 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
     }
 }
 
-fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView) {
-    let title = Span::styled("chess-tui", TuiStyle::default().add_modifier(Modifier::BOLD));
-    let mut lines = vec![
-        Line::from(title),
-        Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")),
-        Line::from(""),
-    ];
+fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView, style: Style) {
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Big "CHESS TUI" ASCII banner — only when the terminal is wide enough.
+    // Narrow terminals (less than the banner width + a little padding) fall
+    // back to the original single-line title so the picker still fits.
+    let title_art = banner::art(BannerKind::AppTitle, style);
+    let banner_w = banner::max_width(title_art);
+    if (area.width as usize) >= banner_w + 4 {
+        for row in title_art {
+            lines.push(Line::from(Span::styled(
+                row.to_string(),
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )));
+        }
+    } else {
+        lines.push(Line::from(Span::styled(
+            "chess-tui",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::raw("Choose a variant. Arrow keys + Enter; q to quit.")));
+    lines.push(Line::from(""));
     for (i, entry) in PickerEntry::ALL.iter().enumerate() {
         let prefix = if i == picker.cursor { "▶ " } else { "  " };
-        let style = if i == picker.cursor {
+        let row_style = if i == picker.cursor {
             TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
         } else {
             TuiStyle::default()
         };
-        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), style)]));
+        lines.push(Line::from(vec![Span::raw(prefix), Span::styled(entry.label(), row_style)]));
     }
     let block = Block::default().borders(Borders::ALL).title(" Welcome ");
     let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
@@ -78,6 +98,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let style = app.style;
     let use_color = app.use_color;
     let help_open = app.help_open;
+    let show_check_banner = app.show_check_banner;
 
     let view = PlayerView::project(&g_ref.state, g_ref.state.side_to_move);
     let mut rect = app.board_rect;
@@ -93,7 +114,14 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         &mut rect,
     );
     app.board_rect = rect;
-    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open);
+    draw_sidebar(frame, chunks[1], g_ref, &view, style, help_open, show_check_banner);
+
+    // Confetti + endgame banner. The board area is `chunks[0]`. We do this
+    // after the sidebar render so the layer paints on top of the board only,
+    // and after we've taken the `&app.screen` immutable borrow above.
+    let board_area = chunks[0];
+    let endgame_kind = endgame_kind_local(&view.status, observer);
+    render_confetti_and_banner(frame, board_area, app, endgame_kind, style, use_color);
 }
 
 fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
@@ -109,10 +137,13 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let style = app.style;
     let use_color = app.use_color;
     let help_open = app.help_open;
+    let show_check_banner = app.show_check_banner;
     let observer = n_ref.role.map(|r| r.observer()).unwrap_or(app.observer);
 
     match n_ref.last_view.as_ref() {
         Some(view) => {
+            let view_status = view.status;
+            let role = n_ref.role;
             let mut rect = app.board_rect;
             draw_board(
                 frame,
@@ -126,7 +157,11 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 &mut rect,
             );
             app.board_rect = rect;
-            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open);
+            draw_sidebar_net(frame, chunks[1], n_ref, view, style, help_open, show_check_banner);
+
+            let board_area = chunks[0];
+            let endgame_kind = endgame_kind_net(&view_status, role);
+            render_confetti_and_banner(frame, board_area, app, endgame_kind, style, use_color);
         }
         None => {
             draw_connecting_placeholder(frame, chunks[0], n_ref);
@@ -838,6 +873,7 @@ fn draw_sidebar(
     view: &PlayerView,
     style: Style,
     help_open: bool,
+    show_check_banner: bool,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
@@ -881,7 +917,10 @@ fn draw_sidebar(
             ),
         ]));
 
-        if matches!(view.shape, BoardShape::Xiangqi9x10) && g.state.is_in_check(view.side_to_move) {
+        if show_check_banner
+            && matches!(view.shape, BoardShape::Xiangqi9x10)
+            && g.state.is_in_check(view.side_to_move)
+        {
             lines.push(Line::from(Span::styled(
                 "  ⚠ CHECK 將軍 — your general is under attack",
                 TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
@@ -944,6 +983,7 @@ fn draw_sidebar_net(
     view: &PlayerView,
     style: Style,
     help_open: bool,
+    show_check_banner: bool,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status (net) ");
     let inner = block.inner(area);
@@ -1029,6 +1069,21 @@ fn draw_sidebar_net(
                 TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
             ),
         ]));
+
+        // Check banner: `view.in_check` is set by the server in v4+ from the
+        // observer's POV (or Red's POV for spectators). So Players read it
+        // as "my own general"; Spectators read it as "Red's general".
+        if show_check_banner && matches!(view.shape, BoardShape::Xiangqi9x10) && view.in_check {
+            let msg = match n.role {
+                Some(NetRole::Player(_)) => "  ⚠ CHECK 將軍 — your general is under attack",
+                Some(NetRole::Spectator) => "  ⚠ CHECK 將軍 — Red's general is under attack",
+                None => "  ⚠ CHECK 將軍",
+            };
+            lines.push(Line::from(Span::styled(
+                msg,
+                TuiStyle::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )));
+        }
     }
 
     let (status_text, status_color) = format_status_short(view.status, style);
@@ -1169,6 +1224,146 @@ const HELP_LINES_NET: &[&str] = &[
     "q / Ctrl-C      quit (closes the connection)",
     "(undo not supported online yet)",
 ];
+
+/// Map a Local game's outcome to the kind of big banner to draw. Local
+/// (hot-seat) play gets neutral "RED WINS / BLACK WINS / DRAW" copy
+/// because both seats share the same screen — calling either side
+/// "VICTORY" or "DEFEAT" would be misleading. Returns `None` while the
+/// game is still ongoing or for unsupported variants.
+fn endgame_kind_local(status: &GameStatus, _observer: Side) -> Option<BannerKind> {
+    match status {
+        GameStatus::Ongoing => None,
+        GameStatus::Won { winner, .. } => Some(BannerKind::Outcome(neutral_side_for(*winner))),
+        GameStatus::Drawn { .. } => Some(BannerKind::Draw),
+    }
+}
+
+/// Map a Net game's outcome. Players see VICTORY/DEFEAT keyed off their
+/// own seat; spectators always see the neutral RED WINS / BLACK WINS
+/// copy. Returns `None` while ongoing or before the role handshake.
+fn endgame_kind_net(status: &GameStatus, role: Option<NetRole>) -> Option<BannerKind> {
+    match (status, role) {
+        (GameStatus::Ongoing, _) => None,
+        (GameStatus::Drawn { .. }, _) => Some(BannerKind::Draw),
+        (GameStatus::Won { winner, .. }, Some(NetRole::Player(seat))) => {
+            if *winner == seat {
+                Some(BannerKind::Victory)
+            } else {
+                Some(BannerKind::Defeat)
+            }
+        }
+        (GameStatus::Won { winner, .. }, Some(NetRole::Spectator) | None) => {
+            Some(BannerKind::Outcome(neutral_side_for(*winner)))
+        }
+    }
+}
+
+fn neutral_side_for(side: Side) -> NeutralSide {
+    match side {
+        Side::RED => NeutralSide::Red,
+        Side::BLACK => NeutralSide::Black,
+        _ => NeutralSide::Green,
+    }
+}
+
+/// Render a confetti burst + centered ASCII banner over the board area
+/// during the post-game "look at this" window.
+///
+/// The trigger lives elsewhere (`AppState::note_status_transition`); this
+/// function only consumes the `confetti_pending` flag and the active
+/// `confetti_anim`. While an animation is alive we also render the
+/// matching big banner; once the animation expires both go away and the
+/// sidebar's existing `game_over_banner` is left as the persistent cue.
+///
+/// Skipped entirely when the user disabled FX (`--no-confetti`) — the
+/// pending flag is never armed in that case, so this function is a no-op.
+fn render_confetti_and_banner(
+    frame: &mut Frame,
+    board_area: Rect,
+    app: &mut AppState,
+    endgame_kind: Option<BannerKind>,
+    style: Style,
+    use_color: bool,
+) {
+    // Spawn a fresh burst if the trigger fired since the last frame. The
+    // sub-rect must be inside the board widget so particles land where the
+    // user is already looking.
+    if app.confetti_pending && app.confetti_anim.is_none() {
+        app.confetti_anim = Some(ConfettiAnim::spawn(board_area));
+        app.confetti_pending = false;
+    }
+
+    // Draw the big banner first (before particles overwrite cells), but
+    // only while the animation is alive so it auto-clears with the burst.
+    let anim_alive = app.confetti_anim.is_some();
+    if anim_alive {
+        if let Some(kind) = endgame_kind {
+            render_big_banner(frame, board_area, kind, style, use_color);
+        }
+    }
+
+    // Step + render particles. `step` advances physics and drops offscreen
+    // particles; `render` paints into the frame's buffer cells. When `done`,
+    // clear the slot so the next frame stops animating.
+    if let Some(anim) = app.confetti_anim.as_mut() {
+        let done = anim.step(board_area);
+        anim.render(frame.buffer_mut(), board_area, use_color);
+        if done {
+            app.confetti_anim = None;
+        }
+    }
+}
+
+/// Centre the ASCII art in `area`. If `area` is too narrow to fit the
+/// banner with reasonable padding, we silently skip the banner (confetti
+/// alone still plays). The kind's color is chosen for emotional read:
+/// yellow for VICTORY (excitement), red for DEFEAT (loss), magenta for
+/// DRAW (neutral but not muted), red for CHECK.
+fn render_big_banner(
+    frame: &mut Frame,
+    area: Rect,
+    kind: BannerKind,
+    style: Style,
+    use_color: bool,
+) {
+    let rows = banner::art(kind, style);
+    let banner_w = banner::max_width(rows) as u16;
+    let banner_h = rows.len() as u16;
+    if area.width < banner_w + 2 || area.height < banner_h + 2 {
+        return;
+    }
+    let x = area.x + (area.width.saturating_sub(banner_w)) / 2;
+    let y = area.y + (area.height.saturating_sub(banner_h)) / 2;
+    let sub = Rect { x, y, width: banner_w, height: banner_h };
+
+    let color = if !use_color {
+        Color::Reset
+    } else {
+        match kind {
+            BannerKind::Victory => Color::Yellow,
+            BannerKind::Defeat => Color::Red,
+            BannerKind::Draw => Color::Magenta,
+            BannerKind::Outcome(_) => Color::Yellow,
+            BannerKind::AppTitle => Color::Yellow,
+        }
+    };
+
+    let lines: Vec<Line> = rows
+        .iter()
+        .map(|r| {
+            Line::from(Span::styled(
+                r.to_string(),
+                TuiStyle::default().fg(color).add_modifier(Modifier::BOLD),
+            ))
+        })
+        .collect();
+
+    // Clear the cells under the banner so the board glyphs don't bleed
+    // through. The Clear widget wipes to default style, then Paragraph
+    // writes the banner text.
+    frame.render_widget(Clear, sub);
+    frame.render_widget(Paragraph::new(lines), sub);
+}
 
 fn game_over_banner(status: &GameStatus, style: Style) -> Option<Vec<Line<'static>>> {
     match status {

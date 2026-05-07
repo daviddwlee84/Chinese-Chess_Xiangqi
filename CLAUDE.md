@@ -47,6 +47,8 @@ cargo run -p chess-tui -- banqi --preset taiwan --seed 42
 cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
 cargo run -p chess-tui -- --as black xiangqi              # render as Black
+cargo run -p chess-tui -- --no-confetti xiangqi           # disable end-of-game FX
+cargo run -p chess-tui -- --no-check-banner xiangqi       # hide 將軍/CHECK warning
 
 # Networked play (multi-room — see ADR-0005; spectator + chat — see ADR-0006)
 cargo run -p chess-net -- --port 7878 xiangqi             # server, all rooms = xiangqi
@@ -154,6 +156,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
 
 - **Rules are configured via URL query string on `/local/:variant`.** The picker page (`pages/picker.rs`) builds these from a reactive form; manually-typed URLs are also valid. Encoding lives in `routes.rs::{parse_local_rules, build_local_query, build_rule_set}` (pure-logic, native-tested): `?strict=1` for strict xiangqi (default = casual), `?house=chain,rush&seed=42` for banqi house rules + deterministic shuffle, `?preset=taiwan|aggressive|purist` as an alt to `house=`. Tokens: `chain`/`dark`/`rush`/`horse`/`cannon` map 1:1 to `HouseRules` flags (only `chain` + `rush` are wired in move-gen — see banqi gotcha above). Unknown tokens are dropped silently. Three-kingdom ignores all params. In-game rule editing (gear icon) is a P2 follow-up — see `backlog/web-ingame-rules-modal.md`.
+
+- **End-game FX (confetti + VICTORY/DEFEAT/DRAW banner) and the 將軍/CHECK warning are user-toggleable, default ON.** Wire change: `PlayerView` gains `pub in_check: bool` (`#[serde(default)]`, ADR-0007, protocol v4). chess-tui CLI: `--no-confetti` and `--no-check-banner` (preserved across screen transitions via `AppState::replace_preserving_prefs`). chess-tui hand-rolled ASCII art lives in `clients/chess-tui/src/banner.rs` (`BannerKind::{Victory,Defeat,Draw,Outcome,AppTitle}`, two glyph styles); particle physics in `confetti.rs` (xorshift32, no `rand` dep). chess-web localStorage keys are `chess.fx.confetti` and `chess.fx.checkBanner`, hydrated by `Prefs::hydrate()` in `clients/chess-web/src/prefs.rs` and `provide_context`-shared with all routes; sidebar footer ships two checkboxes. Spectators (and Local pass-and-play, which has no `ClientRole`) always see neutral "Red Wins" / "Black Wins" copy — never `VICTORY` / `DEFEAT`. Banqi never shows the check badge (no general → `is_in_check` returns false). The TUI confetti animation runs at ~20 fps via `poll_ms = 50` while `confetti_anim.is_some() || confetti_pending` (otherwise the existing 60 ms Net / 200 ms Local rates apply). Big TUI banner is skipped when the board area is narrower than the ASCII art + 2 cols of padding; confetti still plays.
 
 ## Where to put new work
 
