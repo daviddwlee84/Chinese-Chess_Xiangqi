@@ -32,18 +32,24 @@ pub enum PickerEntry {
     BanqiPurist,
     BanqiTaiwan,
     BanqiAggressive,
+    /// Open the tree-style custom-rules sub-screen (xiangqi).
+    CustomXiangqi,
+    /// Open the tree-style custom-rules sub-screen (banqi).
+    CustomBanqi,
     /// Open the host prompt → lobby browser → online play flow.
     ConnectToServer,
     Quit,
 }
 
 impl PickerEntry {
-    pub const ALL: [PickerEntry; 7] = [
+    pub const ALL: [PickerEntry; 9] = [
         PickerEntry::Xiangqi,
         PickerEntry::XiangqiStrict,
         PickerEntry::BanqiPurist,
         PickerEntry::BanqiTaiwan,
         PickerEntry::BanqiAggressive,
+        PickerEntry::CustomXiangqi,
+        PickerEntry::CustomBanqi,
         PickerEntry::ConnectToServer,
         PickerEntry::Quit,
     ];
@@ -55,6 +61,8 @@ impl PickerEntry {
             PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
             PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
             PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
+            PickerEntry::CustomXiangqi => "Xiangqi (象棋) — custom rules…",
+            PickerEntry::CustomBanqi => "Banqi (暗棋) — custom rules…",
             PickerEntry::ConnectToServer => "Connect to server… (online)",
             PickerEntry::Quit => "Quit",
         }
@@ -71,7 +79,185 @@ impl PickerEntry {
             PickerEntry::BanqiAggressive => {
                 Some(RuleSet::banqi(chess_core::rules::PRESET_AGGRESSIVE))
             }
-            PickerEntry::ConnectToServer | PickerEntry::Quit => None,
+            PickerEntry::CustomXiangqi
+            | PickerEntry::CustomBanqi
+            | PickerEntry::ConnectToServer
+            | PickerEntry::Quit => None,
+        }
+    }
+}
+
+/// Variant chooser for the custom-rules sub-screen. We don't reuse
+/// `chess_core::rules::Variant` because three-kingdom isn't shipped yet
+/// and the picker only offers xiangqi + banqi here.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum CustomVariant {
+    Xiangqi,
+    Banqi,
+}
+
+/// Banqi preset selector for the custom-rules sub-screen. `Custom` is the
+/// "I edited the flags individually" sentinel so the radio doesn't lie
+/// about which preset is active.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum BanqiPreset {
+    Purist,
+    Taiwan,
+    Aggressive,
+    Custom,
+}
+
+impl BanqiPreset {
+    pub fn flags(self) -> Option<HouseRules> {
+        match self {
+            BanqiPreset::Purist => Some(chess_core::rules::PRESET_PURIST),
+            BanqiPreset::Taiwan => Some(chess_core::rules::PRESET_TAIWAN),
+            BanqiPreset::Aggressive => Some(chess_core::rules::PRESET_AGGRESSIVE),
+            BanqiPreset::Custom => None,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            BanqiPreset::Purist => "Purist (no house rules)",
+            BanqiPreset::Taiwan => "Taiwan (chain + chariot rush)",
+            BanqiPreset::Aggressive => "Aggressive (chain + dark + rush + horse-diag)",
+            BanqiPreset::Custom => "Custom (manual flags below)",
+        }
+    }
+
+    pub fn from_flags(flags: HouseRules) -> Self {
+        if flags == chess_core::rules::PRESET_PURIST {
+            BanqiPreset::Purist
+        } else if flags == chess_core::rules::PRESET_TAIWAN {
+            BanqiPreset::Taiwan
+        } else if flags == chess_core::rules::PRESET_AGGRESSIVE {
+            BanqiPreset::Aggressive
+        } else {
+            BanqiPreset::Custom
+        }
+    }
+}
+
+/// One selectable row in the custom-rules sub-screen. Cursor index walks
+/// the `Vec<CustomRulesItem>` returned by `CustomRulesView::items`; render
+/// uses the same list to know what to draw + which prefix to show.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum CustomRulesItem {
+    /// Xiangqi radio button. `bool` = strict (true) or casual (false).
+    XiangqiPreset(bool),
+    BanqiPresetItem(BanqiPreset),
+    BanqiFlagItem(HouseRules),
+    BanqiSeed,
+    Start,
+}
+
+/// State for the tree-style "Custom rules…" sub-screen. Reachable from the
+/// picker via `PickerEntry::CustomXiangqi` / `CustomBanqi`. Maintains a
+/// cursor over `items()` plus per-variant rule state. `Start` builds a
+/// `RuleSet` and transitions to `Screen::Game`; `Esc` returns to the
+/// picker with the original cursor restored.
+pub struct CustomRulesView {
+    pub variant: CustomVariant,
+    pub cursor: usize,
+    /// Xiangqi: true = standard self-check, false = casual (default).
+    pub xiangqi_strict: bool,
+    pub banqi_preset: BanqiPreset,
+    pub banqi_flags: HouseRules,
+    /// User-typed seed buffer. Empty = nondeterministic shuffle.
+    pub banqi_seed: String,
+    pub last_msg: Option<String>,
+    /// Picker cursor index when this screen was opened — used to restore
+    /// the picker selection on Esc / Back.
+    pub picker_cursor: usize,
+}
+
+/// Six house-rule flag rows shown in the custom-rules screen, paired with
+/// their CLI tokens / Chinese subtitles for parity with the web client's
+/// `parse_house_csv`.
+pub const CUSTOM_BANQI_FLAGS: [(HouseRules, &str, &str); 6] = [
+    (HouseRules::CHAIN_CAPTURE, "chain", "連吃"),
+    (HouseRules::DARK_CAPTURE, "dark", "暗吃"),
+    (HouseRules::CHARIOT_RUSH, "rush", "車衝"),
+    (HouseRules::HORSE_DIAGONAL, "horse", "馬斜"),
+    (HouseRules::CANNON_FAST_MOVE, "cannon", "砲快"),
+    (HouseRules::DARK_CAPTURE_TRADE, "dark-trade", "暗吃換子"),
+];
+
+impl CustomRulesView {
+    pub fn new_xiangqi(picker_cursor: usize) -> Self {
+        Self {
+            variant: CustomVariant::Xiangqi,
+            cursor: 0,
+            // Match the existing picker default: Xiangqi entry is casual.
+            xiangqi_strict: false,
+            banqi_preset: BanqiPreset::Purist,
+            banqi_flags: HouseRules::empty(),
+            banqi_seed: String::new(),
+            last_msg: None,
+            picker_cursor,
+        }
+    }
+
+    pub fn new_banqi(picker_cursor: usize) -> Self {
+        Self {
+            variant: CustomVariant::Banqi,
+            cursor: 0,
+            xiangqi_strict: false,
+            banqi_preset: BanqiPreset::Purist,
+            banqi_flags: chess_core::rules::PRESET_PURIST,
+            banqi_seed: String::new(),
+            last_msg: None,
+            picker_cursor,
+        }
+    }
+
+    /// All selectable rows, in order. Cursor index walks this list; the
+    /// renderer interleaves headers between the section boundaries.
+    pub fn items(&self) -> Vec<CustomRulesItem> {
+        match self.variant {
+            CustomVariant::Xiangqi => vec![
+                CustomRulesItem::XiangqiPreset(false),
+                CustomRulesItem::XiangqiPreset(true),
+                CustomRulesItem::Start,
+            ],
+            CustomVariant::Banqi => {
+                let mut items = vec![
+                    CustomRulesItem::BanqiPresetItem(BanqiPreset::Purist),
+                    CustomRulesItem::BanqiPresetItem(BanqiPreset::Taiwan),
+                    CustomRulesItem::BanqiPresetItem(BanqiPreset::Aggressive),
+                    CustomRulesItem::BanqiPresetItem(BanqiPreset::Custom),
+                ];
+                for (flag, _, _) in CUSTOM_BANQI_FLAGS {
+                    items.push(CustomRulesItem::BanqiFlagItem(flag));
+                }
+                items.push(CustomRulesItem::BanqiSeed);
+                items.push(CustomRulesItem::Start);
+                items
+            }
+        }
+    }
+
+    /// Build the chosen `RuleSet`. `Err` only when the seed buffer is
+    /// non-empty but not a valid `u64` — surfaces as `last_msg` and keeps
+    /// the screen open so the user can fix it.
+    pub fn to_rule_set(&self) -> Result<RuleSet, String> {
+        match self.variant {
+            CustomVariant::Xiangqi => {
+                Ok(if self.xiangqi_strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() })
+            }
+            CustomVariant::Banqi => {
+                let flags = chess_core::rules::house::normalize(self.banqi_flags);
+                let seed_trim = self.banqi_seed.trim();
+                if seed_trim.is_empty() {
+                    Ok(RuleSet::banqi(flags))
+                } else {
+                    let seed: u64 = seed_trim
+                        .parse()
+                        .map_err(|_| format!("Seed must be a number (got `{seed_trim}`)."))?;
+                    Ok(RuleSet::banqi_with_seed(flags, seed))
+                }
+            }
         }
     }
 }
@@ -206,6 +392,8 @@ pub enum Screen {
     HostPrompt(HostPromptView),
     Lobby(Box<LobbyView>),
     CreateRoom(CreateRoomView),
+    /// Tree-style custom-rules sub-screen, reached from the picker.
+    CustomRules(Box<CustomRulesView>),
 }
 
 pub struct AppState {
@@ -556,6 +744,7 @@ impl AppState {
             Screen::Net(n) if n.chat_input.is_some() || n.coord_input.is_some() => InputMode::Text,
             Screen::Game(g) if g.coord_input.is_some() => InputMode::Text,
             Screen::Game(_) | Screen::Net(_) => InputMode::Game,
+            Screen::CustomRules(_) => InputMode::CustomRules,
         }
     }
 
@@ -622,6 +811,7 @@ impl AppState {
             Action::PickerUp | Action::PickerDown | Action::PickerSelect => match &self.screen {
                 Screen::Picker(_) => self.dispatch_picker(action),
                 Screen::Lobby(_) => self.dispatch_lobby(action),
+                Screen::CustomRules(_) => self.dispatch_custom_rules(action),
                 _ => {}
             },
             Action::LobbyCreate | Action::LobbyRefresh => {
@@ -647,7 +837,8 @@ impl AppState {
                 Screen::Picker(_)
                 | Screen::HostPrompt(_)
                 | Screen::Lobby(_)
-                | Screen::CreateRoom(_) => {}
+                | Screen::CreateRoom(_)
+                | Screen::CustomRules(_) => {}
             },
         }
         // Local moves go through dispatch_game / dispatch_coord_*, both of
@@ -665,6 +856,14 @@ impl AppState {
         match &mut self.screen {
             Screen::HostPrompt(_) => {
                 self.replace_preserving_prefs(AppState::new_picker(style, use_color, observer));
+            }
+            Screen::CustomRules(c) => {
+                let picker_cursor = c.picker_cursor;
+                let mut fresh = AppState::new_picker(style, use_color, observer);
+                if let Screen::Picker(p) = &mut fresh.screen {
+                    p.cursor = picker_cursor.min(PickerEntry::ALL.len() - 1);
+                }
+                self.replace_preserving_prefs(fresh);
             }
             Screen::Lobby(l) => {
                 if l.pending_join.is_some() {
@@ -807,7 +1006,8 @@ impl AppState {
             Screen::Picker(_)
             | Screen::HostPrompt(_)
             | Screen::Lobby(_)
-            | Screen::CreateRoom(_) => false,
+            | Screen::CreateRoom(_)
+            | Screen::CustomRules(_) => false,
         }
     }
 
@@ -821,6 +1021,7 @@ impl AppState {
             Action::PickerDown => p.cursor = (p.cursor + 1) % n,
             Action::PickerSelect => {
                 let entry = PickerEntry::ALL[p.cursor];
+                let picker_cursor = p.cursor;
                 let observer = self.observer;
                 let style = self.style;
                 let use_color = self.use_color;
@@ -830,6 +1031,16 @@ impl AppState {
                             style, use_color, observer,
                         ));
                     }
+                    PickerEntry::CustomXiangqi => {
+                        self.screen = Screen::CustomRules(Box::new(CustomRulesView::new_xiangqi(
+                            picker_cursor,
+                        )));
+                    }
+                    PickerEntry::CustomBanqi => {
+                        self.screen = Screen::CustomRules(Box::new(CustomRulesView::new_banqi(
+                            picker_cursor,
+                        )));
+                    }
                     PickerEntry::Quit => self.should_quit = true,
                     other => {
                         if let Some(rules) = other.rules() {
@@ -838,6 +1049,70 @@ impl AppState {
                             ));
                         }
                     }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn dispatch_custom_rules(&mut self, action: Action) {
+        // Up / Down navigate the cursor; Activate (Enter / Space) acts on the
+        // current row. Seed editing arrives via `dispatch_text` because the
+        // input mode routes printable digits there.
+        let Screen::CustomRules(c) = &mut self.screen else {
+            return;
+        };
+        let items = c.items();
+        if items.is_empty() {
+            return;
+        }
+        match action {
+            Action::PickerUp => {
+                c.cursor = (c.cursor + items.len() - 1) % items.len();
+                c.last_msg = None;
+            }
+            Action::PickerDown => {
+                c.cursor = (c.cursor + 1) % items.len();
+                c.last_msg = None;
+            }
+            Action::PickerSelect => {
+                let cur = c.cursor.min(items.len() - 1);
+                let item = items[cur];
+                match item {
+                    CustomRulesItem::XiangqiPreset(strict) => {
+                        c.xiangqi_strict = strict;
+                        c.last_msg = None;
+                    }
+                    CustomRulesItem::BanqiPresetItem(p) => {
+                        c.banqi_preset = p;
+                        if let Some(flags) = p.flags() {
+                            c.banqi_flags = flags;
+                        }
+                        c.last_msg = None;
+                    }
+                    CustomRulesItem::BanqiFlagItem(flag) => {
+                        c.banqi_flags.toggle(flag);
+                        c.banqi_flags = chess_core::rules::house::normalize(c.banqi_flags);
+                        c.banqi_preset = BanqiPreset::from_flags(c.banqi_flags);
+                        c.last_msg = None;
+                    }
+                    CustomRulesItem::BanqiSeed => {
+                        // No-op: seed edits arrive via TextInput. Ignore Enter/Space
+                        // so the user doesn't accidentally jump screens.
+                    }
+                    CustomRulesItem::Start => match c.to_rule_set() {
+                        Ok(rules) => {
+                            let style = self.style;
+                            let use_color = self.use_color;
+                            let observer = self.observer;
+                            self.replace_preserving_prefs(AppState::new_game(
+                                rules, style, use_color, observer,
+                            ));
+                        }
+                        Err(msg) => {
+                            c.last_msg = Some(msg);
+                        }
+                    },
                 }
             }
             _ => {}
@@ -1001,6 +1276,26 @@ impl AppState {
                         self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
                     }
                     _ => {}
+                }
+            }
+            // Custom-rules screen: digits / Backspace edit the seed buffer
+            // when the cursor is on the seed row. Other text input is a
+            // no-op so spurious keys don't bleed into the seed.
+            Screen::CustomRules(c) => {
+                let items = c.items();
+                let cur = c.cursor.min(items.len().saturating_sub(1));
+                if matches!(items.get(cur), Some(CustomRulesItem::BanqiSeed)) {
+                    match action {
+                        Action::TextInput(ch) if ch.is_ascii_digit() => {
+                            text_input::push_char(&mut c.banqi_seed, ch, 20);
+                            c.last_msg = None;
+                        }
+                        Action::TextBackspace => {
+                            text_input::backspace(&mut c.banqi_seed);
+                            c.last_msg = None;
+                        }
+                        _ => {}
+                    }
                 }
             }
             // Game mode hijacks Text input while the user is typing a coord

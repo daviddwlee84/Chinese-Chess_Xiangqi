@@ -13,14 +13,16 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
 use crate::app::{
-    self, AppState, CapturedSort, CreateRoomField, CreateRoomView, GameView, HostPromptView,
-    LobbyView, NetRole, NetView, PickerEntry, PickerView, RectPx, Screen,
+    self, AppState, BanqiPreset, CapturedSort, CreateRoomField, CreateRoomView, CustomRulesView,
+    CustomVariant, GameView, HostPromptView, LobbyView, NetRole, NetView, PickerEntry, PickerView,
+    RectPx, Screen, CUSTOM_BANQI_FLAGS,
 };
 use crate::banner::{self, BannerKind, NeutralSide};
 use crate::confetti::ConfettiAnim;
 use crate::glyph::{self, Style};
 use crate::orient;
 use crate::text_input;
+use chess_core::rules::{RuleSet, Variant};
 
 const CELL_COLS: u16 = 4;
 const CELL_ROWS: u16 = 2;
@@ -36,10 +38,12 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
         Screen::HostPrompt(h) => draw_host_prompt(frame, area, h, app.help_open),
         Screen::Lobby(l) => draw_lobby(frame, area, l, app.help_open),
         Screen::CreateRoom(c) => draw_create_room(frame, area, c),
+        Screen::CustomRules(c) => draw_custom_rules(frame, area, c),
     }
 
     if app.rules_open {
-        draw_rules_overlay(frame, area, app.style);
+        let active_rules = active_rules(&app.screen);
+        draw_rules_overlay(frame, area, active_rules);
     }
     if app.quit_confirm_open {
         draw_quit_confirm_overlay(frame, area);
@@ -1599,32 +1603,259 @@ fn line_label_value(label: &'static str, value: &str) -> Line<'static> {
     ])
 }
 
-fn draw_rules_overlay(frame: &mut Frame, area: Rect, _style: Style) {
-    // Center an overlay roughly 70 cols × 24 rows over the screen.
+/// Resolve the live `RuleSet` for the active screen, if any. Used to
+/// drive the rules-overlay's "current rules" prelude. Returns `None` for
+/// screens without an active game (Picker, HostPrompt, Lobby, …).
+fn active_rules(screen: &Screen) -> Option<&RuleSet> {
+    match screen {
+        Screen::Game(g) => Some(&g.state.rules),
+        Screen::Net(n) => n.rules.as_ref(),
+        Screen::Picker(_)
+        | Screen::HostPrompt(_)
+        | Screen::Lobby(_)
+        | Screen::CreateRoom(_)
+        | Screen::CustomRules(_) => None,
+    }
+}
+
+fn draw_rules_overlay(frame: &mut Frame, area: Rect, rules: Option<&RuleSet>) {
+    // Center an overlay roughly 70 cols × 30 rows over the screen.
     let pad_x = area.width.saturating_sub(72) / 2;
-    let pad_y = area.height.saturating_sub(26) / 2;
+    let pad_y = area.height.saturating_sub(32) / 2;
     let overlay = Rect {
         x: area.x + pad_x,
         y: area.y + pad_y,
         width: area.width.min(72),
-        height: area.height.min(26),
+        height: area.height.min(32),
     };
     frame.render_widget(Clear, overlay);
     let block =
         Block::default().borders(Borders::ALL).title(" Rules / 規則 — press r or Esc to close ");
-    let lines: Vec<Line> = RULES_LINES
-        .iter()
-        .map(|(s, accent)| {
-            let style = if *accent {
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Per-game prelude: show which house rules / mode are active for this
+    // session so the user knows what they're playing without having to
+    // remember the picker or CLI args.
+    if let Some(r) = rules {
+        for ln in current_rules_lines(r) {
+            lines.push(ln);
+        }
+        lines.push(Line::from(""));
+    }
+
+    for (s, accent) in RULES_LINES {
+        let st = if *accent {
+            TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            TuiStyle::default()
+        };
+        lines.push(Line::from(Span::styled(*s, st)));
+    }
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, overlay);
+}
+
+/// Build the "current rules" prelude block for the overlay. Xiangqi gets a
+/// strict/casual line; banqi gets a 6-row [x]/[ ] checkbox of the active
+/// flags plus a Seed line when deterministic.
+fn current_rules_lines(rules: &RuleSet) -> Vec<Line<'static>> {
+    let header_style = TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let dim = TuiStyle::default().fg(Color::DarkGray);
+    let mut out: Vec<Line<'static>> = Vec::new();
+    match rules.variant {
+        Variant::Xiangqi => {
+            out.push(Line::from(Span::styled("Xiangqi 象棋 — current rules", header_style)));
+            let mode = if rules.xiangqi_allow_self_check {
+                "Casual (allow self-check — lose by general capture)"
+            } else {
+                "Standard (self-check filter on — must defend)"
+            };
+            out.push(Line::from(vec![Span::raw("  • "), Span::raw(mode.to_string())]));
+        }
+        Variant::Banqi => {
+            out.push(Line::from(Span::styled("Banqi 暗棋 — current rules", header_style)));
+            for (flag, token, subtitle) in CUSTOM_BANQI_FLAGS {
+                let on = rules.house.contains(flag);
+                let mark = if on { "[x]" } else { "[ ]" };
+                let row_style = if on { TuiStyle::default() } else { dim };
+                out.push(Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(mark.to_string(), row_style),
+                    Span::raw(" "),
+                    Span::styled(format!("{token:<11}"), row_style),
+                    Span::styled(subtitle.to_string(), row_style),
+                ]));
+            }
+            let seed_line = match rules.banqi_seed {
+                Some(s) => format!("  Seed: {s} (deterministic)"),
+                None => "  Seed: — (random)".to_string(),
+            };
+            out.push(Line::from(Span::styled(seed_line, dim)));
+        }
+        Variant::ThreeKingdomBanqi => {
+            out.push(Line::from(Span::styled("三國暗棋 — current rules", header_style)));
+            out.push(Line::from(Span::styled(
+                "  (move-gen still landing — see TODO.md)".to_string(),
+                dim,
+            )));
+        }
+    }
+    out
+}
+
+fn draw_custom_rules(frame: &mut Frame, area: Rect, view: &CustomRulesView) {
+    let mut lines: Vec<Line> = Vec::new();
+    let header_style = TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let dim = TuiStyle::default().fg(Color::DarkGray);
+
+    let title = match view.variant {
+        CustomVariant::Xiangqi => "Custom Xiangqi rules",
+        CustomVariant::Banqi => "Custom Banqi rules",
+    };
+    lines.push(Line::from(Span::styled(title.to_string(), header_style)));
+    lines.push(Line::from(""));
+
+    let items = view.items();
+    let cur = view.cursor.min(items.len().saturating_sub(1));
+    let mut item_idx = 0usize;
+
+    match view.variant {
+        CustomVariant::Xiangqi => {
+            lines
+                .push(Line::from(Span::styled("Mode (Enter / Space to choose):".to_string(), dim)));
+            // Two radio rows.
+            for (i, (label, strict)) in
+                [("Casual (allow self-check)", false), ("Standard (must defend check)", true)]
+                    .iter()
+                    .enumerate()
+            {
+                let selected = view.xiangqi_strict == *strict;
+                let prefix = if item_idx + i == cur { "▶ " } else { "  " };
+                let glyph = if selected { "(•)" } else { "( )" };
+                let row_style = if item_idx + i == cur {
+                    TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    TuiStyle::default()
+                };
+                lines.push(Line::from(vec![
+                    Span::raw(prefix),
+                    Span::styled(glyph.to_string(), row_style),
+                    Span::raw(" "),
+                    Span::styled((*label).to_string(), row_style),
+                ]));
+            }
+            item_idx += 2;
+        }
+        CustomVariant::Banqi => {
+            lines.push(Line::from(Span::styled(
+                "Preset (Enter / Space to choose):".to_string(),
+                dim,
+            )));
+            for (i, p) in [
+                BanqiPreset::Purist,
+                BanqiPreset::Taiwan,
+                BanqiPreset::Aggressive,
+                BanqiPreset::Custom,
+            ]
+            .iter()
+            .enumerate()
+            {
+                let selected = view.banqi_preset == *p;
+                let prefix = if item_idx + i == cur { "▶ " } else { "  " };
+                let glyph = if selected { "(•)" } else { "( )" };
+                let row_style = if item_idx + i == cur {
+                    TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    TuiStyle::default()
+                };
+                lines.push(Line::from(vec![
+                    Span::raw(prefix),
+                    Span::styled(glyph.to_string(), row_style),
+                    Span::raw(" "),
+                    Span::styled(p.label().to_string(), row_style),
+                ]));
+            }
+            item_idx += 4;
+
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled("House rules (Space to toggle):".to_string(), dim)));
+            for (i, (flag, token, subtitle)) in CUSTOM_BANQI_FLAGS.iter().enumerate() {
+                let on = view.banqi_flags.contains(*flag);
+                let prefix = if item_idx + i == cur { "▶ " } else { "  " };
+                let glyph = if on { "[x]" } else { "[ ]" };
+                let row_style = if item_idx + i == cur {
+                    TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else if on {
+                    TuiStyle::default()
+                } else {
+                    dim
+                };
+                lines.push(Line::from(vec![
+                    Span::raw(prefix),
+                    Span::styled(glyph.to_string(), row_style),
+                    Span::raw(" "),
+                    Span::styled(format!("{:<11}", *token), row_style),
+                    Span::styled((*subtitle).to_string(), row_style),
+                ]));
+            }
+            item_idx += CUSTOM_BANQI_FLAGS.len();
+
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "Shuffle seed (digits only, blank = random):".to_string(),
+                dim,
+            )));
+            let prefix = if item_idx == cur { "▶ " } else { "  " };
+            let row_style = if item_idx == cur {
                 TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 TuiStyle::default()
             };
-            Line::from(Span::styled(*s, style))
-        })
-        .collect();
+            let buf_display = if item_idx == cur {
+                format!("[ {}_ ]", view.banqi_seed)
+            } else if view.banqi_seed.is_empty() {
+                "[          ]".to_string()
+            } else {
+                format!("[ {} ]", view.banqi_seed)
+            };
+            lines.push(Line::from(vec![
+                Span::raw(prefix),
+                Span::styled("Seed: ", row_style),
+                Span::styled(buf_display, row_style),
+            ]));
+            item_idx += 1;
+        }
+    }
+
+    // Start button — last item.
+    lines.push(Line::from(""));
+    let prefix = if item_idx == cur { "▶ " } else { "  " };
+    let btn_style = if item_idx == cur {
+        TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else {
+        TuiStyle::default().fg(Color::Gray)
+    };
+    lines.push(Line::from(vec![
+        Span::raw(prefix),
+        Span::styled("[ Start ]".to_string(), btn_style),
+    ]));
+
+    if let Some(msg) = view.last_msg.as_deref() {
+        lines.push(Line::from(""));
+        lines
+            .push(Line::from(Span::styled(format!("× {msg}"), TuiStyle::default().fg(Color::Red))));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "[Enter/Space] activate · [↑↓ / jk] move · digits = seed · [Esc] back · [q] quit",
+        dim,
+    )));
+
+    let block = Block::default().borders(Borders::ALL).title(" Custom rules ");
     let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
-    frame.render_widget(para, overlay);
+    frame.render_widget(para, area);
 }
 
 fn draw_quit_confirm_overlay(frame: &mut Frame, area: Rect) {

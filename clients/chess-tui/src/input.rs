@@ -11,6 +11,9 @@ pub enum InputMode {
     Lobby,
     Text,
     Game,
+    /// Tree-style "Custom rules…" sub-screen: cursor + Space-toggle, plus
+    /// digit-only text input on the Seed row.
+    CustomRules,
 }
 
 /// Flavor of the coordinate-input prompt opened from `Game` mode.
@@ -119,6 +122,17 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Tab => Action::FocusNext,
             KeyCode::BackTab => Action::FocusPrev,
             KeyCode::Char(c) => Action::TextInput(c),
+            _ => Action::None,
+        },
+        InputMode::CustomRules => match ev.code {
+            KeyCode::Up | KeyCode::Char('k') => Action::PickerUp,
+            KeyCode::Down | KeyCode::Char('j') => Action::PickerDown,
+            KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
+            KeyCode::Backspace => Action::TextBackspace,
+            KeyCode::Char(c) if c.is_ascii_digit() => Action::TextInput(c),
+            KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('?') => Action::HelpToggle,
+            KeyCode::Esc => Action::Back,
             _ => Action::None,
         },
         InputMode::Game => match ev.code {
