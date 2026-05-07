@@ -59,17 +59,23 @@ fn matches_endpoints(mv: &Move, from: Square, to: Square) -> bool {
     }
 }
 
-/// All legal destination squares for a piece on `from` (used to render dots).
+/// All legal destination squares for a piece on `from` (used to render
+/// move dots). In banqi 連吃 chain mode the engine adds
+/// `Move::EndChain { at: chain_lock }` to `legal_moves`; that move has
+/// `origin == chain_lock` and `to == None`, and is intentionally NOT a
+/// movement target — it's the explicit "release the lock" gesture
+/// triggered by clicking the locked piece. Excluding it here keeps
+/// the dot/ring layer accurate during chain mode (and crucially keeps
+/// this closure from panicking, which would freeze the leptos DOM
+/// updates and leave stale markers on the board).
 pub fn legal_targets(view: &PlayerView, from: Square) -> Vec<Square> {
     view.legal_moves
         .iter()
         .filter(|m| m.origin_square() == from)
-        .map(|m| match m.to_square() {
-            Some(t) => t,
-            None => match m {
-                Move::Reveal { at, .. } => *at,
-                _ => unreachable!("Move::to_square() returned None for a non-Reveal move"),
-            },
+        .filter_map(|m| match m {
+            Move::Reveal { at, .. } => Some(*at),
+            Move::EndChain { .. } => None,
+            other => other.to_square(),
         })
         .collect()
 }
@@ -230,6 +236,57 @@ mod tests {
         let view = chess_core::view::PlayerView::project(&state, Side::RED);
         assert_eq!(view.chain_lock, Some(s1));
         assert!(matches!(end_chain_move(&view), Some(Move::EndChain { at }) if at == s1));
+    }
+
+    #[test]
+    fn legal_targets_in_chain_mode_excludes_end_chain_and_does_not_panic() {
+        // Regression for the "stale dots after chain capture" bug:
+        // `legal_targets` was hitting an `unreachable!()` arm for
+        // `Move::EndChain { at }` (whose `to_square()` returns None
+        // and which doesn't match the `Reveal` arm). The panic froze
+        // leptos DOM updates, leaving the previous chain step's
+        // markers on screen. Now EndChain is filtered out here and
+        // the closure returns a clean target list.
+        use chess_core::coord::{File, Rank, Square};
+        use chess_core::piece::{Piece, PieceKind, PieceOnSquare};
+        use chess_core::rules::{HouseRules, RuleSet};
+        use chess_core::state::{GameState, SideAssignment};
+        use smallvec::smallvec;
+
+        let mut state = GameState::new(RuleSet::banqi_with_seed(HouseRules::CHAIN_CAPTURE, 0));
+        let squares: Vec<Square> = state.board.squares().collect();
+        for sq in squares {
+            state.board.set(sq, None);
+        }
+        state.side_assignment = Some(SideAssignment { mapping: smallvec![Side::RED, Side::BLACK] });
+        let h = state.board.sq(File(1), Rank(1));
+        let s1 = state.board.sq(File(1), Rank(2));
+        let s2 = state.board.sq(File(1), Rank(3));
+        state.board.set(h, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::Horse))));
+        state
+            .board
+            .set(s1, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+        state
+            .board
+            .set(s2, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+        // Capture s1, landing on s1 with chain mode active.
+        let cap = Move::Capture {
+            from: h,
+            to: s1,
+            captured: Piece::new(Side::BLACK, PieceKind::Soldier),
+        };
+        state.make_move(&cap).unwrap();
+        assert_eq!(state.chain_lock, Some(s1));
+
+        let view = chess_core::view::PlayerView::project(&state, Side::RED);
+        // Confirm the engine actually emitted EndChain alongside the next-hop capture.
+        assert!(view.legal_moves.iter().any(|m| matches!(m, Move::EndChain { .. })));
+
+        // legal_targets must not panic and must not list the locked
+        // square (where EndChain "lives") as a movement target.
+        let targets = legal_targets(&view, s1);
+        assert!(targets.contains(&s2), "next hop s2 must be a legal target");
+        assert!(!targets.contains(&s1), "EndChain's `at` must NOT show up as a target dot");
     }
 
     #[test]
