@@ -19,10 +19,10 @@ pub fn display_dims(shape: BoardShape) -> (u8, u8) {
 /// Square (model coord) → (display_row, display_col).
 ///
 /// The TUI renderer iterates display coords forward and uses
-/// `square_at_display` for the inverse, so this function is currently exercised
-/// by tests only. It stays in the public surface as the symmetric counterpart
-/// (and for future widgets that walk the model side, e.g. captured-piece tray).
-#[allow(dead_code)]
+/// `square_at_display` for the inverse; this function is the symmetric
+/// counterpart, used by the live-preview path of the coord-input prompt
+/// (and useful for future widgets that walk the model side, e.g.
+/// captured-piece tray).
 pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
     let (w, h) = shape.dimensions();
     let f = (sq.0 as u8) % w;

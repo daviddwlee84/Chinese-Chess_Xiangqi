@@ -83,12 +83,15 @@ cargo run -p chess-net -- --port 7878 \
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
 `Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
-`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit. In
-Net mode, `t` opens chat input (players only — Enter sends, Esc cancels);
-in the lobby, `w` watches the highlighted room as a spectator.
-Mouse left-click selects or commits. When the game ends, a banner appears in
-the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
-back the losing move.
+`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit. `:`
+opens an instant coord-input prompt (type ICCS like `h2e2` / `a3xb3xc3` /
+`flip a0`, Enter commits, Esc cancels); `m` opens the same with live preview
+— each keystroke updates the selected-square highlight, and a complete move
+also previews the destination via the cursor. In Net mode, `t` opens chat
+input (players only — Enter sends, Esc cancels); in the lobby, `w` watches
+the highlighted room as a spectator. Mouse left-click selects or commits.
+When the game ends, a banner appears in the sidebar and move attempts are
+gated; `n` returns to the picker, `u` takes back the losing move.
 
 `rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
 
@@ -137,6 +140,8 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **chess-net chat is players-only with a 50-line per-room ring buffer.** `ClientMsg::Chat { text }` from a seat: trimmed, control chars (`\n` / `\t`) collapsed to space, capped at 256 chars, server-stamps `ts_ms`, pushes to `RoomState.chat: VecDeque<ChatLine>` (oldest dropped at cap), then `broadcast_to_all` fans `ServerMsg::Chat { line }` to seats + spectators with the same payload (chat is a single broadcast, unlike `Update` which projects per-seat). Same `text` from a spectator → `Error{"spectators cannot chat"}`. Late joiners get the buffer in their welcome `ChatHistory { lines }`. **No rate limit, no moderation, no encryption** — this is a friend-only channel; production-grade primitives are sketched at `backlog/chess-net-chat-moderation.md`. System messages (player joined / left) are `ChatLine.from`'s next axis — see `backlog/chess-net-system-messages.md` (will bump to v4 when shipped).
 
 - **chess-tui chat-input mode hijacks the keymap.** Pressing `t` in Net mode sets `NetView.chat_input = Some(String::new())`; `app.input_mode()` then returns `InputMode::Text` so the dispatcher treats printable keys as edits. `Enter` sends `ClientMsg::Chat`; `Esc` (Action::Back) cancels. The chat region in `draw_sidebar_net` reserves the bottom rows of the sidebar (`MIN_CHAT_ROWS = 6`); the log auto-scrolls by always rendering the last `log_h` lines from the `VecDeque`. Spectators see "(spectator — read-only)" instead of the input row and pressing `t` shows a hint. Lobby key `w` triggers `Action::LobbyWatch` → connects with `?role=spectator` (locked rooms still prompt for the password via the existing `PendingJoin` flow, now extended with an `as_spectator: bool` field).
+
+- **chess-tui coord-input mode also hijacks the keymap, in both Game and Net.** Pressing `:` opens an *instant* prompt (no live preview); `m` opens a *live preview* prompt that re-parses on every keystroke and snapshots `(cursor, selected)` on entry so `Esc` can restore them. Both set `coord_input = Some(CoordInputState { … })` on the active view; `app.input_mode()` returns `InputMode::Text` so printable keys append. **Coord-input and chat-input are mutually exclusive in Net** — opening one with the other active is rejected via `last_msg`. Decoding goes through `chess_core::notation::iccs::decode_move` (Local) or `decode_move_from_view` (Net) — the latter operates on `&PlayerView` and shares its inner with the former via `decode_move_with(&Board, &[Move], &str)`. Live-preview's destination-cursor jump uses `orient::project_cell` (the long-`#[allow(dead_code)]` helper finally pulls its weight). Submit on bad notation keeps the prompt open with `last_msg = "Bad move: …"`; success closes the prompt and either calls `apply_move` (Local) or sends `ClientMsg::Move` (Net). Net spectator / not-your-turn / game-over gates are checked at submit time; `m` snapshot is `None` for `Instant`, so the Esc-restore arms in `dispatch_back` no-op there.
 
 - **chess-web chat lives below the sidebar in a `right-column` grid.** `clients/chess-web/src/components/chat_panel.rs` renders the log + an input row (uncontrolled `<input>` read on submit) and auto-scrolls via a `create_effect` that sets `el.set_scroll_top(el.scroll_height())` on every `log.get()`. `ClientRole` enum (`state.rs`) replaces the previous `Option<Side>` observer in `<PlayPage>`; move / resign / rematch / chat-input are gated on `role.is_player()`. Spectator entry: lobby Watch button builds `/play/<id>?role=spectator` (and adds `&password=` when set); the play page reads `?role` and passes it to `room_url(...)`. Chat from a spectator hits the disabled-input path so `ClientMsg::Chat` never goes out from a spectator client (the server gate is the authoritative check).
 

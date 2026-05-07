@@ -13,6 +13,17 @@ pub enum InputMode {
     Game,
 }
 
+/// Flavor of the coordinate-input prompt opened from `Game` mode.
+/// `Instant` = pure text buffer, no board feedback.
+/// `Live` = each keystroke re-parses; valid square prefixes update the
+/// `selected` highlight, and a complete `from+to` move also moves the
+/// cursor onto the destination square as a preview.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum CoordKind {
+    Instant,
+    Live,
+}
+
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
@@ -54,6 +65,9 @@ pub enum Action {
     Flip,
     /// Open the chat input editor (Net mode, players only).
     ChatStart,
+    /// Open the coordinate-input prompt (Game / Net, players only). The
+    /// kind picks instant-vs-live preview behaviour.
+    CoordStart(CoordKind),
     /// Mouse click in terminal coords. The app resolves it against the board
     /// rect captured by the most recent draw().
     Click {
@@ -118,6 +132,8 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('f') => Action::Flip,
             KeyCode::Char('n') => Action::NewGame,
             KeyCode::Char('t') => Action::ChatStart,
+            KeyCode::Char(':') => Action::CoordStart(CoordKind::Instant),
+            KeyCode::Char('m') => Action::CoordStart(CoordKind::Live),
             _ => Action::None,
         },
     }

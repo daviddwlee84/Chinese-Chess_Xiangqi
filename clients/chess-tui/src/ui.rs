@@ -920,10 +920,17 @@ fn draw_sidebar(
         }
     } else {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "?=help, r=rules, n=new, q=quit",
-            TuiStyle::default().fg(Color::DarkGray),
-        )));
+        if let Some(ci) = &g.coord_input {
+            lines.push(Line::from(vec![
+                Span::styled("> ", TuiStyle::default().fg(Color::Yellow)),
+                Span::styled(format!("{}_", ci.buf), TuiStyle::default().fg(Color::Yellow)),
+            ]));
+        } else {
+            lines.push(Line::from(Span::styled(
+                "?=help, r=rules, : / m=coord, n=new, q=quit",
+                TuiStyle::default().fg(Color::DarkGray),
+            )));
+        }
     }
 
     let para = Paragraph::new(lines).wrap(Wrap { trim: false });
@@ -1057,10 +1064,17 @@ fn draw_sidebar_net(
         }
     } else {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "?=help, r=rules, t=chat, q=quit",
-            TuiStyle::default().fg(Color::DarkGray),
-        )));
+        if let Some(ci) = &n.coord_input {
+            lines.push(Line::from(vec![
+                Span::styled("> ", TuiStyle::default().fg(Color::Yellow)),
+                Span::styled(format!("{}_", ci.buf), TuiStyle::default().fg(Color::Yellow)),
+            ]));
+        } else {
+            lines.push(Line::from(Span::styled(
+                "?=help, r=rules, t=chat, : / m=coord, q=quit",
+                TuiStyle::default().fg(Color::DarkGray),
+            )));
+        }
     }
 
     let meta_para = Paragraph::new(lines).wrap(Wrap { trim: false });
@@ -1144,6 +1158,8 @@ const HELP_LINES_NET: &[&str] = &[
     "h j k l / ←↓↑→  move cursor",
     "Enter / Space   select / commit (sends Move to server)",
     "Esc             cancel selection",
+    ":               coord input (instant): type ICCS (h2e2 / flip a0), Enter sends",
+    "m               coord input (live preview): same, with selected/cursor preview",
     "f               flip (banqi)",
     "n               request rematch (after game over; needs both sides)",
     "t               open chat input (players only; Enter sends, Esc cancels)",
@@ -1300,6 +1316,8 @@ const HELP_LINES: &[&str] = &[
     "h j k l / ←↓↑→  move cursor",
     "Enter / Space   select / commit",
     "Esc             cancel selection",
+    ":               coord input (instant): type ICCS (h2e2 / flip a0), Enter commits",
+    "m               coord input (live preview): same, with selected/cursor preview",
     "u               undo last move",
     "f               flip (banqi)",
     "n               new game (back to picker)",

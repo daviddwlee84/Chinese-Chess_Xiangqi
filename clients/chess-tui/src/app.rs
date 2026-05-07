@@ -3,6 +3,7 @@
 
 use std::collections::VecDeque;
 
+use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::Side;
@@ -13,9 +14,10 @@ use chess_net::{ChatLine, ClientMsg, RoomSummary, ServerMsg};
 
 const CHAT_HISTORY_CAP: usize = 50;
 const CHAT_INPUT_MAX: usize = 256;
+const COORD_INPUT_MAX: usize = 16;
 
 use crate::glyph::Style;
-use crate::input::{Action, InputMode};
+use crate::input::{Action, CoordKind, InputMode};
 use crate::net::{NetClient, NetEvent};
 use crate::orient;
 use crate::text_input;
@@ -82,6 +84,20 @@ pub struct GameView {
     pub cursor: (u8, u8),
     pub selected: Option<Square>,
     pub last_msg: Option<String>,
+    /// `Some(state)` while the user is typing a coordinate move (`:` or `m`).
+    /// Mutually exclusive with `chat_input` in Net mode.
+    pub coord_input: Option<CoordInputState>,
+}
+
+/// Per-prompt state for coord-input mode (`:` instant or `m` live preview).
+/// Lives on both `GameView` and `NetView`; mirrored shape so the dispatchers
+/// can share helpers.
+pub struct CoordInputState {
+    pub kind: CoordKind,
+    pub buf: String,
+    /// Live mode only: `(cursor, selected)` snapshot taken on entry, restored
+    /// on Esc. Always `None` for `Instant` (instant mode never touches them).
+    pub snapshot: Option<((u8, u8), Option<Square>)>,
 }
 
 /// Role assigned by the server: a seated player (with a side) or a
@@ -130,6 +146,9 @@ pub struct NetView {
     /// `Some(buf)` while the user is typing a chat line (entered via 't').
     /// Players only — the chat-start action is a no-op for spectators.
     pub chat_input: Option<String>,
+    /// `Some(state)` while the user is typing a coord move (`:` or `m`).
+    /// Mutually exclusive with `chat_input`.
+    pub coord_input: Option<CoordInputState>,
 }
 
 /// Free-text "ws://host:port" prompt entered before the lobby.
@@ -249,6 +268,7 @@ impl AppState {
                     "Welcome. Arrows/hjkl move cursor. Enter selects. r=rules, ?=help, n=new, q=quit."
                         .into(),
                 ),
+                coord_input: None,
             })),
             style,
             use_color,
@@ -276,6 +296,7 @@ impl AppState {
                 connected: false,
                 chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
                 chat_input: None,
+                coord_input: None,
             })),
             style,
             use_color,
@@ -363,9 +384,10 @@ impl AppState {
                 }
             }
             Screen::HostPrompt(_) | Screen::CreateRoom(_) => InputMode::Text,
-            // While typing a chat line, hijack the keymap so printable chars
-            // append to the buffer instead of moving the cursor.
-            Screen::Net(n) if n.chat_input.is_some() => InputMode::Text,
+            // While typing a chat line or a coord move, hijack the keymap so
+            // printable chars append to the buffer instead of moving the cursor.
+            Screen::Net(n) if n.chat_input.is_some() || n.coord_input.is_some() => InputMode::Text,
+            Screen::Game(g) if g.coord_input.is_some() => InputMode::Text,
             Screen::Game(_) | Screen::Net(_) => InputMode::Game,
         }
     }
@@ -437,6 +459,7 @@ impl AppState {
             | Action::FocusPrev
             | Action::Submit => self.dispatch_text(action),
             Action::ChatStart => self.dispatch_chat_start(),
+            Action::CoordStart(kind) => self.dispatch_coord_start(kind),
             Action::LobbyWatch => {
                 if matches!(self.screen, Screen::Lobby(_)) {
                     self.dispatch_lobby_watch();
@@ -473,6 +496,25 @@ impl AppState {
                 let host = c.host.clone();
                 *self = AppState::new_lobby(host, style, use_color, observer);
             }
+            // Esc inside Game / Net while a coord-input prompt is open: close
+            // the prompt and (Live mode only) restore the snapshotted cursor +
+            // selected highlight that existed before the prompt was opened.
+            Screen::Game(g) if g.coord_input.is_some() => {
+                let ci = g.coord_input.take().expect("guarded by is_some");
+                if let Some((cur, sel)) = ci.snapshot {
+                    g.cursor = cur;
+                    g.selected = sel;
+                }
+                g.last_msg = None;
+            }
+            Screen::Net(n) if n.coord_input.is_some() => {
+                let ci = n.coord_input.take().expect("guarded by is_some");
+                if let Some((cur, sel)) = ci.snapshot {
+                    n.cursor = cur;
+                    n.selected = sel;
+                }
+                n.last_msg = None;
+            }
             // Esc inside Net mode — if we're typing a chat line, cancel the
             // input rather than navigating away.
             Screen::Net(n) if n.chat_input.is_some() => {
@@ -487,6 +529,10 @@ impl AppState {
         let Screen::Net(n) = &mut self.screen else {
             return;
         };
+        if n.coord_input.is_some() {
+            n.last_msg = Some("Finish or cancel coord-input (Esc) before chat.".into());
+            return;
+        }
         match n.role {
             Some(NetRole::Player(_)) => {
                 n.chat_input = Some(String::new());
@@ -498,6 +544,44 @@ impl AppState {
             None => {
                 n.last_msg = Some("Not connected yet.".into());
             }
+        }
+    }
+
+    fn dispatch_coord_start(&mut self, kind: CoordKind) {
+        let msg = coord_help_msg(kind);
+        match &mut self.screen {
+            Screen::Game(g) => {
+                let snapshot = matches!(kind, CoordKind::Live).then_some((g.cursor, g.selected));
+                if matches!(kind, CoordKind::Live) {
+                    g.selected = None;
+                }
+                g.coord_input = Some(CoordInputState { kind, buf: String::new(), snapshot });
+                g.last_msg = Some(msg);
+            }
+            Screen::Net(n) => {
+                if n.chat_input.is_some() {
+                    n.last_msg = Some("Finish or cancel chat (Esc) before move-input.".into());
+                    return;
+                }
+                match n.role {
+                    Some(NetRole::Player(_)) => {}
+                    Some(NetRole::Spectator) => {
+                        n.last_msg = Some("Spectators cannot move.".into());
+                        return;
+                    }
+                    None => {
+                        n.last_msg = Some("Not connected yet.".into());
+                        return;
+                    }
+                }
+                let snapshot = matches!(kind, CoordKind::Live).then_some((n.cursor, n.selected));
+                if matches!(kind, CoordKind::Live) {
+                    n.selected = None;
+                }
+                n.coord_input = Some(CoordInputState { kind, buf: String::new(), snapshot });
+                n.last_msg = Some(msg);
+            }
+            _ => {}
         }
     }
 
@@ -725,27 +809,75 @@ impl AppState {
                     _ => {}
                 }
             }
-            // Net mode hijacks Text input while the user is composing a chat
-            // line. Submit fires Chat over the wire; Esc / Back cancels (see
-            // dispatch_back).
+            // Game mode hijacks Text input while the user is typing a coord
+            // move (`:` instant or `m` live preview). Submit applies the move;
+            // Esc / Back closes (and Live mode restores the snapshot).
+            Screen::Game(g) if g.coord_input.is_some() => {
+                let observer = self.observer;
+                Self::dispatch_coord_text_game(g, action, observer);
+            }
+            // Net mode: coord-input takes priority over chat-input (mutual
+            // exclusion is enforced at start time), so check coord first.
             Screen::Net(n) => {
-                let Some(buf) = n.chat_input.as_mut() else {
-                    return;
-                };
-                match action {
-                    Action::TextInput(c) => text_input::push_char(buf, c, CHAT_INPUT_MAX),
-                    Action::TextBackspace => text_input::backspace(buf),
-                    Action::Submit => {
-                        let buf = n.chat_input.take().unwrap_or_default();
-                        let trimmed = buf.trim();
-                        if trimmed.is_empty() {
-                            n.last_msg = Some("Empty chat — nothing sent.".into());
-                            return;
+                if n.coord_input.is_some() {
+                    dispatch_coord_text_net(n, action);
+                } else if n.chat_input.is_some() {
+                    let buf = n.chat_input.as_mut().expect("guarded by is_some");
+                    match action {
+                        Action::TextInput(c) => text_input::push_char(buf, c, CHAT_INPUT_MAX),
+                        Action::TextBackspace => text_input::backspace(buf),
+                        Action::Submit => {
+                            let buf = n.chat_input.take().unwrap_or_default();
+                            let trimmed = buf.trim();
+                            if trimmed.is_empty() {
+                                n.last_msg = Some("Empty chat — nothing sent.".into());
+                                return;
+                            }
+                            let _ =
+                                n.client.cmd_tx.send(ClientMsg::Chat { text: trimmed.to_string() });
+                            n.last_msg = Some("Chat sent.".into());
                         }
-                        let _ = n.client.cmd_tx.send(ClientMsg::Chat { text: trimmed.to_string() });
-                        n.last_msg = Some("Chat sent.".into());
+                        _ => {}
                     }
-                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn dispatch_coord_text_game(g: &mut GameView, action: Action, observer: Side) {
+        // Pull `kind` and the buf-edit decisions out before we re-borrow `g`
+        // for the live-preview / submit path.
+        let Some(ci) = g.coord_input.as_mut() else {
+            return;
+        };
+        let kind = ci.kind;
+        match action {
+            Action::TextInput(c) => {
+                text_input::push_char(&mut ci.buf, c, COORD_INPUT_MAX);
+                if matches!(kind, CoordKind::Live) {
+                    live_preview_game(g, observer);
+                }
+            }
+            Action::TextBackspace => {
+                text_input::backspace(&mut ci.buf);
+                if matches!(kind, CoordKind::Live) {
+                    live_preview_game(g, observer);
+                }
+            }
+            Action::Submit => {
+                let buf = std::mem::take(&mut ci.buf);
+                match chess_core::notation::iccs::decode_move(&g.state, buf.trim()) {
+                    Ok(mv) => {
+                        g.coord_input = None;
+                        Self::apply_move(g, mv);
+                    }
+                    Err(e) => {
+                        if let Some(ci) = g.coord_input.as_mut() {
+                            ci.buf = buf;
+                        }
+                        g.last_msg = Some(format!("Bad move: {e}"));
+                    }
                 }
             }
             _ => {}
@@ -1022,6 +1154,180 @@ fn compute_select_outcome(n: &NetView, observer: Side) -> SelectOutcome {
     }
 }
 
+fn coord_help_msg(kind: CoordKind) -> String {
+    match kind {
+        CoordKind::Instant => {
+            "Coord (instant): type ICCS (e.g. h2e2 / flip a0), Enter commits, Esc cancels.".into()
+        }
+        CoordKind::Live => {
+            "Coord (live): type ICCS — selected/cursor preview as you go, Esc restores.".into()
+        }
+    }
+}
+
+/// Net-side coord-input dispatcher. Mirrors `dispatch_coord_text_game` but
+/// gates on connection / role / turn / game-status before sending the move.
+fn dispatch_coord_text_net(n: &mut NetView, action: Action) {
+    let Some(ci) = n.coord_input.as_mut() else {
+        return;
+    };
+    let kind = ci.kind;
+    match action {
+        Action::TextInput(c) => {
+            text_input::push_char(&mut ci.buf, c, COORD_INPUT_MAX);
+            if matches!(kind, CoordKind::Live) {
+                live_preview_net(n);
+            }
+        }
+        Action::TextBackspace => {
+            text_input::backspace(&mut ci.buf);
+            if matches!(kind, CoordKind::Live) {
+                live_preview_net(n);
+            }
+        }
+        Action::Submit => {
+            let Some(view) = n.last_view.as_ref() else {
+                n.last_msg = Some("Not connected yet.".into());
+                return;
+            };
+            let role = n.role.unwrap_or(NetRole::Player(Side::RED));
+            if role.is_spectator() {
+                n.last_msg = Some("Spectators cannot move.".into());
+                n.coord_input = None;
+                return;
+            }
+            if !matches!(view.status, GameStatus::Ongoing) {
+                n.last_msg = Some("Game over.".into());
+                n.coord_input = None;
+                return;
+            }
+            if view.side_to_move != role.observer() {
+                n.last_msg = Some("Not your turn.".into());
+                return; // keep buffer so the user can resubmit when their turn comes
+            }
+            let buf = match n.coord_input.as_mut() {
+                Some(ci) => std::mem::take(&mut ci.buf),
+                None => return,
+            };
+            match chess_core::notation::iccs::decode_move_from_view(view, buf.trim()) {
+                Ok(mv) => {
+                    n.coord_input = None;
+                    n.selected = None;
+                    let _ = n.client.cmd_tx.send(ClientMsg::Move { mv });
+                    n.last_msg = Some("Sent.".into());
+                }
+                Err(e) => {
+                    if let Some(ci) = n.coord_input.as_mut() {
+                        ci.buf = buf;
+                    }
+                    n.last_msg = Some(format!("Bad move: {e}"));
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Result of one live-preview re-parse: the selected-square highlight to
+/// show, and an optional cursor jump (only set when a destination square is
+/// fully typed). Used by both Game and Net live-preview hooks.
+struct LivePreview {
+    selected: Option<Square>,
+    cursor_jump: Option<(u8, u8)>,
+}
+
+fn live_preview_game(g: &mut GameView, observer: Side) {
+    let buf = match g.coord_input.as_ref() {
+        Some(ci) => ci.buf.clone(),
+        None => return,
+    };
+    let shape = g.state.board.shape();
+    let lp = apply_live_preview(
+        &buf,
+        |s| chess_core::notation::iccs::parse_square_str(&g.state.board, s),
+        shape,
+        observer,
+    );
+    g.selected = lp.selected;
+    if let Some(c) = lp.cursor_jump {
+        g.cursor = c;
+    }
+}
+
+fn live_preview_net(n: &mut NetView) {
+    let buf = match n.coord_input.as_ref() {
+        Some(ci) => ci.buf.clone(),
+        None => return,
+    };
+    let Some(view) = n.last_view.as_ref() else {
+        return;
+    };
+    let shape = view.shape;
+    let observer = n.role.map(|r| r.observer()).unwrap_or(Side::RED);
+    let board = chess_core::board::Board::new(shape);
+    let lp = apply_live_preview(
+        &buf,
+        |s| chess_core::notation::iccs::parse_square_str(&board, s),
+        shape,
+        observer,
+    );
+    n.selected = lp.selected;
+    if let Some(c) = lp.cursor_jump {
+        n.cursor = c;
+    }
+}
+
+/// Re-parses `buf` and computes the highlight + cursor-jump for the
+/// live-preview coord prompt. Intentionally tolerant: parse failures simply
+/// don't advance the highlight, so the user can backspace and retry without
+/// an error popup.
+///
+/// - `""` or 1-char prefix → `selected = None`, no jump.
+/// - 2 chars valid square → `selected = Some(origin)`, no jump.
+/// - 4 chars valid `from+to` (no separator) → also `cursor_jump = display(to)`.
+/// - `<from>x<to>` (single hop, e.g. `h2xh9`) → same destination jump.
+/// - `flip <sq>` form → highlight the named square as `selected`.
+fn apply_live_preview<F>(
+    buf: &str,
+    mut parse_sq: F,
+    shape: BoardShape,
+    observer: Side,
+) -> LivePreview
+where
+    F: FnMut(&str) -> Option<Square>,
+{
+    let none = LivePreview { selected: None, cursor_jump: None };
+    if buf.is_empty() {
+        return none;
+    }
+    if let Some(rest) = buf.strip_prefix("flip ") {
+        if rest.len() >= 2 {
+            if let Some(sq) = parse_sq(&rest[..2]) {
+                return LivePreview { selected: Some(sq), cursor_jump: None };
+            }
+        }
+        return none;
+    }
+    if buf.len() < 2 {
+        return none;
+    }
+    let Some(origin) = parse_sq(&buf[..2]) else {
+        return none;
+    };
+    let dest_str: Option<&str> = if buf.len() == 4 && !buf.contains('x') {
+        Some(&buf[2..4])
+    } else if buf.contains('x') {
+        let parts: Vec<&str> = buf.split('x').collect();
+        parts.iter().rev().find_map(|p| if p.len() == 2 { Some(*p) } else { None })
+    } else {
+        None
+    };
+    let cursor_jump = dest_str
+        .and_then(parse_sq)
+        .map(|dest| orient::project_cell(dest, observer, shape));
+    LivePreview { selected: Some(origin), cursor_jump }
+}
+
 fn apply_select_outcome(n: &mut NetView, outcome: SelectOutcome) {
     match outcome {
         SelectOutcome::Ignore => {}
@@ -1194,4 +1500,111 @@ fn hit_test(rect: RectPx, term_col: u16, term_row: u16, rows: u8, cols: u8) -> O
         return None;
     }
     Some((cell_row as u8, cell_col as u8))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fresh_xiangqi() -> AppState {
+        AppState::new_game(RuleSet::xiangqi(), Style::Ascii, false, Side::RED)
+    }
+
+    fn type_str(app: &mut AppState, s: &str) {
+        for c in s.chars() {
+            app.dispatch(Action::TextInput(c));
+        }
+    }
+
+    fn game_view(app: &AppState) -> &GameView {
+        match &app.screen {
+            Screen::Game(g) => g,
+            _ => panic!("expected Screen::Game"),
+        }
+    }
+
+    #[test]
+    fn coord_instant_commits_on_enter() {
+        let mut app = fresh_xiangqi();
+        app.dispatch(Action::CoordStart(CoordKind::Instant));
+        type_str(&mut app, "h2e2");
+        app.dispatch(Action::Submit);
+        let g = game_view(&app);
+        assert_eq!(g.state.history.len(), 1);
+        assert!(g.coord_input.is_none());
+    }
+
+    #[test]
+    fn coord_live_sets_selected_at_two_chars() {
+        let mut app = fresh_xiangqi();
+        app.dispatch(Action::CoordStart(CoordKind::Live));
+        type_str(&mut app, "h2");
+        let g = game_view(&app);
+        // h2 = file 7, rank 2 in 9-wide → square index 2*9 + 7 = 25.
+        assert_eq!(g.selected.map(|sq| sq.0), Some(25));
+    }
+
+    #[test]
+    fn coord_live_jumps_cursor_at_four_chars() {
+        let mut app = fresh_xiangqi();
+        let prev_cursor = game_view(&app).cursor;
+        app.dispatch(Action::CoordStart(CoordKind::Live));
+        type_str(&mut app, "h2e2");
+        let g = game_view(&app);
+        // e2 projected for Red observer: (10 - 1 - 2, 4) = (7, 4).
+        assert_eq!(g.cursor, (7, 4));
+        assert_ne!(g.cursor, prev_cursor);
+        assert_eq!(g.selected.map(|sq| sq.0), Some(25)); // origin still h2
+    }
+
+    #[test]
+    fn coord_live_esc_restores_snapshot() {
+        let mut app = fresh_xiangqi();
+        // Mutate before opening the prompt — these are what should be restored.
+        if let Screen::Game(g) = &mut app.screen {
+            g.cursor = (5, 3);
+        }
+        app.dispatch(Action::CoordStart(CoordKind::Live));
+        type_str(&mut app, "h2e2");
+        // Pre-Esc: cursor jumped, selected set.
+        assert_eq!(game_view(&app).cursor, (7, 4));
+        assert!(game_view(&app).selected.is_some());
+        app.dispatch(Action::Back);
+        let g = game_view(&app);
+        assert_eq!(g.cursor, (5, 3));
+        assert!(g.selected.is_none());
+        assert!(g.coord_input.is_none());
+    }
+
+    #[test]
+    fn coord_bad_notation_keeps_prompt_open() {
+        let mut app = fresh_xiangqi();
+        app.dispatch(Action::CoordStart(CoordKind::Instant));
+        type_str(&mut app, "z9z9");
+        app.dispatch(Action::Submit);
+        let g = game_view(&app);
+        assert_eq!(g.state.history.len(), 0);
+        assert!(g.coord_input.is_some());
+        assert!(g.last_msg.as_ref().map(|m| m.starts_with("Bad move:")).unwrap_or(false));
+    }
+
+    #[test]
+    fn coord_instant_does_not_snapshot() {
+        // Instant mode never touches cursor / selected, so snapshot is None
+        // and Esc is a plain close.
+        let mut app = fresh_xiangqi();
+        if let Screen::Game(g) = &mut app.screen {
+            g.cursor = (3, 3);
+            g.selected = None;
+        }
+        app.dispatch(Action::CoordStart(CoordKind::Instant));
+        type_str(&mut app, "h2");
+        // Instant mode: typing should NOT update selected.
+        assert!(game_view(&app).selected.is_none());
+        assert_eq!(game_view(&app).cursor, (3, 3));
+        app.dispatch(Action::Back);
+        let g = game_view(&app);
+        assert!(g.coord_input.is_none());
+        assert_eq!(g.cursor, (3, 3));
+    }
 }

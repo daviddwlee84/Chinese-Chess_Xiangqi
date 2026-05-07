@@ -37436,3 +37436,59 @@ Untracked files:
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:53Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit lifecycle tests
+
+```bash
+git add crates/chess-net/tests/room_lifecycle.rs .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md 2>&1
+git commit -m "$(cat <<'EOF'
+test(net): lock in room create/leave/rejoin lifecycle edges
+
+Adds 10 server-smoke tests for the lifecycle paths the user flagged as
+likely bug magnets: GC after a single seat leaves, locked-room
+re-creation after GC, mid-game opponent-disconnect notification, seat
+rotation after a partial leave (the implicit "reconnect as same color"),
+spectators keeping the room alive after both seats leave, the
+spectator-only "no such room" error, chat history surviving partial
+disconnect but cleared at GC, the rematch flag clearing when its
+requester drops, the spectator count round-tripping in the lobby push,
+and `main` surviving full drain.
+
+One sharp edge surfaced while writing them: the server only emits
+`opponent disconnected` while the game is `Ongoing`, so the
+rematch-cleanup test had to skip that drain (game is already
+`Won{Resignation}` by the time Red disconnects) and assert the cleanup
+indirectly via Black's subsequent `Rematch` getting "Waiting…" instead
+of an instant "both ready" reset. That behavior is now pinned.
+
+No production code changes.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -10
+```
+
+```text
+[main b6e9113] test(net): lock in room create/leave/rejoin lifecycle edges
+ 2 files changed, 1885 insertions(+)
+ create mode 100644 crates/chess-net/tests/room_lifecycle.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:21:05Z)**_
+
+Committed `b6e9113`. Summary of what shipped this turn:
+
+**`dc0a511` feat(net): spectator + chat (protocol v3)** — the main feature (already discussed).
+
+**`b6e9113` test(net): lifecycle edges** — 10 new tests in `crates/chess-net/tests/room_lifecycle.rs` covering exactly the flows you flagged: solo joiner leaves & rejoins gets a clean room, locked-room re-creation after GC, mid-game opponent-disconnect notification, seat rotation on partial leave (the implicit "reconnect as same color"), spectator-only "no such room" path, chat history surviving partial disconnect but cleared at GC, rematch flag cleanup on requester drop, and `main` surviving full drain. Behavior is unchanged — just pinned.
+
+**One sharp edge surfaced while writing them**: the server only sends `Error{"opponent disconnected"}` while the game is `Ongoing` — after a resign the status is `Won{Resignation}` so the disconnect handler stays silent. My first draft of the rematch test assumed the notification fires regardless and hung waiting for a frame that never comes. Pinned the actual behavior in the test comment.
+
+**On the host model**: per your selection we kept "no host, room is just a name + state" and "GC when both seats and spectators are empty (except `main`)" as the canonical behavior. If you change your mind later, the test file is the contract — flipping to an implicit-host-with-CloseRoom model would touch most of those assertions, and that's exactly the signal you'd want.
+
+The full suite ran 50 tests across the chess-net crate (was 37 before this turn) plus the existing chess-core / chess-web / chess-tui pure-logic tests, all green. No production code changed in `b6e9113`.

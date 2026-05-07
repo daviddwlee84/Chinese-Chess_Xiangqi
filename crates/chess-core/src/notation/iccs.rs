@@ -9,6 +9,7 @@ use crate::coord::{File, Rank, Square};
 use crate::error::CoreError;
 use crate::moves::Move;
 use crate::state::GameState;
+use crate::view::PlayerView;
 
 /// Encode a single square as `<file><rank>` e.g. `h2`.
 pub fn encode_square(board: &Board, sq: Square) -> String {
@@ -18,6 +19,13 @@ pub fn encode_square(board: &Board, sq: Square) -> String {
 
 fn file_char(f: u8) -> char {
     (b'a' + f) as char
+}
+
+/// Parse a `<file><rank>` square string (e.g. `h2`) against `board`'s
+/// dimensions. Public so live-preview hooks in clients can reuse it without
+/// duplicating bounds checks.
+pub fn parse_square_str(board: &Board, s: &str) -> Option<Square> {
+    parse_square(board, s).ok()
 }
 
 fn parse_square(board: &Board, s: &str) -> Result<Square, CoreError> {
@@ -67,12 +75,25 @@ pub fn encode_move(board: &Board, m: &Move) -> String {
 /// - `a3xb3xc3`           — chain capture (any number of x-separated squares)
 /// - `flip a3` / `flip a3` — reveal
 pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
+    let legal = state.legal_moves();
+    decode_move_with(&state.board, &legal, input)
+}
+
+/// Same decoder, but resolves against a [`PlayerView`] — useful from
+/// network clients that only hold the projected view, not the authoritative
+/// `GameState`. Builds an empty board of the view's shape for square parsing
+/// (notation only consults width/height) and matches against `view.legal_moves`.
+pub fn decode_move_from_view(view: &PlayerView, input: &str) -> Result<Move, CoreError> {
+    let board = Board::new(view.shape);
+    decode_move_with(&board, &view.legal_moves, input)
+}
+
+fn decode_move_with(board: &Board, legal: &[Move], input: &str) -> Result<Move, CoreError> {
     let trimmed = input.trim();
     if let Some(rest) = trimmed.strip_prefix("flip ") {
-        let at = parse_square(&state.board, rest.trim())?;
+        let at = parse_square(board, rest.trim())?;
         return Ok(Move::Reveal { at, revealed: None });
     }
-    let board = &state.board;
 
     // Split into squares: handle both 'h2e2' (no separator) and 'h2xe2'.
     let parts: Vec<Square> = if trimmed.contains('x') {
@@ -88,7 +109,6 @@ pub fn decode_move(state: &GameState, input: &str) -> Result<Move, CoreError> {
     }
 
     let from = parts[0];
-    let legal = state.legal_moves();
 
     if parts.len() == 2 {
         // Step / Capture / CannonJump — find unique match by (from, to).
@@ -172,5 +192,26 @@ mod tests {
         assert!(decode_move(&state, "").is_err());
         assert!(decode_move(&state, "zz").is_err());
         assert!(decode_move(&state, "z9z9").is_err());
+    }
+
+    #[test]
+    fn decode_from_view_matches_state() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let view = PlayerView::project(&state, state.side_to_move);
+        assert_eq!(
+            decode_move_from_view(&view, "h2e2").unwrap(),
+            decode_move(&state, "h2e2").unwrap()
+        );
+    }
+
+    #[test]
+    fn decode_from_view_flip_in_banqi() {
+        let state = GameState::new(crate::rules::RuleSet::banqi_with_seed(
+            crate::rules::HouseRules::empty(),
+            3,
+        ));
+        let view = PlayerView::project(&state, state.side_to_move);
+        let m = decode_move_from_view(&view, "flip a0").unwrap();
+        assert!(matches!(m, Move::Reveal { revealed: None, .. }));
     }
 }
