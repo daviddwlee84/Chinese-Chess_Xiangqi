@@ -1,8 +1,15 @@
 //! `chess-net` — websocket server + wire protocol for chess-core.
 //!
-//! Multi-room ws server: one binary (`chess-net-server`) hosts many
-//! concurrent rooms keyed by string id, each with its own authoritative
-//! `GameState`. Routes:
+//! Two consumer shapes:
+//!
+//! * Default features (`server`) → axum-based multi-room ws server +
+//!   protocol types. This is what the `chess-net-server` binary and any
+//!   native client (`chess-tui --connect`) build against.
+//! * `default-features = false` → protocol types only, no axum / tokio.
+//!   chess-web (wasm32) consumes the crate this way so the WASM build
+//!   does not pull in server-only deps.
+//!
+//! Routes (server feature):
 //!
 //!   GET /             → upgrade into default room "main" (back-compat, v1)
 //!   GET /ws           → upgrade into default room "main" (back-compat, v1)
@@ -18,9 +25,11 @@
 //! deferred — see `TODO.md`.
 
 pub mod protocol;
+#[cfg(feature = "server")]
 pub mod server;
 
 pub use protocol::{
     variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
+#[cfg(feature = "server")]
 pub use server::{run, serve};

@@ -1,6 +1,6 @@
 [package]
 name        = "chess-net"
-description = "Wire protocol + axum websocket server for chess-core. Hosts a single-room game; clients see only PlayerView."
+description = "Wire protocol + axum websocket server for chess-core. Multi-room. Default features include the server; `default-features = false` exposes the protocol types only (e.g. for WASM clients)."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -15,16 +15,23 @@ path = "src/lib.rs"
 [[bin]]
 name = "chess-net-server"
 path = "src/bin/server.rs"
+required-features = ["server"]
+
+[features]
+default = ["server"]
+# Enables axum/tokio/clap and the `server` module. Off by default for
+# wasm32 consumers (chess-web) that only need the protocol types.
+server = ["dep:tokio", "dep:axum", "dep:futures-util", "dep:clap", "dep:anyhow"]
 
 [dependencies]
 chess-core   = { path = "../chess-core" }
 serde        = { workspace = true }
 serde_json   = { workspace = true }
-anyhow       = { workspace = true }
-tokio        = { workspace = true }
-axum         = { workspace = true }
-futures-util = { workspace = true }
-clap         = { workspace = true }
+anyhow       = { workspace = true, optional = true }
+tokio        = { workspace = true, optional = true }
+axum         = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
+clap         = { workspace = true, optional = true }
 
 [dev-dependencies]
 tungstenite = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name        = "chess-web"
-description = "Leptos + WASM frontend for chess-core. SPA scaffold — board renderer + online play follow in later commits."
+description = "Leptos + WASM frontend for chess-core. SPA — local pass-and-play and online play via chess-net."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -11,12 +11,15 @@ authors.workspace      = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-# Native (cargo check --workspace) sees only the pure-logic modules
-# (routes); leptos and the browser-only deps are wasm32-gated so the
-# workspace check passes.
+# Native (cargo check --workspace) sees a tiny lib + the pure-logic modules
+# (orient, glyph, routes, state). Leptos and the browser-only deps are
+# wasm32-gated so the workspace check passes. chess-net is pulled in with
+# `default-features = false` so axum/tokio do NOT end up in the WASM bundle.
 [dependencies]
 chess-core = { path = "../../crates/chess-core" }
 serde      = { workspace = true }
+serde_json = { workspace = true }
+chess-net  = { path = "../../crates/chess-net", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos        = { version = "0.6", features = ["csr"] }
@@ -25,3 +28,7 @@ console_error_panic_hook = "0.1.7"
 wasm-bindgen  = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys       = { version = "0.3", features = ["Window", "Location"] }
+js-sys        = "0.3"
+gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+futures-util  = { workspace = true }
+futures       = "0.3"

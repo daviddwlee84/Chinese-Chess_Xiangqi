@@ -360,10 +360,16 @@ name = "chess-web"
 version = "0.1.0"
 dependencies = [
  "chess-core",
+ "chess-net",
  "console_error_panic_hook",
+ "futures",
+ "futures-util",
+ "gloo-net",
+ "js-sys",
  "leptos",
  "leptos_router",
  "serde",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
