@@ -36104,3 +36104,1335 @@ Diff stat
  20 files changed, 15975 insertions(+), 311 deletions(-)
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 06:59:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage all changes
+
+`git add -A && git status 2>&1 | tail -30`
+
+```text
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .claude/plans/web-gentle-island.md
+	modified:   .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+	modified:   CLAUDE.md
+	modified:   Makefile
+	modified:   TODO.md
+	new file:   backlog/chess-net-chat-moderation.md
+	new file:   backlog/chess-net-system-messages.md
+	modified:   clients/chess-tui/src/app.rs
+	modified:   clients/chess-tui/src/input.rs
+	modified:   clients/chess-tui/src/ui.rs
+	new file:   clients/chess-web/src/components/chat_panel.rs
+	modified:   clients/chess-web/src/components/mod.rs
+	modified:   clients/chess-web/src/config.rs
+	modified:   clients/chess-web/src/pages/lobby.rs
+	modified:   clients/chess-web/src/pages/play.rs
+	modified:   clients/chess-web/src/state.rs
+	modified:   clients/chess-web/style.css
+	modified:   crates/chess-net/src/bin/server.rs
+	modified:   crates/chess-net/src/lib.rs
+	modified:   crates/chess-net/src/protocol.rs
+	modified:   crates/chess-net/src/server.rs
+	modified:   crates/chess-net/tests/protocol_roundtrip.rs
+	modified:   crates/chess-net/tests/server_smoke.rs
+	new file:   crates/chess-net/tests/spectator_chat.rs
+	new file:   docs/adr/0006-chess-net-spectators-chat.md
+	new file:   scripts/play-spectator.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 06:59:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit the spectator + chat feature
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(net): spectator slots + in-room chat (protocol v3)
+
+Bumps PROTOCOL_VERSION to 3 and adds a read-only spectator role plus a
+players-only chat channel. Joining `/ws/<room>?role=spectator` returns
+`Spectating` (instead of `Hello`) followed by `ChatHistory` with the
+room's 50-line ring buffer; the spectator then receives live `Update`
+projected from RED's POV (banqi hidden tiles stay opaque per ADR-0004)
+and `Chat` broadcasts. Spectator capacity defaults to 16 per room
+(`--max-spectators` / `CHESS_NET_MAX_SPECTATORS` env to override); the
+17th spectator gets `Error{"room watch capacity reached"}`. Move /
+Resign / Rematch / Chat from a spectator returns the appropriate
+`spectators cannot ...` error. Rooms GC when both seats and spectators
+drain (except `main`, still permanent). v2 back-compat: third joiner
+without `?role=spectator` still gets `room full`; v2 lobby clients
+decode v3 RoomSummary cleanly thanks to `#[serde(default)]` on
+`spectators`.
+
+chess-web ships a `<ChatPanel>` below the sidebar in a new
+`right-column` grid with auto-scroll + disabled-for-spectators input,
+plus a Watch button on the lobby that builds `?role=spectator` URLs.
+chess-tui adds a `t`-to-chat hijack mode (Enter sends, Esc cancels,
+players only), a chat region in the net sidebar, a `w`-to-watch lobby
+key, and spectator gating on board input.
+
+ADR-0006 captures the spectator opt-in choice (explicit
+`?role=spectator` rather than auto-fallback so v2 clients never hit
+the new `Spectating` JSON tag). 8 new server-smoke tests
+(spectator_chat.rs) + 5 new round-trip tests cover the protocol +
+ring-buffer + capacity + lobby summary paths. New `make play-spectator`
++ `scripts/play-spectator.sh` boot a 2-player + 1-spectator tmux demo.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -20
+```
+
+```text
+[main dc0a511] feat(net): spectator slots + in-room chat (protocol v3)
+ 26 files changed, 16790 insertions(+), 311 deletions(-)
+ create mode 100644 backlog/chess-net-chat-moderation.md
+ create mode 100644 backlog/chess-net-system-messages.md
+ create mode 100644 clients/chess-web/src/components/chat_panel.rs
+ create mode 100644 crates/chess-net/tests/spectator_chat.rs
+ create mode 100644 docs/adr/0006-chess-net-spectators-chat.md
+ create mode 100755 scripts/play-spectator.sh
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:00:01Z)**_
+
+Committed `dc0a511`. Before writing edge-case tests, I need to settle the host-handover design question — the answer changes which behaviors the tests should lock in.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:01:46Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="AskUserQuestion"><details>
+<summary>Tool use: **AskUserQuestion**</summary>
+**How should room ownership work?**
+
+Options:
+- **No host — keep as-is (Recommended)** - Anyone in the room can resign / rematch / chat. Password is set by the first joiner of a locked URL and stays as the room's identity until GC. Add tests + a 'creator can leave the room locked even when empty' nuance later if it becomes a problem. Simplest; matches current behavior.
+- **Implicit host = first seat, with migration + close-room** - First seat is host. Host migrates to remaining seat on disconnect; if both seats empty, no host (room stays only for spectators). New ClientMsg::CloseRoom from host force-GCs the room (kicks everyone with Error{'room closed by host'}). Adds host: Option<Side> to RoomState + protocol bump or additive ClientMsg variant.
+- **Explicit creator role with kick + transfer** - Track creator separately from seats. Creator can kick by side, transfer ownership, or close the room. Spectators promoted to seats don't inherit. Most complex — adds a Role enum and a ClientMsg::{Kick, Transfer, CloseRoom}. Folds into the chat-moderation backlog.
+
+**When should auto-GC fire on the empty-room edge?**
+
+Options:
+- **Both seats AND spectators empty (Recommended)** - Current behavior. Spectators keep the room alive even if both players leave — useful for a streamer flow where audience lingers briefly. main is exempt. Tests should lock in this behavior.
+- **Both seats empty regardless of spectators** - Spectators get dropped with Error{'room closed (no players)'} when the last seat leaves. Cleaner lifecycle but breaks the 'audience watches a finished game and discusses' flow. main still exempt.
+- **Configurable grace period after last seat leaves** - 30s grace timer after the second-to-last player leaves; if no new player connects, GC. Spectators dropped at GC. Adds tokio::time complexity. Likely premature.
+
+
+**Answer:** No host — keep as-is (Recommended), Both seats AND spectators empty (Recommended)
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:03:07Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:03:07Z)**_
+
+Got the direction: lock in current behavior with tests, no new code for host model. Adding `crates/chess-net/tests/room_lifecycle.rs` covering the create/leave/rejoin edges.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:04:38Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Edge cases around the create / leave / rejoin / GC lifecycle. Locks
+//! in the current "no host, room is just a name + state" model so future
+//! refactors don't accidentally leak old room state across GC, drop the
+//! wrong rematch flag, or forget to notify the opponent on a mid-game
+//! disconnect.
+//!
+//! Pairs with `server_smoke.rs` (basic happy paths) and
+//! `spectator_chat.rs` (v3 protocol surface). The split keeps each file
+//! readable; some overlap with existing tests is intentional — these are
+//! the lifecycle-edge fixtures.
+
+use std::time::Duration;
+
+use anyhow::Result;
+use chess_core::piece::Side;
+use chess_core::rules::RuleSet;
+use chess_net::{ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg};
+use tungstenite::Message;
+
+fn read_json<S: std::io::Read + std::io::Write>(
+    ws: &mut tungstenite::WebSocket<S>,
+) -> Result<ServerMsg> {
+    let m = ws.read()?;
+    let text = m.to_text()?;
+    Ok(serde_json::from_str(text)?)
+}
+
+fn send_json<S: std::io::Read + std::io::Write>(
+    ws: &mut tungstenite::WebSocket<S>,
+    msg: &ClientMsg,
+) -> Result<()> {
+    ws.send(Message::Text(serde_json::to_string(msg)?))?;
+    Ok(())
+}
+
+/// Drain `Hello` (or `Spectating`) + `ChatHistory` so subsequent reads
+/// see live traffic. Returns the chat-history lines for tests that care.
+fn drain_welcome<S: std::io::Read + std::io::Write>(
+    ws: &mut tungstenite::WebSocket<S>,
+) -> Result<Vec<ChatLine>> {
+    let _welcome = read_json(ws)?;
+    match read_json(ws)? {
+        ServerMsg::ChatHistory { lines } => Ok(lines),
+        other => anyhow::bail!("expected ChatHistory, got {other:?}"),
+    }
+}
+
+/// Drain `Rooms` pushes from a lobby socket until `pred` matches. Mirrors
+/// `server_smoke::read_rooms_until` — the lobby push is eventually
+/// consistent and several intermediate snapshots can land back-to-back
+/// during fast churn.
+fn read_rooms_until<S, F>(
+    ws: &mut tungstenite::WebSocket<S>,
+    mut pred: F,
+) -> Result<Vec<RoomSummary>>
+where
+    S: std::io::Read + std::io::Write,
+    F: FnMut(&[RoomSummary]) -> bool,
+{
+    for _ in 0..32 {
+        match read_json(ws)? {
+            ServerMsg::Rooms { rooms } => {
+                if pred(&rooms) {
+                    return Ok(rooms);
+                }
+            }
+            ServerMsg::Error { message } => {
+                anyhow::bail!("unexpected error on lobby socket: {message}")
+            }
+            other => anyhow::bail!("expected Rooms on lobby socket, got {other:?}"),
+        }
+    }
+    anyhow::bail!("predicate never matched within 32 lobby pushes")
+}
+
+/// Read `ServerMsg`s from a player socket until `pred` matches one. The
+/// server can interleave its own `Update` / `Error` frames with the one
+/// the test cares about; this helper drains until the predicate fires
+/// (or we hit a sane budget).
+fn read_msgs_until<S, F>(ws: &mut tungstenite::WebSocket<S>, mut pred: F) -> Result<ServerMsg>
+where
+    S: std::io::Read + std::io::Write,
+    F: FnMut(&ServerMsg) -> bool,
+{
+    for _ in 0..16 {
+        let msg = read_json(ws)?;
+        if pred(&msg) {
+            return Ok(msg);
+        }
+    }
+    anyhow::bail!("predicate never matched within 16 frames")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn fresh_joiner_after_gc_gets_clean_room() -> Result<()> {
+    // Red joins a non-`main` room, leaves; the room is GC'd. A new Red
+    // arriving at the same id must see a brand-new RoomState (history
+    // empty, chat empty, no spectator carry-over). Catches a regression
+    // where the old room's Arc somehow survived the rooms-map remove.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let url = format!("ws://{addr}/ws/scratch");
+
+        // First lifetime: send a chat line so we have observable state.
+        let (mut a, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut a)?;
+        send_json(&mut a, &ClientMsg::Chat { text: "echo before gc".into() })?;
+        assert!(matches!(read_json(&mut a)?, ServerMsg::Chat { .. }));
+        drop(a);
+
+        // Allow the server's disconnect handler + GC to settle. Without
+        // this, the next connect can race ahead of the rooms-map remove.
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Second lifetime: same id, but a brand-new room. ChatHistory
+        // must be empty (state didn't survive the GC).
+        let (mut b, _) = tungstenite::connect(&url)?;
+        let history = drain_welcome(&mut b)?;
+        assert!(history.is_empty(), "expected fresh chat history, got {history:?}");
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn locked_room_gced_then_recreated_with_different_password() -> Result<()> {
+    // First lifetime locks `secret` with password "alpha"; the wrong
+    // password is rejected. After GC, the same id must be openable with
+    // a different password — the lock dies with the room.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let alpha_url = format!("ws://{addr}/ws/secret?password=alpha");
+        let beta_url = format!("ws://{addr}/ws/secret?password=beta");
+
+        let (mut a, _) = tungstenite::connect(&alpha_url)?;
+        assert!(matches!(read_json(&mut a)?, ServerMsg::Hello { .. }));
+        // Drain ChatHistory.
+        let _ = read_json(&mut a)?;
+
+        // Wrong password while the room is alive → "bad password".
+        let (mut bad, _) = tungstenite::connect(&beta_url)?;
+        match read_json(&mut bad)? {
+            ServerMsg::Error { message } => assert!(message.contains("bad password"), "{message}"),
+            other => panic!("expected Error, got {other:?}"),
+        }
+        drop(bad);
+
+        // Drop the only seat so the room GC's.
+        drop(a);
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Same id, different password — must succeed (the original lock
+        // died with the room).
+        let (mut b, _) = tungstenite::connect(&beta_url)?;
+        match read_json(&mut b)? {
+            ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::RED),
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn mid_game_disconnect_pushes_error_to_opponent() -> Result<()> {
+    // Red joins, Black joins, Red disconnects mid-Ongoing. The remaining
+    // seat (Black) must receive `Error{"opponent disconnected"}` before
+    // the room either GC's or a new joiner takes the empty seat.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let url = format!("ws://{addr}/ws/midgame");
+        let (mut red, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut black)?;
+
+        drop(red);
+        let err = read_msgs_until(&mut black, |msg| {
+            matches!(msg, ServerMsg::Error { message } if message.contains("opponent disconnected"))
+        })?;
+        match err {
+            ServerMsg::Error { message } => {
+                assert!(message.contains("opponent disconnected"), "{message}")
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn reconnect_after_partial_leave_takes_open_seat() -> Result<()> {
+    // Red+Black seated, Black disconnects. A new joiner to the same room
+    // must be assigned BLACK (the open seat), not RED. This is the
+    // "reconnect rejoins as the same color" UX, accidentally — there's
+    // no token, the assignment just falls out of next_seat() seeing
+    // Red occupied.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let url = format!("ws://{addr}/ws/rejoin");
+        let (mut red, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut black)?;
+
+        drop(black);
+        // Drain the "opponent disconnected" notification on Red so it
+        // doesn't queue ahead of subsequent reads in pathological races.
+        let _ = read_msgs_until(&mut red, |m| matches!(m, ServerMsg::Error { .. }))?;
+
+        // Tiny delay so the seat removal lands before the new connect.
+        std::thread::sleep(Duration::from_millis(50));
+
+        let (mut rejoin, _) = tungstenite::connect(&url)?;
+        match read_json(&mut rejoin)? {
+            ServerMsg::Hello { observer, .. } => {
+                assert_eq!(observer, Side::BLACK, "rejoiner should pick up the open seat");
+            }
+            other => panic!("expected Hello, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn room_persists_with_only_spectators_after_seats_leave() -> Result<()> {
+    // Red+Black+spectator. Both players leave. Room must NOT GC because
+    // the spectator is still attached. The lobby snapshot must show
+    // seats=0, spectators=1 (and room id present). When the spectator
+    // also leaves, the room finally GCs.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let game_url = format!("ws://{addr}/ws/lingering");
+        let watch_url = format!("ws://{addr}/ws/lingering?role=spectator");
+        let lobby_url = format!("ws://{addr}/lobby");
+
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut black)?;
+        let (mut watcher, _) = tungstenite::connect(&watch_url)?;
+        drain_welcome(&mut watcher)?;
+
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "lingering" && r.seats == 2 && r.spectators == 1)
+        })?;
+
+        drop(red);
+        drop(black);
+
+        // Room should drop to seats=0, spectators=1 — alive only because
+        // of the watcher.
+        let snap = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "lingering" && r.seats == 0 && r.spectators == 1)
+        })?;
+        assert!(snap.iter().any(|r| r.id == "lingering"));
+
+        drop(watcher);
+
+        // Now the room must GC (it's not `main`).
+        let snap = read_rooms_until(&mut lobby, |rs| !rs.iter().any(|r| r.id == "lingering"))?;
+        assert!(!snap.iter().any(|r| r.id == "lingering"));
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cannot_spectate_room_that_does_not_exist() -> Result<()> {
+    // `?role=spectator` against a never-created room must fail with a
+    // clear error rather than silently auto-creating an empty room. This
+    // matches the design choice in handle_room_socket: spectators don't
+    // get to summon rooms (the UX would be confusing — empty board with
+    // no players).
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let url = format!("ws://{addr}/ws/ghost?role=spectator");
+        let (mut watcher, _) = tungstenite::connect(&url)?;
+        match read_json(&mut watcher)? {
+            ServerMsg::Error { message } => {
+                assert!(message.contains("no such room to spectate"), "{message}");
+            }
+            other => panic!("expected Error, got {other:?}"),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn chat_history_survives_partial_disconnect_but_not_gc() -> Result<()> {
+    // Two-stage assertion:
+    //
+    // 1. While someone is still in the room (player or spectator), the
+    //    chat ring buffer survives any number of disconnects.
+    // 2. Once the room GCs (last connection drops), the buffer is gone —
+    //    a fresh joiner sees empty ChatHistory.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let game_url = format!("ws://{addr}/ws/memory");
+        let watch_url = format!("ws://{addr}/ws/memory?role=spectator");
+
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut black)?;
+        let (mut watcher, _) = tungstenite::connect(&watch_url)?;
+        drain_welcome(&mut watcher)?;
+
+        // Red speaks; everyone receives the broadcast.
+        send_json(&mut red, &ClientMsg::Chat { text: "first".into() })?;
+        assert!(matches!(read_json(&mut red)?, ServerMsg::Chat { .. }));
+        assert!(matches!(read_json(&mut black)?, ServerMsg::Chat { .. }));
+        assert!(matches!(read_json(&mut watcher)?, ServerMsg::Chat { .. }));
+
+        // Red leaves. Black + spectator keep the room alive.
+        drop(red);
+        let _ = read_msgs_until(&mut black, |m| matches!(m, ServerMsg::Error { .. }))?;
+
+        // A late spectator still sees Red's message in history.
+        let (mut late, _) = tungstenite::connect(&watch_url)?;
+        let history = drain_welcome(&mut late)?;
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].text, "first");
+
+        // Now drain everyone — room GCs.
+        drop(black);
+        drop(watcher);
+        drop(late);
+        std::thread::sleep(Duration::from_millis(150));
+
+        // Fresh joiner gets a brand-new room with no chat history.
+        let (mut fresh, _) = tungstenite::connect(&game_url)?;
+        let history = drain_welcome(&mut fresh)?;
+        assert!(history.is_empty(), "history should clear at GC, got {history:?}");
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rematch_request_clears_when_requester_disconnects() -> Result<()> {
+    // Red+Black play; Red resigns (Black wins). Red asks for a rematch
+    // → server pings Black ("opponent wants rematch"). Red disconnects
+    // before Black responds. The rematch flag must be cleared so a
+    // future Red joiner doesn't inherit a stale "rematch pending" state.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let url = format!("ws://{addr}/ws/rematchcleanup");
+        let (mut red, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut black)?;
+
+        send_json(&mut red, &ClientMsg::Resign)?;
+        // Both seats see the resignation update.
+        assert!(matches!(read_json(&mut red)?, ServerMsg::Update { .. }));
+        assert!(matches!(read_json(&mut black)?, ServerMsg::Update { .. }));
+
+        send_json(&mut red, &ClientMsg::Rematch)?;
+        // Drain the request/notify pair.
+        let _ = read_msgs_until(&mut red, |m| {
+            matches!(m, ServerMsg::Error { message } if message.contains("Waiting"))
+        })?;
+        let _ = read_msgs_until(&mut black, |m| {
+            matches!(m, ServerMsg::Error { message } if message.contains("Opponent wants"))
+        })?;
+
+        drop(red);
+        // Drain the "opponent disconnected" notification.
+        let _ = read_msgs_until(&mut black, |m| {
+            matches!(m, ServerMsg::Error { message } if message.contains("opponent disconnected"))
+        })?;
+        std::thread::sleep(Duration::from_millis(50));
+
+        // New Red joins. The status is still Won{Resignation} (game state
+        // survives Red's disconnect because Black is still seated). Black
+        // requests a rematch — without the cleanup, this would already
+        // count as "both ready" because Red's stale flag persisted.
+        // Instead, Black should see "Waiting…" first.
+        let (mut new_red, _) = tungstenite::connect(&url)?;
+        drain_welcome(&mut new_red)?;
+        send_json(&mut black, &ClientMsg::Rematch)?;
+        let msg = read_msgs_until(&mut black, |m| matches!(m, ServerMsg::Error { .. }))?;
+        match msg {
+            ServerMsg::Error { message } => {
+                assert!(
+                    message.contains("Waiting") || message.contains("Opponent wants"),
+                    "expected 'waiting/opponent wants', got: {message}"
+                );
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn spectator_count_drops_when_spectator_leaves() -> Result<()> {
+    // Drives the lobby push: spec count goes from 0 → 1 → 0 as a
+    // spectator joins and leaves while the seats stay full. Catches a
+    // bug where the disconnect handler's `g.spectators.retain(...)`
+    // somehow misses the same-channel match (e.g. forgets to call
+    // refresh_summary after the retain).
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let game_url = format!("ws://{addr}/ws/spec_drop");
+        let watch_url = format!("ws://{addr}/ws/spec_drop?role=spectator");
+        let lobby_url = format!("ws://{addr}/lobby");
+
+        let (mut red, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut red)?;
+        let (mut black, _) = tungstenite::connect(&game_url)?;
+        drain_welcome(&mut black)?;
+
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "spec_drop" && r.spectators == 0 && r.seats == 2)
+        })?;
+
+        let (mut watcher, _) = tungstenite::connect(&watch_url)?;
+        drain_welcome(&mut watcher)?;
+        let _ = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "spec_drop" && r.spectators == 1)
+        })?;
+
+        drop(watcher);
+        let snap = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "spec_drop" && r.spectators == 0)
+        })?;
+        let row = snap.iter().find(|r| r.id == "spec_drop").unwrap();
+        assert_eq!(row.seats, 2, "seats should be unchanged");
+        assert_eq!(row.status, RoomStatus::Playing);
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn main_room_survives_full_drain_unlike_named_rooms() -> Result<()> {
+    // The `main` room must NEVER GC. Drain it completely (seat + any
+    // spectator) and confirm a subsequent `ListRooms` / `Rooms` push
+    // still includes "main" with seats=0.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let server = tokio::spawn(chess_net::serve(listener, RuleSet::xiangqi_casual()));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let main_url = format!("ws://{addr}/ws");
+        let lobby_url = format!("ws://{addr}/lobby");
+
+        let (mut red, _) = tungstenite::connect(&main_url)?;
+        drain_welcome(&mut red)?;
+
+        let (mut lobby, _) = tungstenite::connect(&lobby_url)?;
+        let _ = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "main"))?;
+
+        drop(red);
+        std::thread::sleep(Duration::from_millis(120));
+
+        // Force a fresh snapshot — the auto-push after the disconnect
+        // should already have fired, but ListRooms makes the test
+        // deterministic.
+        send_json(&mut lobby, &ClientMsg::ListRooms)?;
+        let snap = read_rooms_until(&mut lobby, |rs| {
+            rs.iter().any(|r| r.id == "main" && r.seats == 0)
+        })?;
+        assert!(snap.iter().any(|r| r.id == "main" && r.seats == 0));
+        Ok(())
+    })
+    .await??;
+
+    server.abort();
+    Ok(())
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/room_lifecycle.rs (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:06:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run new lifecycle tests
+
+`cargo test -p chess-net --test room_lifecycle 2>&1 | tail -30`
+
+```text
+Command running in background with ID: bhu35paa4. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bhu35paa4.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:06:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Show background test output
+
+`cat /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bhu35paa4.output 2>&1 | tail -100`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:06:53Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait then read test output
+
+`sleep 25 && cat /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bhu35paa4.output 2>&1 | tail -120`
+
+```text
+<tool_use_error>Blocked: sleep 25 followed by: cat /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bhu35paa4.output tail -120. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:08:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run lifecycle tests in foreground
+
+`cargo test -p chess-net --test room_lifecycle 2>&1 | tail -60`
+
+```text
+Command running in background with ID: bzne0flik. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bzne0flik.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:09:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `2`
+- query: `select:Monitor,TaskOutput`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:10:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="TaskOutput"><details>
+<summary>Tool use: **TaskOutput**</summary>
+
+```text
+<retrieval_status>timeout</retrieval_status>
+
+<task_id>bzne0flik</task_id>
+
+<task_type>local_bash</task_type>
+
+<status>running</status>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:12Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="TaskOutput"><details>
+<summary>Tool use: **TaskOutput**</summary>
+
+```text
+<retrieval_status>timeout</retrieval_status>
+
+<task_id>bzne0flik</task_id>
+
+<task_type>local_bash</task_type>
+
+<status>running</status>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:18Z)**_
+
+Likely hanging on a `read_msgs_until` budget. Let me check the partial output.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `/private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/fc4247e9-595c-4099-99c8-4ee0b30913be/tasks/bzne0flik.output`
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="TaskOutput"><details>
+<summary>Tool use: **TaskOutput**</summary>
+
+```text
+<retrieval_status>not_ready</retrieval_status>
+
+<task_id>bzne0flik</task_id>
+
+<task_type>local_bash</task_type>
+
+<status>running</status>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:12:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:17:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="TaskOutput"><details>
+<summary>Tool use: **TaskOutput**</summary>
+
+```text
+<retrieval_status>timeout</retrieval_status>
+
+<task_id>bzne0flik</task_id>
+
+<task_type>local_bash</task_type>
+
+<status>running</status>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:17:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:17:55Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:TaskStop`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskStop"><details>
+<summary>Tool use: **TaskStop**</summary>
+
+```text
+{"message":"Successfully stopped task: bzne0flik (cargo test -p chess-net --test room_lifecycle 2>&1 | tail -60)","task_id":"bzne0flik","task_type":"local_bash","command":"cargo test -p chess-net --test room_lifecycle 2>&1 | tail -60"}
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:01Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskStop"><details>
+<summary>Tool use: **TaskStop**</summary>
+
+```text
+{"message":"Successfully stopped task: bhu35paa4 (cargo test -p chess-net --test room_lifecycle 2>&1 | tail -30)","task_id":"bhu35paa4","task_type":"local_bash","command":"cargo test -p chess-net --test room_lifecycle 2>&1 | tail -30"}
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:11Z)**_
+
+Run tests one at a time with a deadline so a hang can't stall the suite.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:12Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run single test with timeout
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle fresh_joiner_after_gc_gets_clean_room -- --nocapture 2>&1 | tail -30; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.33s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][scratch] seated Side(0) (1/2)
+[server][scratch] chat Side(0): echo before gc
+[server][warn][scratch] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][scratch] Player(Side(0)) disconnected
+[server][scratch] seated Side(0) (1/2)
+test fresh_joiner_after_gc_gets_clean_room ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.16s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run locked-room test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle locked_room_gced_then_recreated_with_different_password -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.17s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][secret] seated Side(0) (1/2)
+[server][warn][secret] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][secret] Player(Side(0)) disconnected
+[server][secret] seated Side(0) (1/2)
+test locked_room_gced_then_recreated_with_different_password ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.15s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run mid-game disconnect test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle mid_game_disconnect_pushes_error_to_opponent -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.05s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][midgame] seated Side(0) (1/2)
+[server][midgame] seated Side(1) (2/2)
+[server][warn][midgame] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][midgame] Player(Side(0)) disconnected
+test mid_game_disconnect_pushes_error_to_opponent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.05s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run reconnect test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle reconnect_after_partial_leave_takes_open_seat -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.05s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][rejoin] seated Side(0) (1/2)
+[server][rejoin] seated Side(1) (2/2)
+[server][warn][rejoin] ws read error (Player(Side(1))): WebSocket protocol error: Connection reset without closing handshake
+[server][rejoin] Player(Side(1)) disconnected
+[server][rejoin] seated Side(1) (2/2)
+test reconnect_after_partial_leave_takes_open_seat ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.11s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run lingering-room test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle room_persists_with_only_spectators_after_seats_leave -- --nocapture 2>&1 | tail -30; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.05s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][lingering] seated Side(0) (1/2)
+[server][lingering] seated Side(1) (2/2)
+[server][lingering] spectator joined (1/16)
+[server][warn][lingering] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][lingering] Player(Side(0)) disconnected
+[server][warn][lingering] ws read error (Player(Side(1))): WebSocket protocol error: Connection reset without closing handshake
+[server][lingering] Player(Side(1)) disconnected
+[server][warn][lingering] ws read error (Spectator): WebSocket protocol error: Connection reset without closing handshake
+[server][lingering] Spectator disconnected
+test room_persists_with_only_spectators_after_seats_leave ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.05s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run no-such-room test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle cannot_spectate_room_that_does_not_exist -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.06s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+test cannot_spectate_room_that_does_not_exist ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.05s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:18:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chat-history test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle chat_history_survives_partial_disconnect_but_not_gc -- --nocapture 2>&1 | tail -30; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.06s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][memory] seated Side(0) (1/2)
+[server][memory] seated Side(1) (2/2)
+[server][memory] spectator joined (1/16)
+[server][memory] chat Side(0): first
+[server][warn][memory] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][memory] Player(Side(0)) disconnected
+[server][memory] spectator joined (2/16)
+[server][warn][memory] ws read error (Player(Side(1))): WebSocket protocol error: Connection reset without closing handshake
+[server][memory] Player(Side(1)) disconnected
+[server][warn][memory] ws read error (Spectator): WebSocket protocol error: Connection reset without closing handshake
+[server][memory] Spectator disconnected
+[server][warn][memory] ws read error (Spectator): WebSocket protocol error: Connection reset without closing handshake
+[server][memory] Spectator disconnected
+[server][memory] seated Side(0) (1/2)
+test chat_history_survives_partial_disconnect_but_not_gc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.20s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run rematch-cleanup test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle rematch_request_clears_when_requester_disconnects -- --nocapture 2>&1 | tail -40; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.06s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][rematchcleanup] seated Side(0) (1/2)
+[server][rematchcleanup] seated Side(1) (2/2)
+[server][warn][rematchcleanup] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][rematchcleanup] Player(Side(0)) disconnected
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run spec-count test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle spectator_count_drops_when_spectator_leaves -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][spec_drop] seated Side(0) (1/2)
+[server][spec_drop] seated Side(1) (2/2)
+[server][spec_drop] spectator joined (1/16)
+[server][warn][spec_drop] ws read error (Spectator): WebSocket protocol error: Connection reset without closing handshake
+[server][spec_drop] Spectator disconnected
+test spectator_count_drops_when_spectator_leaves ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.05s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run main-room test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle main_room_survives_full_drain_unlike_named_rooms -- --nocapture 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.06s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][main] seated Side(0) (1/2)
+[server][warn][main] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][main] Player(Side(0)) disconnected
+test main_room_survives_full_drain_unlike_named_rooms ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.18s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:41Z)**_
+
+Found the hang: the rematch-cleanup test waits for `"opponent disconnected"` but that error only fires while the game is **Ongoing**. After resign the status is `Won`, so the disconnect handler stays silent. Adjusting the test.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:19:53Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net/tests/room_lifecycle.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-run rematch-cleanup test
+
+`timeout 30 cargo test -p chess-net --test room_lifecycle rematch_request_clears_when_requester_disconnects -- --nocapture 2>&1 | tail -30; echo "---exit $?---"`
+
+```text
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.92s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 1 test
+[server][rematchcleanup] seated Side(0) (1/2)
+[server][rematchcleanup] seated Side(1) (2/2)
+[server][warn][rematchcleanup] ws read error (Player(Side(0))): WebSocket protocol error: Connection reset without closing handshake
+[server][rematchcleanup] Player(Side(0)) disconnected
+[server][rematchcleanup] seated Side(0) (2/2)
+test rematch_request_clears_when_requester_disconnects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.13s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:05Z)**_
+
+Passes. Now the full lifecycle suite end-to-end + the rest of the workspace.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run all lifecycle tests
+
+`timeout 60 cargo test -p chess-net --test room_lifecycle 2>&1 | tail -25; echo "---exit $?---"`
+
+```text
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.21s
+     Running tests/room_lifecycle.rs (target/debug/deps/room_lifecycle-9ca35540955c3994)
+
+running 10 tests
+test cannot_spectate_room_that_does_not_exist ... ok
+test mid_game_disconnect_pushes_error_to_opponent ... ok
+test spectator_count_drops_when_spectator_leaves ... ok
+test room_persists_with_only_spectators_after_seats_leave ... ok
+test reconnect_after_partial_leave_takes_open_seat ... ok
+test rematch_request_clears_when_requester_disconnects ... ok
+test fresh_joiner_after_gc_gets_clean_room ... ok
+test locked_room_gced_then_recreated_with_different_password ... ok
+test main_room_survives_full_drain_unlike_named_rooms ... ok
+test chat_history_survives_partial_disconnect_but_not_gc ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+---exit 0---
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:12Z)**_
+
+All 10 pass. Final pre-push gates + commit.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + clippy
+
+`cargo fmt --check 2>&1 | tail -5 && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5`
+
+```text
++        let snap =
++            read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "main" && r.seats == 0))?;
+         assert!(snap.iter().any(|r| r.id == "main" && r.seats == 0));
+         Ok(())
+     })
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.27s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace test summary
+
+`cargo test --workspace 2>&1 | grep -E "test result.*(failed|passed)" | tail -25`
+
+```text
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:24Z)**_
+
+fmt drift in the new file. Run `cargo fmt`, then commit.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply fmt + verify
+
+`cargo fmt && cargo fmt --check 2>&1 | tail -3`
+
+```text
+[This command modified 1 file you've previously read: crates/chess-net/tests/room_lifecycle.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify fmt + clippy clean
+
+`cargo fmt --check 2>&1 | tail -5; echo "---"; cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5`
+
+```text
+---
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.06s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:36Z)**_
+
+All gates green. Commit the new test file.
+
+_**Agent (claude-opus-4-7 2026-05-07 07:20:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Pre-commit status
+
+`git status 2>&1 | tail -10`
+
+```text
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-07_02-30-43Z-web-tui-websocket-svg.md
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.claude/plans/tui-magical-rabbit.md
+	.specstory/history/2026-05-07_06-59-49Z.md
+	crates/chess-net/tests/room_lifecycle.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+</details></tool-use>
