@@ -1,4 +1,8 @@
 //! Sidebar: variant + turn + status + history-length + undo / new-game buttons.
+//!
+//! `wip=true` (three-kingdom banqi until the engine ships) hides turn /
+//! legal-move counts and disables the action buttons — the board overlay
+//! tells the user what's happening; the sidebar just stays out of the way.
 
 use chess_core::piece::Side;
 use chess_core::rules::Variant;
@@ -14,6 +18,7 @@ pub fn Sidebar(
     #[prop(into)] view: Signal<PlayerView>,
     #[prop(into)] on_new_game: Callback<()>,
     #[prop(into)] on_undo: Callback<()>,
+    #[prop(default = false)] wip: bool,
 ) -> impl IntoView {
     let style = Style::Cjk;
     let variant_label = match variant {
@@ -63,15 +68,19 @@ pub fn Sidebar(
     view! {
         <aside class="sidebar">
             <h3 class="variant-label">{variant_label}</h3>
-            <div class="turn-row">
-                <span class="turn-prefix">"Turn: "</span>
-                <span class=turn_class>{turn_text}</span>
-            </div>
-            {status_view}
-            <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
+            <Show when=move || !wip fallback=|| view! {
+                <p class="status drawn">"Engine WIP — board interaction disabled."</p>
+            }>
+                <div class="turn-row">
+                    <span class="turn-prefix">"Turn: "</span>
+                    <span class=turn_class>{turn_text}</span>
+                </div>
+                {status_view}
+                <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
+            </Show>
             <div class="sidebar-actions">
-                <button class="btn" on:click=move |_| on_undo.call(())>"Undo"</button>
-                <button class="btn" on:click=move |_| on_new_game.call(())>"New game"</button>
+                <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
+                <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
             </div>
             <a class="back-link" href="/">"← Back to picker"</a>
         </aside>

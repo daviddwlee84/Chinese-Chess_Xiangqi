@@ -1,6 +1,6 @@
 use chess_core::coord::Square;
 use chess_core::piece::Side;
-use chess_core::rules::{RuleSet, Variant};
+use chess_core::rules::{HouseRules, RuleSet, Variant};
 use chess_core::state::GameState;
 use chess_core::view::{PlayerView, VisibleCell};
 use leptos::*;
@@ -14,20 +14,27 @@ use crate::state::find_move;
 #[component]
 pub fn LocalPage() -> impl IntoView {
     let params = use_params_map();
-    let resolved = move || -> Result<(Variant, RuleSet), String> {
+    let resolved = move || -> Result<(Variant, RuleSet, bool), String> {
         let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
         match parse_variant_slug(&slug) {
-            Some(Variant::Xiangqi) => Ok((Variant::Xiangqi, RuleSet::xiangqi_casual())),
-            Some(Variant::Banqi) => Err("Banqi support ships in the next commit.".into()),
+            Some(Variant::Xiangqi) => Ok((Variant::Xiangqi, RuleSet::xiangqi_casual(), false)),
+            Some(Variant::Banqi) => {
+                Ok((Variant::Banqi, RuleSet::banqi_with_seed(HouseRules::empty(), 42), false))
+            }
+            // Three-kingdom: engine ships an empty 4×8 board. Render it but
+            // disable interaction and overlay a "WIP" banner — see
+            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
             Some(Variant::ThreeKingdomBanqi) => {
-                Err("Three-kingdom support ships in the next commit.".into())
+                Ok((Variant::ThreeKingdomBanqi, RuleSet::three_kingdom(), true))
             }
             None => Err(format!("Unknown variant: {}", slug)),
         }
     };
 
     move || match resolved() {
-        Ok((variant, rules)) => view! { <LocalGame variant=variant rules=rules/> }.into_view(),
+        Ok((variant, rules, wip)) => {
+            view! { <LocalGame variant=variant rules=rules wip=wip/> }.into_view()
+        }
         Err(msg) => view! {
             <section class="game-page game-page--single">
                 <div>
@@ -42,7 +49,7 @@ pub fn LocalPage() -> impl IntoView {
 }
 
 #[component]
-fn LocalGame(variant: Variant, rules: RuleSet) -> impl IntoView {
+fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
     let initial_rules = rules.clone();
     let state = create_rw_signal(GameState::new(rules));
     let selected = create_rw_signal::<Option<Square>>(None);
@@ -56,6 +63,9 @@ fn LocalGame(variant: Variant, rules: RuleSet) -> impl IntoView {
     let view = create_memo(move |_| state.with(|s| PlayerView::project(s, s.side_to_move)));
 
     let on_click: Callback<Square> = Callback::new(move |sq: Square| {
+        if wip {
+            return;
+        }
         let v = view.get();
         let cur = selected.get();
 
@@ -80,6 +90,17 @@ fn LocalGame(variant: Variant, rules: RuleSet) -> impl IntoView {
             VisibleCell::Revealed(p) if p.piece.side == v.side_to_move => {
                 selected.set(Some(sq));
             }
+            VisibleCell::Hidden => {
+                // Banqi flip — engine emits `Reveal { at }` whose origin and
+                // target both equal `sq`. Apply directly.
+                if let Some(mv) = find_move(&v, sq, sq) {
+                    state.update(|s| {
+                        s.make_move(&mv).expect("legal reveal");
+                        s.refresh_status();
+                    });
+                    selected.set(None);
+                }
+            }
             _ => {
                 selected.set(None);
             }
@@ -87,6 +108,9 @@ fn LocalGame(variant: Variant, rules: RuleSet) -> impl IntoView {
     });
 
     let on_undo: Callback<()> = Callback::new(move |_| {
+        if wip {
+            return;
+        }
         state.update(|s| {
             let _ = s.unmake_move();
             s.refresh_status();
@@ -112,12 +136,26 @@ fn LocalGame(variant: Variant, rules: RuleSet) -> impl IntoView {
                     selected=selected
                     on_click=on_click
                 />
+                <Show when=move || wip>
+                    <div class="wip-overlay">
+                        <div class="wip-banner">
+                            <h3>"Three-Kingdom Banqi 三國暗棋"</h3>
+                            <p>
+                                "Engine still WIP — pieces, rules, and 3-seat turn order land in PR-2. "
+                                "See "
+                                <code>"backlog/three-kingdoms-banqi.md"</code>
+                                "."
+                            </p>
+                        </div>
+                    </div>
+                </Show>
             </div>
             <Sidebar
                 variant=variant
                 view=view
                 on_new_game=on_new_game
                 on_undo=on_undo
+                wip=wip
             />
         </section>
     }
