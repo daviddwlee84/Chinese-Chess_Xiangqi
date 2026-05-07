@@ -60,3 +60,22 @@ The `Option` collapses both states (pre-flip and post-flip) into one variant. Un
 
 - The `Option<Piece>` on `Reveal` means client and server speak slightly different dialects of the same enum — flagged in `chess-net` docs when that crate lands.
 - For replays, history stores the `Some(piece)` form so observers can re-watch with full information.
+
+## Subsequent extensions
+
+`PlayerView` is the network ABI, so any new field is a wire-protocol
+event. All extensions are `#[serde(default)]` so older clients
+deserialise newer messages cleanly, and vice versa.
+
+| Protocol | Field added | ADR |
+|---|---|---|
+| v4 | `in_check: bool` | [ADR-0007](0007-spectator-check-flag.md) |
+| v5 | `chain_lock: Option<Square>` | [ADR-0008](0008-engine-chain-lock.md) |
+| v5 | `current_color: Side` (banqi seat→colour mapping after first flip) | [ADR-0008](0008-engine-chain-lock.md) (covered alongside chain mode) |
+| v5 | `captured: Vec<Piece>` (sidebar graveyard panel) | not separately ADR'd — see `crates/chess-core/src/view.rs` |
+
+The `Move` enum has likewise grown beyond the snippet above; current
+variants are `Reveal`, `Step`, `Capture`, `ChainCapture`, `CannonJump`,
+`DarkCapture`, `EndChain`. `DarkCapture` mirrors `Reveal`'s
+`Option<Piece>` ABI pattern (clients send `revealed: None`, server
+fills in `Some(_)`).

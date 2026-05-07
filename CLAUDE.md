@@ -99,7 +99,7 @@ gated; `n` returns to the picker, `u` takes back the losing move.
 
 ## Architecture quick reference
 
-The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, `chess-web`, and `xtask` are still stubs. Five non-obvious decisions are locked in — full rationale in `docs/adr/`:
+The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, and `xtask` are stubs; `chess-web` is shipped. Eight non-obvious decisions are locked in — full rationale in `docs/adr/` (see [`adr/README.md`](docs/adr/README.md) for the index):
 
 1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
 2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
@@ -177,6 +177,30 @@ When implementing a `TODO.md` item, in the same commit run:
 ```bash
 scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
 ```
+
+## Rule changes touch three places at once
+
+Any edit that changes a game rule, move-gen, `RuleSet` semantics, or
+the meaning of a `HouseRules` flag MUST move the following together
+**in the same commit** — this repo treats `docs/rules/` as the
+single source of truth for *behavior*, but the only thing actually
+enforced by CI is `crates/chess-core/`. So humans have to keep the
+three in sync; if they drift, the docs lie.
+
+1. **Code** — `crates/chess-core/src/rules/{xiangqi,banqi,three_kingdom}.rs` for move-gen; `state/mod.rs` for outcome resolvers like `dark_capture_outcome` / `compute_chain_lock_after`; `rules/house.rs` for new flags.
+2. **Tests** — `crates/chess-core/tests/<rule>.rs`. Add a positive case (the rule fires when expected) AND a negative case (the rule does NOT fire under the wrong flags / piece kind / direction). Round-trip the move via `make_move`/`unmake_move` if it's a new variant or capture path, and exercise chain-mode interaction if the rule emits captures.
+3. **Spec** — `docs/rules/<variant>.md` for base rules; `docs/rules/banqi-house.md` for house-rule flags. Describe player-facing behavior, list all rank bypasses, and link emission paths in the move generator. If you renamed a flag, leave a "renamed from X" sentence so the bit position note carries forward.
+
+If a rule edit is shipping a new bit on `HouseRules`, also touch:
+the URL token list in `clients/chess-web/src/routes.rs`, the CLI parser
+in `clients/chess-tui/src/main.rs::build_banqi_rules`, and the picker
+checkboxes in `clients/chess-web/src/pages/picker.rs`. Otherwise the
+flag is unreachable from the UIs.
+
+A commit that updates only one of the three (code without tests, or
+code without docs) is a yellow flag in review — call it out
+explicitly in the commit body if the omission is intentional
+(e.g. "docs deferred — see TODO.md").
 
 ## Pre-push checklist
 

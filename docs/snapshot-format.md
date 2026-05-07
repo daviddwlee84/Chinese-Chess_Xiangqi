@@ -35,7 +35,10 @@ variant: xiangqi              # required: xiangqi | banqi
 side_to_move: red             # required: red | black
 
 no_progress_plies: 0          # optional, default 0
-house: chain,rush             # optional banqi house rules (comma-list)
+house: chain,rush             # optional banqi house rules (comma-list).
+                              # Tokens: chain, dark, dark-trade, rush,
+                              # horse, cannon. `dark-chain` is accepted
+                              # as a back-compat alias for `dark`.
 seed: 42                      # optional banqi seed (u64)
 side_assignment: red,black    # optional banqi side -> piece-color mapping
 

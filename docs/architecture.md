@@ -5,7 +5,7 @@ Distilled from the technology selection round. See [`adr/`](adr/) for individual
 ## Goals
 
 - Hobby Chinese chess game supporting standard xiangqi (象棋), banqi (暗棋), and 三國暗棋.
-- Toggleable banqi house rules: 連吃, 暗連, 車衝, 馬斜, 炮快移.
+- Toggleable banqi house rules — six independent flags: 連吃 (`CHAIN_CAPTURE`), 暗吃 (`DARK_CAPTURE`), 暗吃·搏命 (`DARK_CAPTURE_TRADE`), 車衝 (`CHARIOT_RUSH`), 馬斜 (`HORSE_DIAGONAL`), 炮快移 (`CANNON_FAST_MOVE`). See [`docs/rules/banqi-house.md`](rules/banqi-house.md).
 - Self-hostable server for friends; native TUI and Web clients sharing the same engine.
 - Mouse + keyboard UX (Vim-style + coordinate input).
 
@@ -44,7 +44,7 @@ chinese-chess/
 The five locked-in decisions, each with its own ADR:
 
 1. **`Square(u16)` linear index, not `(file, rank)` tuples.** Scales to 19×19, supports irregular topologies via per-shape mask. ([ADR-0002](adr/0002-square-as-u16.md))
-2. **`Move` is a flat enum.** Variants: `Reveal { revealed: Option<Piece> }`, `Step`, `Capture`, `ChainCapture { path: SmallVec<[ChainHop; 4]> }`, `CannonJump`. The `Option<Piece>` on `Reveal` is the network ABI boundary — opponents never see the identity ahead of the flip. ([ADR-0004](adr/0004-player-view-projection.md))
+2. **`Move` is a flat enum.** Variants: `Reveal { revealed: Option<Piece> }`, `Step`, `Capture`, `ChainCapture { path: SmallVec<[ChainHop; 4]> }`, `CannonJump`, `DarkCapture { revealed: Option<Piece>, attacker: Option<Piece> }`, `EndChain { at: Square }`. The `Option<Piece>` on `Reveal` and `DarkCapture` is the network ABI boundary — opponents never see the identity ahead of the flip. `EndChain` is the explicit terminator for the engine-driven 連吃 chain mode (ADR-0008). ([ADR-0004](adr/0004-player-view-projection.md))
 3. **`RuleSet` is plain data, not a trait.** House rules are `bitflags::bitflags!`, presets are named consts. Move generation is free functions dispatching on `Variant` + flag checks. Rejected: trait-object rule layering — kills inlining, fights serde, over-engineers a closed set. ([ADR-0003](adr/0003-ruleset-as-data-not-trait.md))
 4. **`GameState` is one concrete struct, not generic.** `TurnOrder` supports 2 or 3 seats (`SmallVec<[Side; 3]>`) so 三國暗棋 isn't a special case in code paths.
 5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces map to `VisibleCell::Hidden` with no identity. A proptest enforces no-leak.
@@ -61,11 +61,16 @@ The five locked-in decisions, each with its own ADR:
 
 ## Roadmap
 
-| PR | Item |
+Status as of 2026-05-07:
+
+| Item | Status |
 |---|---|
-| 1 (this) | Workspace + `chess-core` foundations + xiangqi + banqi + CHAIN/RUSH + CLI harness |
-| 2 | 三國暗棋 board mask + rules; remaining house rules (DARK_CHAIN, HORSE_DIAGONAL, CANNON_FAST_MOVE) |
-| 3 | `chess-tui` (ratatui, vim + mouse) |
-| 4 | `chess-net` (tokio + ws, server-authoritative, ships PlayerView only) |
-| 5 | `chess-web` (Leptos + WASM consuming PlayerView) |
-| 6 | `chess-engine` + `chess-ai` (alpha-beta + Zobrist; ISMCTS) |
+| Workspace + `chess-core` foundations + xiangqi + banqi | ✅ shipped |
+| `chess-tui` (ratatui, vim + mouse, CJK glyphs) | ✅ shipped |
+| `chess-net` (tokio + ws, server-authoritative, multi-room, spectators, chat) | ✅ shipped (protocol v5) |
+| `chess-web` (Leptos + WASM consuming PlayerView, local + online) | ✅ shipped |
+| Banqi house rules — `CHAIN_CAPTURE`, `DARK_CAPTURE`, `DARK_CAPTURE_TRADE`, `CHARIOT_RUSH`, `HORSE_DIAGONAL` | ✅ shipped end-to-end |
+| Banqi `CANNON_FAST_MOVE` | flag accepted; not wired in move-gen — see `TODO.md` |
+| Chains-with-dark-hops (atomic chain through face-down tiles) | deferred — see `TODO.md` |
+| 三國暗棋 board mask + rules | engine stub only; ships in PR 2 — see `backlog/three-kingdoms-banqi.md` |
+| `chess-engine` + `chess-ai` (alpha-beta + Zobrist; ISMCTS) | stub crates; not started |

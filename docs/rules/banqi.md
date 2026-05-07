@@ -18,9 +18,9 @@ The `chess-core` setup uses a seedable `ChaCha8Rng` so games are reproducible fr
 
 ## Movement
 
-- Face-down pieces cannot move (only flipped).
-- Face-up pieces move **one orthogonal step** to an empty square or to capture an enemy.
-- **Cannon**: captures by jumping over **exactly one piece** (face-up or face-down) to land on an enemy. A cannon's non-capturing move is also one step.
+- Face-down pieces cannot move (only flipped). On your turn, `Move::Reveal { at }` flips any face-down tile.
+- Face-up pieces move **one orthogonal step** to an empty square or to capture an enemy. Diagonal moves are NOT part of base banqi (the `HORSE_DIAGONAL` house rule adds diagonal *captures* only — see [`banqi-house.md`](banqi-house.md)).
+- **Cannon**: captures by jumping over **exactly one piece** (the screen) to land on an enemy. The screen may itself be face-down. A cannon's non-capturing move is also one orthogonal step.
 
 ## Capture (rank-based)
 
@@ -41,9 +41,10 @@ A piece may capture an enemy piece of equal or lower rank, **with two exceptions
 
 ## Win / Draw
 
-- **Win**: opponent has no legal moves (all pieces captured, or stuck behind hidden pieces with no flips/moves available).
-- **Draw**: 40 plies without a capture or reveal (`no_progress_plies`).
-- **Repetition**: threefold position repetition is a draw.
+- **Win — checkmate-style**: opponent has no legal moves (all pieces captured, or stuck behind hidden pieces with no flips/moves available). Engine emits `WinReason::Stalemate`.
+- **Win — material**: only one side has pieces left on the board (`WinReason::OnlyOneSideHasPieces`). Common in 暗吃-heavy games where one player wipes the other before they reveal much.
+- **Draw**: 40 plies without a capture or reveal (`DrawReason::NoProgress`, tracked by `no_progress_plies`).
+- **Repetition**: threefold position repetition is a draw (TODO — engine work in progress).
 
 ## References
 
