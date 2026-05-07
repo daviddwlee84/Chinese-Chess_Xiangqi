@@ -24,28 +24,27 @@ fn place_revealed(board: &mut Board, sq: Square, side: Side, kind: PieceKind) {
 }
 
 #[test]
-fn horse_emits_diagonal_steps_only_with_flag() {
-    // Without HORSE_DIAGONAL: horse at (1,1) sees only 4 orthogonal Steps.
-    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::empty(), 0));
-    let h = state.board.sq(File(1), Rank(1));
-    place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
-    let steps_no_flag = state
-        .legal_moves()
-        .into_iter()
-        .filter(|m| matches!(m, Move::Step { from, .. } if *from == h))
-        .count();
-    assert_eq!(steps_no_flag, 4);
-
-    // With HORSE_DIAGONAL: 4 ortho + 4 diag = 8 Steps.
-    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::HORSE_DIAGONAL, 0));
-    let h = state.board.sq(File(1), Rank(1));
-    place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
-    let steps_with_flag = state
-        .legal_moves()
-        .into_iter()
-        .filter(|m| matches!(m, Move::Step { from, .. } if *from == h))
-        .count();
-    assert_eq!(steps_with_flag, 8, "horse with diagonal should have 8 step moves");
+fn horse_diagonal_does_not_emit_non_capturing_diagonal_steps() {
+    // 馬斜 only allows the horse to *capture* diagonally — it does NOT
+    // allow non-capturing diagonal slides. With or without the flag,
+    // a horse on an open file in an empty board has exactly 4 Step
+    // moves (orthogonal only). The flag adds Capture / DarkCapture
+    // emissions for diagonals when there's an enemy / hidden tile —
+    // never plain Steps.
+    for flags in [HouseRules::empty(), HouseRules::HORSE_DIAGONAL] {
+        let mut state = empty_banqi(RuleSet::banqi_with_seed(flags, 0));
+        let h = state.board.sq(File(1), Rank(1));
+        place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
+        let steps = state
+            .legal_moves()
+            .into_iter()
+            .filter(|m| matches!(m, Move::Step { from, .. } if *from == h))
+            .count();
+        assert_eq!(
+            steps, 4,
+            "horse with flags={flags:?} should only emit orthogonal Steps; got {steps}"
+        );
+    }
 }
 
 #[test]
@@ -123,4 +122,55 @@ fn horse_diagonal_dark_capture_emitted_with_both_flags() {
         .into_iter()
         .find(|m| matches!(m, Move::DarkCapture { from, to, .. } if *from == h && *to == target));
     assert!(dark.is_some(), "diagonal hidden target should produce DarkCapture");
+}
+
+#[test]
+fn horse_diagonal_dark_capture_against_higher_rank_succeeds() {
+    // 馬斜 captures any piece (rank ignored) — including diagonally
+    // when the target turns out to be a higher-ranked piece. Without
+    // this, soldier-attacks-elephant-via-diagonal would probe instead
+    // of capturing, contradicting the user-facing rule.
+    let rules = RuleSet::banqi_with_seed(HouseRules::HORSE_DIAGONAL | HouseRules::DARK_CAPTURE, 0);
+    let mut state = empty_banqi(rules);
+    let h = state.board.sq(File(1), Rank(1));
+    let target = state.board.sq(File(2), Rank(2));
+    place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
+    state
+        .board
+        .set(target, Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::General))));
+
+    let mv = Move::DarkCapture { from: h, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+
+    // Horse landed on target square; general was captured.
+    assert!(state.board.get(h).is_none(), "horse moved");
+    let landed = state.board.get(target).unwrap();
+    assert_eq!(landed.piece.kind, PieceKind::Horse);
+    assert_eq!(landed.piece.side, Side::RED);
+}
+
+#[test]
+fn horse_orthogonal_dark_capture_still_obeys_rank() {
+    // The rank bypass for diagonal must NOT leak into the horse's
+    // orthogonal dark-capture. Soldier-rank horse vs hidden General
+    // along a file should still probe (target gets revealed, attacker
+    // stays put).
+    let rules = RuleSet::banqi_with_seed(HouseRules::HORSE_DIAGONAL | HouseRules::DARK_CAPTURE, 0);
+    let mut state = empty_banqi(rules);
+    let h = state.board.sq(File(1), Rank(1));
+    let target = state.board.sq(File(1), Rank(2));
+    place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
+    state
+        .board
+        .set(target, Some(PieceOnSquare::hidden(Piece::new(Side::BLACK, PieceKind::General))));
+
+    let mv = Move::DarkCapture { from: h, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+
+    // Probe: horse stayed at h, target revealed at target.
+    let attacker = state.board.get(h).unwrap();
+    assert_eq!(attacker.piece.kind, PieceKind::Horse);
+    let revealed_target = state.board.get(target).unwrap();
+    assert!(revealed_target.revealed);
+    assert_eq!(revealed_target.piece.kind, PieceKind::General);
 }

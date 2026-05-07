@@ -327,10 +327,11 @@ body {
 .tile.piece.green .tile-glyph { fill: var(--green); }
 
 .selection {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 3;
+    fill: rgba(255, 200, 60, 0.18);
+    stroke: #ff8c1a;
+    stroke-width: 4;
     pointer-events: none;
+    filter: drop-shadow(0 0 5px rgba(255, 140, 26, 0.6));
 }
 .move-dot {
     fill: var(--legal-bg);

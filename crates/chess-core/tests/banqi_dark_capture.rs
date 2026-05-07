@@ -165,6 +165,89 @@ fn dark_capture_make_unmake_round_trip_trade_path() {
 }
 
 #[test]
+fn cannon_does_not_emit_adjacent_dark_capture() {
+    // Cannons capture only via jump-over-screen in standard banqi.
+    // A 1-step DarkCapture against an adjacent face-down tile would
+    // (a) bypass the jump rule and (b) always probe under the old
+    // rank-check resolver. We refuse to emit it.
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::DARK_CAPTURE, 0));
+    let c = state.board.sq(File(1), Rank(1));
+    let adj = state.board.sq(File(1), Rank(2));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_hidden(&mut state.board, adj, Side::BLACK, PieceKind::Soldier);
+
+    let dark = state
+        .legal_moves()
+        .into_iter()
+        .filter(|m| matches!(m, Move::DarkCapture { from, to, .. } if *from == c && *to == adj))
+        .count();
+    assert_eq!(dark, 0, "cannon must NOT emit adjacent DarkCapture");
+}
+
+#[test]
+fn cannon_jump_emits_dark_capture_against_hidden_target() {
+    // Cannon at file 0 rank 0, screen (any piece) at rank 1, hidden tile
+    // at rank 2. The cannon may jump, and the hidden tile becomes a
+    // DarkCapture target under DARK_CAPTURE.
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::DARK_CAPTURE, 0));
+    let c = state.board.sq(File(0), Rank(0));
+    let screen = state.board.sq(File(0), Rank(1));
+    let target = state.board.sq(File(0), Rank(2));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_revealed(&mut state.board, screen, Side::RED, PieceKind::Soldier);
+    place_hidden(&mut state.board, target, Side::BLACK, PieceKind::Horse);
+
+    let dark = state
+        .legal_moves()
+        .into_iter()
+        .find(|m| matches!(m, Move::DarkCapture { from, to, .. } if *from == c && *to == target));
+    assert!(dark.is_some(), "炮暗吃 jump-over-screen should be emitted");
+}
+
+#[test]
+fn cannon_dark_capture_via_jump_always_captures_regardless_of_rank() {
+    // Cannons capture any piece via jump (no rank). The dark-capture
+    // path must mirror that: regardless of what the hidden target
+    // turns out to be, the cannon takes it.
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::DARK_CAPTURE, 0));
+    let c = state.board.sq(File(0), Rank(0));
+    let screen = state.board.sq(File(0), Rank(1));
+    let target = state.board.sq(File(0), Rank(2));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_revealed(&mut state.board, screen, Side::RED, PieceKind::Soldier);
+    // Higher-rank target — a standard rank check would probe; cannon
+    // bypasses rank.
+    place_hidden(&mut state.board, target, Side::BLACK, PieceKind::General);
+
+    let mv = Move::DarkCapture { from: c, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+
+    assert!(state.board.get(c).is_none(), "cannon vacated origin");
+    let landed = state.board.get(target).unwrap();
+    assert_eq!(landed.piece.kind, PieceKind::Cannon);
+    assert_eq!(landed.piece.side, Side::RED);
+}
+
+#[test]
+fn cannon_dark_capture_via_jump_round_trips() {
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(HouseRules::DARK_CAPTURE, 0));
+    let c = state.board.sq(File(0), Rank(0));
+    let screen = state.board.sq(File(0), Rank(1));
+    let target = state.board.sq(File(0), Rank(2));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_revealed(&mut state.board, screen, Side::RED, PieceKind::Soldier);
+    place_hidden(&mut state.board, target, Side::BLACK, PieceKind::General);
+    let snapshot = state.clone();
+
+    let mv = Move::DarkCapture { from: c, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+    state.unmake_move().unwrap();
+
+    assert_eq!(state.board, snapshot.board);
+    assert_eq!(state.side_to_move, snapshot.side_to_move);
+}
+
+#[test]
 fn chariot_rush_emits_dark_capture_against_hidden_blocker_with_gap() {
     let mut state = empty_banqi(RuleSet::banqi_with_seed(
         HouseRules::CHARIOT_RUSH | HouseRules::DARK_CAPTURE,

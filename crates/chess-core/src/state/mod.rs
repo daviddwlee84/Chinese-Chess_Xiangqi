@@ -189,7 +189,7 @@ impl GameState {
         // the attacker actually moved to a new square.
         let landing = match m {
             Move::Capture { to, .. } | Move::CannonJump { to, .. } => *to,
-            Move::DarkCapture { to, revealed, attacker, .. } => {
+            Move::DarkCapture { from, to, revealed, attacker } => {
                 // `Move::DarkCapture` resolves to one of three outcomes
                 // at apply-time. Only `Capture` (rank ok, attacker took
                 // defender's square) puts the attacker at `to`; `Probe`
@@ -197,7 +197,14 @@ impl GameState {
                 // attacker entirely. Neither of those is chain-eligible.
                 let attacker_piece = (*attacker)?;
                 let revealed_piece = (*revealed)?;
-                match dark_capture_outcome(attacker_piece, revealed_piece, self.rules.house) {
+                match dark_capture_outcome(
+                    attacker_piece,
+                    revealed_piece,
+                    self.rules.house,
+                    *from,
+                    *to,
+                    &self.board,
+                ) {
                     DarkCaptureOutcome::Capture => *to,
                     DarkCaptureOutcome::Probe | DarkCaptureOutcome::Trade => return None,
                 }
@@ -350,8 +357,14 @@ impl GameState {
                 // Resolve outcome based on rank + DARK_CAPTURE_TRADE flag.
                 let attacker_pos =
                     self.board.get(*from).ok_or(CoreError::Illegal("DarkCapture: empty from"))?;
-                let outcome =
-                    dark_capture_outcome(attacker_piece, revealed_piece, self.rules.house);
+                let outcome = dark_capture_outcome(
+                    attacker_piece,
+                    revealed_piece,
+                    self.rules.house,
+                    *from,
+                    *to,
+                    &self.board,
+                );
                 match outcome {
                     DarkCaptureOutcome::Capture => {
                         self.board.set(*from, None);
@@ -417,8 +430,14 @@ impl GameState {
                     revealed.ok_or(CoreError::Illegal("Undo DarkCapture: missing revealed"))?;
                 let attacker_piece =
                     attacker.ok_or(CoreError::Illegal("Undo DarkCapture: missing attacker"))?;
-                let outcome =
-                    dark_capture_outcome(attacker_piece, revealed_piece, self.rules.house);
+                let outcome = dark_capture_outcome(
+                    attacker_piece,
+                    revealed_piece,
+                    self.rules.house,
+                    *from,
+                    *to,
+                    &self.board,
+                );
                 // Restore attacker at `from` (reveals it as it was).
                 match outcome {
                     DarkCaptureOutcome::Capture => {
@@ -561,9 +580,10 @@ impl GameState {
                 Move::ChainCapture { path, .. } => {
                     out.extend(path.iter().map(|hop| hop.captured));
                 }
-                Move::DarkCapture { revealed, attacker, .. } => {
+                Move::DarkCapture { from, to, revealed, attacker } => {
                     let (Some(rev), Some(att)) = (*revealed, *attacker) else { continue };
-                    match dark_capture_outcome(att, rev, self.rules.house) {
+                    match dark_capture_outcome(att, rev, self.rules.house, *from, *to, &self.board)
+                    {
                         DarkCaptureOutcome::Capture => out.push(rev),
                         DarkCaptureOutcome::Trade => out.push(att),
                         DarkCaptureOutcome::Probe => {}
@@ -589,17 +609,43 @@ pub(crate) enum DarkCaptureOutcome {
     Probe,
 }
 
-/// Decide the outcome of a dark-capture given the involved pieces and
-/// the active house rules. Used by both apply and unapply (recomputed
-/// rather than stored in the move record).
+/// Decide the outcome of a dark-capture given the involved pieces, the
+/// displacement (so we can detect rank-bypassing variants), the board
+/// shape (for the diagonal check), and the active house rules. Used by
+/// apply, unapply, chain-lock, and graveyard (always recomputed —
+/// never stored in the move record).
+///
+/// Two rank-bypass paths exist:
+/// * **Cannon attacker** — banqi cannons capture only via jump-over
+///   screen, and that capture ignores piece rank entirely. Adjacent
+///   1-step `Move::DarkCapture` is not generated for cannons (see
+///   `gen_for_face_up_piece`), so any cannon DarkCapture is a
+///   jump-capture by construction → always `Capture`.
+/// * **Horse with diagonal displacement under `HORSE_DIAGONAL`** —
+///   the house rule "馬斜" lets a horse's diagonal *capture* take any
+///   piece regardless of rank. (Horse orthogonal captures still obey
+///   rank.)
 pub(crate) fn dark_capture_outcome(
     attacker: Piece,
     revealed: Piece,
     house: crate::rules::HouseRules,
+    from: crate::coord::Square,
+    to: crate::coord::Square,
+    board: &crate::board::Board,
 ) -> DarkCaptureOutcome {
+    use crate::piece::PieceKind;
     if attacker.side == revealed.side {
         // Same side → never a capture; treat as probe (own piece blocks).
         return DarkCaptureOutcome::Probe;
+    }
+    if attacker.kind == PieceKind::Cannon {
+        return DarkCaptureOutcome::Capture;
+    }
+    if attacker.kind == PieceKind::Horse
+        && house.contains(crate::rules::HouseRules::HORSE_DIAGONAL)
+        && is_diagonal_step(board, from, to)
+    {
+        return DarkCaptureOutcome::Capture;
     }
     if crate::rules::banqi::can_capture(attacker.kind, revealed.kind) {
         DarkCaptureOutcome::Capture
@@ -608,6 +654,14 @@ pub(crate) fn dark_capture_outcome(
     } else {
         DarkCaptureOutcome::Probe
     }
+}
+
+fn is_diagonal_step(
+    board: &crate::board::Board,
+    from: crate::coord::Square,
+    to: crate::coord::Square,
+) -> bool {
+    crate::coord::Direction::DIAGONAL.iter().any(|&d| board.step(from, d) == Some(to))
 }
 
 /// Whether `attacker` standing on `from` has at least one further legal
@@ -623,7 +677,10 @@ fn has_capture_from(state: &GameState, from: crate::coord::Square, attacker: Pie
     let house = state.rules.house;
     let board = &state.board;
 
-    // Cannon: only via jump-over-screen.
+    // Cannon: only via jump-over-screen. Hidden targets past the screen
+    // count under DARK_CAPTURE — the cannon-jump dark-capture always
+    // resolves to Capture (rank bypass), so chain mode should
+    // continue.
     if attacker.kind == PieceKind::Cannon {
         for &dir in &Direction::ORTHOGONAL {
             let (_walked, screen) = board.ray(from, dir);
@@ -634,6 +691,9 @@ fn has_capture_from(state: &GameState, from: crate::coord::Square, attacker: Pie
                     None => cursor = next,
                     Some(pos) => {
                         if pos.revealed && pos.piece.side != attacker.side {
+                            return true;
+                        }
+                        if !pos.revealed && house.contains(HouseRules::DARK_CAPTURE) {
                             return true;
                         }
                         break;

@@ -81,7 +81,12 @@ fn gen_for_face_up_piece(
             }
             Some(target) if !target.revealed => {
                 // Face-down piece — blocks unless DARK_CAPTURE is on.
-                if house.contains(HouseRules::DARK_CAPTURE) {
+                // Cannon adjacent capture is illegal in standard banqi
+                // (cannons capture only via jump-over-screen), so we
+                // never emit a 1-step DarkCapture for a Cannon attacker
+                // — its only DarkCapture path is the jump emitted in
+                // `gen_cannon_jumps`.
+                if house.contains(HouseRules::DARK_CAPTURE) && piece.kind != PieceKind::Cannon {
                     out.push(Move::DarkCapture { from, to, revealed: None, attacker: None });
                 }
             }
@@ -113,14 +118,20 @@ fn gen_for_face_up_piece(
     }
 
     // Cannon: jump-over-screen captures (always, this is base banqi).
+    // Hidden targets past the screen become 炮暗吃 DarkCapture moves
+    // when DARK_CAPTURE is on — the outcome resolver bypasses rank.
     if piece.kind == PieceKind::Cannon {
-        gen_cannon_jumps(board, from, piece.side, out);
+        gen_cannon_jumps(board, from, piece.side, house, out);
     }
 }
 
-/// 馬斜 — horse adds diagonal one-step moves alongside the orthogonal
-/// rule. Diagonal captures ignore rank (any piece). Hidden diagonal
-/// targets become DarkCapture when the dark-capture flag is on.
+/// 馬斜 — horse may *capture* diagonally one step (any piece, rank
+/// ignored). Diagonal **non-capturing** moves are NOT allowed: a horse
+/// without an enemy diagonal neighbour stays on the orthogonal grid.
+/// Hidden diagonal targets become DarkCapture when the dark-capture
+/// flag is on; that DarkCapture also ignores rank at apply-time
+/// because the diagonal-attack precedent is "any piece" (the same
+/// reason it's a "house rule" rather than standard).
 fn gen_horse_diagonal(
     board: &Board,
     from: Square,
@@ -131,7 +142,8 @@ fn gen_horse_diagonal(
     for &dir in &Direction::DIAGONAL {
         let Some(to) = board.step(from, dir) else { continue };
         match board.get(to) {
-            None => out.push(Move::Step { from, to }),
+            // Empty diagonal: blocked. Diagonal moves require a capture.
+            None => {}
             Some(target) if !target.revealed => {
                 if house.contains(HouseRules::DARK_CAPTURE) {
                     out.push(Move::DarkCapture { from, to, revealed: None, attacker: None });
@@ -189,7 +201,13 @@ fn gen_chariot_rush(
     }
 }
 
-fn gen_cannon_jumps(board: &Board, from: Square, side: Side, out: &mut MoveList) {
+fn gen_cannon_jumps(
+    board: &Board,
+    from: Square,
+    side: Side,
+    house: HouseRules,
+    out: &mut MoveList,
+) {
     for &dir in &Direction::ORTHOGONAL {
         // Find the screen (first occupied square in this direction).
         let (_walked, screen) = board.ray(from, dir);
@@ -203,13 +221,28 @@ fn gen_cannon_jumps(board: &Board, from: Square, side: Side, out: &mut MoveList)
                     cursor = next;
                 }
                 Some(pos) => {
-                    // Cannon captures any face-up enemy regardless of rank.
-                    if pos.revealed && pos.piece.side != side {
-                        out.push(Move::CannonJump {
+                    if pos.revealed {
+                        // Cannon captures any face-up enemy regardless of rank.
+                        if pos.piece.side != side {
+                            out.push(Move::CannonJump {
+                                from,
+                                to: next,
+                                screen: screen_sq,
+                                captured: pos.piece,
+                            });
+                        }
+                    } else if house.contains(HouseRules::DARK_CAPTURE) {
+                        // 炮暗吃 (cannon jump-over screen onto a face-down
+                        // tile). DarkCapture's outcome resolver bypasses
+                        // rank for cannons, so this always succeeds at
+                        // apply-time regardless of what the target
+                        // turns out to be — matching the standard banqi
+                        // rule that cannon jumps capture any piece.
+                        out.push(Move::DarkCapture {
                             from,
                             to: next,
-                            screen: screen_sq,
-                            captured: pos.piece,
+                            revealed: None,
+                            attacker: None,
                         });
                     }
                     break;
