@@ -7,6 +7,7 @@ use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
+use crate::components::captured::CapturedStrip;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
@@ -221,6 +222,9 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                 </Show>
                 <Show when=move || !wip>
                     <EndOverlay view=view role=role_signal enabled=fx_confetti/>
+                </Show>
+                <Show when=move || !wip>
+                    <CapturedStrip view=view/>
                 </Show>
             </div>
             <Sidebar

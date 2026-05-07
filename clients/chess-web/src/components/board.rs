@@ -39,12 +39,14 @@ pub fn Board(
             <g class="river-layer">{river_text(shape, cols)}</g>
             <g class="palace-layer">{palace_diagonals(shape)}</g>
             <g class="overlay-layer">
-                {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
-                {move || selection_marker(selected.get(), observer, shape)}
                 {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
             </g>
             <g class="pieces-layer">
                 {move || pieces_view(&view.get(), observer, shape, style)}
+            </g>
+            <g class="overlay-top-layer">
+                {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
+                {move || selection_marker(selected.get(), observer, shape)}
             </g>
             <g class="cells-layer">
                 {hit_cells(rows, cols, observer, shape, on_click)}

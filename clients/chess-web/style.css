@@ -198,6 +198,75 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
+/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+ * Two stacked rows — Black dead on top (Red's trophies), Red dead below
+ * (Black's trophies) — each piece a small disc-icon mirroring board style. */
+.captured-strip {
+    margin-top: 0.6rem;
+    padding: 0.55rem 0.75rem 0.65rem;
+    border-top: 1px dashed var(--grid);
+    display: grid;
+    gap: 0.35rem;
+}
+.captured-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.captured-header h4 {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.captured-toggle {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.55rem;
+    line-height: 1.25;
+}
+.captured-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 1.7rem;
+}
+.captured-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+    width: 1.4rem;
+    flex-shrink: 0;
+    text-align: center;
+}
+.captured-row.red .captured-label { color: var(--red); }
+.captured-pieces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+    flex: 1;
+}
+.captured-piece {
+    display: inline-grid;
+    place-items: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 50%;
+    background: var(--tile-disc);
+    border: 1px solid var(--grid);
+    line-height: 1;
+}
+.captured-piece-glyph {
+    font-size: 0.95rem;
+    font-weight: 700;
+    user-select: none;
+}
+.captured-row.red .captured-piece-glyph { color: var(--red); }
+.captured-row.black .captured-piece-glyph { color: var(--black); }
+.captured-empty { color: var(--muted); font-size: 0.85rem; }
+
 /* Three-kingdom WIP overlay. */
 .wip-overlay {
     position: absolute;
@@ -311,41 +380,6 @@ body {
 .status.won { color: var(--accent); }
 .status.drawn { color: var(--muted); }
 .muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
-.captured-panel {
-    display: grid;
-    gap: 0.3rem;
-    padding-top: 0.25rem;
-    border-top: 1px solid var(--grid);
-}
-.captured-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.5rem;
-}
-.captured-header h4 { margin: 0; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
-.captured-toggle {
-    font-size: 0.75rem;
-    padding: 0.15rem 0.55rem;
-    line-height: 1.2;
-}
-.captured-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    align-items: center;
-    min-height: 1.4rem;
-}
-.captured-label {
-    color: var(--muted);
-    font-size: 0.8rem;
-    width: 2.4rem;
-    flex-shrink: 0;
-}
-.captured-piece { font-size: 1.05rem; font-weight: 700; line-height: 1; }
-.captured-row.red .captured-piece { color: var(--red); }
-.captured-row.black .captured-piece { color: var(--fg); }
-.captured-empty { color: var(--muted); font-size: 0.85rem; }
 .sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .btn {
     background: rgba(244, 210, 163, 0.08);

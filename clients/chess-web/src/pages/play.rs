@@ -9,7 +9,7 @@ use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
-use crate::components::captured::CapturedPanel;
+use crate::components::captured::CapturedStrip;
 use crate::components::chat_panel::ChatPanel;
 use crate::components::end_overlay::EndOverlay;
 use crate::config::room_url;
@@ -104,6 +104,9 @@ pub fn PlayPage() -> impl IntoView {
                         view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
                         role=role_for_overlay
                         enabled=fx_confetti
+                    />
+                    <CapturedStrip
+                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
                     />
                 </Show>
                 <Show when=move || toast.get().is_some()>
@@ -339,14 +342,6 @@ fn OnlineSidebar(
             </Show>
             <p>{turn_label}</p>
             <p class="muted">{conn_label}</p>
-            <Show when=move || view_signal.get().is_some()>
-                {
-                    let view_for_panel = Signal::derive(move || {
-                        view_signal.get().expect("Show gate ensures Some")
-                    });
-                    view! { <CapturedPanel view=view_for_panel/> }
-                }
-            </Show>
             <div class="sidebar-actions">
                 <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
                 <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
