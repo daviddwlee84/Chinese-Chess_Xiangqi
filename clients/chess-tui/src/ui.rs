@@ -13,8 +13,8 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 
 use crate::app::{
-    AppState, CreateRoomField, CreateRoomView, GameView, HostPromptView, LobbyView, NetView,
-    PickerEntry, PickerView, RectPx, Screen,
+    AppState, CreateRoomField, CreateRoomView, GameView, HostPromptView, LobbyView, NetRole,
+    NetView, PickerEntry, PickerView, RectPx, Screen,
 };
 use crate::glyph::{self, Style};
 use crate::orient;
@@ -109,7 +109,7 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let style = app.style;
     let use_color = app.use_color;
     let help_open = app.help_open;
-    let observer = n_ref.observer.unwrap_or(app.observer);
+    let observer = n_ref.role.map(|r| r.observer()).unwrap_or(app.observer);
 
     match n_ref.last_view.as_ref() {
         Some(view) => {
@@ -211,7 +211,7 @@ fn draw_lobby(frame: &mut Frame, area: Rect, l: &LobbyView, help_open: bool) {
         TuiStyle::default().add_modifier(Modifier::BOLD),
     )));
     lines.push(Line::from(Span::styled(
-        format!("{:<20} {:<14} {:<6} {:<8}", "Room", "Variant", "Seats", "Status"),
+        format!("{:<20} {:<14} {:<6} {:<6} {:<8}", "Room", "Variant", "Seats", "Watch", "Status"),
         header_style,
     )));
     if l.rooms.is_empty() {
@@ -233,12 +233,17 @@ fn draw_lobby(frame: &mut Frame, area: Rect, l: &LobbyView, help_open: bool) {
             } else {
                 TuiStyle::default()
             };
+            let spec_label =
+                if r.spectators == 0 { "—".to_string() } else { format!("{}👁", r.spectators) };
             lines.push(Line::from(vec![
                 Span::raw(prefix),
                 Span::raw(lock),
                 Span::raw(" "),
                 Span::styled(
-                    format!("{:<18} {:<14} {}/2    {:<8}", r.id, r.variant, r.seats, status),
+                    format!(
+                        "{:<18} {:<14} {}/2   {:<6} {:<8}",
+                        r.id, r.variant, r.seats, spec_label, status
+                    ),
                     cell_style,
                 ),
             ]));
@@ -304,7 +309,7 @@ fn draw_lobby_sidebar(frame: &mut Frame, area: Rect, l: &LobbyView, help_open: b
         }
     } else {
         lines.push(Line::from(Span::styled(
-            "Enter=join, c=create, r=refresh, Esc=back, ?=help, q=quit.",
+            "Enter=join, w=watch, c=create, r=refresh, Esc=back, ?=help, q=quit.",
             TuiStyle::default().fg(Color::DarkGray),
         )));
     }
@@ -390,6 +395,7 @@ const HELP_LINES_HOST_PROMPT: &[&str] = &[
 const HELP_LINES_LOBBY: &[&str] = &[
     "j k / ↓ ↑   move cursor",
     "Enter       join the highlighted room (prompts for password if locked)",
+    "w           watch the highlighted room as a spectator (read-only)",
     "c           create a new room",
     "r           force-refresh room list (server pushes automatically)",
     "Esc         back to host prompt",
@@ -936,6 +942,18 @@ fn draw_sidebar_net(
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
+    // Split the sidebar into "meta info" (top) and "chat region" (bottom).
+    // The chat region keeps a scrolling log + a single input row when the
+    // user is composing. Meta height is dynamic (grows to fit) and chat
+    // gets the rest.
+    let chat_input_active = n.chat_input.is_some();
+    let chat_h = inner.height.saturating_sub(MIN_META_ROWS).max(MIN_CHAT_ROWS);
+    let meta_h = inner.height.saturating_sub(chat_h);
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(meta_h), Constraint::Length(chat_h)])
+        .split(inner);
+
     let mut lines: Vec<Line> = Vec::new();
 
     if let Some(banner) = game_over_banner(&view.status, style) {
@@ -960,21 +978,42 @@ fn draw_sidebar_net(
     };
     lines.push(line_label_value("Variant:", variant_label));
 
-    if let Some(side) = n.observer {
-        let c = side_color(side);
-        lines.push(Line::from(vec![
-            Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
-            Span::raw(" "),
-            Span::styled(
-                glyph::side_name(side, style),
-                TuiStyle::default().fg(c).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+    match n.role {
+        Some(NetRole::Player(side)) => {
+            let c = side_color(side);
+            lines.push(Line::from(vec![
+                Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
+                Span::raw(" "),
+                Span::styled(
+                    glyph::side_name(side, style),
+                    TuiStyle::default().fg(c).add_modifier(Modifier::BOLD),
+                ),
+            ]));
+        }
+        Some(NetRole::Spectator) => {
+            lines.push(Line::from(vec![
+                Span::styled("You:", TuiStyle::default().fg(Color::DarkGray)),
+                Span::raw(" "),
+                Span::styled(
+                    "Spectator (read-only)",
+                    TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                ),
+            ]));
+        }
+        None => {}
     }
 
     if matches!(view.status, GameStatus::Ongoing) {
         let stm_color = side_color(view.side_to_move);
-        let label = if Some(view.side_to_move) == n.observer { "Your turn:" } else { "Opponent:" };
+        let observer_side = n.role.and_then(|r| match r {
+            NetRole::Player(s) => Some(s),
+            NetRole::Spectator => None,
+        });
+        let label = match observer_side {
+            Some(obs) if obs == view.side_to_move => "Your turn:",
+            Some(_) => "Opponent:",
+            None => "To move:",
+        };
         lines.push(Line::from(vec![
             Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
             Span::raw(" "),
@@ -1019,13 +1058,86 @@ fn draw_sidebar_net(
     } else {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
-            "?=help, r=rules, q=quit",
+            "?=help, r=rules, t=chat, q=quit",
             TuiStyle::default().fg(Color::DarkGray),
         )));
     }
 
-    let para = Paragraph::new(lines).wrap(Wrap { trim: false });
-    frame.render_widget(para, inner);
+    let meta_para = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(meta_para, chunks[0]);
+
+    draw_chat_pane(frame, chunks[1], n, chat_input_active);
+}
+
+const MIN_META_ROWS: u16 = 14;
+const MIN_CHAT_ROWS: u16 = 6;
+
+fn draw_chat_pane(frame: &mut Frame, area: Rect, n: &NetView, input_active: bool) {
+    let block = Block::default()
+        .borders(Borders::TOP)
+        .border_style(TuiStyle::default().fg(Color::DarkGray))
+        .title(" Chat ");
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    if inner.height == 0 {
+        return;
+    }
+
+    // Reserve the bottom row for the input prompt (or hint when not typing).
+    let log_h = inner.height.saturating_sub(1);
+    let log_area = Rect { x: inner.x, y: inner.y, width: inner.width, height: log_h };
+    let input_area = Rect { x: inner.x, y: inner.y + log_h, width: inner.width, height: 1 };
+
+    let visible = log_h as usize;
+    // Show the most recent N lines (cap by visible height) so the buffer
+    // stays scrolled to the bottom on every render.
+    let start = n.chat.len().saturating_sub(visible);
+    let mut log_lines: Vec<Line> = Vec::with_capacity(visible);
+    if n.chat.is_empty() {
+        log_lines.push(Line::from(Span::styled(
+            "(no messages yet)",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    } else {
+        for line in n.chat.iter().skip(start) {
+            log_lines.push(format_chat_line(line));
+        }
+    }
+    let log_para = Paragraph::new(log_lines).wrap(Wrap { trim: false });
+    frame.render_widget(log_para, log_area);
+
+    let input_line = if input_active {
+        let buf = n.chat_input.as_deref().unwrap_or("");
+        Line::from(vec![
+            Span::styled("> ", TuiStyle::default().fg(Color::Yellow)),
+            Span::styled(format!("{}_", buf), TuiStyle::default().fg(Color::Yellow)),
+        ])
+    } else {
+        let hint = match n.role {
+            Some(NetRole::Spectator) => "(spectator — read-only)",
+            Some(NetRole::Player(_)) => "Press 't' to chat.",
+            None => "",
+        };
+        Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray)))
+    };
+    frame.render_widget(Paragraph::new(input_line).wrap(Wrap { trim: false }), input_area);
+}
+
+fn format_chat_line(line: &chess_net::ChatLine) -> Line<'static> {
+    let from_label = match line.from {
+        Side::RED => "Red:",
+        Side::BLACK => "Black:",
+        _ => "Green:",
+    };
+    let from_color = side_color(line.from);
+    Line::from(vec![
+        Span::styled(
+            from_label.to_string(),
+            TuiStyle::default().fg(from_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" "),
+        Span::raw(line.text.clone()),
+    ])
 }
 
 const HELP_LINES_NET: &[&str] = &[
@@ -1034,6 +1146,7 @@ const HELP_LINES_NET: &[&str] = &[
     "Esc             cancel selection",
     "f               flip (banqi)",
     "n               request rematch (after game over; needs both sides)",
+    "t               open chat input (players only; Enter sends, Esc cancels)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",

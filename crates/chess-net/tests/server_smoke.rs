@@ -35,6 +35,19 @@ fn set_nonblocking(
     }
 }
 
+/// Drain the v3 `ChatHistory` frame that the server sends right after
+/// every `Hello`. Tests written against the v2 protocol never expected
+/// this, so each `read_json(...) // Hello` site grew a follow-up call to
+/// this helper.
+fn drain_chat_history<S: std::io::Read + std::io::Write>(
+    ws: &mut tungstenite::WebSocket<S>,
+) -> Result<()> {
+    match read_json(ws)? {
+        ServerMsg::ChatHistory { .. } => Ok(()),
+        other => anyhow::bail!("expected ChatHistory after Hello, got {other:?}"),
+    }
+}
+
 /// Drain Rooms pushes until one matches the predicate, or we hit a
 /// reasonable read budget. The lobby socket can receive several stale
 /// snapshots back-to-back during fast room churn (each refresh_summary
@@ -85,6 +98,7 @@ async fn two_clients_play_one_move() -> Result<()> {
             }
             other => panic!("expected Hello, got {other:?}"),
         };
+        drain_chat_history(&mut red)?;
 
         let (mut black, _) = tungstenite::connect(&url)?;
         let black_hello = read_json(&mut black)?;
@@ -94,6 +108,7 @@ async fn two_clients_play_one_move() -> Result<()> {
             }
             other => panic!("expected Hello, got {other:?}"),
         }
+        drain_chat_history(&mut black)?;
 
         // Red plays a legal move; both clients should read an Update next.
         let payload = serde_json::to_string(&ClientMsg::Move { mv })?;
@@ -122,8 +137,10 @@ async fn rematch_resets_after_both_request() -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let (mut red, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut red)?; // Hello
+        drain_chat_history(&mut red)?;
         let (mut black, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut black)?; // Hello
+        drain_chat_history(&mut black)?;
 
         // Red resigns → game over (Black wins).
         red.send(Message::Text(serde_json::to_string(&ClientMsg::Resign)?))?;
@@ -184,8 +201,10 @@ async fn rematch_rejected_while_game_in_progress() -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let (mut red, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut red)?;
+        drain_chat_history(&mut red)?;
         let (mut black, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut black)?;
+        drain_chat_history(&mut black)?;
 
         red.send(Message::Text(serde_json::to_string(&ClientMsg::Rematch)?))?;
         match read_json(&mut red)? {
@@ -214,8 +233,10 @@ async fn third_client_gets_room_full() -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let (mut a, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut a)?;
+        drain_chat_history(&mut a)?;
         let (mut b, _) = tungstenite::connect(&url)?;
         let _ = read_json(&mut b)?;
+        drain_chat_history(&mut b)?;
         let (mut c, _) = tungstenite::connect(&url)?;
         match read_json(&mut c)? {
             ServerMsg::Error { message } => {
@@ -268,6 +289,7 @@ async fn lobby_sees_room_after_join() -> Result<()> {
 
         let (mut red, _) = tungstenite::connect(&game_url)?;
         let _ = read_json(&mut red)?; // Hello
+        drain_chat_history(&mut red)?;
 
         let rooms = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "foo"))?;
         let foo = rooms.iter().find(|r| r.id == "foo").unwrap();
@@ -297,8 +319,10 @@ async fn lobby_sees_seat_fill_and_finish() -> Result<()> {
 
         let (mut red, _) = tungstenite::connect(&game_url)?;
         let _ = read_json(&mut red)?;
+        drain_chat_history(&mut red)?;
         let (mut black, _) = tungstenite::connect(&game_url)?;
         let _ = read_json(&mut black)?;
+        drain_chat_history(&mut black)?;
 
         let rooms = read_rooms_until(&mut lobby, |rs| {
             rs.iter().any(|r| r.id == "foo" && r.seats == 2 && r.status == RoomStatus::Playing)
@@ -335,6 +359,7 @@ async fn password_rejected_on_wrong() -> Result<()> {
         let (mut red, _) = tungstenite::connect(&red_url)?;
         let red_hello = read_json(&mut red)?;
         assert!(matches!(red_hello, ServerMsg::Hello { .. }), "got {red_hello:?}");
+        drain_chat_history(&mut red)?;
 
         let (mut bad, _) = tungstenite::connect(&bad_url)?;
         match read_json(&mut bad)? {
@@ -365,11 +390,13 @@ async fn password_accepted_on_right() -> Result<()> {
             ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::RED),
             other => panic!("expected Hello, got {other:?}"),
         }
+        drain_chat_history(&mut red)?;
         let (mut black, _) = tungstenite::connect(&url)?;
         match read_json(&mut black)? {
             ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::BLACK),
             other => panic!("expected Hello, got {other:?}"),
         }
+        drain_chat_history(&mut black)?;
         Ok(())
     })
     .await??;
@@ -392,13 +419,17 @@ async fn two_rooms_isolated_no_crosstalk() -> Result<()> {
             ServerMsg::Hello { view, .. } => view.legal_moves[0].clone(),
             other => panic!("expected Hello, got {other:?}"),
         };
+        drain_chat_history(&mut foo_red)?;
         let (mut foo_black, _) = tungstenite::connect(format!("ws://{addr}/ws/foo"))?;
         let _ = read_json(&mut foo_black)?;
+        drain_chat_history(&mut foo_black)?;
 
         let (mut bar_red, _) = tungstenite::connect(format!("ws://{addr}/ws/bar"))?;
         let _ = read_json(&mut bar_red)?;
+        drain_chat_history(&mut bar_red)?;
         let (mut bar_black, _) = tungstenite::connect(format!("ws://{addr}/ws/bar"))?;
         let _ = read_json(&mut bar_black)?;
+        drain_chat_history(&mut bar_black)?;
 
         send_json(&mut foo_red, &ClientMsg::Move { mv })?;
         // Both foo seats see the Update.
@@ -439,6 +470,7 @@ async fn room_gc_after_last_seat_leaves() -> Result<()> {
 
         let (mut temp, _) = tungstenite::connect(format!("ws://{addr}/ws/temp"))?;
         let _ = read_json(&mut temp)?;
+        drain_chat_history(&mut temp)?;
 
         let _ = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "temp"))?;
 
@@ -468,6 +500,7 @@ async fn default_room_main_persists_after_empty() -> Result<()> {
 
         let (mut a, _) = tungstenite::connect(format!("ws://{addr}/ws"))?;
         let _ = read_json(&mut a)?;
+        drain_chat_history(&mut a)?;
         let _ = read_rooms_until(&mut lobby, |rs| rs.iter().any(|r| r.id == "main"))?;
 
         drop(a);
@@ -504,11 +537,13 @@ async fn default_room_back_compat() -> Result<()> {
             }
             other => panic!("expected Hello, got {other:?}"),
         }
+        drain_chat_history(&mut a)?;
         let (mut b, _) = tungstenite::connect(&url)?;
         match read_json(&mut b)? {
             ServerMsg::Hello { observer, .. } => assert_eq!(observer, Side::BLACK),
             other => panic!("expected Hello, got {other:?}"),
         }
+        drain_chat_history(&mut b)?;
         Ok(())
     })
     .await??;
@@ -529,6 +564,7 @@ async fn rooms_json_endpoint_returns_snapshot() -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let (mut red, _) = tungstenite::connect(&game_url)?;
         let _ = read_json(&mut red)?;
+        drain_chat_history(&mut red)?;
 
         let body = std::thread::spawn(move || -> Result<String> {
             // Plain HTTP/1.1 GET on the same listener — easier than pulling

@@ -30,6 +30,12 @@ struct Cli {
     #[arg(long)]
     static_dir: Option<PathBuf>,
 
+    /// Per-room cap on `?role=spectator` connections. The (cap+1)th
+    /// spectator gets `Error{"room watch capacity reached"}`. Defaults to
+    /// 16; falls back to `CHESS_NET_MAX_SPECTATORS` env if not provided.
+    #[arg(long)]
+    max_spectators: Option<usize>,
+
     #[command(subcommand)]
     variant: VariantCmd,
 }
@@ -83,8 +89,15 @@ async fn main() -> Result<()> {
 
     let static_dir =
         cli.static_dir.or_else(|| std::env::var_os("CHESS_NET_STATIC_DIR").map(PathBuf::from));
+    let max_spectators = cli
+        .max_spectators
+        .or_else(|| std::env::var("CHESS_NET_MAX_SPECTATORS").ok().and_then(|s| s.parse().ok()));
 
-    chess_net::run_with(addr, chess_net::ServeOpts::new(rules).with_static_dir(static_dir)).await
+    let mut opts = chess_net::ServeOpts::new(rules).with_static_dir(static_dir);
+    if let Some(cap) = max_spectators {
+        opts = opts.with_max_spectators(cap);
+    }
+    chess_net::run_with(addr, opts).await
 }
 
 fn build_banqi_rules(

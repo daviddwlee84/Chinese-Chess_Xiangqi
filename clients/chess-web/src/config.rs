@@ -15,11 +15,19 @@ pub fn lobby_url() -> String {
     format!("{}/lobby", ws_base())
 }
 
-pub fn room_url(room: &str, password: Option<&str>) -> String {
+pub fn room_url(room: &str, password: Option<&str>, spectator: bool) -> String {
     let base = format!("{}/ws/{}", ws_base(), encode(room));
-    match password.filter(|p| !p.is_empty()) {
-        Some(pw) => format!("{}?password={}", base, encode(pw)),
-        None => base,
+    let mut params: Vec<String> = Vec::new();
+    if let Some(pw) = password.filter(|p| !p.is_empty()) {
+        params.push(format!("password={}", encode(pw)));
+    }
+    if spectator {
+        params.push("role=spectator".to_string());
+    }
+    if params.is_empty() {
+        base
+    } else {
+        format!("{}?{}", base, params.join("&"))
     }
 }
 

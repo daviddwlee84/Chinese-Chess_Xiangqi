@@ -8,7 +8,7 @@ use chess_core::rules::RuleSet;
 use chess_core::state::GameState;
 use chess_core::view::PlayerView;
 use chess_net::protocol::{
-    variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+    variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
 
 fn roundtrip_server(msg: &ServerMsg) -> ServerMsg {
@@ -113,6 +113,7 @@ fn server_rooms_roundtrips() {
                 id: "main".into(),
                 variant: "xiangqi".into(),
                 seats: 0,
+                spectators: 0,
                 has_password: false,
                 status: RoomStatus::Lobby,
             },
@@ -120,6 +121,7 @@ fn server_rooms_roundtrips() {
                 id: "locked".into(),
                 variant: "banqi".into(),
                 seats: 2,
+                spectators: 3,
                 has_password: true,
                 status: RoomStatus::Playing,
             },
@@ -134,8 +136,87 @@ fn server_rooms_roundtrips() {
             assert_eq!(rooms[0].id, "main");
             assert!(!rooms[0].has_password);
             assert_eq!(rooms[1].status, RoomStatus::Playing);
+            assert_eq!(rooms[1].spectators, 3);
         }
         _ => panic!("wrong variant"),
+    }
+}
+
+#[test]
+fn v2_room_summary_decodes_into_v3_with_zero_spectators() {
+    // A v2 server emitted RoomSummary without the `spectators` field.
+    // v3 clients deserializing that JSON should land on `spectators: 0`
+    // without a serde error — that's what `#[serde(default)]` buys us.
+    let v2_json = r#"{
+        "id": "main",
+        "variant": "xiangqi",
+        "seats": 1,
+        "has_password": false,
+        "status": "lobby"
+    }"#;
+    let parsed: RoomSummary = serde_json::from_str(v2_json).expect("decode v2 RoomSummary");
+    assert_eq!(parsed.spectators, 0);
+    assert_eq!(parsed.id, "main");
+    assert_eq!(parsed.seats, 1);
+}
+
+#[test]
+fn server_spectating_roundtrips() {
+    let state = GameState::new(RuleSet::xiangqi_casual());
+    let view = PlayerView::project(&state, Side::RED);
+    let msg =
+        ServerMsg::Spectating { protocol: PROTOCOL_VERSION, rules: state.rules.clone(), view };
+    let json = serde_json::to_string(&msg).unwrap();
+    assert!(json.contains("\"type\":\"Spectating\""), "got: {json}");
+    match roundtrip_server(&msg) {
+        ServerMsg::Spectating { protocol, .. } => assert_eq!(protocol, PROTOCOL_VERSION),
+        other => panic!("wrong variant: {other:?}"),
+    }
+}
+
+#[test]
+fn server_chat_history_roundtrips() {
+    let lines = vec![
+        ChatLine { from: Side::RED, text: "hi".into(), ts_ms: 1_700_000_000_000 },
+        ChatLine { from: Side::BLACK, text: "hello".into(), ts_ms: 1_700_000_001_000 },
+    ];
+    let msg = ServerMsg::ChatHistory { lines };
+    match roundtrip_server(&msg) {
+        ServerMsg::ChatHistory { lines } => {
+            assert_eq!(lines.len(), 2);
+            assert_eq!(lines[0].text, "hi");
+            assert_eq!(lines[1].from, Side::BLACK);
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
+}
+
+#[test]
+fn server_chat_roundtrips() {
+    let msg = ServerMsg::Chat {
+        line: ChatLine { from: Side::RED, text: "good game".into(), ts_ms: 12345 },
+    };
+    let json = serde_json::to_string(&msg).unwrap();
+    assert!(json.contains("\"type\":\"Chat\""), "got: {json}");
+    match roundtrip_server(&msg) {
+        ServerMsg::Chat { line } => {
+            assert_eq!(line.text, "good game");
+            assert_eq!(line.from, Side::RED);
+            assert_eq!(line.ts_ms, 12345);
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
+}
+
+#[test]
+fn client_chat_roundtrips() {
+    let msg = ClientMsg::Chat { text: "well played".into() };
+    let json = serde_json::to_string(&msg).unwrap();
+    assert!(json.contains("\"type\":\"Chat\""), "got: {json}");
+    assert!(json.contains("\"text\":\"well played\""), "got: {json}");
+    match roundtrip_client(&msg) {
+        ClientMsg::Chat { text } => assert_eq!(text, "well played"),
+        other => panic!("wrong variant: {other:?}"),
     }
 }
 

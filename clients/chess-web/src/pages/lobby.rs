@@ -26,6 +26,7 @@ pub fn LobbyPage() -> impl IntoView {
     };
 
     let navigate = use_navigate();
+    let nav_for_join = navigate.clone();
     let go_to_room: Callback<String> = Callback::new(move |id: String| {
         let pw = password_input.get_untracked();
         let target = if pw.is_empty() {
@@ -33,7 +34,18 @@ pub fn LobbyPage() -> impl IntoView {
         } else {
             format!("/play/{}?password={}", id, urlencode(&pw))
         };
-        navigate(&target, Default::default());
+        nav_for_join(&target, Default::default());
+    });
+
+    let nav_for_watch = navigate;
+    let watch_room: Callback<String> = Callback::new(move |id: String| {
+        let pw = password_input.get_untracked();
+        let qs = if pw.is_empty() {
+            "role=spectator".to_string()
+        } else {
+            format!("role=spectator&password={}", urlencode(&pw))
+        };
+        nav_for_watch(&format!("/play/{}?{}", id, qs), Default::default());
     });
 
     let create_or_join = move |_| {
@@ -81,18 +93,46 @@ pub fn LobbyPage() -> impl IntoView {
                 <ul class="rooms-list">
                     <For
                         each=move || rooms.get()
-                        key=|r| r.id.clone()
+                        key=|r| format!(
+                            "{}|{}|{}|{:?}",
+                            r.id,
+                            r.seats,
+                            r.spectators,
+                            r.status
+                        )
                         children=move |room| {
-                            let id = room.id.clone();
+                            let id_join = room.id.clone();
+                            let id_watch = room.id.clone();
+                            let seats_label = if room.spectators > 0 {
+                                format!("{}/2 seats · {} 👁", room.seats, room.spectators)
+                            } else {
+                                format!("{}/2 seats", room.seats)
+                            };
+                            let join_disabled = room.seats >= 2;
                             view! {
-                                <li class="room-row" on:click=move |_| go_to_room.call(id.clone())>
+                                <li class="room-row">
                                     <span class="room-id">{room.id.clone()}</span>
                                     <span class="room-variant">{room.variant.clone()}</span>
-                                    <span class="room-seats">{format!("{}/2 seats", room.seats)}</span>
+                                    <span class="room-seats">{seats_label}</span>
                                     {if room.has_password {
                                         view! { <span class="room-lock" title="password protected">"🔒"</span> }.into_view()
                                     } else { ().into_view() }}
                                     <span class=room_status_class(room.status)>{room_status_label(room.status)}</span>
+                                    <span class="room-actions">
+                                        <button
+                                            class="btn"
+                                            on:click=move |ev| { ev.stop_propagation(); go_to_room.call(id_join.clone()); }
+                                            disabled=join_disabled
+                                        >
+                                            "Join"
+                                        </button>
+                                        <button
+                                            class="btn btn-ghost"
+                                            on:click=move |ev| { ev.stop_propagation(); watch_room.call(id_watch.clone()); }
+                                        >
+                                            "Watch"
+                                        </button>
+                                    </span>
                                 </li>
                             }
                         }

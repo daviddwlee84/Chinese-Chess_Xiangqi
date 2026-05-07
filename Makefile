@@ -5,7 +5,7 @@ SESSION ?= chess-local
 PORT    ?= 7878
 VARIANT ?= xiangqi
 
-.PHONY: help build server play-local play-lobby play-web build-web stop-local stop-lobby stop-web check fmt clippy test wasm
+.PHONY: help build server play-local play-lobby play-web play-spectator build-web stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
 
 help:
 	@echo "Targets:"
@@ -18,10 +18,13 @@ help:
 	@echo "  play-web      tmux: window0=server, window1=trunk serve (SPA on :8080,"
 	@echo "                proxies /ws + /lobby to chess-net :$(PORT)). Requires"
 	@echo "                trunk (cargo install trunk) + wasm32-unknown-unknown."
+	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
 	@echo "  stop-local    kill the play-local tmux session"
 	@echo "  stop-lobby    kill the play-lobby tmux session"
 	@echo "  stop-web      kill the play-web tmux session"
+	@echo "  stop-spectator kill the play-spectator tmux session"
 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
 	@echo "  fmt | clippy | test | wasm   individual gates"
 	@echo ""
@@ -44,6 +47,9 @@ play-lobby:
 play-web:
 	@scripts/play-web.sh chess-web $(PORT) $(VARIANT)
 
+play-spectator:
+	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
+
 build-web:
 	cd clients/chess-web && trunk build --release
 
@@ -55,6 +61,9 @@ stop-lobby:
 
 stop-web:
 	-tmux kill-session -t chess-web 2>/dev/null
+
+stop-spectator:
+	-tmux kill-session -t chess-spec 2>/dev/null
 
 # Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
 check: fmt clippy test wasm

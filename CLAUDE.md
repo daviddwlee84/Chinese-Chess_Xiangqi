@@ -48,26 +48,29 @@ cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
 cargo run -p chess-tui -- --no-color xiangqi              # monochrome
 cargo run -p chess-tui -- --as black xiangqi              # render as Black
 
-# Networked play (multi-room — see ADR-0005)
+# Networked play (multi-room — see ADR-0005; spectator + chat — see ADR-0006)
 cargo run -p chess-net -- --port 7878 xiangqi             # server, all rooms = xiangqi
 cargo run -p chess-net -- --port 7878 xiangqi --strict    # strict self-check
 cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+cargo run -p chess-net -- --port 7878 --max-spectators 32 xiangqi  # raise spectator cap (default 16)
 
-# Client — three entry points to the same server:
-cargo run -p chess-tui -- --lobby   ws://127.0.0.1:7878            # browse rooms, pick or create
+# Client — entry points to the same server:
+cargo run -p chess-tui -- --lobby   ws://127.0.0.1:7878            # browse rooms (Enter join / w watch / c create)
 cargo run -p chess-tui -- --connect ws://127.0.0.1:7878             # default room "main" (back-compat)
 cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/myroom   # named room
 cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/locked --password secret  # locked room
+cargo run -p chess-tui -- --connect 'ws://127.0.0.1:7878/ws/myroom?role=spectator'   # watch read-only
 
-curl -s http://127.0.0.1:7878/rooms | jq                   # JSON room snapshot for debugging
+curl -s http://127.0.0.1:7878/rooms | jq                   # JSON room snapshot (incl. spectator counts)
 
 # tmux harnesses
 make play-local                                           # 1 server + 2 --connect clients (default room)
 make play-lobby                                           # 1 server + 3 panes (2 lobby flow + 1 watcher)
 make play-web                                             # 1 server + Trunk dev-server (SPA on :8080)
+make play-spectator                                       # 1 server + 2 players + 1 spectator (chat / role demo)
 make play-local VARIANT=banqi                             # banqi
 make play-local PORT=9000 VARIANT=xiangqi                 # custom port
-make stop-local / make stop-lobby / make stop-web         # tear down each session
+make stop-local / make stop-lobby / make stop-web / make stop-spectator   # tear down each session
 
 # Web client (Leptos + Trunk + SVG)
 cargo install trunk                                       # one-time
@@ -80,7 +83,9 @@ cargo run -p chess-net -- --port 7878 \
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
 `Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
-`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit.
+`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit. In
+Net mode, `t` opens chat input (players only — Enter sends, Esc cancels);
+in the lobby, `w` watches the highlighted room as a spectator.
 Mouse left-click selects or commits. When the game ends, a banner appears in
 the sidebar and move attempts are gated; `n` returns to the picker, `u` takes
 back the losing move.
@@ -125,7 +130,15 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 
 - **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
 
-- **`chess-net` is multi-room (ADR-0005).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room to whoever sets it first; subsequent joiners with the wrong password get `ServerMsg::Error{"bad password"}` before any `Hello`. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. The server (`server.rs` + `bin/server.rs`) holds an `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` plus a parallel `summaries` cache so `notify_lobby` can build a `Rooms` snapshot without holding any inner lock. Within a room, first connection = Red, second = Black, third+ still gets `room full`. `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / spectators / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
+- **`chess-net` is multi-room (ADR-0005) with v3 spectator + chat (ADR-0006).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat **and** spectator leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room (applies to seats and spectators); wrong password → `ServerMsg::Error{"bad password"}` before any welcome. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. Server holds `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` + parallel `summaries` cache so `notify_lobby` builds `Rooms` snapshots without holding inner locks. Within a room, first seat = Red, second = Black; third+ joiner without `?role=spectator` still gets `room full` (v2 back-compat). `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
+
+- **chess-net v3 spectator opt-in is `?role=spectator` (explicit only).** Joining a room with the param routes to the spectator branch in `server.rs::handle_room_socket`: server sends `ServerMsg::Spectating { protocol, rules, view }` (`PlayerView::project(&state, Side::RED)`), then `ChatHistory { lines }` from the room's ring buffer. Spectators receive `Update` from RED's perspective on every move — banqi hidden tiles stay opaque per ADR-0004. Move / Resign / Rematch / Chat from a spectator returns the appropriate `Error{"spectators cannot ..."}`. **Cap defaults to 16 per room**; override with `--max-spectators N` / `CHESS_NET_MAX_SPECTATORS` env. The (cap+1)th spectator gets `Error{"room watch capacity reached"}`. Spectators of a `?password=`-locked room must present the same password as players (validated before role branching). `RoomSummary.spectators: u16` is `#[serde(default)]` for v2 lobby back-compat. Auto-fallback (silently upgrading a third joiner to spectator) was rejected in ADR-0006 because v2 chess-tui clients would crash on the `Spectating` JSON tag — explicit opt-in keeps the v2 path byte-identical.
+
+- **chess-net chat is players-only with a 50-line per-room ring buffer.** `ClientMsg::Chat { text }` from a seat: trimmed, control chars (`\n` / `\t`) collapsed to space, capped at 256 chars, server-stamps `ts_ms`, pushes to `RoomState.chat: VecDeque<ChatLine>` (oldest dropped at cap), then `broadcast_to_all` fans `ServerMsg::Chat { line }` to seats + spectators with the same payload (chat is a single broadcast, unlike `Update` which projects per-seat). Same `text` from a spectator → `Error{"spectators cannot chat"}`. Late joiners get the buffer in their welcome `ChatHistory { lines }`. **No rate limit, no moderation, no encryption** — this is a friend-only channel; production-grade primitives are sketched at `backlog/chess-net-chat-moderation.md`. System messages (player joined / left) are `ChatLine.from`'s next axis — see `backlog/chess-net-system-messages.md` (will bump to v4 when shipped).
+
+- **chess-tui chat-input mode hijacks the keymap.** Pressing `t` in Net mode sets `NetView.chat_input = Some(String::new())`; `app.input_mode()` then returns `InputMode::Text` so the dispatcher treats printable keys as edits. `Enter` sends `ClientMsg::Chat`; `Esc` (Action::Back) cancels. The chat region in `draw_sidebar_net` reserves the bottom rows of the sidebar (`MIN_CHAT_ROWS = 6`); the log auto-scrolls by always rendering the last `log_h` lines from the `VecDeque`. Spectators see "(spectator — read-only)" instead of the input row and pressing `t` shows a hint. Lobby key `w` triggers `Action::LobbyWatch` → connects with `?role=spectator` (locked rooms still prompt for the password via the existing `PendingJoin` flow, now extended with an `as_spectator: bool` field).
+
+- **chess-web chat lives below the sidebar in a `right-column` grid.** `clients/chess-web/src/components/chat_panel.rs` renders the log + an input row (uncontrolled `<input>` read on submit) and auto-scrolls via a `create_effect` that sets `el.set_scroll_top(el.scroll_height())` on every `log.get()`. `ClientRole` enum (`state.rs`) replaces the previous `Option<Side>` observer in `<PlayPage>`; move / resign / rematch / chat-input are gated on `role.is_player()`. Spectator entry: lobby Watch button builds `/play/<id>?role=spectator` (and adds `&password=` when set); the play page reads `?role` and passes it to `room_url(...)`. Chat from a spectator hits the disabled-input path so `ClientMsg::Chat` never goes out from a spectator client (the server gate is the authoritative check).
 
 - **chess-net has two opt-in features.** Default is `["server", "static-serve"]`. `default-features = false` exposes only the `protocol` module — that's how `chess-web` consumes the crate so axum/tokio don't end up in the WASM build. `static-serve` adds `tower-http` and the `--static-dir <path>` CLI flag (also reads `CHESS_NET_STATIC_DIR`); when set, `tower_http::services::ServeDir` is mounted as the route fallback so a single binary serves `clients/chess-web/dist/` + WS endpoints. **Enabling `--static-dir` re-routes `GET /` to serve `index.html`**, which means v1 chess-tui clients pointing at `ws://host` (no path) break — they must switch to `--connect ws://host/ws`. The default `make play-local` / `make play-lobby` flows do not enable `--static-dir`, so v1 back-compat is preserved unless you opt in.
 

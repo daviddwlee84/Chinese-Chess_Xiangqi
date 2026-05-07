@@ -3,15 +3,18 @@ use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
 use chess_core::state::GameStatus;
 use chess_core::view::{PlayerView, VisibleCell};
-use chess_net::protocol::{ClientMsg, ServerMsg};
+use chess_net::protocol::{ChatLine, ClientMsg, ServerMsg};
 use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
+use crate::components::chat_panel::ChatPanel;
 use crate::config::room_url;
 use crate::routes::variant_slug;
-use crate::state::find_move;
+use crate::state::{find_move, truncate_front, ClientRole};
 use crate::ws::{connect, ConnState, WsHandle};
+
+const CHAT_HISTORY_CAP: usize = 50;
 
 #[component]
 pub fn PlayPage() -> impl IntoView {
@@ -19,19 +22,29 @@ pub fn PlayPage() -> impl IntoView {
     let query = use_query_map();
     let room = move || params.with(|p| p.get("room").cloned().unwrap_or_default());
     let password = move || query.with(|q| q.get("password").cloned().filter(|s| !s.is_empty()));
+    let watch_only = move || {
+        query.with(|q| q.get("role").map(|r| r.eq_ignore_ascii_case("spectator")).unwrap_or(false))
+    };
 
-    // Open the WS once on mount.
-    let url = room_url(&room(), password().as_deref());
+    // Open the WS once on mount. Spectator opt-in propagates into the URL.
+    let url = room_url(&room(), password().as_deref(), watch_only());
     let (handle, incoming, conn) = connect(url);
 
     let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
-    let (observer, set_observer) = create_signal::<Option<Side>>(None);
+    let (role, set_role) = create_signal::<Option<ClientRole>>(None);
     let (view_signal, set_view) = create_signal::<Option<PlayerView>>(None);
+    let (chat, set_chat) = create_signal::<Vec<ChatLine>>(Vec::new());
     let (toast, set_toast) = create_signal::<Option<String>>(None);
 
     create_effect(move |_| match incoming.get() {
-        Some(ServerMsg::Hello { observer: obs, rules: r, view: v, .. }) => {
-            set_observer.set(Some(obs));
+        Some(ServerMsg::Hello { observer, rules: r, view: v, .. }) => {
+            set_role.set(Some(ClientRole::Player(observer)));
+            set_rules.set(Some(r));
+            set_view.set(Some(v));
+            set_toast.set(None);
+        }
+        Some(ServerMsg::Spectating { rules: r, view: v, .. }) => {
+            set_role.set(Some(ClientRole::Spectator));
             set_rules.set(Some(r));
             set_view.set(Some(v));
             set_toast.set(None);
@@ -39,10 +52,24 @@ pub fn PlayPage() -> impl IntoView {
         Some(ServerMsg::Update { view: v }) => {
             set_view.set(Some(v));
         }
+        Some(ServerMsg::ChatHistory { lines }) => {
+            set_chat.set(lines);
+        }
+        Some(ServerMsg::Chat { line }) => {
+            set_chat.update(|buf| {
+                buf.push(line);
+                truncate_front(buf, CHAT_HISTORY_CAP);
+            });
+        }
         Some(ServerMsg::Error { message }) => {
             set_toast.set(Some(message));
         }
         Some(ServerMsg::Rooms { .. }) | None => {}
+    });
+
+    let chat_handle = handle.clone();
+    let on_chat_send: Callback<String> = Callback::new(move |text: String| {
+        chat_handle.send(ClientMsg::Chat { text });
     });
 
     let handle_for_board = handle.clone();
@@ -53,12 +80,12 @@ pub fn PlayPage() -> impl IntoView {
         <section class="game-page">
             <div class="board-pane">
                 <Show
-                    when=move || view_signal.get().is_some() && observer.get().is_some()
+                    when=move || view_signal.get().is_some() && role.get().is_some()
                     fallback=move || view! { <ConnPlaceholder room=room() conn=conn/> }
                 >
                     <BoardWrapper
                         view_signal=view_signal
-                        observer=observer
+                        role=role
                         handle=handle_for_board.clone()
                     />
                 </Show>
@@ -68,14 +95,21 @@ pub fn PlayPage() -> impl IntoView {
                     </div>
                 </Show>
             </div>
-            <OnlineSidebar
-                room=room_label
-                observer=observer
-                view_signal=view_signal
-                rules=rules
-                conn=conn
-                handle=handle_for_sidebar
-            />
+            <div class="right-column">
+                <OnlineSidebar
+                    room=room_label
+                    role=role
+                    view_signal=view_signal
+                    rules=rules
+                    conn=conn
+                    handle=handle_for_sidebar
+                />
+                <ChatPanel
+                    role=role.into()
+                    log=chat.into()
+                    on_send=on_chat_send
+                />
+            </div>
         </section>
     }
 }
@@ -99,19 +133,23 @@ fn ConnPlaceholder(room: String, conn: ReadSignal<ConnState>) -> impl IntoView {
 #[component]
 fn BoardWrapper(
     view_signal: ReadSignal<Option<PlayerView>>,
-    observer: ReadSignal<Option<Side>>,
+    role: ReadSignal<Option<ClientRole>>,
     handle: WsHandle,
 ) -> impl IntoView {
     let view = Signal::derive(move || view_signal.get().expect("guarded by Show"));
-    let obs = observer.get_untracked().expect("guarded by Show");
+    let resolved_role = role.get_untracked().expect("guarded by Show");
+    let obs = resolved_role.observer();
     let shape = view.with_untracked(|v| v.shape);
 
     let selected = create_rw_signal::<Option<Square>>(None);
+    // Spectators see-only — no click handlers on the board for them.
+    let is_spectator = resolved_role.is_spectator();
 
     let on_click: Callback<Square> = Callback::new(move |sq: Square| {
+        if is_spectator {
+            return;
+        }
         let v = view.get();
-        // Only the side-to-move can move (server rejects otherwise; the local
-        // legal-move list is empty for the opponent so this is a hard gate).
         if v.observer != v.side_to_move {
             return;
         }
@@ -156,17 +194,22 @@ fn BoardWrapper(
 #[component]
 fn OnlineSidebar(
     room: String,
-    observer: ReadSignal<Option<Side>>,
+    role: ReadSignal<Option<ClientRole>>,
     view_signal: ReadSignal<Option<PlayerView>>,
     rules: ReadSignal<Option<RuleSet>>,
     conn: ReadSignal<ConnState>,
     handle: WsHandle,
 ) -> impl IntoView {
-    let observer_label = move || match observer.get() {
-        Some(Side::RED) => "You play Red 紅",
-        Some(Side::BLACK) => "You play Black 黑",
-        Some(_) => "You play Green 綠",
-        None => "Awaiting seat assignment",
+    let role_label = move || match role.get() {
+        Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
+        Some(ClientRole::Player(Side::BLACK)) => "You play Black 黑".to_string(),
+        Some(ClientRole::Player(_)) => "You play Green 綠".to_string(),
+        Some(ClientRole::Spectator) => "Spectator — read-only".to_string(),
+        None => "Awaiting seat assignment".to_string(),
+    };
+    let role_class = move || match role.get() {
+        Some(ClientRole::Spectator) => "spectator-badge",
+        _ => "",
     };
 
     let variant_label = move || match rules.get() {
@@ -190,6 +233,9 @@ fn OnlineSidebar(
             Some(GameStatus::Won { .. } | GameStatus::Drawn { .. })
         )
     };
+    let is_player = move || role.get().map(|r| r.is_player()).unwrap_or(false);
+    let resign_disabled = move || !is_player() || game_over();
+    let rematch_disabled = move || !is_player() || !game_over();
 
     let conn_label = move || match conn.get() {
         ConnState::Connecting => "Connecting…",
@@ -215,12 +261,12 @@ fn OnlineSidebar(
         <aside class="sidebar">
             <h3 class="variant-label">{format!("Online — room {}", room)}</h3>
             <p class="muted">{variant_label}</p>
-            <p>{observer_label}</p>
+            <p class=role_class>{role_label}</p>
             <p>{turn_label}</p>
             <p class="muted">{conn_label}</p>
             <div class="sidebar-actions">
-                <button class="btn" on:click=resign disabled=game_over>"Resign"</button>
-                <button class="btn" on:click=rematch disabled=move || !game_over()>"Rematch"</button>
+                <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
+                <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
             </div>
             <a class="back-link" href="/lobby">"← Back to lobby"</a>
         </aside>

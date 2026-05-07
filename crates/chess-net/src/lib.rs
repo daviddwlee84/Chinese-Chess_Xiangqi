@@ -29,7 +29,7 @@ pub mod protocol;
 pub mod server;
 
 pub use protocol::{
-    variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+    variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
 #[cfg(feature = "server")]
 pub use server::{run, run_with, serve, serve_with, ServeOpts};

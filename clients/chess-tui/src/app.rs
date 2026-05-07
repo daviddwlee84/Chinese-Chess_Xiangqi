@@ -1,13 +1,18 @@
 //! App state + dispatch. The AppState holds a `GameState`, UI cursor, and a
 //! short-lived flash message; actions from `input.rs` mutate it.
 
+use std::collections::VecDeque;
+
 use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, RuleSet};
 use chess_core::state::{GameState, GameStatus};
 use chess_core::view::{PlayerView, VisibleCell};
-use chess_net::{ClientMsg, RoomSummary, ServerMsg};
+use chess_net::{ChatLine, ClientMsg, RoomSummary, ServerMsg};
+
+const CHAT_HISTORY_CAP: usize = 50;
+const CHAT_INPUT_MAX: usize = 256;
 
 use crate::glyph::Style;
 use crate::input::{Action, InputMode};
@@ -79,18 +84,52 @@ pub struct GameView {
     pub last_msg: Option<String>,
 }
 
+/// Role assigned by the server: a seated player (with a side) or a
+/// read-only spectator. `None` on `NetView` until the welcome arrives.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum NetRole {
+    Player(Side),
+    Spectator,
+}
+
+impl NetRole {
+    pub fn is_player(self) -> bool {
+        matches!(self, NetRole::Player(_))
+    }
+
+    pub fn is_spectator(self) -> bool {
+        matches!(self, NetRole::Spectator)
+    }
+
+    /// Side from whose POV the board is rendered. Spectators view from
+    /// Red's perspective (matches what chess-net's broadcast_update
+    /// projects for spectator updates).
+    pub fn observer(self) -> Side {
+        match self {
+            NetRole::Player(s) => s,
+            NetRole::Spectator => Side::RED,
+        }
+    }
+}
+
 pub struct NetView {
     pub client: NetClient,
     pub url: String,
     pub last_view: Option<PlayerView>,
     pub rules: Option<RuleSet>,
-    /// Server-assigned side. `None` until `Hello` arrives.
-    pub observer: Option<Side>,
+    /// Server-assigned role. `None` until `Hello` / `Spectating` arrives.
+    pub role: Option<NetRole>,
     pub cursor: (u8, u8),
     pub selected: Option<Square>,
     pub last_msg: Option<String>,
     /// True between Connected and Disconnected events. Used by the sidebar.
     pub connected: bool,
+    /// In-room chat ring buffer (cap [`CHAT_HISTORY_CAP`]). Mirrors the
+    /// server's per-room buffer so the sidebar can replay history.
+    pub chat: VecDeque<ChatLine>,
+    /// `Some(buf)` while the user is typing a chat line (entered via 't').
+    /// Players only — the chat-start action is a no-op for spectators.
+    pub chat_input: Option<String>,
 }
 
 /// Free-text "ws://host:port" prompt entered before the lobby.
@@ -119,6 +158,9 @@ pub struct LobbyView {
 pub struct PendingJoin {
     pub room_id: String,
     pub password_buf: String,
+    /// `true` when the user is joining as a spectator (watch flow); the
+    /// resulting URL appends `?role=spectator` in addition to the password.
+    pub as_spectator: bool,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -227,15 +269,17 @@ impl AppState {
                 url,
                 last_view: None,
                 rules: None,
-                observer: None,
+                role: None,
                 cursor: (0, 0),
                 selected: None,
                 last_msg: Some("Connecting…".into()),
                 connected: false,
+                chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
+                chat_input: None,
             })),
             style,
             use_color,
-            // Pre-Hello, we render as Red until the server tells us our seat.
+            // Pre-welcome, we render as Red until the server tells us our role.
             observer: Side::RED,
             help_open: false,
             rules_open: false,
@@ -319,6 +363,9 @@ impl AppState {
                 }
             }
             Screen::HostPrompt(_) | Screen::CreateRoom(_) => InputMode::Text,
+            // While typing a chat line, hijack the keymap so printable chars
+            // append to the buffer instead of moving the cursor.
+            Screen::Net(n) if n.chat_input.is_some() => InputMode::Text,
             Screen::Game(_) | Screen::Net(_) => InputMode::Game,
         }
     }
@@ -345,6 +392,10 @@ impl AppState {
                     // In Net mode, 'n' requests a rematch via the server
                     // instead of dropping the connection. Game must be over.
                     if let Screen::Net(n) = &mut self.screen {
+                        if !n.role.map(|r| r.is_player()).unwrap_or(false) {
+                            n.last_msg = Some("Spectators cannot request a rematch.".into());
+                            return;
+                        }
                         let status = n.last_view.as_ref().map(|v| v.status);
                         match status {
                             Some(GameStatus::Won { .. }) | Some(GameStatus::Drawn { .. }) => {
@@ -385,6 +436,12 @@ impl AppState {
             | Action::FocusNext
             | Action::FocusPrev
             | Action::Submit => self.dispatch_text(action),
+            Action::ChatStart => self.dispatch_chat_start(),
+            Action::LobbyWatch => {
+                if matches!(self.screen, Screen::Lobby(_)) {
+                    self.dispatch_lobby_watch();
+                }
+            }
             _ => match &self.screen {
                 Screen::Net(_) => self.dispatch_net(action),
                 Screen::Game(_) => self.dispatch_game(action),
@@ -416,8 +473,58 @@ impl AppState {
                 let host = c.host.clone();
                 *self = AppState::new_lobby(host, style, use_color, observer);
             }
+            // Esc inside Net mode — if we're typing a chat line, cancel the
+            // input rather than navigating away.
+            Screen::Net(n) if n.chat_input.is_some() => {
+                n.chat_input = None;
+                n.last_msg = None;
+            }
             _ => {}
         }
+    }
+
+    fn dispatch_chat_start(&mut self) {
+        let Screen::Net(n) = &mut self.screen else {
+            return;
+        };
+        match n.role {
+            Some(NetRole::Player(_)) => {
+                n.chat_input = Some(String::new());
+                n.last_msg = Some("Chat: type a line, Enter sends, Esc cancels.".into());
+            }
+            Some(NetRole::Spectator) => {
+                n.last_msg = Some("Spectators can read but not chat.".into());
+            }
+            None => {
+                n.last_msg = Some("Not connected yet.".into());
+            }
+        }
+    }
+
+    fn dispatch_lobby_watch(&mut self) {
+        let Screen::Lobby(l) = &mut self.screen else {
+            return;
+        };
+        if l.pending_join.is_some() || l.rooms.is_empty() {
+            return;
+        }
+        let cursor = l.cursor.min(l.rooms.len() - 1);
+        let room = l.rooms[cursor].clone();
+        if room.has_password {
+            // Spectator joins to locked rooms still need the password.
+            l.pending_join = Some(PendingJoin {
+                room_id: room.id,
+                password_buf: String::new(),
+                as_spectator: true,
+            });
+            l.last_msg = Some("Type password to spectate, Enter to join, Esc to cancel.".into());
+            return;
+        }
+        let host = l.host.clone();
+        let style = self.style;
+        let use_color = self.use_color;
+        let url = format!("{host}/ws/{}?role=spectator", room.id);
+        *self = AppState::new_net(url, style, use_color);
     }
 
     fn is_game_in_progress(&self) -> bool {
@@ -493,8 +600,11 @@ impl AppState {
                     return;
                 }
                 if room.has_password {
-                    l.pending_join =
-                        Some(PendingJoin { room_id: room.id, password_buf: String::new() });
+                    l.pending_join = Some(PendingJoin {
+                        room_id: room.id,
+                        password_buf: String::new(),
+                        as_spectator: false,
+                    });
                     l.last_msg = Some("Type password, Enter to join, Esc to cancel.".into());
                     return;
                 }
@@ -600,14 +710,40 @@ impl AppState {
                     Action::Submit => {
                         let host = l.host.clone();
                         let pj_owned = l.pending_join.take().unwrap();
-                        let url = format!(
+                        let mut url = format!(
                             "{host}/ws/{}?password={}",
                             pj_owned.room_id,
                             urlencode(&pj_owned.password_buf)
                         );
+                        if pj_owned.as_spectator {
+                            url.push_str("&role=spectator");
+                        }
                         let style = self.style;
                         let use_color = self.use_color;
                         *self = AppState::new_net(url, style, use_color);
+                    }
+                    _ => {}
+                }
+            }
+            // Net mode hijacks Text input while the user is composing a chat
+            // line. Submit fires Chat over the wire; Esc / Back cancels (see
+            // dispatch_back).
+            Screen::Net(n) => {
+                let Some(buf) = n.chat_input.as_mut() else {
+                    return;
+                };
+                match action {
+                    Action::TextInput(c) => text_input::push_char(buf, c, CHAT_INPUT_MAX),
+                    Action::TextBackspace => text_input::backspace(buf),
+                    Action::Submit => {
+                        let buf = n.chat_input.take().unwrap_or_default();
+                        let trimmed = buf.trim();
+                        if trimmed.is_empty() {
+                            n.last_msg = Some("Empty chat — nothing sent.".into());
+                            return;
+                        }
+                        let _ = n.client.cmd_tx.send(ClientMsg::Chat { text: trimmed.to_string() });
+                        n.last_msg = Some("Chat sent.".into());
                     }
                     _ => {}
                 }
@@ -757,13 +893,14 @@ impl AppState {
         let Screen::Net(n) = &mut self.screen else {
             return;
         };
-        // Pre-Hello: no view yet, nothing to dispatch on.
+        // Pre-welcome: no view yet, nothing to dispatch on.
         let Some(view) = n.last_view.as_ref() else {
             return;
         };
         let shape = view.shape;
         let (rows, cols) = orient::display_dims(shape);
-        let observer = n.observer.unwrap_or(Side::RED);
+        let role = n.role.unwrap_or(NetRole::Player(Side::RED));
+        let observer = role.observer();
         match action {
             Action::CursorUp if n.cursor.0 > 0 => {
                 n.cursor.0 -= 1;
@@ -782,10 +919,18 @@ impl AppState {
                 n.last_msg = None;
             }
             Action::SelectOrCommit => {
+                if role.is_spectator() {
+                    n.last_msg = Some("Spectators cannot move.".into());
+                    return;
+                }
                 let outcome = compute_select_outcome(n, observer);
                 apply_select_outcome(n, outcome);
             }
             Action::Flip => {
+                if role.is_spectator() {
+                    n.last_msg = Some("Spectators cannot move.".into());
+                    return;
+                }
                 if !matches!(view.status, GameStatus::Ongoing) {
                     n.last_msg = Some("Game over.".into());
                     return;
@@ -809,6 +954,9 @@ impl AppState {
                 n.last_msg = Some("Undo not supported in online mode yet.".into());
             }
             Action::Click { term_col, term_row } => {
+                if role.is_spectator() {
+                    return;
+                }
                 if let Some(rect) = self.board_rect {
                     if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
                         let n = match &mut self.screen {
@@ -902,12 +1050,12 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
     match evt {
         NetEvent::Connected => {
             n.connected = true;
-            n.last_msg = Some("Connected. Waiting for hello…".into());
+            n.last_msg = Some("Connected. Waiting for welcome…".into());
         }
         NetEvent::Server(boxed) => match *boxed {
             ServerMsg::Hello { observer, rules, view, .. } => {
-                let was_seated = n.observer.is_some();
-                n.observer = Some(observer);
+                let was_seated = n.role.is_some();
+                n.role = Some(NetRole::Player(observer));
                 n.rules = Some(rules);
                 let shape = view.shape;
                 let (rows, cols) = orient::display_dims(shape);
@@ -922,19 +1070,44 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
                     format!("Joined as {}.", side_label(observer))
                 });
             }
+            ServerMsg::Spectating { rules, view, .. } => {
+                let was_welcomed = n.role.is_some();
+                n.role = Some(NetRole::Spectator);
+                n.rules = Some(rules);
+                let shape = view.shape;
+                let (rows, cols) = orient::display_dims(shape);
+                n.cursor = (rows / 2, cols / 2);
+                n.selected = None;
+                n.last_view = Some(view);
+                n.connected = true;
+                n.last_msg = Some(if was_welcomed {
+                    "Rematch — new game (spectating).".into()
+                } else {
+                    "Joined as spectator (read-only).".into()
+                });
+            }
             ServerMsg::Update { view } => {
                 n.last_view = Some(view);
-                // Don't clobber a freshly-set "Sent." — but stale msgs should clear.
                 if n.last_msg.as_deref() == Some("Sent.") {
                     n.last_msg = None;
+                }
+            }
+            ServerMsg::ChatHistory { lines } => {
+                n.chat.clear();
+                for line in lines.into_iter().take(CHAT_HISTORY_CAP) {
+                    n.chat.push_back(line);
+                }
+            }
+            ServerMsg::Chat { line } => {
+                n.chat.push_back(line);
+                while n.chat.len() > CHAT_HISTORY_CAP {
+                    n.chat.pop_front();
                 }
             }
             ServerMsg::Error { message } => {
                 n.last_msg = Some(message);
             }
             ServerMsg::Rooms { .. } => {
-                // Game socket should never receive Rooms — surface so a
-                // server bug is debuggable rather than silently dropped.
                 n.last_msg = Some("(unexpected lobby payload on game socket)".into());
             }
         },
@@ -982,7 +1155,11 @@ fn apply_lobby_event(l: &mut LobbyView, evt: NetEvent) {
             ServerMsg::Error { message } => {
                 l.last_msg = Some(message);
             }
-            ServerMsg::Hello { .. } | ServerMsg::Update { .. } => {
+            ServerMsg::Hello { .. }
+            | ServerMsg::Update { .. }
+            | ServerMsg::Spectating { .. }
+            | ServerMsg::ChatHistory { .. }
+            | ServerMsg::Chat { .. } => {
                 // Game-socket payloads should never arrive on a lobby ws.
                 // If they do (server bug), surface for debugging.
                 l.last_msg = Some("(unexpected game payload on lobby socket)".into());

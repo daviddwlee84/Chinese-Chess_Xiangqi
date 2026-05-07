@@ -18,7 +18,14 @@ use serde::{Deserialize, Serialize};
 /// v1 → v2: added `ServerMsg::Rooms` and `ClientMsg::ListRooms` for the
 /// multi-room lobby. Old (v1) clients still work against a v2 server in
 /// the default room "main" — the new message variants are additive.
-pub const PROTOCOL_VERSION: u16 = 2;
+///
+/// v2 → v3: added `ServerMsg::{Spectating, ChatHistory, Chat}` and
+/// `ClientMsg::Chat` for read-only spectators + in-room chat. v2 clients
+/// keep working as players (they never request spectator role; the new
+/// chat variants are additive). `RoomSummary` gains a `spectators` field
+/// with `#[serde(default)]` so v2 lobby clients deserializing a v3 server
+/// snapshot ignore the new column.
+pub const PROTOCOL_VERSION: u16 = 3;
 
 /// Server → client.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -36,6 +43,20 @@ pub enum ServerMsg {
     /// again whenever any room's state changes (seat insertion / removal /
     /// game finish / GC). Game sockets never receive this variant.
     Rooms { rooms: Vec<RoomSummary> },
+    /// Spectator-side counterpart to `Hello` — no `observer` because
+    /// spectators are not seated. Carries the same `rules` + initial `view`
+    /// (projected from `Side::RED`'s perspective so banqi hidden tiles stay
+    /// hidden). Sent immediately after a `?role=spectator` connection
+    /// upgrades successfully.
+    Spectating { protocol: u16, rules: RuleSet, view: PlayerView },
+    /// Pushed once right after `Hello` / `Spectating` with the room's chat
+    /// ring buffer (≤50 lines). Empty `lines` for a fresh room.
+    ChatHistory { lines: Vec<ChatLine> },
+    /// Pushed live to every recipient (seats + spectators) on each new chat
+    /// line. `from` is currently always a player's `Side`; system messages
+    /// (player joined / left) are deferred — see
+    /// `backlog/chess-net-system-messages.md`.
+    Chat { line: ChatLine },
 }
 
 /// Client → server.
@@ -56,6 +77,21 @@ pub enum ClientMsg {
     /// server pushes `Rooms` automatically on state changes; this is the
     /// manual-refresh button (`r` in the TUI lobby).
     ListRooms,
+    /// Send a chat line. Server enforces players-only (spectators get
+    /// `Error{"spectators cannot chat"}`), trims to ≤256 chars after stripping
+    /// control chars, stamps `ts_ms` server-side, and broadcasts the result
+    /// to every seat + spectator as `ServerMsg::Chat`.
+    Chat { text: String },
+}
+
+/// One chat line as it appears on the wire and in the per-room ring buffer.
+/// `ts_ms` is unix milliseconds set server-side so clients don't have to
+/// agree on a clock.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ChatLine {
+    pub from: Side,
+    pub text: String,
+    pub ts_ms: u64,
 }
 
 /// One row in the lobby browser. Mirrors what's interesting to a player
@@ -67,6 +103,11 @@ pub struct RoomSummary {
     pub id: String,
     pub variant: String,
     pub seats: u8,
+    /// Watching-only clients connected via `?role=spectator`. v2 lobby
+    /// snapshots omit this field entirely; the `serde(default)` keeps v2
+    /// clients deserializing a v3 `RoomSummary` cleanly (they just see 0).
+    #[serde(default)]
+    pub spectators: u16,
     pub has_password: bool,
     pub status: RoomStatus,
 }

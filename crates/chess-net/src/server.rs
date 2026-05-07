@@ -10,15 +10,24 @@
 //! the room to the first joiner's secret. Wrong password gets
 //! `Error{"bad password"}` + close.
 //!
-//! Empty rooms are GC'd when the last seat disconnects, except `main` which
-//! is permanent so v1 clients always have a stable default to land in.
+//! Optional `?role=spectator` upgrades the connection as a read-only
+//! spectator instead of a seat. Spectators receive `Spectating` (instead of
+//! `Hello`) plus `ChatHistory`, then live `Update` and `Chat` pushes. They
+//! cannot move, resign, request rematch, or send chat. Player connections
+//! arrive without `?role=spectator` — back-compat means v2 clients keep
+//! getting "room full" if they're the third joiner.
 //!
-//! Reconnect / mixed-variant rooms / spectators / time controls / TLS still
-//! deferred — see `TODO.md`.
+//! Empty rooms are GC'd when the last seat disconnects **and** the last
+//! spectator leaves, except `main` which is permanent so v1 clients always
+//! have a stable default to land in.
+//!
+//! Reconnect / mixed-variant rooms / time controls / TLS still deferred —
+//! see `TODO.md`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -37,17 +46,24 @@ use serde::Deserialize;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::protocol::{
-    variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+    variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
 
 const DEFAULT_ROOM: &str = "main";
 const MAX_PASSWORD_LEN: usize = 64;
 const MAX_ROOM_ID_LEN: usize = 32;
+const MAX_CHAT_LEN: usize = 256;
+const CHAT_HISTORY_CAP: usize = 50;
+const DEFAULT_MAX_SPECTATORS: usize = 16;
 
 struct RoomState {
     state: GameState,
     /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
     seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
+    /// Read-only watchers connected via `?role=spectator`. Capped per
+    /// `AppState::max_spectators`; the cap is enforced in
+    /// `handle_room_socket` before insertion.
+    spectators: Vec<mpsc::UnboundedSender<ServerMsg>>,
     /// Sides that have requested a rematch since the last reset. Cleared
     /// every time the game resets; mutual consent triggers reset.
     rematch: Vec<Side>,
@@ -57,6 +73,10 @@ struct RoomState {
     /// the right friends" mechanism, not a security boundary. Real auth
     /// belongs in a follow-up alongside TLS.
     password: Option<String>,
+    /// In-memory ring buffer of recent chat lines. Capped at
+    /// `CHAT_HISTORY_CAP`; oldest line drops when a new one arrives at
+    /// capacity. Sent verbatim to every new joiner via `ChatHistory`.
+    chat: VecDeque<ChatLine>,
 }
 
 impl RoomState {
@@ -64,8 +84,10 @@ impl RoomState {
         Self {
             state: GameState::new(rules),
             seats: Vec::with_capacity(2),
+            spectators: Vec::new(),
             rematch: Vec::with_capacity(2),
             password,
+            chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
         }
     }
 
@@ -95,9 +117,14 @@ impl RoomState {
             id: id.to_string(),
             variant: variant_label(&self.state.rules).to_string(),
             seats: self.seats.len() as u8,
+            spectators: self.spectators.len() as u16,
             has_password: self.password.is_some(),
             status,
         }
+    }
+
+    fn chat_history(&self) -> Vec<ChatLine> {
+        self.chat.iter().cloned().collect()
     }
 }
 
@@ -122,15 +149,19 @@ pub struct AppState {
     /// Variant for every auto-created room. Mixed-variant servers are a
     /// separate TODO (`chess-net: mixed-variant rooms`).
     default_rules: RuleSet,
+    /// Per-room cap on `?role=spectator` connections. The 17th spectator (at
+    /// the default cap of 16) gets `Error{"room watch capacity reached"}`.
+    max_spectators: usize,
 }
 
 impl AppState {
-    fn new(default_rules: RuleSet) -> Arc<Self> {
+    fn new(default_rules: RuleSet, max_spectators: usize) -> Arc<Self> {
         Arc::new(Self {
             rooms: Arc::new(Mutex::new(HashMap::new())),
             summaries: Arc::new(Mutex::new(HashMap::new())),
             lobby_subs: Arc::new(Mutex::new(Vec::new())),
             default_rules,
+            max_spectators,
         })
     }
 }
@@ -139,6 +170,11 @@ impl AppState {
 struct AuthQuery {
     #[serde(default)]
     password: Option<String>,
+    /// Opt-in spectator request. `Some("spectator")` upgrades the connection
+    /// as a read-only watcher. v2 clients never set this so back-compat
+    /// behaviour is preserved (third joiner still gets "room full").
+    #[serde(default)]
+    role: Option<String>,
 }
 
 /// Server options. `rules` is required; `static_dir` is opt-in and only
@@ -147,15 +183,23 @@ struct AuthQuery {
 pub struct ServeOpts {
     pub rules: RuleSet,
     pub static_dir: Option<std::path::PathBuf>,
+    /// Per-room spectator cap. Defaults to [`DEFAULT_MAX_SPECTATORS`] when
+    /// constructed via [`ServeOpts::new`].
+    pub max_spectators: usize,
 }
 
 impl ServeOpts {
     pub fn new(rules: RuleSet) -> Self {
-        Self { rules, static_dir: None }
+        Self { rules, static_dir: None, max_spectators: DEFAULT_MAX_SPECTATORS }
     }
 
     pub fn with_static_dir(mut self, dir: Option<std::path::PathBuf>) -> Self {
         self.static_dir = dir;
+        self
+    }
+
+    pub fn with_max_spectators(mut self, cap: usize) -> Self {
+        self.max_spectators = cap;
         self
     }
 }
@@ -187,7 +231,7 @@ pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<
 
 /// Like [`serve`] but with the full options struct.
 pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> Result<()> {
-    let app_state = AppState::new(opts.rules);
+    let app_state = AppState::new(opts.rules, opts.max_spectators);
     let mut app = Router::new()
         .route("/ws", get(upgrade_default))
         .route("/ws/:room_id", get(upgrade_room))
@@ -239,8 +283,9 @@ async fn upgrade_default(
     Query(q): Query<AuthQuery>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
+    let role = parse_role(q.role.as_deref());
     ws.on_upgrade(move |socket| {
-        handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password)
+        handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password, role)
     })
 }
 
@@ -251,7 +296,21 @@ async fn upgrade_room(
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     let room_id_clone = room_id.clone();
-    ws.on_upgrade(move |socket| handle_room_socket(socket, app, room_id_clone, q.password))
+    let role = parse_role(q.role.as_deref());
+    ws.on_upgrade(move |socket| handle_room_socket(socket, app, room_id_clone, q.password, role))
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum JoinRole {
+    Player,
+    Spectator,
+}
+
+fn parse_role(raw: Option<&str>) -> JoinRole {
+    match raw {
+        Some(s) if s.eq_ignore_ascii_case("spectator") => JoinRole::Spectator,
+        _ => JoinRole::Player,
+    }
 }
 
 async fn upgrade_lobby(
@@ -273,6 +332,7 @@ async fn handle_room_socket(
     app: Arc<AppState>,
     room_id: String,
     password_param: Option<String>,
+    role: JoinRole,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
@@ -304,24 +364,35 @@ async fn handle_room_socket(
         }
     }
 
-    // Get-or-create room + seat assignment + Hello. Held under one lock per
-    // layer so a concurrent connect can't squeeze between assignment and
-    // seat insertion. Outer-then-inner ordering throughout.
-    let seat: Side = {
-        let room = {
-            let mut rooms = app.rooms.lock().await;
-            rooms
-                .entry(room_id.clone())
-                .or_insert_with(|| {
-                    Arc::new(Mutex::new(RoomState::new(
-                        app.default_rules.clone(),
-                        password_param.clone(),
-                    )))
-                })
-                .clone()
-        };
-        let mut g = room.lock().await;
-        // Existing room: validate password matches what was set on creation.
+    // Get-or-create the room. Spectators don't auto-create — joining as a
+    // spectator into a non-existent room would be a confusing UX (you'd see
+    // an empty board with no players). Players still create on demand.
+    let room = {
+        let mut rooms = app.rooms.lock().await;
+        if role == JoinRole::Spectator && !rooms.contains_key(&room_id) {
+            drop(rooms);
+            let _ = send_close_with(
+                &mut sender,
+                ServerMsg::Error { message: "no such room to spectate".into() },
+            )
+            .await;
+            return;
+        }
+        rooms
+            .entry(room_id.clone())
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(RoomState::new(
+                    app.default_rules.clone(),
+                    password_param.clone(),
+                )))
+            })
+            .clone()
+    };
+
+    // Validate password (applies to both seats and spectators — locked rooms
+    // are locked for everyone).
+    {
+        let g = room.lock().await;
         if g.password != password_param {
             drop(g);
             let _ =
@@ -329,32 +400,81 @@ async fn handle_room_socket(
                     .await;
             return;
         }
-        match g.next_seat() {
-            Some(s) => {
-                let view = PlayerView::project(&g.state, s);
-                let hello = ServerMsg::Hello {
-                    protocol: PROTOCOL_VERSION,
-                    observer: s,
-                    rules: g.state.rules.clone(),
-                    view,
-                };
-                if out_tx.send(hello).is_err() {
+    }
+
+    let connection: Connection = match role {
+        JoinRole::Player => {
+            let mut g = room.lock().await;
+            match g.next_seat() {
+                Some(s) => {
+                    let view = PlayerView::project(&g.state, s);
+                    let hello = ServerMsg::Hello {
+                        protocol: PROTOCOL_VERSION,
+                        observer: s,
+                        rules: g.state.rules.clone(),
+                        view,
+                    };
+                    if out_tx.send(hello).is_err() {
+                        return;
+                    }
+                    if out_tx.send(ServerMsg::ChatHistory { lines: g.chat_history() }).is_err() {
+                        return;
+                    }
+                    g.seats.push((s, out_tx.clone()));
+                    eprintln!("[server][{}] seated {:?} ({}/2)", room_id, s, g.seats.len());
+                    let summary = g.summary(&room_id);
+                    drop(g);
+                    refresh_summary(&app, &room_id, summary).await;
+                    Connection::Player(s)
+                }
+                None => {
+                    drop(g);
+                    let _ = send_close_with(
+                        &mut sender,
+                        ServerMsg::Error { message: "room full".into() },
+                    )
+                    .await;
                     return;
                 }
-                g.seats.push((s, out_tx.clone()));
-                eprintln!("[server][{}] seated {:?} ({}/2)", room_id, s, g.seats.len());
-                let summary = g.summary(&room_id);
-                drop(g);
-                refresh_summary(&app, &room_id, summary).await;
-                s
             }
-            None => {
+        }
+        JoinRole::Spectator => {
+            let mut g = room.lock().await;
+            if g.spectators.len() >= app.max_spectators {
                 drop(g);
-                let _ =
-                    send_close_with(&mut sender, ServerMsg::Error { message: "room full".into() })
-                        .await;
+                let _ = send_close_with(
+                    &mut sender,
+                    ServerMsg::Error { message: "room watch capacity reached".into() },
+                )
+                .await;
                 return;
             }
+            // Spectators see the board from RED's POV — `PlayerView::project`
+            // is leak-safe so banqi hidden tiles stay opaque. Three-kingdom
+            // would need a neutral projection later (out of scope).
+            let view = PlayerView::project(&g.state, Side::RED);
+            let welcome = ServerMsg::Spectating {
+                protocol: PROTOCOL_VERSION,
+                rules: g.state.rules.clone(),
+                view,
+            };
+            if out_tx.send(welcome).is_err() {
+                return;
+            }
+            if out_tx.send(ServerMsg::ChatHistory { lines: g.chat_history() }).is_err() {
+                return;
+            }
+            g.spectators.push(out_tx.clone());
+            eprintln!(
+                "[server][{}] spectator joined ({}/{})",
+                room_id,
+                g.spectators.len(),
+                app.max_spectators
+            );
+            let summary = g.summary(&room_id);
+            drop(g);
+            refresh_summary(&app, &room_id, summary).await;
+            Connection::Spectator
         }
     };
 
@@ -375,12 +495,13 @@ async fn handle_room_socket(
         let _ = sender.close().await;
     });
 
-    // Read loop.
+    // Read loop. Both seat and spectator share this — process_client_msg
+    // gates on `connection` for Move/Resign/Rematch/Chat permissions.
     while let Some(frame) = receiver.next().await {
         let frame = match frame {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("[server][warn][{}] ws read error ({:?}): {e}", room_id, seat);
+                eprintln!("[server][warn][{}] ws read error ({:?}): {e}", room_id, connection);
                 break;
             }
         };
@@ -397,36 +518,40 @@ async fn handle_room_socket(
                 continue;
             }
         };
-        // Get the room (it might have been GC'd in pathological races, but
-        // since we hold a seat that can only happen after our own retain,
-        // not before — so the lookup is virtually always Some).
         let room = match get_room(&app, &room_id).await {
             Some(r) => r,
             None => break,
         };
         let summary_after = {
             let mut g = room.lock().await;
-            process_client_msg(&mut g, seat, msg, &room_id);
+            process_client_msg(&mut g, connection, &out_tx, msg, &room_id);
             g.summary(&room_id)
         };
         refresh_summary(&app, &room_id, summary_after).await;
     }
 
-    // Disconnect: remove seat, notify peer if game was live, GC empty rooms
-    // except "main".
-    eprintln!("[server][{}] {:?} disconnected", room_id, seat);
+    // Disconnect: remove seat or spectator slot, notify peer if a player
+    // dropped during a live game, GC empty rooms except "main".
+    eprintln!("[server][{}] {:?} disconnected", room_id, connection);
     if let Some(room) = get_room(&app, &room_id).await {
         let (summary_after, room_now_empty) = {
             let mut g = room.lock().await;
-            g.seats.retain(|(s, _)| *s != seat);
-            // Drop any rematch flag the leaver had set.
-            g.rematch.retain(|s| *s != seat);
-            if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
-                for (_, tx) in &g.seats {
-                    let _ = tx.send(ServerMsg::Error { message: "opponent disconnected".into() });
+            match connection {
+                Connection::Player(seat) => {
+                    g.seats.retain(|(s, _)| *s != seat);
+                    g.rematch.retain(|s| *s != seat);
+                    if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
+                        for (_, tx) in &g.seats {
+                            let _ = tx
+                                .send(ServerMsg::Error { message: "opponent disconnected".into() });
+                        }
+                    }
+                }
+                Connection::Spectator => {
+                    g.spectators.retain(|tx| !tx.same_channel(&out_tx));
                 }
             }
-            let empty = g.seats.is_empty();
+            let empty = g.seats.is_empty() && g.spectators.is_empty();
             (g.summary(&room_id), empty)
         };
         if room_now_empty && room_id != DEFAULT_ROOM {
@@ -441,6 +566,12 @@ async fn handle_room_socket(
 
     drop(out_tx);
     let _ = write_task.await;
+}
+
+#[derive(Copy, Clone, Debug)]
+enum Connection {
+    Player(Side),
+    Spectator,
 }
 
 async fn handle_lobby_socket(socket: WebSocket, app: Arc<AppState>) {
@@ -565,41 +696,103 @@ async fn send_close_with(
     sender.close().await
 }
 
-fn process_client_msg(g: &mut RoomState, seat: Side, msg: ClientMsg, room_id: &str) {
+fn process_client_msg(
+    g: &mut RoomState,
+    connection: Connection,
+    self_tx: &mpsc::UnboundedSender<ServerMsg>,
+    msg: ClientMsg,
+    room_id: &str,
+) {
+    let seat = match connection {
+        Connection::Player(s) => Some(s),
+        Connection::Spectator => None,
+    };
     match msg {
-        ClientMsg::Rematch => process_rematch(g, seat, room_id),
-        ClientMsg::Move { mv } => {
-            if !matches!(g.state.status, GameStatus::Ongoing) {
-                send_to(
-                    g,
-                    seat,
-                    ServerMsg::Error {
-                        message: "game is over — press 'n' to request a rematch".into(),
-                    },
-                );
-                return;
+        ClientMsg::Rematch => match seat {
+            Some(s) => process_rematch(g, s, room_id),
+            None => {
+                let _ = self_tx.send(ServerMsg::Error {
+                    message: "spectators cannot request a rematch".into(),
+                });
             }
-            process_move(g, seat, mv, room_id);
-        }
-        ClientMsg::Resign => {
-            if !matches!(g.state.status, GameStatus::Ongoing) {
-                send_to(g, seat, ServerMsg::Error { message: "game is over".into() });
-                return;
+        },
+        ClientMsg::Move { mv } => match seat {
+            Some(s) => {
+                if !matches!(g.state.status, GameStatus::Ongoing) {
+                    send_to(
+                        g,
+                        s,
+                        ServerMsg::Error {
+                            message: "game is over — press 'n' to request a rematch".into(),
+                        },
+                    );
+                    return;
+                }
+                process_move(g, s, mv, room_id);
             }
-            let winner = if seat == Side::RED { Side::BLACK } else { Side::RED };
-            g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
-            broadcast_update(g);
-        }
+            None => {
+                let _ = self_tx.send(ServerMsg::Error { message: "spectators cannot move".into() });
+            }
+        },
+        ClientMsg::Resign => match seat {
+            Some(s) => {
+                if !matches!(g.state.status, GameStatus::Ongoing) {
+                    send_to(g, s, ServerMsg::Error { message: "game is over".into() });
+                    return;
+                }
+                let winner = if s == Side::RED { Side::BLACK } else { Side::RED };
+                g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+                broadcast_update(g);
+            }
+            None => {
+                let _ =
+                    self_tx.send(ServerMsg::Error { message: "spectators cannot resign".into() });
+            }
+        },
         ClientMsg::ListRooms => {
-            send_to(
-                g,
-                seat,
-                ServerMsg::Error {
-                    message: "ListRooms is a lobby-only message; subscribe via /lobby".into(),
-                },
-            );
+            let _ = self_tx.send(ServerMsg::Error {
+                message: "ListRooms is a lobby-only message; subscribe via /lobby".into(),
+            });
         }
+        ClientMsg::Chat { text } => match seat {
+            Some(s) => process_chat(g, s, text, self_tx, room_id),
+            None => {
+                let _ = self_tx.send(ServerMsg::Error { message: "spectators cannot chat".into() });
+            }
+        },
     }
+}
+
+fn process_chat(
+    g: &mut RoomState,
+    from: Side,
+    raw: String,
+    self_tx: &mpsc::UnboundedSender<ServerMsg>,
+    room_id: &str,
+) {
+    let cleaned: String = raw
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+        .map(|c| if c == '\n' || c == '\t' { ' ' } else { c })
+        .collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        let _ = self_tx.send(ServerMsg::Error { message: "chat message is empty".into() });
+        return;
+    }
+    let mut text: String = trimmed.chars().take(MAX_CHAT_LEN).collect();
+    text.shrink_to_fit();
+    let line = ChatLine { from, text, ts_ms: now_ms() };
+    if g.chat.len() >= CHAT_HISTORY_CAP {
+        g.chat.pop_front();
+    }
+    g.chat.push_back(line.clone());
+    eprintln!("[server][{}] chat {:?}: {}", room_id, from, line.text);
+    broadcast_to_all(g, &ServerMsg::Chat { line });
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
 fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
@@ -639,6 +832,16 @@ fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
                 rules: g.state.rules.clone(),
                 view,
             });
+        }
+        if !g.spectators.is_empty() {
+            let view = PlayerView::project(&g.state, Side::RED);
+            for tx in &g.spectators {
+                let _ = tx.send(ServerMsg::Spectating {
+                    protocol: PROTOCOL_VERSION,
+                    rules: g.state.rules.clone(),
+                    view: view.clone(),
+                });
+            }
         }
     } else {
         for (s, tx) in &g.seats {
@@ -681,5 +884,24 @@ fn broadcast_update(g: &RoomState) {
     for (side, tx) in &g.seats {
         let view = PlayerView::project(&g.state, *side);
         let _ = tx.send(ServerMsg::Update { view });
+    }
+    if !g.spectators.is_empty() {
+        let view = PlayerView::project(&g.state, Side::RED);
+        for tx in &g.spectators {
+            let _ = tx.send(ServerMsg::Update { view: view.clone() });
+        }
+    }
+}
+
+/// Fan a single message out to every connection (seats + spectators).
+/// Used for `Chat` where every recipient should see the same payload —
+/// `Update` uses [`broadcast_update`] instead because seats need
+/// per-side projections.
+fn broadcast_to_all(g: &RoomState, msg: &ServerMsg) {
+    for (_, tx) in &g.seats {
+        let _ = tx.send(msg.clone());
+    }
+    for tx in &g.spectators {
+        let _ = tx.send(msg.clone());
     }
 }

@@ -34,6 +34,8 @@ pub enum Action {
     // Lobby
     LobbyCreate,
     LobbyRefresh,
+    /// Spectate the highlighted room (`?role=spectator`).
+    LobbyWatch,
     // Text input (HostPrompt / CreateRoom)
     TextInput(char),
     TextBackspace,
@@ -50,6 +52,8 @@ pub enum Action {
     Cancel,
     Undo,
     Flip,
+    /// Open the chat input editor (Net mode, players only).
+    ChatStart,
     /// Mouse click in terminal coords. The app resolves it against the board
     /// rect captured by the most recent draw().
     Click {
@@ -85,6 +89,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Enter | KeyCode::Char(' ') => Action::PickerSelect,
             KeyCode::Char('c') => Action::LobbyCreate,
             KeyCode::Char('r') => Action::LobbyRefresh,
+            KeyCode::Char('w') => Action::LobbyWatch,
             KeyCode::Char('q') => Action::Quit,
             KeyCode::Char('?') => Action::HelpToggle,
             KeyCode::Esc => Action::Back,
@@ -112,6 +117,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('u') => Action::Undo,
             KeyCode::Char('f') => Action::Flip,
             KeyCode::Char('n') => Action::NewGame,
+            KeyCode::Char('t') => Action::ChatStart,
             _ => Action::None,
         },
     }
