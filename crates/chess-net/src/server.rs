@@ -32,6 +32,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, Query, State};
+#[cfg(feature = "static-serve")]
+use axum::http::{header, HeaderValue};
+#[cfg(feature = "static-serve")]
+use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -55,6 +59,10 @@ const MAX_ROOM_ID_LEN: usize = 32;
 const MAX_CHAT_LEN: usize = 256;
 const CHAT_HISTORY_CAP: usize = 50;
 const DEFAULT_MAX_SPECTATORS: usize = 16;
+#[cfg(feature = "static-serve")]
+const IMMUTABLE_ASSET_CACHE: &str = "public, max-age=31536000, immutable";
+#[cfg(feature = "static-serve")]
+const HTML_CACHE: &str = "no-cache";
 
 struct RoomState {
     state: GameState,
@@ -241,7 +249,7 @@ pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> R
     #[cfg(feature = "static-serve")]
     {
         if let Some(dir) = opts.static_dir.as_ref() {
-            // SPA fallback — `/local/xiangqi`, `/lobby`, `/play/foo` all
+            // SPA fallback — `/local/xiangqi`, `/play/foo`, etc. all
             // serve `index.html` so client-side routing takes over. The
             // explicit `/ws*`, `/lobby`, `/rooms` routes above still match
             // first because axum tries routes before fallback.
@@ -249,10 +257,17 @@ pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> R
             // NOTE: enabling --static-dir means `GET /` serves index.html.
             // Old `chess-tui --connect ws://host` (which hits `/`) must
             // switch to `--connect ws://host/ws`.
+            use tower::ServiceBuilder;
+            use tower_http::compression::CompressionLayer;
             use tower_http::services::{ServeDir, ServeFile};
             let index = dir.join("index.html");
             let serve_dir = ServeDir::new(dir).fallback(ServeFile::new(index));
-            app = app.fallback_service(serve_dir);
+            let static_service = ServiceBuilder::new()
+                .layer(CompressionLayer::new().no_deflate().no_zstd())
+                .service(serve_dir);
+            app = app
+                .fallback_service(static_service)
+                .layer(axum::middleware::from_fn(static_cache_headers));
         } else {
             app = app.route("/", get(upgrade_default));
         }
@@ -266,6 +281,43 @@ pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> R
     let app = app.with_state(app_state);
     axum::serve(listener, app).await.context("axum::serve")?;
     Ok(())
+}
+
+#[cfg(feature = "static-serve")]
+async fn static_cache_headers(req: axum::extract::Request, next: Next) -> axum::response::Response {
+    let path = req.uri().path().to_string();
+    let mut res = next.run(req).await;
+    if let Some(value) =
+        cache_control_for_static_response(&path, res.headers().get(header::CONTENT_TYPE))
+    {
+        res.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static(value));
+    }
+    res
+}
+
+#[cfg(feature = "static-serve")]
+fn cache_control_for_static_response(
+    path: &str,
+    content_type: Option<&HeaderValue>,
+) -> Option<&'static str> {
+    if path == "/rooms" || path == "/lobby" || path.starts_with("/ws") {
+        return None;
+    }
+    let content_type = content_type.and_then(|value| value.to_str().ok()).unwrap_or_default();
+    if content_type.starts_with("text/html") {
+        return Some(HTML_CACHE);
+    }
+    if is_hashed_asset_path(path) {
+        return Some(IMMUTABLE_ASSET_CACHE);
+    }
+    Some(HTML_CACHE)
+}
+
+#[cfg(feature = "static-serve")]
+fn is_hashed_asset_path(path: &str) -> bool {
+    let file_name = path.rsplit('/').next().unwrap_or_default();
+    (file_name.ends_with(".css") || file_name.ends_with(".js") || file_name.ends_with(".wasm"))
+        && file_name.contains('-')
 }
 
 fn valid_room_id(id: &str) -> bool {

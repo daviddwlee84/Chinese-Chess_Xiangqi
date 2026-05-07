@@ -1038,9 +1038,8 @@ impl AppState {
             }
             Screen::Net(n) => {
                 let is_player = n.role.map(|r| r.is_player()).unwrap_or(false);
-                let is_ongoing = n.last_view.as_ref().is_some_and(|v| {
-                    matches!(v.status, GameStatus::Ongoing)
-                });
+                let is_ongoing =
+                    n.last_view.as_ref().is_some_and(|v| matches!(v.status, GameStatus::Ongoing));
                 if !is_player || !is_ongoing {
                     if let Screen::Net(n) = &mut self.screen {
                         n.last_msg = if !is_player {

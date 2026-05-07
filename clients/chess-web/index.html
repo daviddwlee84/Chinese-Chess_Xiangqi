@@ -7,5 +7,28 @@
     <link data-trunk rel="rust"/>
     <link data-trunk rel="css" href="style.css"/>
 </head>
-<body></body>
+<body>
+    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">
+        <div class="boot-card">
+            <div class="boot-mark" aria-hidden="true">帥</div>
+            <p class="boot-kicker">Chinese Chess</p>
+            <h1>Loading board engine</h1>
+            <p class="boot-copy">
+                Downloading and starting the Rust WASM client. First load can take longer on remote links.
+            </p>
+            <div class="boot-progress" aria-hidden="true"><span></span></div>
+        </div>
+    </div>
+    <noscript>
+        <p class="boot-noscript">JavaScript and WebAssembly are required to play Chinese Chess in the browser.</p>
+    </noscript>
+    <script>
+        window.addEventListener("TrunkApplicationStarted", () => {
+            const loader = document.getElementById("boot-loader");
+            if (!loader) return;
+            loader.classList.add("boot-loader--done");
+            window.setTimeout(() => loader.remove(), 180);
+        });
+    </script>
+</body>
 </html>

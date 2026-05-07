@@ -18,11 +18,11 @@ A hobby Chinese chess game in Rust supporting:
 ```
 crates/chess-core    — pure game logic (this is where everything starts)
 crates/chess-engine  — search/eval (planned)
-crates/chess-net     — websocket protocol (planned)
+crates/chess-net     — websocket protocol + self-hostable server
 crates/chess-ai      — heuristic + ISMCTS for banqi (planned)
 clients/chess-cli    — REPL test harness for chess-core
 clients/chess-tui    — ratatui frontend (xiangqi + banqi, vim+mouse, CJK glyphs)
-clients/chess-web    — Leptos + WASM frontend (planned)
+clients/chess-web    — Leptos + WASM frontend for local and online play
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full design.
@@ -44,6 +44,17 @@ WASM cleanliness check (proves `chess-core` has no platform deps):
 ```bash
 cargo build --target wasm32-unknown-unknown -p chess-core
 ```
+
+Web frontend:
+
+```bash
+make play-web                         # local dev: chess-net + trunk serve
+make serve-web-prod ADDR=0.0.0.0:7878 # release WASM + compressed static serve
+```
+
+Use `play-web` only for local development. Remote users should hit the
+production path so they download the release WASM bundle, not Trunk's
+debug/dev-server output.
 
 ## License
 

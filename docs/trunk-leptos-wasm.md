@@ -31,8 +31,8 @@ on first run; the binary lands in `~/.cargo/bin/trunk`.
 clients/chess-web/
 ├── Cargo.toml          # split deps: native vs target_arch="wasm32"
 ├── Trunk.toml          # build target + dev-server proxies
-├── index.html          # Trunk entry — <link data-trunk rel="rust"/>
-├── style.css           # CSS custom-property palette
+├── index.html          # Trunk entry + pre-WASM loading shell
+├── style.css           # CSS custom-property palette + boot loader
 ├── src/
 │   ├── lib.rs          # mounts Leptos via #[wasm_bindgen(start)]
 │   ├── app.rs          # <App>: leptos_router routes
@@ -164,6 +164,10 @@ cargo run -p chess-net -- --port 7878 xiangqi    # in one terminal
 (cd clients/chess-web && trunk serve)             # in another
 ```
 
+`trunk serve` is **development only**. It builds a debug WASM bundle
+and keeps Trunk's live-reload websocket open. Do not expose this path to
+remote users unless you're intentionally debugging with them.
+
 `trunk serve` watches `src/`, `index.html`, `style.css`, and `Cargo.toml`.
 On any change it recompiles, regenerates the WASM bundle, and pushes a
 reload over its own websocket to every connected browser tab. The first
@@ -171,15 +175,19 @@ build takes 2–3 minutes (leptos compilation); incremental builds
 typically finish in a couple of seconds.
 
 Open `http://127.0.0.1:8080/` once trunk reports `📡 server listening`.
-The SPA's hash-routing (`#/local/xiangqi`, `#/lobby`, …) means
-deep-linking to a route survives a hard reload.
+Client-side navigation uses normal paths (`/local/xiangqi`, `/play/foo`,
+…); Trunk's dev server serves `index.html` for the app routes while
+proxying `/ws*`, `/lobby`, and `/rooms` to chess-net.
 
 ## Production build
 
 ```bash
-make build-web                                   # = (cd clients/chess-web && trunk build --release)
-cargo run -p chess-net -- --port 7878 \
-    --static-dir clients/chess-web/dist xiangqi  # one binary, both endpoints
+make serve-web-prod ADDR=0.0.0.0:7878            # release SPA + WS, remote-ready
+
+# Equivalent manual flow:
+make build-web                                   # trunk build --release
+cargo run -p chess-net -- --addr 0.0.0.0:7878 \
+    --static-dir clients/chess-web/dist xiangqi  # one binary, SPA + WS
 ```
 
 `trunk build --release`:
@@ -192,10 +200,17 @@ cargo run -p chess-net -- --port 7878 \
   `index.html`, `chess-web-<hash>.js`, `chess-web-<hash>_bg.wasm`,
   `style-<hash>.css`.
 
-A debug build is around **5 MB** of `.wasm`; release is around 800 KB
-–1.2 MB depending on `wasm-opt` availability. Either is fine on
-broadband — these are one-time downloads cached aggressively by the
-browser thanks to the content-hashed filenames.
+A debug build from `trunk serve` is around **5–7 MB** of `.wasm`; release
+is around **800 KB–1.2 MB** depending on `wasm-opt` availability. On a
+recent local build without `wasm-opt`, release was 856 KB raw and about
+321 KB over gzip. The user still waits for download + browser
+compile/instantiate on first load, so `index.html` includes a lightweight
+loading shell that is removed after Trunk emits `TrunkApplicationStarted`.
+
+If Trunk 0.21 errors with `invalid value '1' for '--no-color'`, your
+environment has `NO_COLOR=1`. Use `NO_COLOR=false trunk build --release`
+or unset `NO_COLOR`; the `make build-web` target already applies that
+override.
 
 When chess-net is started with `--static-dir`, it mounts
 `tower_http::services::ServeDir` as the route fallback with a
@@ -208,6 +223,16 @@ clients must switch to `--connect ws://host/ws` when talking to a
 chess-net that's also serving the SPA. The `make play-local` /
 `make play-lobby` flows do not enable `--static-dir`, so back-compat
 is preserved unless you opt in.
+
+Static production responses are optimized for remote users:
+
+- `Accept-Encoding: br` / `gzip` is handled by `tower-http` runtime
+  compression on the static fallback service.
+- Hashed `.wasm`, `.js`, and `.css` assets get
+  `Cache-Control: public, max-age=31536000, immutable`.
+- `index.html` and SPA fallback responses get `Cache-Control: no-cache`
+  so new deploys are discovered without forcing users to clear browser
+  cache.
 
 ## Bundle size — what's in the 5 MB?
 

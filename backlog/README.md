@@ -50,4 +50,4 @@ Add new entries here as you create them. Keep alphabetical.
 
 | Slug | Status | TODO entry |
 |---|---|---|
-| (none yet) | | |
+| web-wasm-download-progress | deferred | chess-web: real WASM download progress meter |

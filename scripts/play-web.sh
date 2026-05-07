@@ -3,6 +3,10 @@
 # Browser opens to http://127.0.0.1:8080 (Trunk serves the SPA, proxies WS
 # at /ws and /lobby to chess-net at :7878).
 #
+# Development only. `trunk serve` builds a much larger debug WASM bundle and
+# keeps a dev reload websocket open; for remote users run `make serve-web-prod`
+# so chess-net serves `trunk build --release` output with compression.
+#
 # Usage:
 #   scripts/play-web.sh [SESSION] [PORT] [VARIANT] [SERVER_ARGS...]
 #

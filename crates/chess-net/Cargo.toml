@@ -26,7 +26,7 @@ server = ["dep:tokio", "dep:axum", "dep:futures-util", "dep:clap", "dep:anyhow"]
 # binary is started with `--static-dir <path>`, chess-net serves that
 # directory as the route fallback. Useful for serving the chess-web `dist/`
 # build alongside the WS endpoints in production.
-static-serve = ["server", "dep:tower-http"]
+static-serve = ["server", "dep:tower", "dep:tower-http"]
 
 [dependencies]
 chess-core   = { path = "../chess-core" }
@@ -37,7 +37,9 @@ tokio        = { workspace = true, optional = true }
 axum         = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 clap         = { workspace = true, optional = true }
-tower-http   = { version = "0.5", features = ["fs"], optional = true }
+tower        = { version = "0.5", optional = true }
+tower-http   = { version = "0.5", features = ["compression-br", "compression-gzip", "fs"], optional = true }
 
 [dev-dependencies]
+tempfile = "3"
 tungstenite = { workspace = true }

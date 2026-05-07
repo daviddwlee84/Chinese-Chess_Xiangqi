@@ -3,9 +3,11 @@
 
 SESSION ?= chess-local
 PORT    ?= 7878
+ADDR    ?= 127.0.0.1:$(PORT)
 VARIANT ?= xiangqi
+SERVER_ARGS ?=
 
-.PHONY: help build server play-local play-lobby play-web play-spectator build-web stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
 
 help:
 	@echo "Targets:"
@@ -18,9 +20,11 @@ help:
 	@echo "  play-web      tmux: window0=server, window1=trunk serve (SPA on :8080,"
 	@echo "                proxies /ws + /lobby to chess-net :$(PORT)). Requires"
 	@echo "                trunk (cargo install trunk) + wasm32-unknown-unknown."
+	@echo "                Dev only: do not use trunk serve for remote users."
 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
+	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
 	@echo "  stop-local    kill the play-local tmux session"
 	@echo "  stop-lobby    kill the play-lobby tmux session"
 	@echo "  stop-web      kill the play-web tmux session"
@@ -28,8 +32,9 @@ help:
 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
 	@echo "  fmt | clippy | test | wasm   individual gates"
 	@echo ""
-	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) VARIANT=$(VARIANT)"
+	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
+	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
 	@echo "Custom port:          make play-lobby PORT=9000"
 
 build:
@@ -51,7 +56,10 @@ play-spectator:
 	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
 
 build-web:
-	cd clients/chess-web && trunk build --release
+	cd clients/chess-web && NO_COLOR=false trunk build --release
+
+serve-web-prod: build-web
+	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
 
 stop-local:
 	-tmux kill-session -t $(SESSION) 2>/dev/null

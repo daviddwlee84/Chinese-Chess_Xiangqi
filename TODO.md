@@ -73,6 +73,7 @@ Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
 - [ ] **[?/L] Wish/SSH multiplayer alternative to chess-net** — Original analysis (docs/architecture.md) noted Go+wish would give 'ssh chess.you.dev' for free. Rust equivalent: russh (less polished). Spike: is this simpler than chess-net + chess-web for the 'play with friends' scenario, or just neat?
 - [ ] **[?/L] Unity renderer via FFI** — Architecture deliberately keeps chess-core platform-agnostic so Unity is reachable. Spike: does building a chess-core C ABI + Unity importer get us anything beyond 'Web with art assets via Leptos + sprites'? Likely not, but documenting the option closes the loop.
 - [ ] **[?/M] WebRTC peer-to-peer fallback for chess-web** — Lets two browsers play without chess-net hosting. Needs a signalling step (could reuse chess-net briefly for handshake). Big UX delta: NAT traversal failures are the user's problem, not the server's. Worth it only if hosting cost ever becomes a concern.
+- [ ] **[?/M] chess-web: real WASM download progress meter** — Spike a custom bootstrap that fetches the Trunk-generated WASM with byte-level progress, then passes the loaded module/bytes into wasm-bindgen init; only worth doing if release WASM size or remote latency makes the current indeterminate loader insufficient. → [research](backlog/web-wasm-download-progress.md)
 
 ## Done
 
