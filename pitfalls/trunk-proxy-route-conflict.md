@@ -84,17 +84,17 @@ verbatim).
   for `/ws` vs. `/ws/`, route them through different prefixes
   (e.g. `/ws-default` and `/ws-room`) or proxy at a higher level
   (`/` → upstream, no Trunk-side splitting).
-- When `make play-web` exits silently, run `trunk serve` directly from
-  `clients/chess-web/` to see the actual error. The tmux pane in
-  `scripts/play-web.sh` runs the command without a `--remain-on-exit`
-  shim, so panics get swallowed by the auto-kill.
+- `scripts/play-web.sh` now sets `tmux set-option -w remain-on-exit on`
+  on both the `server` and `web` windows, so a future panic in either
+  process will keep the pane visible instead of silently auto-killing
+  it. After a crash, attach to the session, switch to the dead pane,
+  and the panic message is right there; press Enter to dismiss.
 
 ## Related
 
 - [`../docs/trunk-leptos-wasm.md`](../docs/trunk-leptos-wasm.md) — Trunk
   config narrative and the working `[[proxy]]` block
-- [`../scripts/play-web.sh`](../scripts/play-web.sh) — could be hardened
-  with `tmux set-option remain-on-exit on` so panics stay visible
-  (deferred — the doc + this pitfall is enough breadcrumb for now)
+- [`../scripts/play-web.sh`](../scripts/play-web.sh) — `remain-on-exit
+  on` is set per window so panics stay visible
 - Upstream: trunk-rs/trunk does not currently surface a clearer error
   for this case; consider filing if it recurs across users

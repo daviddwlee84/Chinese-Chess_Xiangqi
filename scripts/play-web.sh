@@ -50,6 +50,15 @@ TRUNK_CMD="cd $REPO_ROOT/clients/chess-web && trunk serve"
 
 tmux new-session  -d -s "$SESSION" -n server "$SERVER_CMD"
 tmux new-window   -t "$SESSION" -n web "$TRUNK_CMD"
+
+# Keep panes visible after the command exits so panics stay readable.
+# Without this, a fast crash (e.g. trunk proxy route conflict) auto-kills
+# the pane before any log scrolls — see
+# pitfalls/trunk-proxy-route-conflict.md. After a crash, attach to the
+# pane and press Enter to dismiss; the rest of the session keeps running.
+tmux set-option -w -t "${SESSION}:server" remain-on-exit on
+tmux set-option -w -t "${SESSION}:web" remain-on-exit on
+
 tmux select-window -t "${SESSION}:web"
 
 cat <<EOF
