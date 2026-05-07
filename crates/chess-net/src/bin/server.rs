@@ -6,6 +6,7 @@
 //!   chess-net-server banqi --port 7878 --preset taiwan --seed 42
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use chess_core::rules::{HouseRules, RuleSet};
@@ -21,6 +22,13 @@ struct Cli {
     /// Override bind address. Defaults to 127.0.0.1:<port>.
     #[arg(long)]
     addr: Option<SocketAddr>,
+
+    /// Serve a static directory (e.g. `clients/chess-web/dist`) at `/`.
+    /// SPA fallback — unknown paths return `index.html`. Falls back to
+    /// `CHESS_NET_STATIC_DIR` env var if not provided. When set, `GET /`
+    /// serves index.html; ws clients should use `--connect ws://host/ws`.
+    #[arg(long)]
+    static_dir: Option<PathBuf>,
 
     #[command(subcommand)]
     variant: VariantCmd,
@@ -73,7 +81,10 @@ async fn main() -> Result<()> {
         }
     };
 
-    chess_net::run(addr, rules).await
+    let static_dir =
+        cli.static_dir.or_else(|| std::env::var_os("CHESS_NET_STATIC_DIR").map(PathBuf::from));
+
+    chess_net::run_with(addr, chess_net::ServeOpts::new(rules).with_static_dir(static_dir)).await
 }
 
 fn build_banqi_rules(

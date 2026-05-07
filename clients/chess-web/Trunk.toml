@@ -1,5 +1,7 @@
-# Trunk dev-server config. Online-mode WS proxies (`/ws`, `/lobby`, `/rooms`)
-# get added in the commit that wires online play.
+# Trunk dev-server config. Proxies forward `/ws*` and `/lobby` to chess-net
+# at :7878 so the SPA can use same-origin URLs (`config::ws_base()` reads
+# `window.location`). In production, chess-net serves the `dist/` build
+# itself via `--static-dir clients/chess-web/dist`.
 
 [build]
 target  = "index.html"
@@ -9,3 +11,24 @@ release = false
 address = "127.0.0.1"
 port    = 8080
 open    = false
+
+# /ws/<room> — match the named-room route first; the rewrite preserves the
+# room id because Trunk forwards the trailing path verbatim.
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws/"
+ws      = true
+rewrite = "/ws/"
+
+[[proxy]]
+backend = "ws://127.0.0.1:7878/ws"
+ws      = true
+rewrite = "/ws"
+
+[[proxy]]
+backend = "ws://127.0.0.1:7878/lobby"
+ws      = true
+rewrite = "/lobby"
+
+[[proxy]]
+backend = "http://127.0.0.1:7878/rooms"
+rewrite = "/rooms"

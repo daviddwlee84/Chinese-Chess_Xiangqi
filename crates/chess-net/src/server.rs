@@ -141,28 +141,85 @@ struct AuthQuery {
     password: Option<String>,
 }
 
+/// Server options. `rules` is required; `static_dir` is opt-in and only
+/// honored when the `static-serve` feature is enabled.
+#[derive(Clone, Debug)]
+pub struct ServeOpts {
+    pub rules: RuleSet,
+    pub static_dir: Option<std::path::PathBuf>,
+}
+
+impl ServeOpts {
+    pub fn new(rules: RuleSet) -> Self {
+        Self { rules, static_dir: None }
+    }
+
+    pub fn with_static_dir(mut self, dir: Option<std::path::PathBuf>) -> Self {
+        self.static_dir = dir;
+        self
+    }
+}
+
 /// Bind `addr` and serve until error / SIGINT (caller's choice — we don't
 /// install signal handling here). For tests that need an ephemeral port,
 /// use [`serve`] directly with a pre-bound listener.
 pub async fn run(addr: SocketAddr, rules: RuleSet) -> Result<()> {
+    run_with(addr, ServeOpts::new(rules)).await
+}
+
+/// Like [`run`] but with the full options struct (e.g. `--static-dir`).
+pub async fn run_with(addr: SocketAddr, opts: ServeOpts) -> Result<()> {
     let listener =
         tokio::net::TcpListener::bind(addr).await.with_context(|| format!("bind {addr}"))?;
     eprintln!("[server] listening on ws://{}", listener.local_addr()?);
-    serve(listener, rules).await
+    if opts.static_dir.is_some() {
+        eprintln!("[server] serving static dir at /");
+    }
+    serve_with(listener, opts).await
 }
 
 /// Serve on a pre-bound listener. The listener owns the port; use
 /// `listener.local_addr()` before passing it in if you need to know it
 /// (e.g. ephemeral ports in tests).
 pub async fn serve(listener: tokio::net::TcpListener, rules: RuleSet) -> Result<()> {
-    let app_state = AppState::new(rules);
-    let app = Router::new()
-        .route("/", get(upgrade_default))
+    serve_with(listener, ServeOpts::new(rules)).await
+}
+
+/// Like [`serve`] but with the full options struct.
+pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> Result<()> {
+    let app_state = AppState::new(opts.rules);
+    let mut app = Router::new()
         .route("/ws", get(upgrade_default))
         .route("/ws/:room_id", get(upgrade_room))
         .route("/lobby", get(upgrade_lobby))
-        .route("/rooms", get(rooms_snapshot_json))
-        .with_state(app_state);
+        .route("/rooms", get(rooms_snapshot_json));
+
+    #[cfg(feature = "static-serve")]
+    {
+        if let Some(dir) = opts.static_dir.as_ref() {
+            // SPA fallback — `/local/xiangqi`, `/lobby`, `/play/foo` all
+            // serve `index.html` so client-side routing takes over. The
+            // explicit `/ws*`, `/lobby`, `/rooms` routes above still match
+            // first because axum tries routes before fallback.
+            //
+            // NOTE: enabling --static-dir means `GET /` serves index.html.
+            // Old `chess-tui --connect ws://host` (which hits `/`) must
+            // switch to `--connect ws://host/ws`.
+            use tower_http::services::{ServeDir, ServeFile};
+            let index = dir.join("index.html");
+            let serve_dir = ServeDir::new(dir).fallback(ServeFile::new(index));
+            app = app.fallback_service(serve_dir);
+        } else {
+            app = app.route("/", get(upgrade_default));
+        }
+    }
+    #[cfg(not(feature = "static-serve"))]
+    {
+        let _ = opts.static_dir;
+        app = app.route("/", get(upgrade_default));
+    }
+
+    let app = app.with_state(app_state);
     axum::serve(listener, app).await.context("axum::serve")?;
     Ok(())
 }

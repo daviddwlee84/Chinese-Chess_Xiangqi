@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project at a glance
 
-Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), and `chess-net` ships a multi-room websocket server (`chess-net-server`) with an in-TUI lobby browser, optional per-room password, and live `Rooms` push to lobby viewers. AI (`chess-ai`) and the web client (`chess-web`) are still stubs tracked in [`TODO.md`](TODO.md).
+Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), `chess-net` ships a multi-room websocket server (`chess-net-server`) with an in-TUI lobby browser, optional per-room password, and live `Rooms` push to lobby viewers, and `chess-web` (Leptos + Trunk + SVG-only rendering) is a single-page browser client that handles both local pass-and-play (pure WASM, no server) and online play (WS to chess-net). AI (`chess-ai`) is still a stub tracked in [`TODO.md`](TODO.md).
 
 For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
 
@@ -64,9 +64,18 @@ curl -s http://127.0.0.1:7878/rooms | jq                   # JSON room snapshot 
 # tmux harnesses
 make play-local                                           # 1 server + 2 --connect clients (default room)
 make play-lobby                                           # 1 server + 3 panes (2 lobby flow + 1 watcher)
+make play-web                                             # 1 server + Trunk dev-server (SPA on :8080)
 make play-local VARIANT=banqi                             # banqi
 make play-local PORT=9000 VARIANT=xiangqi                 # custom port
-make stop-local      / make stop-lobby                    # tear down each session
+make stop-local / make stop-lobby / make stop-web         # tear down each session
+
+# Web client (Leptos + Trunk + SVG)
+cargo install trunk                                       # one-time
+rustup target add wasm32-unknown-unknown                  # one-time
+make play-web                                             # full dev loop (server + Trunk hot-reload)
+make build-web                                            # trunk build --release → clients/chess-web/dist
+cargo run -p chess-net -- --port 7878 \
+    --static-dir clients/chess-web/dist xiangqi           # single-binary prod (chess-net serves dist/)
 ```
 
 TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
@@ -117,6 +126,14 @@ Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clo
 - **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
 
 - **`chess-net` is multi-room (ADR-0005).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room to whoever sets it first; subsequent joiners with the wrong password get `ServerMsg::Error{"bad password"}` before any `Hello`. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. The server (`server.rs` + `bin/server.rs`) holds an `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` plus a parallel `summaries` cache so `notify_lobby` can build a `Rooms` snapshot without holding any inner lock. Within a room, first connection = Red, second = Black, third+ still gets `room full`. `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / spectators / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
+
+- **chess-net has two opt-in features.** Default is `["server", "static-serve"]`. `default-features = false` exposes only the `protocol` module — that's how `chess-web` consumes the crate so axum/tokio don't end up in the WASM build. `static-serve` adds `tower-http` and the `--static-dir <path>` CLI flag (also reads `CHESS_NET_STATIC_DIR`); when set, `tower_http::services::ServeDir` is mounted as the route fallback so a single binary serves `clients/chess-web/dist/` + WS endpoints. **Enabling `--static-dir` re-routes `GET /` to serve `index.html`**, which means v1 chess-tui clients pointing at `ws://host` (no path) break — they must switch to `--connect ws://host/ws`. The default `make play-local` / `make play-lobby` flows do not enable `--static-dir`, so v1 back-compat is preserved unless you opt in.
+
+- **chess-web compiles natively as a tiny stub.** `clients/chess-web/Cargo.toml` puts leptos + gloo-net + web-sys in `[target.'cfg(target_arch = "wasm32")'.dependencies]`. The crate's `lib.rs` `#[cfg(target_arch = "wasm32")]`-gates `app`, `components`, `pages`, `ws`, `config`. Native (`cargo check --workspace`) sees only `orient`, `glyph`, `routes`, `state` — pure-logic modules with their own tests (15 of them). The leptos UI compiles only via `cargo build --target wasm32-unknown-unknown -p chess-web` or `trunk serve`. Don't put leptos imports inside the pure modules or the workspace native check breaks.
+
+- **chess-web duplicates `orient.rs` and `glyph.rs` from chess-tui verbatim.** This is intentional — promoting them into chess-core would violate ADR-0001 (presentation lives client-side). A shared crate (`clients/chess-client-shared`) is premature for two consumers; the duplicated tests catch drift in CI. See `backlog/promote-client-shared.md` for the trigger and recipe. If you edit one copy, edit the other.
+
+- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
 
 ## Where to put new work
 

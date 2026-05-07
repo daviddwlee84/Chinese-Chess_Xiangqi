@@ -18,10 +18,15 @@ path = "src/bin/server.rs"
 required-features = ["server"]
 
 [features]
-default = ["server"]
+default = ["server", "static-serve"]
 # Enables axum/tokio/clap and the `server` module. Off by default for
 # wasm32 consumers (chess-web) that only need the protocol types.
 server = ["dep:tokio", "dep:axum", "dep:futures-util", "dep:clap", "dep:anyhow"]
+# Enables `--static-dir` static-file serving (tower-http ServeDir). When the
+# binary is started with `--static-dir <path>`, chess-net serves that
+# directory as the route fallback. Useful for serving the chess-web `dist/`
+# build alongside the WS endpoints in production.
+static-serve = ["server", "dep:tower-http"]
 
 [dependencies]
 chess-core   = { path = "../chess-core" }
@@ -32,6 +37,7 @@ tokio        = { workspace = true, optional = true }
 axum         = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 clap         = { workspace = true, optional = true }
+tower-http   = { version = "0.5", features = ["fs"], optional = true }
 
 [dev-dependencies]
 tungstenite = { workspace = true }

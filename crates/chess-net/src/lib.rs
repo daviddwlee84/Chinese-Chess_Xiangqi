@@ -32,4 +32,4 @@ pub use protocol::{
     variant_label, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
 #[cfg(feature = "server")]
-pub use server::{run, serve};
+pub use server::{run, run_with, serve, serve_with, ServeOpts};
