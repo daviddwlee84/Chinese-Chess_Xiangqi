@@ -8,7 +8,7 @@ use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::{Piece, PieceKind, Side};
 use chess_core::rules::{HouseRules, RuleSet};
-use chess_core::state::{GameState, GameStatus};
+use chess_core::state::{GameState, GameStatus, WinReason};
 use chess_core::view::{PlayerView, VisibleCell};
 use chess_net::{ChatLine, ClientMsg, RoomSummary, ServerMsg};
 
@@ -407,6 +407,8 @@ pub struct AppState {
     /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
     /// at least one move played). Picker / game-over `q` skip the prompt.
     pub quit_confirm_open: bool,
+    /// True while the y/N resign-confirm dialog is shown.
+    pub resign_confirm_open: bool,
     /// Rect of the board widget last drawn (terminal coords). Used for
     /// mouse-click hit-testing. ui.rs writes this each frame.
     pub board_rect: Option<RectPx>,
@@ -518,6 +520,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             ..Self::fx_defaults()
@@ -540,6 +543,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             show_confetti: true,
@@ -574,6 +578,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             ..Self::fx_defaults()
@@ -604,6 +609,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             ..Self::fx_defaults()
@@ -623,6 +629,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             ..Self::fx_defaults()
@@ -648,6 +655,7 @@ impl AppState {
             help_open: false,
             rules_open: false,
             quit_confirm_open: false,
+            resign_confirm_open: false,
             board_rect: None,
             should_quit: false,
             ..Self::fx_defaults()
@@ -752,10 +760,18 @@ impl AppState {
         match action {
             Action::None => {}
             Action::ConfirmYes => {
-                self.quit_confirm_open = false;
-                self.should_quit = true;
+                if self.resign_confirm_open {
+                    self.resign_confirm_open = false;
+                    self.execute_resign();
+                } else {
+                    self.quit_confirm_open = false;
+                    self.should_quit = true;
+                }
             }
-            Action::ConfirmNo => self.quit_confirm_open = false,
+            Action::ConfirmNo => {
+                self.quit_confirm_open = false;
+                self.resign_confirm_open = false;
+            }
             Action::Quit => {
                 if self.is_game_in_progress() {
                     self.quit_confirm_open = true;
@@ -774,6 +790,7 @@ impl AppState {
                     _ => {}
                 }
             }
+            Action::Resign => self.dispatch_resign(),
             Action::NewGame => {
                 if matches!(self.screen, Screen::Net(_)) {
                     // In Net mode, 'n' requests a rematch via the server
@@ -1008,6 +1025,48 @@ impl AppState {
             | Screen::Lobby(_)
             | Screen::CreateRoom(_)
             | Screen::CustomRules(_) => false,
+        }
+    }
+
+    fn dispatch_resign(&mut self) {
+        match &self.screen {
+            Screen::Game(g) => {
+                if !matches!(g.state.status, GameStatus::Ongoing) {
+                    return;
+                }
+                self.resign_confirm_open = true;
+            }
+            Screen::Net(n) => {
+                let is_player = n.role.map(|r| r.is_player()).unwrap_or(false);
+                let is_ongoing = n.last_view.as_ref().is_some_and(|v| {
+                    matches!(v.status, GameStatus::Ongoing)
+                });
+                if !is_player || !is_ongoing {
+                    if let Screen::Net(n) = &mut self.screen {
+                        n.last_msg = if !is_player {
+                            Some("Spectators cannot resign.".into())
+                        } else {
+                            Some("No game in progress.".into())
+                        };
+                    }
+                    return;
+                }
+                self.resign_confirm_open = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn execute_resign(&mut self) {
+        match &mut self.screen {
+            Screen::Game(g) => {
+                let winner = g.state.side_to_move.opposite();
+                g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+            }
+            Screen::Net(n) => {
+                let _ = n.client.cmd_tx.send(ClientMsg::Resign);
+            }
+            _ => {}
         }
     }
 

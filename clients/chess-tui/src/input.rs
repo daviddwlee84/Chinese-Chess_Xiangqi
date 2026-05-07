@@ -69,6 +69,8 @@ pub enum Action {
     Cancel,
     Undo,
     Flip,
+    /// Resign the current game (asks for confirmation).
+    Resign,
     /// Open the chat input editor (Net mode, players only).
     ChatStart,
     /// Open the coordinate-input prompt (Game / Net, players only). The
@@ -149,6 +151,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('f') => Action::Flip,
             KeyCode::Char('n') => Action::NewGame,
             KeyCode::Char('g') => Action::CapturedSortToggle,
+            KeyCode::Char('s') => Action::Resign,
             KeyCode::Char('t') => Action::ChatStart,
             KeyCode::Char(':') => Action::CoordStart(CoordKind::Instant),
             KeyCode::Char('m') => Action::CoordStart(CoordKind::Live),

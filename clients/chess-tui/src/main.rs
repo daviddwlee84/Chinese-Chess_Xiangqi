@@ -283,10 +283,10 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut AppStat
         };
         if event::poll(Duration::from_millis(poll_ms))? {
             let mode = app.input_mode();
-            let quit_confirm = app.quit_confirm_open;
+            let any_confirm = app.quit_confirm_open || app.resign_confirm_open;
             let action = match event::read()? {
                 Event::Key(k) if k.kind == event::KeyEventKind::Press => {
-                    from_key(k, mode, quit_confirm)
+                    from_key(k, mode, any_confirm)
                 }
                 Event::Mouse(m) => from_mouse(m),
                 Event::Resize(_, _) => Action::None,

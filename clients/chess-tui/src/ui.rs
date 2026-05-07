@@ -48,6 +48,9 @@ pub fn draw(frame: &mut Frame, app: &mut AppState) {
     if app.quit_confirm_open {
         draw_quit_confirm_overlay(frame, area);
     }
+    if app.resign_confirm_open {
+        draw_resign_confirm_overlay(frame, area);
+    }
 }
 
 fn draw_picker(frame: &mut Frame, area: Rect, picker: &PickerView, style: Style) {
@@ -1070,9 +1073,9 @@ fn draw_sidebar(
             // nothing happens.
             let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
             let hint = if is_banqi {
-                "?=help, f=flip 暗, r=rules, : / m=coord, g=captured, n=new, q=quit"
+                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, n=new, q=quit"
             } else {
-                "?=help, r=rules, : / m=coord, g=captured, n=new, q=quit"
+                "?=help, s=resign, r=rules, : / m=coord, g=captured, n=new, q=quit"
             };
             lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
 
@@ -1265,9 +1268,9 @@ fn draw_sidebar_net(
         } else {
             let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
             let hint = if is_banqi {
-                "?=help, f=flip 暗, r=rules, t=chat, : / m=coord, g=captured, q=quit"
+                "?=help, f=flip 暗, s=resign, r=rules, t=chat, : / m=coord, g=captured, q=quit"
             } else {
-                "?=help, r=rules, t=chat, : / m=coord, g=captured, q=quit"
+                "?=help, s=resign, r=rules, t=chat, : / m=coord, g=captured, q=quit"
             };
             lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
 
@@ -1371,6 +1374,7 @@ const HELP_LINES_NET: &[&str] = &[
     ":               coord input (instant): type ICCS (h2e2 / flip a0), Enter sends",
     "m               coord input (live preview): same, with selected/cursor preview",
     "f               flip (banqi)",
+    "s               resign (投降) — concede to opponent (players only)",
     "n               request rematch (after game over; needs both sides)",
     "t               open chat input (players only; Enter sends, Esc cancels)",
     "g               toggle captured-pieces sort (time / rank)",
@@ -1890,6 +1894,37 @@ fn draw_quit_confirm_overlay(frame: &mut Frame, area: Rect) {
     frame.render_widget(para, overlay);
 }
 
+fn draw_resign_confirm_overlay(frame: &mut Frame, area: Rect) {
+    let w = 52u16;
+    let h = 7u16;
+    let pad_x = area.width.saturating_sub(w) / 2;
+    let pad_y = area.height.saturating_sub(h) / 2;
+    let overlay = Rect {
+        x: area.x + pad_x,
+        y: area.y + pad_y,
+        width: area.width.min(w),
+        height: area.height.min(h),
+    };
+    frame.render_widget(Clear, overlay);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Resign? 投降? ")
+        .border_style(TuiStyle::default().fg(Color::Red));
+    let lines = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Concede the game to your opponent?",
+            TuiStyle::default().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "  Press y to resign, anything else to keep playing.",
+            TuiStyle::default().fg(Color::Gray),
+        )),
+    ];
+    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    frame.render_widget(para, overlay);
+}
+
 const HELP_LINES: &[&str] = &[
     "h j k l / ←↓↑→  move cursor",
     "Enter / Space   select / commit",
@@ -1898,6 +1933,7 @@ const HELP_LINES: &[&str] = &[
     "m               coord input (live preview): same, with selected/cursor preview",
     "u               undo last move",
     "f               flip (banqi)",
+    "s               resign (投降) — concede to opponent",
     "n               new game (back to picker)",
     "g               toggle captured-pieces sort (time / rank)",
     "r               toggle rules overlay",
