@@ -474,15 +474,11 @@ impl AppState {
             return;
         }
         match action {
-            Action::PickerUp => {
-                if !l.rooms.is_empty() {
-                    l.cursor = (l.cursor + l.rooms.len() - 1) % l.rooms.len();
-                }
+            Action::PickerUp if !l.rooms.is_empty() => {
+                l.cursor = (l.cursor + l.rooms.len() - 1) % l.rooms.len();
             }
-            Action::PickerDown => {
-                if !l.rooms.is_empty() {
-                    l.cursor = (l.cursor + 1) % l.rooms.len();
-                }
+            Action::PickerDown if !l.rooms.is_empty() => {
+                l.cursor = (l.cursor + 1) % l.rooms.len();
             }
             Action::PickerSelect => {
                 if l.rooms.is_empty() {
@@ -627,25 +623,17 @@ impl AppState {
         let shape = g.state.board.shape();
         let (rows, cols) = orient::display_dims(shape);
         match action {
-            Action::CursorUp => {
-                if g.cursor.0 > 0 {
-                    g.cursor.0 -= 1;
-                }
+            Action::CursorUp if g.cursor.0 > 0 => {
+                g.cursor.0 -= 1;
             }
-            Action::CursorDown => {
-                if g.cursor.0 + 1 < rows {
-                    g.cursor.0 += 1;
-                }
+            Action::CursorDown if g.cursor.0 + 1 < rows => {
+                g.cursor.0 += 1;
             }
-            Action::CursorLeft => {
-                if g.cursor.1 > 0 {
-                    g.cursor.1 -= 1;
-                }
+            Action::CursorLeft if g.cursor.1 > 0 => {
+                g.cursor.1 -= 1;
             }
-            Action::CursorRight => {
-                if g.cursor.1 + 1 < cols {
-                    g.cursor.1 += 1;
-                }
+            Action::CursorRight if g.cursor.1 + 1 < cols => {
+                g.cursor.1 += 1;
             }
             Action::Cancel => {
                 g.selected = None;
@@ -777,25 +765,17 @@ impl AppState {
         let (rows, cols) = orient::display_dims(shape);
         let observer = n.observer.unwrap_or(Side::RED);
         match action {
-            Action::CursorUp => {
-                if n.cursor.0 > 0 {
-                    n.cursor.0 -= 1;
-                }
+            Action::CursorUp if n.cursor.0 > 0 => {
+                n.cursor.0 -= 1;
             }
-            Action::CursorDown => {
-                if n.cursor.0 + 1 < rows {
-                    n.cursor.0 += 1;
-                }
+            Action::CursorDown if n.cursor.0 + 1 < rows => {
+                n.cursor.0 += 1;
             }
-            Action::CursorLeft => {
-                if n.cursor.1 > 0 {
-                    n.cursor.1 -= 1;
-                }
+            Action::CursorLeft if n.cursor.1 > 0 => {
+                n.cursor.1 -= 1;
             }
-            Action::CursorRight => {
-                if n.cursor.1 + 1 < cols {
-                    n.cursor.1 += 1;
-                }
+            Action::CursorRight if n.cursor.1 + 1 < cols => {
+                n.cursor.1 += 1;
             }
             Action::Cancel => {
                 n.selected = None;
