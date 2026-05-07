@@ -150,6 +150,37 @@ fn horse_diagonal_dark_capture_against_higher_rank_succeeds() {
 }
 
 #[test]
+fn horse_diagonal_capture_can_chain_via_orthogonal_followup() {
+    // 馬斜 capture activates chain mode just like an orthogonal
+    // capture: after landing, if the horse has another legal capture
+    // (in any direction the engine allows), chain_lock stays set.
+    // Setup: horse at (1,1) takes Black general at (2,2) diagonally
+    // (rank-bypassed), then from (2,2) can orthogonally take a Black
+    // soldier at (2,3).
+    let rules = RuleSet::banqi_with_seed(HouseRules::HORSE_DIAGONAL | HouseRules::CHAIN_CAPTURE, 0);
+    let mut state = empty_banqi(rules);
+    let h = state.board.sq(File(1), Rank(1));
+    let diag = state.board.sq(File(2), Rank(2));
+    let next = state.board.sq(File(2), Rank(3));
+    place_revealed(&mut state.board, h, Side::RED, PieceKind::Horse);
+    place_revealed(&mut state.board, diag, Side::BLACK, PieceKind::General);
+    place_revealed(&mut state.board, next, Side::BLACK, PieceKind::Soldier);
+
+    let cap =
+        Move::Capture { from: h, to: diag, captured: Piece::new(Side::BLACK, PieceKind::General) };
+    state.make_move(&cap).unwrap();
+
+    assert_eq!(state.chain_lock, Some(diag), "馬斜 capture should chain when a follow-up exists");
+    let legal = state.legal_moves();
+    assert!(
+        legal
+            .iter()
+            .any(|m| matches!(m, Move::Capture { from, to, .. } if *from == diag && *to == next)),
+        "next-hop orthogonal capture must be in chain-mode legal_moves"
+    );
+}
+
+#[test]
 fn horse_orthogonal_dark_capture_still_obeys_rank() {
     // The rank bypass for diagonal must NOT leak into the horse's
     // orthogonal dark-capture. Soldier-rank horse vs hidden General

@@ -248,6 +248,67 @@ fn cannon_dark_capture_via_jump_round_trips() {
 }
 
 #[test]
+fn cannon_dark_capture_via_jump_activates_chain_lock_when_more_captures_available() {
+    // After 炮暗吃-via-jump lands the cannon on the target square,
+    // chain mode should activate if the cannon can keep capturing.
+    // Setup: Red cannon at a0, Red soldier screen at a1, hidden tile
+    // at a2 (will be captured), Red soldier screen at a4, revealed
+    // Black piece at a5 (next chain target — still needs a screen for
+    // the cannon at a2). After the dark-capture, cannon sits at a2;
+    // a4 is the screen, a5 is the next target — cannon should chain.
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(
+        HouseRules::CHAIN_CAPTURE | HouseRules::DARK_CAPTURE,
+        0,
+    ));
+    let c = state.board.sq(File(0), Rank(0));
+    let s1 = state.board.sq(File(0), Rank(1));
+    let target = state.board.sq(File(0), Rank(2));
+    let s2 = state.board.sq(File(0), Rank(4));
+    let next = state.board.sq(File(0), Rank(5));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_revealed(&mut state.board, s1, Side::RED, PieceKind::Soldier);
+    place_hidden(&mut state.board, target, Side::BLACK, PieceKind::Horse);
+    place_revealed(&mut state.board, s2, Side::RED, PieceKind::Soldier);
+    place_revealed(&mut state.board, next, Side::BLACK, PieceKind::Horse);
+
+    let mv = Move::DarkCapture { from: c, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+
+    assert_eq!(state.chain_lock, Some(target), "炮暗吃 should chain into the next jump");
+    assert_eq!(state.side_to_move, Side::RED, "turn does NOT advance during chain mode");
+    let legal = state.legal_moves();
+    assert!(
+        legal.iter().any(
+            |m| matches!(m, Move::CannonJump { from, to, .. } if *from == target && *to == next)
+        ),
+        "the next-hop CannonJump must be in legal_moves filtered by chain_lock"
+    );
+}
+
+#[test]
+fn cannon_dark_capture_via_jump_clears_chain_lock_when_no_more_captures() {
+    // Same setup as the previous test minus the second screen — after
+    // the dark-capture the cannon sits at a2 with no further jumps,
+    // so chain mode does NOT activate.
+    let mut state = empty_banqi(RuleSet::banqi_with_seed(
+        HouseRules::CHAIN_CAPTURE | HouseRules::DARK_CAPTURE,
+        0,
+    ));
+    let c = state.board.sq(File(0), Rank(0));
+    let s1 = state.board.sq(File(0), Rank(1));
+    let target = state.board.sq(File(0), Rank(2));
+    place_revealed(&mut state.board, c, Side::RED, PieceKind::Cannon);
+    place_revealed(&mut state.board, s1, Side::RED, PieceKind::Soldier);
+    place_hidden(&mut state.board, target, Side::BLACK, PieceKind::Horse);
+
+    let mv = Move::DarkCapture { from: c, to: target, revealed: None, attacker: None };
+    state.make_move(&mv).unwrap();
+
+    assert_eq!(state.chain_lock, None, "no further captures → chain mode does not activate");
+    assert_eq!(state.side_to_move, Side::BLACK, "turn advances");
+}
+
+#[test]
 fn chariot_rush_emits_dark_capture_against_hidden_blocker_with_gap() {
     let mut state = empty_banqi(RuleSet::banqi_with_seed(
         HouseRules::CHARIOT_RUSH | HouseRules::DARK_CAPTURE,

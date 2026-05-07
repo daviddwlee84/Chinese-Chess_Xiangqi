@@ -1060,10 +1060,30 @@ fn draw_sidebar(
                 Span::styled(format!("{}_", ci.buf), TuiStyle::default().fg(Color::Yellow)),
             ]));
         } else {
-            lines.push(Line::from(Span::styled(
-                "?=help, r=rules, : / m=coord, n=new, q=quit",
-                TuiStyle::default().fg(Color::DarkGray),
-            )));
+            // Banqi adds an `f=flip` hint (and an inline 暗 reminder
+            // when the cursor is on a face-down tile) so newcomers
+            // don't get stuck pressing Enter on 暗 wondering why
+            // nothing happens.
+            let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
+            let hint = if is_banqi {
+                "?=help, f=flip 暗, r=rules, : / m=coord, g=captured, n=new, q=quit"
+            } else {
+                "?=help, r=rules, : / m=coord, g=captured, n=new, q=quit"
+            };
+            lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
+
+            if is_banqi {
+                let cursor_sq =
+                    orient::square_at_display(g.cursor.0, g.cursor.1, view.observer, view.shape);
+                if cursor_sq
+                    .is_some_and(|sq| matches!(view.cells[sq.0 as usize], VisibleCell::Hidden))
+                {
+                    lines.push(Line::from(Span::styled(
+                        "  ↑ press f to flip this 暗 tile",
+                        TuiStyle::default().fg(Color::Yellow),
+                    )));
+                }
+            }
         }
     }
 
@@ -1239,10 +1259,27 @@ fn draw_sidebar_net(
                 Span::styled(format!("{}_", ci.buf), TuiStyle::default().fg(Color::Yellow)),
             ]));
         } else {
-            lines.push(Line::from(Span::styled(
-                "?=help, r=rules, t=chat, : / m=coord, q=quit",
-                TuiStyle::default().fg(Color::DarkGray),
-            )));
+            let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
+            let hint = if is_banqi {
+                "?=help, f=flip 暗, r=rules, t=chat, : / m=coord, g=captured, q=quit"
+            } else {
+                "?=help, r=rules, t=chat, : / m=coord, g=captured, q=quit"
+            };
+            lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
+
+            if is_banqi {
+                let observer = n.role.map(|r| r.observer()).unwrap_or(Side::RED);
+                let cursor_sq =
+                    orient::square_at_display(n.cursor.0, n.cursor.1, observer, view.shape);
+                if cursor_sq
+                    .is_some_and(|sq| matches!(view.cells[sq.0 as usize], VisibleCell::Hidden))
+                {
+                    lines.push(Line::from(Span::styled(
+                        "  ↑ press f to flip this 暗 tile",
+                        TuiStyle::default().fg(Color::Yellow),
+                    )));
+                }
+            }
         }
     }
 

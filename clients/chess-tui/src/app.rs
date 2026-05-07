@@ -1854,4 +1854,75 @@ mod tests {
         assert!(g.coord_input.is_none());
         assert_eq!(g.cursor, (3, 3));
     }
+
+    // --- CapturedSort + split_and_sort_captured -----------------------
+    //
+    // The TUI carries its own copy of these helpers (the chess-web
+    // crate has the canonical version under `crate::state`). Tests
+    // here lock in the contract so the two copies don't drift —
+    // promoting them into a shared crate is tracked in the backlog.
+
+    #[test]
+    fn captured_sort_toggle_round_trips() {
+        assert_eq!(CapturedSort::Time.toggled(), CapturedSort::Rank);
+        assert_eq!(CapturedSort::Rank.toggled(), CapturedSort::Time);
+    }
+
+    #[test]
+    fn split_and_sort_captured_groups_by_side_and_keeps_chronology_under_time() {
+        let chronological = vec![
+            Piece::new(Side::BLACK, PieceKind::Soldier),
+            Piece::new(Side::RED, PieceKind::Cannon),
+            Piece::new(Side::BLACK, PieceKind::Horse),
+            Piece::new(Side::RED, PieceKind::Chariot),
+        ];
+        let (red, black) = split_and_sort_captured(&chronological, CapturedSort::Time);
+        assert_eq!(
+            red.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::Cannon, PieceKind::Chariot]
+        );
+        assert_eq!(
+            black.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::Soldier, PieceKind::Horse]
+        );
+    }
+
+    #[test]
+    fn split_and_sort_captured_orders_largest_first_under_rank() {
+        let chronological = vec![
+            Piece::new(Side::RED, PieceKind::Soldier),
+            Piece::new(Side::RED, PieceKind::General),
+            Piece::new(Side::RED, PieceKind::Horse),
+            Piece::new(Side::RED, PieceKind::Chariot),
+        ];
+        let (red, _black) = split_and_sort_captured(&chronological, CapturedSort::Rank);
+        assert_eq!(
+            red.iter().map(|p| p.kind).collect::<Vec<_>>(),
+            vec![PieceKind::General, PieceKind::Chariot, PieceKind::Horse, PieceKind::Soldier]
+        );
+    }
+
+    #[test]
+    fn captured_sort_toggle_action_flips_app_state() {
+        let mut app = fresh_xiangqi();
+        assert_eq!(app.captured_sort, CapturedSort::Time, "default is Time");
+        app.dispatch(Action::CapturedSortToggle);
+        assert_eq!(app.captured_sort, CapturedSort::Rank);
+        app.dispatch(Action::CapturedSortToggle);
+        assert_eq!(app.captured_sort, CapturedSort::Time);
+    }
+
+    #[test]
+    fn captured_sort_preserved_across_screen_replace() {
+        let mut app = fresh_xiangqi();
+        app.captured_sort = CapturedSort::Rank;
+        // Going back to the picker (NewGame Action) goes through
+        // `replace_preserving_prefs`. The sort must survive.
+        app.dispatch(Action::NewGame);
+        assert_eq!(
+            app.captured_sort,
+            CapturedSort::Rank,
+            "captured_sort must survive screen transitions"
+        );
+    }
 }
