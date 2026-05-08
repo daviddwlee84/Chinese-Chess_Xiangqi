@@ -16,6 +16,7 @@ use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
+use crate::eval::material_king_safety_pst_v3::MaterialKingSafetyPstV3;
 use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
@@ -57,6 +58,23 @@ impl Engine for NegamaxV2 {
     }
     fn name(&self) -> &'static str {
         "negamax-v2"
+    }
+}
+
+/// v3 (2026-05-09): same search + PSTs as v2, but the evaluator gives
+/// the General a 50_000 cp value (instead of 0) so casual-rules games
+/// no longer let the AI walk into 1-ply mates by ignoring the King.
+/// Default engine since 2026-05-09 — see
+/// `pitfalls/casual-xiangqi-king-blindness.md`.
+#[derive(Default, Clone, Copy, Debug)]
+pub struct NegamaxV3;
+
+impl Engine for NegamaxV3 {
+    fn choose_move(&self, state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> {
+        run(state, opts, &MaterialKingSafetyPstV3, "negamax-v3")
+    }
+    fn name(&self) -> &'static str {
+        "negamax-v3"
     }
 }
 

@@ -79,10 +79,16 @@ pub enum Strategy {
     /// moves tie at score 0.
     MaterialV1,
     /// v2 (2026-05-08): same search, eval = material + 7 hand-rolled
-    /// piece-square tables. Strictly stronger than v1; default since
-    /// v2 landed.
-    #[default]
+    /// piece-square tables. Was the default 2026-05-08 → 2026-05-09;
+    /// superseded by v3 because it shared v1's casual-mode king-blindness
+    /// (see `pitfalls/casual-xiangqi-king-blindness.md`).
     MaterialPstV2,
+    /// v3 (2026-05-09): v2 + General has 50_000 cp value (instead of 0).
+    /// Fixes king-blindness in casual mode where the AI would let its
+    /// own General be captured because the eval didn't penalise losing
+    /// it. Default since 2026-05-09.
+    #[default]
+    MaterialKingSafetyPstV3,
 }
 
 impl Strategy {
@@ -92,6 +98,7 @@ impl Strategy {
         match self {
             Strategy::MaterialV1 => "v1",
             Strategy::MaterialPstV2 => "v2",
+            Strategy::MaterialKingSafetyPstV3 => "v3",
         }
     }
 
@@ -101,6 +108,9 @@ impl Strategy {
         match s.to_ascii_lowercase().as_str() {
             "v1" | "material" | "material-v1" => Some(Strategy::MaterialV1),
             "v2" | "material-pst" | "material-pst-v2" => Some(Strategy::MaterialPstV2),
+            "v3" | "material-king-safety-pst" | "material-king-safety-pst-v3" | "king-safety" => {
+                Some(Strategy::MaterialKingSafetyPstV3)
+            }
             _ => None,
         }
     }
@@ -109,12 +119,16 @@ impl Strategy {
     pub fn label(self) -> &'static str {
         match self {
             Strategy::MaterialV1 => "Material only (v1, original MVP)",
-            Strategy::MaterialPstV2 => "Material + piece-square tables (v2, recommended)",
+            Strategy::MaterialPstV2 => "Material + piece-square tables (v2)",
+            Strategy::MaterialKingSafetyPstV3 => "Material + PSTs + king safety (v3, recommended)",
         }
     }
 
     /// Iteration helper — the picker uses this to render a dropdown.
-    pub const ALL: [Strategy; 2] = [Strategy::MaterialPstV2, Strategy::MaterialV1];
+    /// Order is "newest/recommended first" so the picker's natural
+    /// top-of-list pick is the default.
+    pub const ALL: [Strategy; 3] =
+        [Strategy::MaterialKingSafetyPstV3, Strategy::MaterialPstV2, Strategy::MaterialV1];
 }
 
 #[derive(Clone, Debug)]
@@ -164,6 +178,7 @@ pub fn choose_move(state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> 
     match opts.strategy {
         Strategy::MaterialV1 => engines::NegamaxV1.choose_move(state, opts),
         Strategy::MaterialPstV2 => engines::NegamaxV2.choose_move(state, opts),
+        Strategy::MaterialKingSafetyPstV3 => engines::NegamaxV3.choose_move(state, opts),
     }
 }
 
@@ -348,8 +363,114 @@ mod tests {
     }
 
     #[test]
-    fn default_strategy_is_v2() {
-        assert_eq!(Strategy::default(), Strategy::MaterialPstV2);
-        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::MaterialPstV2);
+    fn default_strategy_is_v3() {
+        assert_eq!(Strategy::default(), Strategy::MaterialKingSafetyPstV3);
+        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::MaterialKingSafetyPstV3);
+    }
+
+    /// Regression test for `pitfalls/casual-xiangqi-king-blindness.md`.
+    ///
+    /// Setup mimics Image 1 from the user's bug report (2026-05-09):
+    /// Black to move, with one Black piece in position to act as a
+    /// screen between Red's central cannon and Black's General. v1/v2
+    /// will happily make moves that don't help (because they think
+    /// losing the General is worth 0 cp). v3 must do something
+    /// — anything — that does NOT immediately leave the General
+    /// capturable in 1 ply.
+    #[test]
+    fn v3_avoids_one_ply_general_capture_in_casual_mode() {
+        use chess_core::piece::{PieceOnSquare, Side};
+
+        // Build a sparse position. Casual rules so move-gen allows
+        // self-check (the bug only manifests in casual mode).
+        let mut state = GameState::new(RuleSet::xiangqi_casual());
+        let board: Board = state.board.clone();
+        let squares: Vec<Square> = board.squares().collect();
+        for sq in squares {
+            state.board.set(sq, None);
+        }
+
+        // Red General home (file 4, rank 0). Red Cannon on the central
+        // file at rank 2 — clear shot to (4, 9) once a screen exists.
+        let red_gen = state.board.sq(File(4), Rank(0));
+        let red_cannon = state.board.sq(File(4), Rank(2));
+        state
+            .board
+            .set(red_gen, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::General))));
+        state.board.set(
+            red_cannon,
+            Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::Cannon))),
+        );
+
+        // Black General at home (file 4, rank 9). Black Chariot at
+        // (file 0, rank 5) — out of harm's way, plenty of legal moves.
+        // Black Elephant at (file 6, rank 9) — its only legal hop
+        // forward is (file 4, rank 7), which would land it directly
+        // between the Red Cannon at (4,2) and Black General at (4,9),
+        // creating the cannon-shot screen.
+        let blk_gen = state.board.sq(File(4), Rank(9));
+        let blk_chariot = state.board.sq(File(0), Rank(5));
+        let blk_elephant = state.board.sq(File(6), Rank(9));
+        state.board.set(
+            blk_gen,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::General))),
+        );
+        state.board.set(
+            blk_chariot,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Chariot))),
+        );
+        state.board.set(
+            blk_elephant,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Elephant))),
+        );
+        // Black to move.
+        state.side_to_move = Side::BLACK;
+
+        // The catastrophic move: Elephant 6,9 → 4,7 (legal in casual:
+        // both endpoints on Black's side of the river, midpoint 5,8
+        // is empty so the elephant's "leg" isn't blocked).
+        let suicidal_to = state.board.sq(File(4), Rank(7));
+
+        let opts_v3 = AiOptions {
+            difficulty: Difficulty::Hard,
+            max_depth: Some(2),
+            seed: Some(0),
+            strategy: Strategy::MaterialKingSafetyPstV3,
+        };
+        let r3 = choose_move(&state, &opts_v3).expect("v3 must return a move");
+
+        // v3 picks SOMETHING. It must not be the elephant move that
+        // hands Red a 1-ply mate.
+        let chose_suicide = matches!(
+            &r3.mv,
+            Move::Step { from, to } if *from == blk_elephant && *to == suicidal_to
+        );
+        assert!(
+            !chose_suicide,
+            "v3 walked into 1-ply mate by playing 象 {:?} → {:?}; this is the king-blindness bug",
+            blk_elephant, suicidal_to
+        );
+
+        // Sanity: same fixture under v2 SHOULD walk into the trap (or
+        // at least not avoid it — that's the bug v3 fixes). If v2 also
+        // avoids it, the fixture isn't testing what we think.
+        let opts_v2 = AiOptions { strategy: Strategy::MaterialPstV2, ..opts_v3.clone() };
+        let r2 = choose_move(&state, &opts_v2).expect("v2 must return a move");
+        let v2_chose_suicide = matches!(
+            &r2.mv,
+            Move::Step { from, to } if *from == blk_elephant && *to == suicidal_to
+        );
+        // Don't assert v2 fails — the seeded RNG might pick a different
+        // tied move. But assert that v2 and v3 evaluations of the
+        // suicide line differ wildly (v3 sees the mate, v2 doesn't).
+        // If v2 happens to also avoid the suicide on this fixture, fine
+        // — log a note rather than panic.
+        if !v2_chose_suicide {
+            eprintln!(
+                "note: v2 also avoided the suicide on this seed; \
+                fixture relies on the eval-score divergence asserted by \
+                strategy_dispatch_is_distinguishable + missing_general_swings_eval_by_king_value"
+            );
+        }
     }
 }

@@ -25,14 +25,22 @@ The strategy-vs-RL/AlphaZero/Pikafish decision is in
 - ✅ **v1 — `Strategy::MaterialV1`** (2026-05-08).
   Negamax + α-β + capture-first + material-only eval. See
   [`docs/ai/v1-material.md`](../docs/ai/v1-material.md).
-- ✅ **v2 — `Strategy::MaterialPstV2`** (2026-05-08, default).
+- ✅ **v2 — `Strategy::MaterialPstV2`** (2026-05-08).
   Same search, eval extends v1 with 7 hand-rolled piece-square tables.
   Strictly stronger than v1 at zero extra node cost. See
   [`docs/ai/v2-material-pst.md`](../docs/ai/v2-material-pst.md).
+  Was the default 2026-05-08 → 2026-05-09; superseded by v3 because it
+  shared v1's casual-mode king-blindness — see
+  [`pitfalls/casual-xiangqi-king-blindness.md`](../pitfalls/casual-xiangqi-king-blindness.md).
+- ✅ **v3 — `Strategy::MaterialKingSafetyPstV3`** (2026-05-09, default).
+  v2 + General has 50_000 cp value (instead of 0). Fixes the casual-mode
+  king-blindness bug where the AI would walk into 1-ply general-capture
+  mates because the eval didn't penalise losing the General. See
+  [`docs/ai/v3-king-safety-pst.md`](../docs/ai/v3-king-safety-pst.md).
 
 ## Roadmap
 
-### v3 — `Strategy::NegamaxIdTtV3` (next)
+### v4 — `Strategy::NegamaxIdTtV4` (next)
 
 Iterative deepening + Zobrist transposition table.
 
@@ -45,30 +53,30 @@ Iterative deepening + Zobrist transposition table.
     `chess-core`, not `chess-ai`, so the repetition detector can share).
   - Add a small TT (~64 MB) keyed by Zobrist, storing
     `{score, depth, bound, best_move}`.
-  - Iterative deepening loop in `engines/negamax_id_tt_v3.rs`:
+  - Iterative deepening loop in `engines/negamax_id_tt_v4.rs`:
     deepen until `Difficulty::default_depth` or time budget hits.
   - Use TT best-move as primary move ordering hint (PV-first).
 - **Risk**: TT memory in WASM. 64 MB is fine for desktop browsers but
   noticeable on mobile. Cap at 16 MB for WASM target via a `cfg`.
 
-### v4 — `Strategy::NegamaxQuiescenceV4`
+### v5 — `Strategy::NegamaxQuiescenceV5`
 
 Quiescence search + MVV-LVA capture ordering.
 
-- **Why**: stops horizon-effect blunders v2/v3 still make on capture
+- **Why**: stops horizon-effect blunders v3/v4 still make on capture
   exchanges. The single biggest source of "AI gave up its chariot for a
   pawn" complaints.
 - **Tasks**:
   - Capture-only search at horizon nodes until quiet.
   - Replace `is_capture` flat ordering with MVV-LVA
     (most-valuable-victim, least-valuable-attacker) → better α-β cutoffs.
-- **Depends on**: v3 (TT).
+- **Depends on**: v4 (TT).
 
-### v5 — `Strategy::NegamaxWebWorkerV5`
+### v6 — `Strategy::NegamaxWebWorkerV6`
 
-Same engine as v3/v4, but hosted in a Web Worker.
+Same engine as v4/v5, but hosted in a Web Worker.
 
-- **Why**: by v4 the node budget will routinely hit 250k+ on Hard, and
+- **Why**: by v5 the node budget will routinely hit 250k+ on Hard, and
   the main-thread search will start dropping animation frames. Move it
   off the UI thread.
 - **Notes**:
@@ -79,7 +87,7 @@ Same engine as v3/v4, but hosted in a Web Worker.
     `clients/chess-web/src/pages/local.rs` is enough — ignore stale
     worker results.
 
-### v6 — `Strategy::ISMCTSv6` (banqi only)
+### v7 — `Strategy::ISMCTSv7` (banqi only)
 
 Information-set Monte Carlo Tree Search for banqi.
 
@@ -87,16 +95,16 @@ Information-set Monte Carlo Tree Search for banqi.
   resolution would let the engine peek at face-down piece identities
   (a search bug, not a feature). ISMCTS samples plausible
   determinisations and runs MCTS on each.
-- **Effort**: research-heavy. Distinct algorithm class from v1-v5.
+- **Effort**: research-heavy. Distinct algorithm class from v1-v6.
 - **Tasks**:
   - Rework `Move::Reveal { revealed: None }` handling so the AI never
     sees the flipped piece during simulation.
   - PUCT / UCB1 selection.
   - Determinisation sampler with the right prior (count-based on still-
     unflipped tiles).
-- **Standalone**: doesn't depend on v3-v5; can ship in parallel.
+- **Standalone**: doesn't depend on v4-v6; can ship in parallel.
 
-### v7 — `Strategy::PikafishBackendV7` (optional)
+### v8 — `Strategy::PikafishBackendV8` (optional)
 
 Pikafish UCI backend — gated behind a Cargo feature.
 

@@ -471,6 +471,17 @@ mod tests {
     }
 
     #[test]
+    fn xiangqi_engine_v3_alias_parses() {
+        let p = parse_local_rules(from_pairs(&[
+            ("mode", "ai"),
+            ("engine", "material-king-safety-pst"),
+        ]));
+        assert_eq!(p.ai_strategy, Strategy::MaterialKingSafetyPstV3);
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "king-safety")]));
+        assert_eq!(p.ai_strategy, Strategy::MaterialKingSafetyPstV3);
+    }
+
+    #[test]
     fn xiangqi_engine_unknown_token_falls_back_to_default() {
         let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "v999")]));
         assert_eq!(p.ai_strategy, Strategy::default());

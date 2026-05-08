@@ -121,10 +121,10 @@ enum Cmd {
         /// AI difficulty.
         #[arg(long = "ai-difficulty", value_enum, default_value_t = DifficultyArg::Normal)]
         ai_difficulty: DifficultyArg,
-        /// Engine version. v2 (material + piece-square tables) is the
-        /// default and recommended; v1 (material only) is preserved for
-        /// regression / comparison.
-        #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V2)]
+        /// Engine version. v3 (material + PSTs + king safety) is the
+        /// default and recommended; v2 (no king safety) and v1 (material
+        /// only) are preserved for regression / comparison.
+        #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V3)]
         ai_engine: EngineArg,
     },
     /// Banqi (4×8 face-down).
@@ -188,9 +188,12 @@ enum EngineArg {
     /// Material-only eval (original 2026-05-08 MVP). Plays a
     /// random-feeling opening.
     V1,
-    /// Material + piece-square tables (recommended). Plays principled
-    /// openings; same depth, no extra cost.
+    /// Material + piece-square tables. Plays principled openings;
+    /// can lose its general in casual mode (king-blindness bug).
     V2,
+    /// Material + PSTs + king safety (recommended). Defends against
+    /// 1-ply mates that v1/v2 miss in casual mode.
+    V3,
 }
 
 impl EngineArg {
@@ -198,6 +201,7 @@ impl EngineArg {
         match self {
             EngineArg::V1 => Strategy::MaterialV1,
             EngineArg::V2 => Strategy::MaterialPstV2,
+            EngineArg::V3 => Strategy::MaterialKingSafetyPstV3,
         }
     }
 }

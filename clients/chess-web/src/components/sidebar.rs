@@ -11,6 +11,7 @@ use chess_core::state::{DrawReason, GameStatus, WinReason};
 use chess_core::view::PlayerView;
 use leptos::*;
 
+use crate::components::move_history::{HistoryEntry, MoveHistory};
 use crate::glyph::{self, Style};
 use crate::prefs::Prefs;
 use crate::routes::app_href;
@@ -22,6 +23,11 @@ pub fn Sidebar(
     #[prop(into)] on_new_game: Callback<()>,
     #[prop(into)] on_undo: Callback<()>,
     #[prop(default = false)] wip: bool,
+    /// Optional move history (local mode supplies this; net mode passes
+    /// `None` because `PlayerView` doesn't carry history yet — that's
+    /// a future protocol bump).
+    #[prop(optional, into)]
+    history: Option<Signal<Vec<HistoryEntry>>>,
 ) -> impl IntoView {
     let style = Style::Cjk;
     let variant_label = match variant {
@@ -106,6 +112,7 @@ pub fn Sidebar(
                 <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
                 <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
             </div>
+            {history.map(|h| view! { <MoveHistory entries=h/> })}
             <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
             <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
         </aside>

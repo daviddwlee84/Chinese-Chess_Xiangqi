@@ -12,6 +12,7 @@
 
 use chess_core::state::GameState;
 
+pub mod material_king_safety_pst_v3;
 pub mod material_pst_v2;
 pub mod material_v1;
 

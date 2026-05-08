@@ -76,6 +76,10 @@ pub enum Action {
     /// Open the coordinate-input prompt (Game / Net, players only). The
     /// kind picks instant-vs-live preview behaviour.
     CoordStart(CoordKind),
+    /// Toggle the move-history sidebar panel (Game / Net mode).
+    /// Bound to uppercase `H` so the lowercase vim-cursor `h` (left)
+    /// stays untouched.
+    HistoryToggle,
     /// Mouse click in terminal coords. The app resolves it against the board
     /// rect captured by the most recent draw().
     Click {
@@ -153,6 +157,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('g') => Action::CapturedSortToggle,
             KeyCode::Char('s') => Action::Resign,
             KeyCode::Char('t') => Action::ChatStart,
+            KeyCode::Char('H') => Action::HistoryToggle,
             KeyCode::Char(':') => Action::CoordStart(CoordKind::Instant),
             KeyCode::Char('m') => Action::CoordStart(CoordKind::Live),
             _ => Action::None,

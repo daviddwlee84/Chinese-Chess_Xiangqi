@@ -10,6 +10,7 @@ use leptos_router::{use_params_map, use_query_map};
 use crate::components::board::Board;
 use crate::components::captured::CapturedStrip;
 use crate::components::end_overlay::EndOverlay;
+use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
 use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
@@ -330,6 +331,25 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
 
     let chain_active = Signal::derive(move || chain_locked_signal.get().is_some());
 
+    // Derive a pre-encoded history list for the sidebar's MoveHistory
+    // panel. ICCS notation is short and grep-friendly for debugging
+    // (user takes a screenshot, pastes the move list — much easier than
+    // describing positions). Recomputes on every state change because
+    // it depends on `state` directly, not just `view`.
+    let history_signal: Signal<Vec<HistoryEntry>> = Signal::derive(move || {
+        state.with(|s| {
+            s.history
+                .iter()
+                .enumerate()
+                .map(|(i, rec)| HistoryEntry {
+                    ply: i + 1,
+                    side: rec.mover,
+                    text: chess_core::notation::iccs::encode_move(&s.board, &rec.the_move),
+                })
+                .collect()
+        })
+    });
+
     view! {
         <section class="game-page">
             <div class="board-pane">
@@ -379,6 +399,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 on_new_game=on_new_game
                 on_undo=on_undo
                 wip=wip
+                history=history_signal
             />
         </section>
     }

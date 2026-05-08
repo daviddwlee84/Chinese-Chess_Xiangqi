@@ -126,6 +126,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     );
     app.board_rect = rect;
     let captured_sort = app.captured_sort;
+    let history_open = app.history_open;
     draw_sidebar(
         frame,
         chunks[1],
@@ -135,6 +136,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         help_open,
         show_check_banner,
         captured_sort,
+        history_open,
     );
 
     // Confetti + endgame banner. The board area is `chunks[0]`. We do this
@@ -950,6 +952,63 @@ fn captured_row(
     Line::from(spans)
 }
 
+/// Render the move-history panel: header + last `MAX_HISTORY_LINES`
+/// plies in ICCS notation, side-coloured. Newest at the bottom (matches
+/// reading order). Toggled via `H` and gated by `app.history_open`.
+///
+/// Cap to a window so a 200-ply game doesn't blow up the sidebar; older
+/// plies are dropped (the user can grow the panel by reading the help
+/// or, in a future round, scrolling).
+fn push_history_lines(lines: &mut Vec<Line<'static>>, g: &GameView, _style: Style) {
+    use chess_core::piece::Side;
+    const MAX_HISTORY_LINES: usize = 24;
+
+    let total = g.state.history.len();
+    let header = format!("History 棋譜 ({} plies):", total);
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(header, TuiStyle::default().fg(Color::DarkGray))));
+
+    if total == 0 {
+        lines.push(Line::from(Span::styled(
+            "  (no moves yet)",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+        return;
+    }
+
+    let start = total.saturating_sub(MAX_HISTORY_LINES);
+    if start > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("  … {} earlier plies omitted", start),
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+    for (i, rec) in g.state.history.iter().enumerate().skip(start) {
+        let n = i + 1;
+        let side_label = match rec.mover {
+            Side::RED => "紅",
+            Side::BLACK => "黑",
+            _ => "綠",
+        };
+        let side_color = match rec.mover {
+            Side::RED => Color::Red,
+            Side::BLACK => Color::Gray,
+            _ => Color::Green,
+        };
+        let text = chess_core::notation::iccs::encode_move(&g.state.board, &rec.the_move);
+        lines.push(Line::from(vec![
+            Span::styled(format!(" {:>3}.", n), TuiStyle::default().fg(Color::DarkGray)),
+            Span::raw(" "),
+            Span::styled(
+                side_label,
+                TuiStyle::default().fg(side_color).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::raw(text),
+        ]));
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_sidebar(
     frame: &mut Frame,
@@ -960,6 +1019,7 @@ fn draw_sidebar(
     help_open: bool,
     show_check_banner: bool,
     captured_sort: CapturedSort,
+    history_open: bool,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
@@ -1045,6 +1105,10 @@ fn draw_sidebar(
 
     push_captured_lines(&mut lines, &view.captured, captured_sort, style);
 
+    if history_open {
+        push_history_lines(&mut lines, g, style);
+    }
+
     lines.push(Line::from(""));
     if let Some(msg) = &g.last_msg {
         lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
@@ -1073,9 +1137,9 @@ fn draw_sidebar(
             // nothing happens.
             let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
             let hint = if is_banqi {
-                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, n=new, q=quit"
+                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, H=history, n=new, q=quit"
             } else {
-                "?=help, s=resign, r=rules, : / m=coord, g=captured, n=new, q=quit"
+                "?=help, s=resign, r=rules, : / m=coord, g=captured, H=history, n=new, q=quit"
             };
             lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
 
@@ -1936,6 +2000,7 @@ const HELP_LINES: &[&str] = &[
     "s               resign (投降) — concede to opponent",
     "n               new game (back to picker)",
     "g               toggle captured-pieces sort (time / rank)",
+    "H               toggle move-history panel (sidebar)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",

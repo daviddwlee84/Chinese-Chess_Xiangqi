@@ -434,6 +434,9 @@ pub struct AppState {
     pub observer: Side,
     pub help_open: bool,
     pub rules_open: bool,
+    /// User toggle: show the move-history panel in the sidebar.
+    /// Default false (saves screen real estate); toggled by `H`.
+    pub history_open: bool,
     /// True while the y/N quit-confirm dialog is shown. Set when the user
     /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
     /// at least one move played). Picker / game-over `q` skip the prompt.
@@ -573,6 +576,7 @@ impl AppState {
             observer: Side::RED,
             help_open: false,
             rules_open: false,
+            history_open: false,
             quit_confirm_open: false,
             resign_confirm_open: false,
             board_rect: None,
@@ -775,10 +779,12 @@ impl AppState {
         let confetti = self.show_confetti;
         let check = self.show_check_banner;
         let captured_sort = self.captured_sort;
+        let history_open = self.history_open;
         *self = fresh;
         self.show_confetti = confetti;
         self.show_check_banner = check;
         self.captured_sort = captured_sort;
+        self.history_open = history_open;
     }
 
     /// Drain ws events from the worker thread(s) and apply them to the
@@ -851,6 +857,18 @@ impl AppState {
             }
             Action::HelpToggle => self.help_open = !self.help_open,
             Action::RulesToggle => self.rules_open = !self.rules_open,
+            Action::HistoryToggle => {
+                self.history_open = !self.history_open;
+                let msg = format!(
+                    "Move history panel: {}",
+                    if self.history_open { "shown" } else { "hidden" }
+                );
+                match &mut self.screen {
+                    Screen::Game(g) => g.last_msg = Some(msg),
+                    Screen::Net(n) => n.last_msg = Some(msg),
+                    _ => {}
+                }
+            }
             Action::CapturedSortToggle => {
                 self.captured_sort = self.captured_sort.toggled();
                 let msg = format!("Captured sort: {}", self.captured_sort.label());
