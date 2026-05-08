@@ -79,3 +79,5 @@ Hard to unit-test directly — the buggy code is `#[cfg(target_arch = "wasm32")]
 
 - `clients/chess-web/src/pages/local.rs` — fix landed here.
 - `.claude/plans/ai-vs-chatgpt-deep-research-docs-ai-dee-typed-stonebraker.md` — original plan introducing the pump.
+- [`docs/ai/README.md`](../docs/ai/README.md) — version index for the engine the pump drives. The pump itself is engine-agnostic; this trap applies to any `Strategy` variant.
+- [`backlog/chess-ai-search.md`](../backlog/chess-ai-search.md) — v5 (Web Worker) is where the pump's epoch dance becomes a real cancellation token rather than a "drop the result" check.

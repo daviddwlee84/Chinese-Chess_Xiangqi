@@ -404,6 +404,7 @@ name = "chess-tui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chess-ai",
  "chess-core",
  "chess-net",
  "clap",

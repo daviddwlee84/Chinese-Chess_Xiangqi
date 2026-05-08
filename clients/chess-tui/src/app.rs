@@ -3,6 +3,7 @@
 
 use std::collections::VecDeque;
 
+use chess_ai::{AiOptions, Difficulty, Strategy};
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::moves::Move;
@@ -29,6 +30,12 @@ use crate::url::{normalize_host_url, urlencode, valid_room_id};
 pub enum PickerEntry {
     Xiangqi,
     XiangqiStrict,
+    /// Local vs computer (xiangqi). Uses defaults: player Red, AI Black,
+    /// Normal difficulty, v2 (material+PST) engine. CLI flags
+    /// `--ai-side / --ai-difficulty / --ai-engine` override these. The
+    /// picker entry intentionally has no sub-screen — the CLI is the
+    /// power-user surface; the picker is the "I just want to play" one.
+    XiangqiVsAi,
     BanqiPurist,
     BanqiTaiwan,
     BanqiAggressive,
@@ -42,9 +49,10 @@ pub enum PickerEntry {
 }
 
 impl PickerEntry {
-    pub const ALL: [PickerEntry; 9] = [
+    pub const ALL: [PickerEntry; 10] = [
         PickerEntry::Xiangqi,
         PickerEntry::XiangqiStrict,
+        PickerEntry::XiangqiVsAi,
         PickerEntry::BanqiPurist,
         PickerEntry::BanqiTaiwan,
         PickerEntry::BanqiAggressive,
@@ -58,6 +66,7 @@ impl PickerEntry {
         match self {
             PickerEntry::Xiangqi => "Xiangqi (象棋)",
             PickerEntry::XiangqiStrict => "Xiangqi (象棋, strict — must defend check)",
+            PickerEntry::XiangqiVsAi => "Xiangqi (象棋) vs Computer (alpha-beta, in-process)",
             PickerEntry::BanqiPurist => "Banqi (暗棋) — purist",
             PickerEntry::BanqiTaiwan => "Banqi (暗棋) — Taiwan house rules",
             PickerEntry::BanqiAggressive => "Banqi (暗棋) — aggressive house rules",
@@ -74,6 +83,7 @@ impl PickerEntry {
             // capture. Strict (standard rules) is one row down.
             PickerEntry::Xiangqi => Some(RuleSet::xiangqi_casual()),
             PickerEntry::XiangqiStrict => Some(RuleSet::xiangqi()),
+            PickerEntry::XiangqiVsAi => Some(RuleSet::xiangqi_casual()),
             PickerEntry::BanqiPurist => Some(RuleSet::banqi(HouseRules::empty())),
             PickerEntry::BanqiTaiwan => Some(RuleSet::banqi(chess_core::rules::PRESET_TAIWAN)),
             PickerEntry::BanqiAggressive => {
@@ -84,6 +94,22 @@ impl PickerEntry {
             | PickerEntry::ConnectToServer
             | PickerEntry::Quit => None,
         }
+    }
+}
+
+/// Local vs-AI configuration. Mirrors `clients/chess-web/src/pages/local.rs::VsAiConfig`
+/// — same field semantics so future shared-helpers can lift this up.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct VsAiConfig {
+    /// Side the AI plays. Player gets the opposite.
+    pub ai_side: Side,
+    pub difficulty: Difficulty,
+    pub strategy: Strategy,
+}
+
+impl Default for VsAiConfig {
+    fn default() -> Self {
+        Self { ai_side: Side::BLACK, difficulty: Difficulty::Normal, strategy: Strategy::default() }
     }
 }
 
@@ -274,6 +300,11 @@ pub struct GameView {
     /// `Some(state)` while the user is typing a coordinate move (`:` or `m`).
     /// Mutually exclusive with `chat_input` in Net mode.
     pub coord_input: Option<CoordInputState>,
+    /// `Some(_)` for vs-AI games; `None` for plain pass-and-play.
+    /// Drives the AI move pump in `apply_move` — after each *human* move,
+    /// if it's now the AI's turn we synchronously call `chess_ai::choose_move`
+    /// and apply the result before returning to the event loop.
+    pub ai: Option<VsAiConfig>,
 }
 
 /// Per-prompt state for coord-input mode (`:` instant or `m` live preview).
@@ -557,6 +588,44 @@ impl AppState {
     }
 
     pub fn new_game(rules: RuleSet, style: Style, use_color: bool, observer: Side) -> Self {
+        Self::new_game_inner(rules, style, use_color, observer, None)
+    }
+
+    /// Local game vs the in-process [`chess_ai`] engine. Player gets the
+    /// side opposite `cfg.ai_side`; board is rendered from the player's
+    /// perspective (overrides the picker `--as` flag).
+    ///
+    /// If the AI plays Red it will move first — `apply_move` doesn't fire
+    /// because no human move has happened yet, so we trigger one initial
+    /// AI move synchronously here.
+    pub fn new_game_vs_ai(rules: RuleSet, style: Style, use_color: bool, cfg: VsAiConfig) -> Self {
+        // Render from the player's perspective regardless of the global
+        // --as flag, so the player's pieces always sit on the bottom.
+        let player_side = cfg.ai_side.opposite();
+        let mut s = Self::new_game_inner(rules, style, use_color, player_side, Some(cfg));
+        let label = format!(
+            "vs AI ({}, engine={}). You play {}. Press ?/help for keys.",
+            cfg.difficulty.as_str(),
+            cfg.strategy.as_str(),
+            if player_side == Side::RED { "RED" } else { "BLACK" },
+        );
+        if let Screen::Game(g) = &mut s.screen {
+            g.last_msg = Some(label);
+            // If the AI plays Red, it moves first.
+            if g.state.side_to_move == cfg.ai_side {
+                Self::ai_reply(g, cfg);
+            }
+        }
+        s
+    }
+
+    fn new_game_inner(
+        rules: RuleSet,
+        style: Style,
+        use_color: bool,
+        observer: Side,
+        ai: Option<VsAiConfig>,
+    ) -> Self {
         let state = GameState::new(rules);
         let shape = state.board.shape();
         let (rows, cols) = orient::display_dims(shape);
@@ -571,6 +640,7 @@ impl AppState {
                         .into(),
                 ),
                 coord_input: None,
+                ai,
             })),
             style,
             use_color,
@@ -1100,6 +1170,14 @@ impl AppState {
                         )));
                     }
                     PickerEntry::Quit => self.should_quit = true,
+                    PickerEntry::XiangqiVsAi => {
+                        self.replace_preserving_prefs(AppState::new_game_vs_ai(
+                            RuleSet::xiangqi_casual(),
+                            style,
+                            use_color,
+                            VsAiConfig::default(),
+                        ));
+                    }
                     other => {
                         if let Some(rules) = other.rules() {
                             self.replace_preserving_prefs(AppState::new_game(
@@ -1463,16 +1541,34 @@ impl AppState {
                 let observer = self.observer;
                 Self::handle_select_or_commit(g, observer);
             }
-            Action::Undo => match g.state.unmake_move() {
-                Ok(()) => {
+            Action::Undo => {
+                // vs-AI: undo two plies so the human is back on move.
+                // (Undoing only one ply would put the AI on the move and
+                // the apply_move pump would immediately re-play.) Mirrors
+                // the web `on_undo` rule. Falls back to a single undo
+                // when only one ply is on the stack — the typical
+                // "AI moved first, player hasn't moved yet" case.
+                let plies = if g.ai.is_some() { 2 } else { 1 };
+                let mut undone = 0;
+                let mut last_err: Option<String> = None;
+                for _ in 0..plies {
+                    match g.state.unmake_move() {
+                        Ok(()) => undone += 1,
+                        Err(e) => {
+                            last_err = Some(format!("{e}"));
+                            break;
+                        }
+                    }
+                }
+                if undone > 0 {
                     g.state.refresh_status();
                     g.selected = None;
-                    g.last_msg = Some(format!("Undone. {:?} to move.", g.state.side_to_move));
-                }
-                Err(e) => {
+                    g.last_msg =
+                        Some(format!("Undone {} ply. {:?} to move.", undone, g.state.side_to_move));
+                } else if let Some(e) = last_err {
                     g.last_msg = Some(format!("Cannot undo: {e}"));
                 }
-            },
+            }
             Action::Flip => {
                 if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
                     g.last_msg = Some(
@@ -1591,6 +1687,52 @@ impl AppState {
             Err(e) => {
                 g.last_msg = Some(format!("Engine rejected move: {e}"));
                 g.selected = None;
+                return;
+            }
+        }
+        // vs-AI mode: if it's now the AI's turn, reply synchronously
+        // before returning to the event loop. Native search at depth ≤ 4
+        // typically completes in <100 ms; the user-perceptible pause is
+        // acceptable. Web-Worker / async pump is a v5 follow-up.
+        if let Some(cfg) = g.ai {
+            if matches!(g.state.status, GameStatus::Ongoing) && g.state.side_to_move == cfg.ai_side
+            {
+                Self::ai_reply(g, cfg);
+            }
+        }
+    }
+
+    /// Run the configured engine once and apply its move. Surfaces the
+    /// played move in `last_msg` so the user can see what the AI did.
+    /// Falls back gracefully when the engine has no move (game over /
+    /// no legal moves) — the next status refresh will pick that up.
+    fn ai_reply(g: &mut GameView, cfg: VsAiConfig) {
+        // Seed: hash of (history length, side) so identical positions
+        // reached via different paths still get fresh randomness on
+        // Easy/Normal but Hard remains deterministic.
+        let seed = (g.state.history.len() as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ (g.state.side_to_move.raw() as u64);
+        let opts = AiOptions {
+            difficulty: cfg.difficulty,
+            max_depth: None,
+            seed: Some(seed),
+            strategy: cfg.strategy,
+        };
+        let Some(result) = chess_ai::choose_move(&g.state, &opts) else {
+            return;
+        };
+        match g.state.make_move(&result.mv) {
+            Ok(()) => {
+                g.state.refresh_status();
+                g.last_msg = Some(format!(
+                    "AI played: {} ({} nodes, score {})",
+                    chess_core::notation::iccs::encode_move(&g.state.board, &result.mv),
+                    result.nodes,
+                    result.score,
+                ));
+            }
+            Err(e) => {
+                g.last_msg = Some(format!("AI engine bug — rejected its own move: {e}"));
             }
         }
     }

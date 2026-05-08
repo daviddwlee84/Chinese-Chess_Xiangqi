@@ -3,6 +3,8 @@
 //! Run modes:
 //!   chess-tui                                       # variant picker
 //!   chess-tui xiangqi
+//!   chess-tui xiangqi --ai                          # vs computer (defaults: Black/Normal/v2)
+//!   chess-tui xiangqi --ai --ai-side red --ai-difficulty hard --ai-engine v2
 //!   chess-tui banqi --preset taiwan --seed 42
 //!   chess-tui --style ascii xiangqi
 //!   chess-tui --no-color xiangqi
@@ -23,6 +25,7 @@ use std::io::{self, Stdout};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use chess_ai::{Difficulty, Strategy};
 use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, RuleSet};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -34,7 +37,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
-use crate::app::{AppState, CapturedSort};
+use crate::app::{AppState, CapturedSort, VsAiConfig};
 use crate::glyph::Style;
 use crate::input::{from_key, from_mouse, Action};
 use crate::url::{normalize_connect_url, normalize_lobby_url};
@@ -106,6 +109,23 @@ enum Cmd {
         /// general in check are rejected.
         #[arg(long)]
         strict: bool,
+        /// Enable vs-AI mode. Without this flag the xiangqi subcommand
+        /// is plain pass-and-play. The other `--ai-*` flags below are
+        /// ignored unless this is set.
+        #[arg(long)]
+        ai: bool,
+        /// Side the AI plays. Defaults to BLACK so the player (RED)
+        /// moves first.
+        #[arg(long = "ai-side", value_enum, default_value_t = SideArg::Black)]
+        ai_side: SideArg,
+        /// AI difficulty.
+        #[arg(long = "ai-difficulty", value_enum, default_value_t = DifficultyArg::Normal)]
+        ai_difficulty: DifficultyArg,
+        /// Engine version. v2 (material + piece-square tables) is the
+        /// default and recommended; v1 (material only) is preserved for
+        /// regression / comparison.
+        #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V2)]
+        ai_engine: EngineArg,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -146,6 +166,42 @@ enum PresetArg {
     Aggressive,
 }
 
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum DifficultyArg {
+    Easy,
+    Normal,
+    Hard,
+}
+
+impl DifficultyArg {
+    fn into_difficulty(self) -> Difficulty {
+        match self {
+            DifficultyArg::Easy => Difficulty::Easy,
+            DifficultyArg::Normal => Difficulty::Normal,
+            DifficultyArg::Hard => Difficulty::Hard,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum EngineArg {
+    /// Material-only eval (original 2026-05-08 MVP). Plays a
+    /// random-feeling opening.
+    V1,
+    /// Material + piece-square tables (recommended). Plays principled
+    /// openings; same depth, no extra cost.
+    V2,
+}
+
+impl EngineArg {
+    fn into_strategy(self) -> Strategy {
+        match self {
+            EngineArg::V1 => Strategy::MaterialV1,
+            EngineArg::V2 => Strategy::MaterialPstV2,
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -182,9 +238,21 @@ fn main() -> Result<()> {
     } else {
         match &cli.cmd {
             None => AppState::new_picker(style, use_color, observer),
-            Some(Cmd::Xiangqi { strict }) => {
+            Some(Cmd::Xiangqi { strict, ai, ai_side, ai_difficulty, ai_engine }) => {
                 let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
-                AppState::new_game(rules, style, use_color, observer)
+                if *ai {
+                    let cfg = VsAiConfig {
+                        ai_side: match ai_side {
+                            SideArg::Red => Side::RED,
+                            SideArg::Black => Side::BLACK,
+                        },
+                        difficulty: ai_difficulty.into_difficulty(),
+                        strategy: ai_engine.into_strategy(),
+                    };
+                    AppState::new_game_vs_ai(rules, style, use_color, cfg)
+                } else {
+                    AppState::new_game(rules, style, use_color, observer)
+                }
             }
             Some(Cmd::Banqi { preset, house, seed }) => {
                 let rules = build_banqi_rules(preset.as_ref(), house.as_deref(), *seed)?;

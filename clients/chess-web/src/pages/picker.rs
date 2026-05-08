@@ -1,7 +1,7 @@
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
 
-use chess_ai::Difficulty;
+use chess_ai::{Difficulty, Strategy};
 use chess_core::piece::Side;
 
 use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode};
@@ -48,6 +48,7 @@ fn XiangqiCard() -> impl IntoView {
     let mode = create_rw_signal(PlayMode::Pvp);
     let player_red = create_rw_signal(true);
     let difficulty = create_rw_signal(Difficulty::Normal);
+    let ai_strategy = create_rw_signal(Strategy::default());
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
         let params = LocalRulesParams {
@@ -55,6 +56,7 @@ fn XiangqiCard() -> impl IntoView {
             mode: mode.get(),
             ai_side,
             ai_difficulty: difficulty.get(),
+            ai_strategy: ai_strategy.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -134,6 +136,27 @@ fn XiangqiCard() -> impl IntoView {
                             on:change=move |_| difficulty.set(Difficulty::Hard)
                         />
                         <span>"Hard — depth 4, may take a couple of seconds per move."</span>
+                    </label>
+                </fieldset>
+                <fieldset class="card-fieldset">
+                    <legend>"Engine"</legend>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-engine"
+                            prop:checked=move || ai_strategy.get() == Strategy::MaterialPstV2
+                            on:change=move |_| ai_strategy.set(Strategy::MaterialPstV2)
+                        />
+                        <span>"v2 — material + piece-square tables (recommended). Plays principled openings."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-engine"
+                            prop:checked=move || ai_strategy.get() == Strategy::MaterialV1
+                            on:change=move |_| ai_strategy.set(Strategy::MaterialV1)
+                        />
+                        <span>"v1 — material only (original MVP). Picks at random in the opening."</span>
                     </label>
                 </fieldset>
             </Show>

@@ -4,6 +4,51 @@
      similar). The bundled scripts/init.sh appends this between sentinel
      markers; safe to re-run. -->
 
+### Pre-push checklist + post-push CI verification
+
+Local `cargo clippy` does **NOT** match CI. The repo's `.github/workflows/ci.yml`
+pins `dtolnay/rust-toolchain@stable` (always the latest), while local
+toolchains drift between `rustup update`s. New clippy lints (and
+`rustfmt` style tweaks) regularly land in CI without notice — see
+[`pitfalls/clippy-version-drift-local-vs-ci.md`](pitfalls/clippy-version-drift-local-vs-ci.md)
+for a class-of-bug write-up (recurred ≥4 times as of 2026-05-09).
+
+**Before every commit that touches Rust** run, in this order:
+
+```sh
+cargo fmt --all -- --check                                       # CI's `fmt` job
+cargo clippy --workspace --all-targets -- -D warnings            # CI's `clippy` job
+cargo test --workspace                                           # CI's `test` job
+cargo check --target wasm32-unknown-unknown -p chess-core        # CI's `wasm` job
+```
+
+`fmt --check` is the most common surprise — Rust occasionally tightens
+default formatting; `cargo fmt --all` (no `--check`) auto-fixes.
+
+**After every `git push`** (especially to `main`), check CI from the
+shell with `gh` rather than waiting for an email:
+
+```sh
+sleep 10 && gh run list --branch main --limit 3                  # latest runs (status column)
+gh run watch                                                     # block until current run finishes
+gh run view --log-failed                                         # only-failed-logs of latest run on this branch
+```
+
+If CI red-fails on `clippy`/`fmt` only, the typical fix is one of:
+
+```sh
+cargo fmt --all                                                  # rustfmt drift
+cargo clippy --workspace --all-targets --fix --allow-dirty       # clippy auto-fix; then review
+rustup update stable && rustc --version                          # bump local toolchain to match CI
+```
+
+Then commit the auto-fix as a follow-up (`fix(<crate>): clippy 1.x.y`)
+rather than rebasing — the CI history shows what each round caught.
+
+Pinning `rust-toolchain.toml` would prevent drift but creates a
+contributor-update chore; deferred as `[?/S]` in `TODO.md` →
+[`backlog/rust-toolchain-pin.md`](backlog/rust-toolchain-pin.md).
+
 ### Long-term backlog → `TODO.md` + `backlog/`
 
 When the user surfaces an idea explicitly **not** being implemented this

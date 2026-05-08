@@ -14,6 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 chess-core  = { path = "../../crates/chess-core" }
+chess-ai    = { path = "../../crates/chess-ai" }
 chess-net   = { path = "../../crates/chess-net" }
 ratatui     = "0.29"
 crossterm   = "0.28"

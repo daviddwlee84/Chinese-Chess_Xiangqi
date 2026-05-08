@@ -1,4 +1,4 @@
-use chess_ai::{AiOptions, Difficulty};
+use chess_ai::{AiOptions, Difficulty, Strategy};
 use chess_core::coord::Square;
 use chess_core::piece::Side;
 use chess_core::rules::{RuleSet, Variant};
@@ -21,6 +21,7 @@ use crate::state::{end_chain_move, find_move};
 struct VsAiConfig {
     ai_side: Side,
     difficulty: Difficulty,
+    strategy: Strategy,
 }
 
 #[component]
@@ -40,7 +41,11 @@ pub fn LocalPage() -> impl IntoView {
         // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
         // pass-and-play (the picker hides the toggle there too — see plan).
         let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
-            Some(VsAiConfig { ai_side: parsed.ai_side, difficulty: parsed.ai_difficulty })
+            Some(VsAiConfig {
+                ai_side: parsed.ai_side,
+                difficulty: parsed.ai_difficulty,
+                strategy: parsed.ai_strategy,
+            })
         } else {
             None
         };
@@ -289,6 +294,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 difficulty: cfg.difficulty,
                 max_depth: None,
                 seed: Some(cur_epoch as u64 ^ 0xA5A5_5A5A_u64),
+                strategy: cfg.strategy,
             };
             wasm_bindgen_futures::spawn_local(async move {
                 // One animation frame's worth of yield so the "AI thinking…"

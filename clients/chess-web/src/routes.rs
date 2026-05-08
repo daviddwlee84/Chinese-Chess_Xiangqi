@@ -4,7 +4,7 @@
 //! its form state via [`build_local_query`]; the local page parses it back
 //! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
 
-use chess_ai::Difficulty;
+use chess_ai::{Difficulty, Strategy};
 use chess_core::piece::Side;
 use chess_core::rules::{
     house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
@@ -120,6 +120,10 @@ pub struct LocalRulesParams {
     pub ai_side: Side,
     /// `VsAi` only — search difficulty. Ignored when `mode == Pvp`.
     pub ai_difficulty: Difficulty,
+    /// `VsAi` only — engine version. Defaults to [`Strategy::default`]
+    /// (v2 since 2026-05-08). Versioned, switchable, non-overwriting:
+    /// older strategies stay reachable via `?engine=v1`.
+    pub ai_strategy: Strategy,
 }
 
 impl Default for LocalRulesParams {
@@ -131,6 +135,7 @@ impl Default for LocalRulesParams {
             mode: PlayMode::Pvp,
             ai_side: Side::BLACK,
             ai_difficulty: Difficulty::Normal,
+            ai_strategy: Strategy::default(),
         }
     }
 }
@@ -157,7 +162,16 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     };
     let ai_difficulty =
         get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
-    LocalRulesParams { strict, house: house::normalize(house), seed, mode, ai_side, ai_difficulty }
+    let ai_strategy = get("engine").as_deref().and_then(Strategy::parse).unwrap_or_default();
+    LocalRulesParams {
+        strict,
+        house: house::normalize(house),
+        seed,
+        mode,
+        ai_side,
+        ai_difficulty,
+        ai_strategy,
+    }
 }
 
 /// Inverse of [`parse_local_rules`] — emits a stable canonical query string
@@ -177,6 +191,12 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                     if params.ai_side == Side::RED { "red" } else { "black" }
                 ));
                 parts.push(format!("diff={}", params.ai_difficulty.as_str()));
+                // Only emit engine= when the user picked a non-default
+                // strategy. Keeps the canonical short URL unchanged for
+                // the recommended setup.
+                if params.ai_strategy != Strategy::default() {
+                    parts.push(format!("engine={}", params.ai_strategy.as_str()));
+                }
             }
         }
         Variant::Banqi => {
@@ -423,10 +443,37 @@ mod tests {
         assert_eq!(p.mode, PlayMode::VsAi);
         assert_eq!(p.ai_side, Side::RED);
         assert_eq!(p.ai_difficulty, Difficulty::Hard);
+        assert_eq!(p.ai_strategy, Strategy::default(), "missing engine= → default");
         let q = build_local_query(Variant::Xiangqi, &p);
         assert!(q.contains("mode=ai"));
         assert!(q.contains("ai=red"));
         assert!(q.contains("diff=hard"));
+        assert!(!q.contains("engine="), "default strategy should be omitted from query");
+    }
+
+    #[test]
+    fn xiangqi_engine_v1_round_trips() {
+        let p = parse_local_rules(from_pairs(&[
+            ("mode", "ai"),
+            ("ai", "black"),
+            ("diff", "normal"),
+            ("engine", "v1"),
+        ]));
+        assert_eq!(p.ai_strategy, Strategy::MaterialV1);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("engine=v1"), "non-default strategy must round-trip; got {:?}", q);
+    }
+
+    #[test]
+    fn xiangqi_engine_v2_alias_parses() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "material-pst")]));
+        assert_eq!(p.ai_strategy, Strategy::MaterialPstV2);
+    }
+
+    #[test]
+    fn xiangqi_engine_unknown_token_falls_back_to_default() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "v999")]));
+        assert_eq!(p.ai_strategy, Strategy::default());
     }
 
     #[test]
