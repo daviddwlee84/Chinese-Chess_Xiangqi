@@ -252,7 +252,7 @@ fn hit_cells(
                     <rect
                         class="cell-hit"
                         x=x y=y width=CELL height=CELL
-                        on:click=move |_| on_click.call(sq)
+                        on:pointerup=move |_| on_click.call(sq)
                     />
                 }
                 .into_view(),
