@@ -17,6 +17,7 @@ crate-type = ["cdylib", "rlib"]
 # `default-features = false` so axum/tokio do NOT end up in the WASM bundle.
 [dependencies]
 chess-core = { path = "../../crates/chess-core" }
+chess-ai   = { path = "../../crates/chess-ai" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 chess-net  = { path = "../../crates/chess-net", default-features = false }
@@ -33,5 +34,6 @@ wasm-bindgen-futures = "0.4"
 web-sys       = { version = "0.3", features = ["Window", "Location", "Storage", "KeyboardEvent"] }
 js-sys        = "0.3"
 gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+gloo-timers   = { version = "0.3", features = ["futures"] }
 futures-util  = { workspace = true }
 futures       = "0.3"

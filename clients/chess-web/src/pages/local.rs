@@ -1,7 +1,8 @@
+use chess_ai::{AiOptions, Difficulty};
 use chess_core::coord::Square;
 use chess_core::piece::Side;
 use chess_core::rules::{RuleSet, Variant};
-use chess_core::state::GameState;
+use chess_core::state::{GameState, GameStatus};
 use chess_core::view::{PlayerView, VisibleCell};
 use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
@@ -11,14 +12,22 @@ use crate::components::captured::CapturedStrip;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
-use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug};
+use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
 use crate::state::{end_chain_move, find_move};
+
+/// Resolved local-page configuration. `Some(VsAiConfig)` only when the URL
+/// asked for vs-AI on a supported variant (xiangqi).
+#[derive(Clone, Copy, Debug)]
+struct VsAiConfig {
+    ai_side: Side,
+    difficulty: Difficulty,
+}
 
 #[component]
 pub fn LocalPage() -> impl IntoView {
     let params = use_params_map();
     let query = use_query_map();
-    let resolved = move || -> Result<(Variant, RuleSet, bool), String> {
+    let resolved = move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>), String> {
         let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
         let variant =
             parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
@@ -28,12 +37,19 @@ pub fn LocalPage() -> impl IntoView {
         // disable interaction and overlay a "WIP" banner — see
         // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
         let wip = matches!(variant, Variant::ThreeKingdomBanqi);
-        Ok((variant, rules, wip))
+        // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
+        // pass-and-play (the picker hides the toggle there too — see plan).
+        let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
+            Some(VsAiConfig { ai_side: parsed.ai_side, difficulty: parsed.ai_difficulty })
+        } else {
+            None
+        };
+        Ok((variant, rules, wip, ai))
     };
 
     move || match resolved() {
-        Ok((variant, rules, wip)) => {
-            view! { <LocalGame variant=variant rules=rules wip=wip/> }.into_view()
+        Ok((variant, rules, wip, ai)) => {
+            view! { <LocalGame variant=variant rules=rules wip=wip ai=ai/> }.into_view()
         }
         Err(msg) => view! {
             <section class="game-page game-page--single">
@@ -49,15 +65,23 @@ pub fn LocalPage() -> impl IntoView {
 }
 
 #[component]
-fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
+fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>) -> impl IntoView {
     let initial_rules = rules.clone();
     let state = create_rw_signal(GameState::new(rules));
     let selected = create_rw_signal::<Option<Square>>(None);
+    let ai_thinking = create_rw_signal(false);
+    // Bumped on every state change (player move, AI move, undo, new game).
+    // The AI task captures the epoch when it starts and discards its result
+    // if the epoch has changed by the time it returns — prevents stale AI
+    // moves landing after the player undid or restarted.
+    let move_epoch = create_rw_signal::<u32>(0);
 
-    // Local pass-and-play renders from a fixed Red-side observer (board never
-    // flips on turn change). Legal moves come from the projection for the
-    // *current* side-to-move so click-to-move uses the right list.
-    let observer = Side::RED;
+    // Render from the human player's POV when in vs-AI mode so the player's
+    // pieces sit on the bottom; in pass-and-play the board is fixed Red-side.
+    let observer = match ai {
+        Some(cfg) => cfg.ai_side.opposite(),
+        None => Side::RED,
+    };
     let shape = state.with_untracked(|s| s.board.shape());
 
     let view = create_memo(move |_| state.with(|s| PlayerView::project(s, s.side_to_move)));
@@ -88,8 +112,25 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
         chain_locked_signal.get().or_else(|| selected.get())
     });
 
-    let on_end_chain: Callback<()> = Callback::new(move |_| {
+    // Whether the human can act right now. In vs-AI mode the human is
+    // locked out while it's AI's turn or while the AI is computing.
+    let player_can_act = Signal::derive(move || {
         if wip {
+            return false;
+        }
+        match ai {
+            None => true,
+            Some(cfg) => {
+                if ai_thinking.get() {
+                    return false;
+                }
+                view.with(|v| v.side_to_move != cfg.ai_side)
+            }
+        }
+    });
+
+    let on_end_chain: Callback<()> = Callback::new(move |_| {
+        if !player_can_act.get_untracked() {
             return;
         }
         let v = view.get();
@@ -99,11 +140,12 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                 s.refresh_status();
             });
             selected.set(None);
+            move_epoch.update(|n| *n = n.wrapping_add(1));
         }
     });
 
     let on_click: Callback<Square> = Callback::new(move |sq: Square| {
-        if wip {
+        if !player_can_act.get_untracked() {
             return;
         }
         let v = view.get();
@@ -118,6 +160,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                         s.make_move(&mv).expect("legal end-chain");
                         s.refresh_status();
                     });
+                    move_epoch.update(|n| *n = n.wrapping_add(1));
                 }
                 selected.set(None);
                 return;
@@ -128,6 +171,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                     s.refresh_status();
                 });
                 selected.set(None);
+                move_epoch.update(|n| *n = n.wrapping_add(1));
                 return;
             }
             // Click somewhere else during chain mode: ignore (the user
@@ -149,6 +193,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                     s.refresh_status();
                 });
                 selected.set(None);
+                move_epoch.update(|n| *n = n.wrapping_add(1));
                 return;
             }
         }
@@ -170,6 +215,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                     s.refresh_status();
                 });
                 selected.set(None);
+                move_epoch.update(|n| *n = n.wrapping_add(1));
             }
         } else {
             selected.set(None);
@@ -180,11 +226,27 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
         if wip {
             return;
         }
+        // In vs-AI mode, undo two plies so the player is back on move.
+        // (Undoing only one would put the AI on the move and the AI effect
+        // would just re-play immediately — defeating the purpose.) If
+        // there's only one ply on the stack — typical when the AI moved
+        // first because the player picked Black — fall back to a single
+        // undo, which returns to the empty initial state.
+        let plies = match ai {
+            Some(_) => 2,
+            None => 1,
+        };
         state.update(|s| {
-            let _ = s.unmake_move();
+            for _ in 0..plies {
+                if s.unmake_move().is_err() {
+                    break;
+                }
+            }
             s.refresh_status();
         });
         selected.set(None);
+        ai_thinking.set(false);
+        move_epoch.update(|n| *n = n.wrapping_add(1));
     });
 
     let on_new_game: Callback<()> = Callback::new({
@@ -192,8 +254,60 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
         move |_| {
             state.set(GameState::new(initial_rules.clone()));
             selected.set(None);
+            ai_thinking.set(false);
+            move_epoch.update(|n| *n = n.wrapping_add(1));
         }
     });
+
+    // AI move pump. Fires whenever the side-to-move flips to the AI in a
+    // vs-AI game. The async task captures the current epoch and the
+    // engine snapshot; if the player undoes/restarts mid-think the epoch
+    // mismatch causes us to drop the result on the floor.
+    if let Some(cfg) = ai {
+        create_effect(move |_| {
+            let cur_epoch = move_epoch.get();
+            let v = view.get();
+            if !matches!(v.status, GameStatus::Ongoing) {
+                return;
+            }
+            if v.side_to_move != cfg.ai_side {
+                return;
+            }
+            if ai_thinking.get_untracked() {
+                return;
+            }
+            ai_thinking.set(true);
+            let snapshot = state.get_untracked();
+            let opts = AiOptions {
+                difficulty: cfg.difficulty,
+                max_depth: None,
+                seed: Some(cur_epoch as u64 ^ 0xA5A5_5A5A_u64),
+            };
+            wasm_bindgen_futures::spawn_local(async move {
+                // One animation frame's worth of yield so the "AI thinking…"
+                // banner paints before the search blocks the main thread.
+                gloo_timers::future::TimeoutFuture::new(80).await;
+                if move_epoch.get_untracked() != cur_epoch {
+                    ai_thinking.set(false);
+                    return;
+                }
+                let chosen = chess_ai::choose_move(&snapshot, &opts);
+                if move_epoch.get_untracked() != cur_epoch {
+                    ai_thinking.set(false);
+                    return;
+                }
+                if let Some(result) = chosen {
+                    state.update(|s| {
+                        if s.make_move(&result.mv).is_ok() {
+                            s.refresh_status();
+                        }
+                    });
+                    move_epoch.update(|n| *n = n.wrapping_add(1));
+                }
+                ai_thinking.set(false);
+            });
+        });
+    }
 
     let prefs = expect_context::<Prefs>();
     let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
@@ -219,6 +333,11 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool) -> impl IntoView {
                         <button class="btn btn-ghost btn-sm" on:click=move |_| on_end_chain.call(())>
                             "End chain"
                         </button>
+                    </div>
+                </Show>
+                <Show when=move || ai_thinking.get()>
+                    <div class="chain-banner ai-thinking-banner">
+                        <span>"⏳ AI thinking…"</span>
                     </div>
                 </Show>
                 <Show when=move || wip>

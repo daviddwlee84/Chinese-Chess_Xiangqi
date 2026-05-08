@@ -4,9 +4,20 @@
 //! its form state via [`build_local_query`]; the local page parses it back
 //! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
 
+use chess_ai::Difficulty;
+use chess_core::piece::Side;
 use chess_core::rules::{
     house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
 };
+
+/// Local-page play mode. `Pvp` is the default pass-and-play; `VsAi`
+/// drives the in-process alpha-beta engine (xiangqi only).
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub enum PlayMode {
+    #[default]
+    Pvp,
+    VsAi,
+}
 
 pub fn hosting_mode() -> &'static str {
     env!("CHESS_WEB_HOSTING")
@@ -91,7 +102,7 @@ pub fn variant_slug(variant: Variant) -> &'static str {
 
 /// URL-derived rule choices for `/local/:variant`. Used as an intermediate
 /// between the picker form and the engine `RuleSet`.
-#[derive(Clone, Eq, PartialEq, Debug, Default)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct LocalRulesParams {
     /// Xiangqi only. `false` (default) = casual / no self-check filter;
     /// `true` = standard rules where leaving your general in check is illegal.
@@ -102,6 +113,26 @@ pub struct LocalRulesParams {
     /// Banqi only. `None` = engine picks (non-deterministic on native;
     /// browser uses `getrandom` JS feature).
     pub seed: Option<u64>,
+    /// Xiangqi only (banqi/three-kingdom ignore). Default `Pvp`.
+    pub mode: PlayMode,
+    /// `VsAi` only — which side the AI plays. Default Black (player is Red,
+    /// the traditional first-mover). Ignored when `mode == Pvp`.
+    pub ai_side: Side,
+    /// `VsAi` only — search difficulty. Ignored when `mode == Pvp`.
+    pub ai_difficulty: Difficulty,
+}
+
+impl Default for LocalRulesParams {
+    fn default() -> Self {
+        Self {
+            strict: false,
+            house: HouseRules::empty(),
+            seed: None,
+            mode: PlayMode::Pvp,
+            ai_side: Side::BLACK,
+            ai_difficulty: Difficulty::Normal,
+        }
+    }
 }
 
 /// Parse `?strict=1&house=chain,rush&preset=taiwan&seed=42` into a
@@ -116,7 +147,17 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     let house_csv = get("house").as_deref().map(parse_house_csv);
     let house = house_csv.or(preset).unwrap_or_else(HouseRules::empty);
     let seed = get("seed").and_then(|s| s.parse::<u64>().ok());
-    LocalRulesParams { strict, house: house::normalize(house), seed }
+    let mode = match get("mode").as_deref() {
+        Some("ai") | Some("vsai") => PlayMode::VsAi,
+        _ => PlayMode::Pvp,
+    };
+    let ai_side = match get("ai").as_deref() {
+        Some("red") => Side::RED,
+        _ => Side::BLACK,
+    };
+    let ai_difficulty =
+        get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
+    LocalRulesParams { strict, house: house::normalize(house), seed, mode, ai_side, ai_difficulty }
 }
 
 /// Inverse of [`parse_local_rules`] — emits a stable canonical query string
@@ -128,6 +169,14 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
         Variant::Xiangqi => {
             if params.strict {
                 parts.push("strict=1".to_string());
+            }
+            if params.mode == PlayMode::VsAi {
+                parts.push("mode=ai".to_string());
+                parts.push(format!(
+                    "ai={}",
+                    if params.ai_side == Side::RED { "red" } else { "black" }
+                ));
+                parts.push(format!("diff={}", params.ai_difficulty.as_str()));
             }
         }
         Variant::Banqi => {
@@ -361,11 +410,30 @@ mod tests {
         let p = LocalRulesParams { strict: true, ..Default::default() };
         assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi?strict=1");
         let p = LocalRulesParams {
-            strict: false,
             house: HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH,
             seed: Some(7),
+            ..Default::default()
         };
         assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi?house=chain,rush&seed=7");
+    }
+
+    #[test]
+    fn xiangqi_vs_ai_query_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("ai", "red"), ("diff", "hard")]));
+        assert_eq!(p.mode, PlayMode::VsAi);
+        assert_eq!(p.ai_side, Side::RED);
+        assert_eq!(p.ai_difficulty, Difficulty::Hard);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("mode=ai"));
+        assert!(q.contains("ai=red"));
+        assert!(q.contains("diff=hard"));
+    }
+
+    #[test]
+    fn xiangqi_default_mode_omits_ai_query() {
+        let p = LocalRulesParams::default();
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.is_empty(), "default mode should not emit query, got {:?}", q);
     }
 
     #[test]

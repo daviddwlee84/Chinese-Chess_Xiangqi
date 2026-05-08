@@ -1,7 +1,10 @@
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
 
-use crate::routes::{app_href, build_local_href, LocalRulesParams};
+use chess_ai::Difficulty;
+use chess_core::piece::Side;
+
+use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode};
 
 #[component]
 pub fn Picker() -> impl IntoView {
@@ -42,14 +45,98 @@ pub fn Picker() -> impl IntoView {
 #[component]
 fn XiangqiCard() -> impl IntoView {
     let strict = create_rw_signal(false);
+    let mode = create_rw_signal(PlayMode::Pvp);
+    let player_red = create_rw_signal(true);
+    let difficulty = create_rw_signal(Difficulty::Normal);
     let href = move || {
-        let params = LocalRulesParams { strict: strict.get(), ..Default::default() };
+        let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
+        let params = LocalRulesParams {
+            strict: strict.get(),
+            mode: mode.get(),
+            ai_side,
+            ai_difficulty: difficulty.get(),
+            ..Default::default()
+        };
         app_href(&build_local_href(Variant::Xiangqi, &params))
     };
     view! {
         <div class="variant-card variant-card--form">
             <h2>"Xiangqi 象棋"</h2>
             <p>"Standard 9×10 Chinese chess."</p>
+            <fieldset class="card-fieldset">
+                <legend>"Mode"</legend>
+                <label class="radio-row">
+                    <input
+                        type="radio"
+                        name="xiangqi-mode"
+                        prop:checked=move || mode.get() == PlayMode::Pvp
+                        on:change=move |_| mode.set(PlayMode::Pvp)
+                    />
+                    <span>"Pass-and-play — two humans share this device."</span>
+                </label>
+                <label class="radio-row">
+                    <input
+                        type="radio"
+                        name="xiangqi-mode"
+                        prop:checked=move || mode.get() == PlayMode::VsAi
+                        on:change=move |_| mode.set(PlayMode::VsAi)
+                    />
+                    <span>"vs Computer — alpha-beta engine, runs entirely in your browser."</span>
+                </label>
+            </fieldset>
+            <Show when=move || mode.get() == PlayMode::VsAi>
+                <fieldset class="card-fieldset">
+                    <legend>"You play"</legend>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-player-side"
+                            prop:checked=move || player_red.get()
+                            on:change=move |_| player_red.set(true)
+                        />
+                        <span>"紅 Red — moves first."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-player-side"
+                            prop:checked=move || !player_red.get()
+                            on:change=move |_| player_red.set(false)
+                        />
+                        <span>"黑 Black — AI moves first."</span>
+                    </label>
+                </fieldset>
+                <fieldset class="card-fieldset">
+                    <legend>"Difficulty"</legend>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-difficulty"
+                            prop:checked=move || difficulty.get() == Difficulty::Easy
+                            on:change=move |_| difficulty.set(Difficulty::Easy)
+                        />
+                        <span>"Easy — depth 1, picks at random from the top three replies."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-difficulty"
+                            prop:checked=move || difficulty.get() == Difficulty::Normal
+                            on:change=move |_| difficulty.set(Difficulty::Normal)
+                        />
+                        <span>"Normal — depth 3, mostly plays the best line."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-difficulty"
+                            prop:checked=move || difficulty.get() == Difficulty::Hard
+                            on:change=move |_| difficulty.set(Difficulty::Hard)
+                        />
+                        <span>"Hard — depth 4, may take a couple of seconds per move."</span>
+                    </label>
+                </fieldset>
+            </Show>
             <fieldset class="card-fieldset">
                 <legend>"Rules"</legend>
                 <label class="radio-row">
@@ -113,7 +200,7 @@ fn BanqiCard() -> impl IntoView {
     };
     let href = move || {
         let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
-        let params = LocalRulesParams { strict: false, house: house(), seed };
+        let params = LocalRulesParams { house: house(), seed, ..Default::default() };
         app_href(&build_local_href(Variant::Banqi, &params))
     };
 

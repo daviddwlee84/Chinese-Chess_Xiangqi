@@ -1,6 +1,6 @@
 [package]
 name        = "chess-ai"
-description = "Heuristic and ISMCTS for banqi. Stub — implemented in a follow-up PR."
+description = "Lightweight alpha-beta search engine for xiangqi. MVP — see plan."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -9,5 +9,6 @@ repository.workspace   = true
 authors.workspace      = true
 
 [dependencies]
-chess-core   = { path = "../chess-core" }
-chess-engine = { path = "../chess-engine" }
+chess-core  = { path = "../chess-core" }
+rand        = { workspace = true }
+rand_chacha = { workspace = true }
