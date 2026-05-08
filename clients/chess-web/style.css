@@ -453,13 +453,19 @@ body {
 }
 .btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
 
-/* Hit-test cells. Transparent but clickable. */
+/* Hit-test cells. Transparent but clickable.
+   pointer-events: all stops iOS Safari from skipping the rect when fill is
+   transparent. The :hover rule is gated on hover-capable devices because
+   iOS otherwise treats the first tap as a hover (consuming the click). */
 .cell-hit {
     fill: transparent;
     cursor: pointer;
     touch-action: manipulation;
+    pointer-events: all;
 }
-.cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+@media (hover: hover) and (pointer: fine) {
+    .cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+}
 
 /* Sidebar. */
 .sidebar {
