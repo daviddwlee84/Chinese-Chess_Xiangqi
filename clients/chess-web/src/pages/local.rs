@@ -265,8 +265,15 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     // mismatch causes us to drop the result on the floor.
     if let Some(cfg) = ai {
         create_effect(move |_| {
+            // Only `move_epoch` is tracked. `view` is read untracked so the
+            // effect doesn't re-fire on the intermediate `state.update(...)`
+            // before `move_epoch.update(...)` lands — that ordering would
+            // otherwise let the effect capture a stale epoch and immediately
+            // bail out on the post-task epoch check. Click handlers bump the
+            // epoch *after* every state change, so by the time this fires,
+            // both signals are in sync.
             let cur_epoch = move_epoch.get();
-            let v = view.get();
+            let v = view.get_untracked();
             if !matches!(v.status, GameStatus::Ongoing) {
                 return;
             }
