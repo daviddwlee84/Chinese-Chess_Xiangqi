@@ -133,7 +133,7 @@ pub fn choose_move(state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> 
         Difficulty::Easy => {
             // Pick uniformly from top-3 by score.
             let mut sorted: Vec<&(Move, i32)> = scored.iter().collect();
-            sorted.sort_by(|a, b| b.1.cmp(&a.1));
+            sorted.sort_by_key(|b| std::cmp::Reverse(b.1));
             let take = sorted.len().min(3);
             sorted[..take].choose(&mut rng).map(|(m, s)| (m.clone(), *s)).unwrap()
         }
