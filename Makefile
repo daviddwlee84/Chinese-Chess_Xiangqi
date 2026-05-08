@@ -6,8 +6,9 @@ PORT    ?= 7878
 ADDR    ?= 127.0.0.1:$(PORT)
 VARIANT ?= xiangqi
 SERVER_ARGS ?=
+WEB_BASE ?= /chinese-chess
 
-.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+.PHONY: help build server play-local play-lobby play-web play-spectator build-web build-web-server build-web-static serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
 
 help:
 	@echo "Targets:"
@@ -24,6 +25,8 @@ help:
 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
+	@echo "  build-web-server same as build-web (server/same-origin web build)"
+	@echo "  build-web-static GitHub Pages build (writes clients/chess-web/dist-static)"
 	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
 	@echo "  stop-local    kill the play-local tmux session"
 	@echo "  stop-lobby    kill the play-lobby tmux session"
@@ -32,9 +35,10 @@ help:
 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
 	@echo "  fmt | clippy | test | wasm   individual gates"
 	@echo ""
-	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
+	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT) WEB_BASE=$(WEB_BASE)"
 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
 	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
+	@echo "GitHub Pages example: make build-web-static WEB_BASE=/chinese-chess"
 	@echo "Custom port:          make play-lobby PORT=9000"
 
 build:
@@ -56,7 +60,13 @@ play-spectator:
 	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
 
 build-web:
-	cd clients/chess-web && NO_COLOR=false trunk build --release
+	cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+
+build-web-server: build-web
+
+build-web-static:
+	cd clients/chess-web && base="$(WEB_BASE)"; base="$${base%/}"; if [ -z "$$base" ]; then base="/"; fi; public_url="$$base/"; if [ "$$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$$base" trunk build --release --public-url "$$public_url" --dist dist-static
+	cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
 
 serve-web-prod: build-web
 	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)

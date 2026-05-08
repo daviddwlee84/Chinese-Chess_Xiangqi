@@ -11,7 +11,7 @@ use crate::components::captured::CapturedStrip;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
-use crate::routes::{build_rule_set, parse_local_rules, parse_variant_slug};
+use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug};
 use crate::state::{end_chain_move, find_move};
 
 #[component]
@@ -38,7 +38,7 @@ pub fn LocalPage() -> impl IntoView {
         Err(msg) => view! {
             <section class="game-page game-page--single">
                 <div>
-                    <a href="/" class="back-link">"← Back to picker"</a>
+                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
                     <h2>"Variant unavailable"</h2>
                     <p class="subtitle">{msg}</p>
                 </div>

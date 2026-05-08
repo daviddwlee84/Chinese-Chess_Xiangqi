@@ -190,6 +190,19 @@ cargo run -p chess-net -- --addr 0.0.0.0:7878 \
     --static-dir clients/chess-web/dist xiangqi  # one binary, SPA + WS
 ```
 
+There are two production-style web builds:
+
+- `make build-web` / `make build-web-server` — server-hosted, same-origin
+  build under `clients/chess-web/dist`. Use with `chess-net --static-dir`.
+- `make build-web-static WEB_BASE=/chinese-chess` — GitHub Pages build under
+  `clients/chess-web/dist-static`. It sets Trunk's public URL to the Pages
+  subpath and copies `index.html` to `404.html` for SPA hard-refresh fallback.
+
+The static build cannot assume `/lobby` and `/ws/<room>` exist on GitHub
+Pages. Its Online lobby asks for a websocket base URL (`wss://...`) and
+preserves it as `?ws=...` across lobby/play routes; Local pass-and-play works
+without a server.
+
 `trunk build --release`:
 
 - Sets `--release` on the cargo invocation (so `[profile.release]` from

@@ -8,6 +8,70 @@ use chess_core::rules::{
     house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
 };
 
+pub fn hosting_mode() -> &'static str {
+    env!("CHESS_WEB_HOSTING")
+}
+
+pub fn is_static_hosting() -> bool {
+    hosting_mode() == "static"
+}
+
+pub fn base_path() -> &'static str {
+    env!("CHESS_WEB_BASE_PATH")
+}
+
+pub fn router_base() -> Option<&'static str> {
+    let base = base_path();
+    if base.is_empty() {
+        None
+    } else {
+        Some(base)
+    }
+}
+
+pub fn app_href(path: &str) -> String {
+    app_href_with_base(base_path(), path)
+}
+
+pub fn app_href_with_base(base: &str, path: &str) -> String {
+    let path = if path.is_empty() { "/" } else { path };
+    let path = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
+    let base = normalize_base_path(base);
+    if base.is_empty() {
+        path
+    } else if path == "/" {
+        format!("{base}/")
+    } else {
+        format!("{base}{path}")
+    }
+}
+
+fn normalize_base_path(base: &str) -> String {
+    let trimmed = base.trim().trim_matches('/');
+    if trimmed.is_empty() {
+        String::new()
+    } else {
+        format!("/{trimmed}")
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WsBaseError {
+    Empty,
+    BadScheme,
+}
+
+pub fn normalize_ws_base(raw: &str) -> Result<String, WsBaseError> {
+    let trimmed = raw.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Err(WsBaseError::Empty);
+    }
+    if !(trimmed.starts_with("ws://") || trimmed.starts_with("wss://")) {
+        return Err(WsBaseError::BadScheme);
+    }
+    Ok(trimmed.to_string())
+}
+
 pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
     match slug {
         "xiangqi" => Some(Variant::Xiangqi),
@@ -262,6 +326,34 @@ mod tests {
         let p = LocalRulesParams::default();
         assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi");
         assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi");
+    }
+
+    #[test]
+    fn app_href_adds_base_path() {
+        assert_eq!(app_href_with_base("", "/local/xiangqi"), "/local/xiangqi");
+        assert_eq!(app_href_with_base("/", "/local/xiangqi"), "/local/xiangqi");
+        assert_eq!(
+            app_href_with_base("/chinese-chess", "/local/xiangqi"),
+            "/chinese-chess/local/xiangqi"
+        );
+        assert_eq!(app_href_with_base("chinese-chess", "lobby"), "/chinese-chess/lobby");
+        assert_eq!(app_href_with_base("/chinese-chess/", "/"), "/chinese-chess/");
+        assert_eq!(
+            app_href_with_base("/chinese-chess", "/local/banqi?seed=7"),
+            "/chinese-chess/local/banqi?seed=7"
+        );
+    }
+
+    #[test]
+    fn ws_base_normalizes_websocket_urls_only() {
+        assert_eq!(
+            normalize_ws_base(" wss://example.com/ws-root/ "),
+            Ok("wss://example.com/ws-root".to_string())
+        );
+        assert_eq!(normalize_ws_base("ws://127.0.0.1:7878"), Ok("ws://127.0.0.1:7878".to_string()));
+        assert_eq!(normalize_ws_base(""), Err(WsBaseError::Empty));
+        assert_eq!(normalize_ws_base("https://example.com"), Err(WsBaseError::BadScheme));
+        assert_eq!(normalize_ws_base("/ws"), Err(WsBaseError::BadScheme));
     }
 
     #[test]

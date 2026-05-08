@@ -3,6 +3,7 @@ use leptos_router::{Route, Router, Routes};
 
 use crate::pages::{lobby::LobbyPage, local::LocalPage, picker::Picker, play::PlayPage};
 use crate::prefs::Prefs;
+use crate::routes::router_base;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -11,8 +12,26 @@ pub fn App() -> impl IntoView {
     let prefs = Prefs::hydrate();
     provide_context(prefs);
 
+    if let Some(base) = router_base() {
+        view! {
+            <Router base=base>
+                <AppShell/>
+            </Router>
+        }
+        .into_view()
+    } else {
+        view! {
+            <Router>
+                <AppShell/>
+            </Router>
+        }
+        .into_view()
+    }
+}
+
+#[component]
+fn AppShell() -> impl IntoView {
     view! {
-        <Router>
             <main class="app-shell">
                 <Routes>
                     <Route path="/" view=Picker/>
@@ -21,6 +40,5 @@ pub fn App() -> impl IntoView {
                     <Route path="/play/:room" view=PlayPage/>
                 </Routes>
             </main>
-        </Router>
     }
 }

@@ -1,17 +1,39 @@
 use chess_net::protocol::{ClientMsg, RoomStatus, RoomSummary, ServerMsg};
 use leptos::*;
-use leptos_router::use_navigate;
+use leptos_router::use_query_map;
 
-use crate::config::lobby_url;
+use crate::components::ws_setup::WsSetup;
+use crate::config::{
+    append_query_pairs, lobby_url, resolve_ws_base, ws_query_pair, WsBase, WsBaseChoiceError,
+    WS_QUERY_KEY,
+};
+use crate::routes::{app_href, WsBaseError};
 use crate::ws::{connect, ConnState};
 
 #[component]
 pub fn LobbyPage() -> impl IntoView {
+    let query = use_query_map();
+    let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
+    match resolve_ws_base(raw_ws) {
+        Ok(ws_base) => view! { <LobbyConnected ws_base=ws_base/> }.into_view(),
+        Err(err) => view! {
+            <WsSetup
+                title="Online lobby"
+                next_path="/lobby".to_string()
+                initial_error=ws_error_label(err).unwrap_or("")
+            />
+        }
+        .into_view(),
+    }
+}
+
+#[component]
+fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
     let (rooms, set_rooms) = create_signal::<Vec<RoomSummary>>(vec![]);
     let (room_input, set_room_input) = create_signal::<String>(String::new());
     let (password_input, set_password_input) = create_signal::<String>(String::new());
 
-    let (handle, incoming, conn) = connect(lobby_url());
+    let (handle, incoming, conn) = connect(lobby_url(&ws_base));
 
     // Fan ServerMsg::Rooms into the rooms signal.
     create_effect(move |_| {
@@ -25,27 +47,31 @@ pub fn LobbyPage() -> impl IntoView {
         refresh_handle.send(ClientMsg::ListRooms);
     };
 
-    let navigate = use_navigate();
-    let nav_for_join = navigate.clone();
+    let ws_for_join = ws_base.clone();
     let go_to_room: Callback<String> = Callback::new(move |id: String| {
         let pw = password_input.get_untracked();
-        let target = if pw.is_empty() {
-            format!("/play/{}", id)
-        } else {
-            format!("/play/{}?password={}", id, urlencode(&pw))
-        };
-        nav_for_join(&target, Default::default());
+        let mut pairs = Vec::new();
+        if let Some(pair) = ws_query_pair(&ws_for_join) {
+            pairs.push(pair);
+        }
+        if !pw.is_empty() {
+            pairs.push(format!("password={}", urlencode(&pw)));
+        }
+        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
     });
 
-    let nav_for_watch = navigate;
+    let ws_for_watch = ws_base.clone();
     let watch_room: Callback<String> = Callback::new(move |id: String| {
         let pw = password_input.get_untracked();
-        let qs = if pw.is_empty() {
-            "role=spectator".to_string()
-        } else {
-            format!("role=spectator&password={}", urlencode(&pw))
-        };
-        nav_for_watch(&format!("/play/{}?{}", id, qs), Default::default());
+        let mut pairs = Vec::new();
+        if let Some(pair) = ws_query_pair(&ws_for_watch) {
+            pairs.push(pair);
+        }
+        pairs.push("role=spectator".to_string());
+        if !pw.is_empty() {
+            pairs.push(format!("password={}", urlencode(&pw)));
+        }
+        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
     });
 
     let create_or_join = move |_| {
@@ -58,7 +84,7 @@ pub fn LobbyPage() -> impl IntoView {
 
     view! {
         <section class="lobby">
-            <a href="/" class="back-link">"← Back to picker"</a>
+            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
             <h2>"Online lobby"</h2>
             <p class="subtitle">"Pick an existing room or create a new one. The server's variant + house rules apply to every room it hosts."</p>
 
@@ -140,6 +166,22 @@ pub fn LobbyPage() -> impl IntoView {
                 </ul>
             </Show>
         </section>
+    }
+}
+
+fn navigate_external(path: &str) {
+    if let Some(win) = web_sys::window() {
+        let _ = win.location().set_href(&app_href(path));
+    }
+}
+
+fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
+    match err {
+        WsBaseChoiceError::Missing => None,
+        WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
+        WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
+            Some("Use a full ws:// or wss:// server URL.")
+        }
     }
 }
 

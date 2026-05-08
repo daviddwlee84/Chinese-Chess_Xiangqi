@@ -12,9 +12,13 @@ use crate::components::board::Board;
 use crate::components::captured::CapturedStrip;
 use crate::components::chat_panel::ChatPanel;
 use crate::components::end_overlay::EndOverlay;
-use crate::config::room_url;
+use crate::components::ws_setup::WsSetup;
+use crate::config::{
+    append_query_pairs, resolve_ws_base, room_url, ws_query_pair, WsBase, WsBaseChoiceError,
+    WS_QUERY_KEY,
+};
 use crate::prefs::Prefs;
-use crate::routes::variant_slug;
+use crate::routes::{app_href, variant_slug, WsBaseError};
 use crate::state::{end_chain_move, find_move, truncate_front, ClientRole};
 use crate::ws::{connect, ConnState, WsHandle};
 
@@ -29,9 +33,53 @@ pub fn PlayPage() -> impl IntoView {
     let watch_only = move || {
         query.with(|q| q.get("role").map(|r| r.eq_ignore_ascii_case("spectator")).unwrap_or(false))
     };
+    let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
 
+    let room_now = room();
+    let next_path = {
+        let mut pairs = Vec::new();
+        if let Some(pw) = password() {
+            pairs.push(format!("password={}", urlencode(&pw)));
+        }
+        if watch_only() {
+            pairs.push("role=spectator".to_string());
+        }
+        append_query_pairs(&format!("/play/{room_now}"), pairs)
+    };
+    let ws_base = match resolve_ws_base(raw_ws) {
+        Ok(base) => base,
+        Err(err) => {
+            return view! {
+                <WsSetup
+                    title="Online room"
+                    next_path=next_path
+                    initial_error=ws_error_label(err).unwrap_or("")
+                />
+            }
+            .into_view();
+        }
+    };
+
+    view! {
+        <PlayConnected
+            ws_base=ws_base
+            room=room_now
+            password=password()
+            watch_only=watch_only()
+        />
+    }
+    .into_view()
+}
+
+#[component]
+fn PlayConnected(
+    ws_base: WsBase,
+    room: String,
+    password: Option<String>,
+    watch_only: bool,
+) -> impl IntoView {
     // Open the WS once on mount. Spectator opt-in propagates into the URL.
-    let url = room_url(&room(), password().as_deref(), watch_only());
+    let url = room_url(&ws_base, &room, password.as_deref(), watch_only);
     let (handle, incoming, conn) = connect(url);
 
     let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
@@ -78,7 +126,7 @@ pub fn PlayPage() -> impl IntoView {
 
     let handle_for_board = handle.clone();
     let handle_for_sidebar = handle;
-    let room_label = room();
+    let room_label = room.clone();
 
     let prefs = expect_context::<Prefs>();
     let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
@@ -93,7 +141,7 @@ pub fn PlayPage() -> impl IntoView {
             <div class="board-pane">
                 <Show
                     when=move || view_signal.get().is_some() && role.get().is_some()
-                    fallback=move || view! { <ConnPlaceholder room=room() conn=conn/> }
+                    fallback=move || view! { <ConnPlaceholder room=room.clone() conn=conn/> }
                 >
                     <BoardWrapper
                         view_signal=view_signal
@@ -123,6 +171,7 @@ pub fn PlayPage() -> impl IntoView {
                     rules=rules
                     conn=conn
                     handle=handle_for_sidebar
+                    ws_base=ws_base.clone()
                 />
                 <ChatPanel
                     role=role.into()
@@ -275,6 +324,7 @@ fn OnlineSidebar(
     rules: ReadSignal<Option<RuleSet>>,
     conn: ReadSignal<ConnState>,
     handle: WsHandle,
+    ws_base: WsBase,
 ) -> impl IntoView {
     let role_label = move || match role.get() {
         Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
@@ -376,7 +426,25 @@ fn OnlineSidebar(
                     <span>"將軍 / CHECK warning"</span>
                 </label>
             </div>
-            <a class="back-link" href="/lobby">"← Back to lobby"</a>
+            <a class="back-link" href=back_to_lobby_href(&ws_base) rel="external">"← Back to lobby"</a>
         </aside>
     }
+}
+
+fn back_to_lobby_href(ws_base: &WsBase) -> String {
+    app_href(&append_query_pairs("/lobby", ws_query_pair(ws_base)))
+}
+
+fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
+    match err {
+        WsBaseChoiceError::Missing => None,
+        WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
+        WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
+            Some("Use a full ws:// or wss:// server URL.")
+        }
+    }
+}
+
+fn urlencode(s: &str) -> String {
+    js_sys::encode_uri_component(s).as_string().unwrap_or_default()
 }

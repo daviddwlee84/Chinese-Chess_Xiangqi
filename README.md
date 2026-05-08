@@ -50,11 +50,15 @@ Web frontend:
 ```bash
 make play-web                         # local dev: chess-net + trunk serve
 make serve-web-prod ADDR=0.0.0.0:7878 # release WASM + compressed static serve
+make build-web-static                 # GitHub Pages artifact under clients/chess-web/dist-static
 ```
 
 Use `play-web` only for local development. Remote users should hit the
 production path so they download the release WASM bundle, not Trunk's
 debug/dev-server output.
+
+The GitHub Pages build is local-play ready. Online play from Pages needs a
+separate chess-net server URL entered in the Web lobby (`wss://...` on HTTPS).
 
 ## License
 

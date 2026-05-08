@@ -1,8 +1,7 @@
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
-use leptos_router::A;
 
-use crate::routes::{build_local_href, LocalRulesParams};
+use crate::routes::{app_href, build_local_href, LocalRulesParams};
 
 #[component]
 pub fn Picker() -> impl IntoView {
@@ -33,7 +32,7 @@ fn XiangqiCard() -> impl IntoView {
     let strict = create_rw_signal(false);
     let href = move || {
         let params = LocalRulesParams { strict: strict.get(), ..Default::default() };
-        build_local_href(Variant::Xiangqi, &params)
+        app_href(&build_local_href(Variant::Xiangqi, &params))
     };
     view! {
         <div class="variant-card variant-card--form">
@@ -60,7 +59,7 @@ fn XiangqiCard() -> impl IntoView {
                     <span>"Strict — standard rules; self-check moves are illegal."</span>
                 </label>
             </fieldset>
-            <A href=href class="btn btn-primary card-cta">"Start Xiangqi →"</A>
+            <a href=href rel="external" class="btn btn-primary card-cta">"Start Xiangqi →"</a>
         </div>
     }
 }
@@ -103,7 +102,7 @@ fn BanqiCard() -> impl IntoView {
     let href = move || {
         let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
         let params = LocalRulesParams { strict: false, house: house(), seed };
-        build_local_href(Variant::Banqi, &params)
+        app_href(&build_local_href(Variant::Banqi, &params))
     };
 
     view! {
@@ -165,7 +164,7 @@ fn BanqiCard() -> impl IntoView {
                 />
                 <p class="hint">"Same seed = same shuffle, useful for puzzles or rematches."</p>
             </fieldset>
-            <A href=href class="btn btn-primary card-cta">"Start Banqi →"</A>
+            <a href=href rel="external" class="btn btn-primary card-cta">"Start Banqi →"</a>
         </div>
     }
 }
@@ -173,19 +172,19 @@ fn BanqiCard() -> impl IntoView {
 #[component]
 fn ThreeKingdomCard() -> impl IntoView {
     view! {
-        <A href="/local/three-kingdom" class="variant-card">
+        <a href=app_href("/local/three-kingdom") rel="external" class="variant-card">
             <h2>"Three-Kingdom 三國暗棋"</h2>
             <p>"3-player banqi. Engine still WIP — board renders but moves are gated."</p>
-        </A>
+        </a>
     }
 }
 
 #[component]
 fn OnlineCard() -> impl IntoView {
     view! {
-        <A href="/lobby" class="variant-card variant-card--online">
+        <a href=app_href("/lobby") rel="external" class="variant-card variant-card--online">
             <h2>"Online"</h2>
             <p>"Browse rooms or create your own."</p>
-        </A>
+        </a>
     }
 }

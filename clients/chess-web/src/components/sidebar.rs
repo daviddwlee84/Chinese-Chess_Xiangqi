@@ -13,6 +13,7 @@ use leptos::*;
 
 use crate::glyph::{self, Style};
 use crate::prefs::Prefs;
+use crate::routes::app_href;
 
 #[component]
 pub fn Sidebar(
@@ -106,7 +107,7 @@ pub fn Sidebar(
                 <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
             </div>
             <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
-            <a class="back-link" href="/">"← Back to picker"</a>
+            <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
         </aside>
     }
 }

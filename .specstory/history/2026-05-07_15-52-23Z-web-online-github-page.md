@@ -4150,3 +4150,5399 @@ _**Agent (gpt-5.5 2026-05-07 16:16:04Z)**_
 
 I realized that setting `NO_COLOR=false` feels a bit odd, so I might actually want to unset `NO_COLOR` instead. This can be achieved with the command `env -u NO_COLOR trunk build`. Now, I need to think about the portability of the Makefile. It’s important to confirm that `env -u` is supported by GNU/coreutils and BSD environments—hopefully, macOS supports it too. I think it does, but I should double-check.
 </details></think>
+
+---
+
+_**User (2026-05-07 16:35:10Z)**_
+
+目前上一個commit `a982e070f2e7` 有針對WASM & loading畫面進行update 看看有沒有需要對應更新我們的plan 或是不影響的話可以照舊
+
+---
+
+_**Agent (gpt-5.5 2026-05-07 16:35:21Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating git commands**
+
+I’m thinking about whether we really need to use "git status" right now. It might not be necessary. Instead, I'm considering inspecting the commit directly, as that could give me the insights I need without the extra step. I wonder if there’s a more efficient way to get the information I'm looking for without overcomplicating things, so I’m focusing on simplifying the process. Let's see how this plays out!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:24Z)**_
+
+我會先只讀檢查 `a982e070f2e7` 的 diff，特別看是否已經引入 loading shell、Trunk public-url、base path 或 GitHub Pages 相關處理，然後對照上一版 plan 是否需要修正。
+
+_**Agent (gpt-5.5 2026-05-07 16:35:24Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git show --stat --oneline --decorate --no-renames a982e070f2e7`</summary>
+```
+Chunk ID: 050b36
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 292
+Output:
+a982e07 (HEAD -> main, origin/main, origin/HEAD) fix: improve web wasm loading and static serving
+ .../2026-05-07_15-43-58Z-web-user-wasm-loading.md  | 8619 ++++++++++++++++++++
+ .../2026-05-07_15-52-23Z-web-online-github-page.md | 4152 ++++++++++
+ Cargo.lock                                         |  111 +
+ Makefile                                           |   14 +-
+ README.md                                          |   15 +-
+ TODO.md                                            |    1 +
+ backlog/README.md                                  |    2 +-
+ backlog/web-wasm-download-progress.md              |   52 +
+ clients/chess-tui/src/app.rs                       |    5 +-
+ clients/chess-web/index.html                       |   25 +-
+ clients/chess-web/style.css                        |   86 +
+ crates/chess-net/Cargo.toml                        |    6 +-
+ crates/chess-net/src/server.rs                     |   56 +-
+ crates/chess-net/tests/static_serve.rs             |  104 +
+ docs/trunk-leptos-wasm.md                          |   47 +-
+ scripts/play-web.sh                                |    4 +
+ 16 files changed, 13274 insertions(+), 25 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git show --name-only --format='' --no-renames a982e070f2e7`</summary>
+```
+Chunk ID: 2a4e59
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 114
+Output:
+.specstory/history/2026-05-07_15-43-58Z-web-user-wasm-loading.md
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+Cargo.lock
+Makefile
+README.md
+TODO.md
+backlog/README.md
+backlog/web-wasm-download-progress.md
+clients/chess-tui/src/app.rs
+clients/chess-web/index.html
+clients/chess-web/style.css
+crates/chess-net/Cargo.toml
+crates/chess-net/src/server.rs
+crates/chess-net/tests/static_serve.rs
+docs/trunk-leptos-wasm.md
+scripts/play-web.sh
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git show --no-ext-diff --unified=80 --no-renames a982e070f2e7 -- clients/chess-web/index.html clients/chess-web/style.css clients/chess-web/Trunk.toml clients/chess-web/src/lib.rs clients/chess-web/src/app.rs clients/chess-web/src/config.rs Makefile docs/trunk-leptos-wasm.md`</summary>
+```
+Chunk ID: fa9c1c
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 6137
+Output:
+commit a982e070f2e7b55337d89b129114b414bc82b9fc
+Author: Da-Wei Lee <daviddwlee84@gmail.com>
+Date:   Fri May 8 00:33:21 2026 +0800
+
+    fix: improve web wasm loading and static serving
+
+diff --git a/Makefile b/Makefile
+index 64193e7..b6eb42d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,81 +1,89 @@
+ # Convenience targets for local development. The canonical build/test
+ # flow is plain `cargo`; this just wraps the multi-process net launcher.
+ 
+ SESSION ?= chess-local
+ PORT    ?= 7878
++ADDR    ?= 127.0.0.1:$(PORT)
+ VARIANT ?= xiangqi
++SERVER_ARGS ?=
+ 
+-.PHONY: help build server play-local play-lobby play-web play-spectator build-web stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
++.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+ 
+ help:
+ 	@echo "Targets:"
+ 	@echo "  build         build chess-net-server + chess-tui (debug)"
+ 	@echo "  server        run a single chess-net-server on :$(PORT)"
+ 	@echo "  play-local    tmux: window0=2 chess-tui --connect, window1=server"
+ 	@echo "                (single hard-coded room — same as the MVP launcher)"
+ 	@echo "  play-lobby    tmux: window0=3 chess-tui panes (2 picker + 1 --lobby"
+ 	@echo "                watcher), window1=server. Exercises multi-room flow."
+ 	@echo "  play-web      tmux: window0=server, window1=trunk serve (SPA on :8080,"
+ 	@echo "                proxies /ws + /lobby to chess-net :$(PORT)). Requires"
+ 	@echo "                trunk (cargo install trunk) + wasm32-unknown-unknown."
++	@echo "                Dev only: do not use trunk serve for remote users."
+ 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+ 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
+ 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
++	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
+ 	@echo "  stop-local    kill the play-local tmux session"
+ 	@echo "  stop-lobby    kill the play-lobby tmux session"
+ 	@echo "  stop-web      kill the play-web tmux session"
+ 	@echo "  stop-spectator kill the play-spectator tmux session"
+ 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+ 	@echo "  fmt | clippy | test | wasm   individual gates"
+ 	@echo ""
+-	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) VARIANT=$(VARIANT)"
++	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
+ 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
++	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
+ 	@echo "Custom port:          make play-lobby PORT=9000"
+ 
+ build:
+ 	cargo build -p chess-net -p chess-tui
+ 
+ server: build
+ 	./target/debug/chess-net-server --port $(PORT) $(VARIANT)
+ 
+ play-local:
+ 	@scripts/play-local.sh $(SESSION) $(PORT) $(VARIANT)
+ 
+ play-lobby:
+ 	@scripts/play-lobby.sh chess-lobby $(PORT) $(VARIANT)
+ 
+ play-web:
+ 	@scripts/play-web.sh chess-web $(PORT) $(VARIANT)
+ 
+ play-spectator:
+ 	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
+ 
+ build-web:
+-	cd clients/chess-web && trunk build --release
++	cd clients/chess-web && NO_COLOR=false trunk build --release
++
++serve-web-prod: build-web
++	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
+ 
+ stop-local:
+ 	-tmux kill-session -t $(SESSION) 2>/dev/null
+ 
+ stop-lobby:
+ 	-tmux kill-session -t chess-lobby 2>/dev/null
+ 
+ stop-web:
+ 	-tmux kill-session -t chess-web 2>/dev/null
+ 
+ stop-spectator:
+ 	-tmux kill-session -t chess-spec 2>/dev/null
+ 
+ # Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
+ check: fmt clippy test wasm
+ 
+ fmt:
+ 	cargo fmt --check
+ 
+ clippy:
+ 	cargo clippy --workspace --all-targets -- -D warnings
+ 
+ test:
+ 	cargo test --workspace
+ 
+ wasm:
+ 	cargo build --target wasm32-unknown-unknown -p chess-core
+diff --git a/clients/chess-web/index.html b/clients/chess-web/index.html
+index 4bae0b4..a0d1a7f 100644
+--- a/clients/chess-web/index.html
++++ b/clients/chess-web/index.html
+@@ -1,11 +1,34 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+     <meta charset="utf-8"/>
+     <meta name="viewport" content="width=device-width, initial-scale=1"/>
+     <title>Chinese Chess</title>
+     <link data-trunk rel="rust"/>
+     <link data-trunk rel="css" href="style.css"/>
+ </head>
+-<body></body>
++<body>
++    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">
++        <div class="boot-card">
++            <div class="boot-mark" aria-hidden="true">帥</div>
++            <p class="boot-kicker">Chinese Chess</p>
++            <h1>Loading board engine</h1>
++            <p class="boot-copy">
++                Downloading and starting the Rust WASM client. First load can take longer on remote links.
++            </p>
++          
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:34Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Inspecting server configurations**
+
+I need to look into the server's static differences to make sure the relevant compression and caching tests are being performed correctly. This seems important for optimizing server performance and ensuring everything is functioning well. It might involve checking the settings and configurations to identify any possible improvements or issues. I'll keep this in mind as I analyze the situation more closely!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git show --no-ext-diff --unified=100 --no-renames a982e070f2e7 -- crates/chess-net/Cargo.toml crates/chess-net/src/server.rs crates/chess-net/tests/static_serve.rs`</summary>
+```
+Chunk ID: 9e2c4a
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 5676
+Output:
+commit a982e070f2e7b55337d89b129114b414bc82b9fc
+Author: Da-Wei Lee <daviddwlee84@gmail.com>
+Date:   Fri May 8 00:33:21 2026 +0800
+
+    fix: improve web wasm loading and static serving
+
+diff --git a/crates/chess-net/Cargo.toml b/crates/chess-net/Cargo.toml
+index e90ac5f..8128159 100644
+--- a/crates/chess-net/Cargo.toml
++++ b/crates/chess-net/Cargo.toml
+@@ -1,43 +1,45 @@
+ [package]
+ name        = "chess-net"
+ description = "Wire protocol + axum websocket server for chess-core. Multi-room. Default features include the server; `default-features = false` exposes the protocol types only (e.g. for WASM clients)."
+ version.workspace      = true
+ edition.workspace      = true
+ rust-version.workspace = true
+ license.workspace      = true
+ repository.workspace   = true
+ authors.workspace      = true
+ 
+ [lib]
+ name = "chess_net"
+ path = "src/lib.rs"
+ 
+ [[bin]]
+ name = "chess-net-server"
+ path = "src/bin/server.rs"
+ required-features = ["server"]
+ 
+ [features]
+ default = ["server", "static-serve"]
+ # Enables axum/tokio/clap and the `server` module. Off by default for
+ # wasm32 consumers (chess-web) that only need the protocol types.
+ server = ["dep:tokio", "dep:axum", "dep:futures-util", "dep:clap", "dep:anyhow"]
+ # Enables `--static-dir` static-file serving (tower-http ServeDir). When the
+ # binary is started with `--static-dir <path>`, chess-net serves that
+ # directory as the route fallback. Useful for serving the chess-web `dist/`
+ # build alongside the WS endpoints in production.
+-static-serve = ["server", "dep:tower-http"]
++static-serve = ["server", "dep:tower", "dep:tower-http"]
+ 
+ [dependencies]
+ chess-core   = { path = "../chess-core" }
+ serde        = { workspace = true }
+ serde_json   = { workspace = true }
+ anyhow       = { workspace = true, optional = true }
+ tokio        = { workspace = true, optional = true }
+ axum         = { workspace = true, optional = true }
+ futures-util = { workspace = true, optional = true }
+ clap         = { workspace = true, optional = true }
+-tower-http   = { version = "0.5", features = ["fs"], optional = true }
++tower        = { version = "0.5", optional = true }
++tower-http   = { version = "0.5", features = ["compression-br", "compression-gzip", "fs"], optional = true }
+ 
+ [dev-dependencies]
++tempfile = "3"
+ tungstenite = { workspace = true }
+diff --git a/crates/chess-net/src/server.rs b/crates/chess-net/src/server.rs
+index 07b0cb1..6545dda 100644
+--- a/crates/chess-net/src/server.rs
++++ b/crates/chess-net/src/server.rs
+@@ -1,370 +1,422 @@
+ //! Multi-room ws server. Routes:
+ //!
+ //!   GET /             → upgrade into default room "main" (back-compat)
+ //!   GET /ws           → upgrade into default room "main" (back-compat)
+ //!   GET /ws/:room_id  → upgrade into named room (auto-created on first join)
+ //!   GET /lobby        → subscribe to live `Rooms` pushes
+ //!   GET /rooms        → JSON snapshot for `curl`/debug
+ //!
+ //! Optional `?password=<secret>` query param on the game-room routes locks
+ //! the room to the first joiner's secret. Wrong password gets
+ //! `Error{"bad password"}` + close.
+ //!
+ //! Optional `?role=spectator` upgrades the connection as a read-only
+ //! spectator instead of a seat. Spectators receive `Spectating` (instead of
+ //! `Hello`) plus `ChatHistory`, then live `Update` and `Chat` pushes. They
+ //! cannot move, resign, request rematch, or send chat. Player connections
+ //! arrive without `?role=spectator` — back-compat means v2 clients keep
+ //! getting "room full" if they're the third joiner.
+ //!
+ //! Empty rooms are GC'd when the last seat disconnects **and** the last
+ //! spectator leaves, except `main` which is permanent so v1 clients always
+ //! have a stable default to land in.
+ //!
+ //! Reconnect / mixed-variant rooms / time controls / TLS still deferred —
+ //! see `TODO.md`.
+ 
+ use std::collections::{HashMap, VecDeque};
+ use std::net::SocketAddr;
+ use std::sync::Arc;
+ use std::time::{SystemTime, UNIX_EPOCH};
+ 
+ use anyhow::{Context, Result};
+ use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+ use axum::extract::{Path, Query, State};
++#[cfg(feature = "static-serve")]
++use axum::http::{header, HeaderValue};
++#[cfg(feature = "static-serve")]
++use axum::middleware::Next;
+ use axum::response::IntoResponse;
+ use axum::routing::get;
+ use axum::{Json, Router};
+ use chess_core::moves::Move;
+ use chess_core::piece::Side;
+ use chess_core::rules::RuleSet;
+ use chess_core::state::{GameState, GameStatus, WinReason};
+ use chess_core::view::PlayerView;
+ use futures_util::stream::StreamExt;
+ use futures_util::SinkExt;
+ use serde::Deserialize;
+ use tokio::sync::{mpsc, Mutex};
+ 
+ use crate::protocol::{
+     variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+ };
+ 
+ const DEFAULT_ROOM: &str = "main";
+ const MAX_PASSWORD_LEN: usize = 64;
+ const MAX_ROOM_ID_LEN: usize = 32;
+ const MAX_CHAT_L
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:35:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git show --no-ext-diff --unified=80 --no-renames a982e070f2e7 -- README.md TODO.md backlog/web-wasm-download-progress.md scripts/play-web.sh`</summary>
+```
+Chunk ID: 9d6e73
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 7333
+Output:
+commit a982e070f2e7b55337d89b129114b414bc82b9fc
+Author: Da-Wei Lee <daviddwlee84@gmail.com>
+Date:   Fri May 8 00:33:21 2026 +0800
+
+    fix: improve web wasm loading and static serving
+
+diff --git a/README.md b/README.md
+index 89083a1..cc7a107 100644
+--- a/README.md
++++ b/README.md
+@@ -1,66 +1,77 @@
+ # Chinese Chess
+ 
+ A hobby Chinese chess game in Rust supporting:
+ 
+ - **Standard Xiangqi (象棋)** — 9×10, two players
+ - **Banqi (暗棋)** — 4×8 dark chess, rank-based capture
+ - **Three Kingdoms Banqi (三國暗棋)** — banqi variant with three teams *(planned)*
+ - **House rules** — toggleable: 連吃, 暗連, 車衝, 馬斜, 炮快移
+ 
+ ## Goals
+ 
+ - Modular core (`chess-core`) reusable across native TUI and browser (WASM)
+ - Self-hostable server for play with friends
+ - Mouse + keyboard UX (Vim-style + coordinate input)
+ 
+ ## Layout
+ 
+ ```
+ crates/chess-core    — pure game logic (this is where everything starts)
+ crates/chess-engine  — search/eval (planned)
+-crates/chess-net     — websocket protocol (planned)
++crates/chess-net     — websocket protocol + self-hostable server
+ crates/chess-ai      — heuristic + ISMCTS for banqi (planned)
+ clients/chess-cli    — REPL test harness for chess-core
+ clients/chess-tui    — ratatui frontend (xiangqi + banqi, vim+mouse, CJK glyphs)
+-clients/chess-web    — Leptos + WASM frontend (planned)
++clients/chess-web    — Leptos + WASM frontend for local and online play
+ ```
+ 
+ See [`docs/architecture.md`](docs/architecture.md) for the full design.
+ 
+ ## Build
+ 
+ ```bash
+ cargo check --workspace
+ cargo test -p chess-core
+ cargo run -p chess-cli       # line-oriented REPL
+ cargo run -p chess-tui       # interactive TUI (CJK glyphs, vim + mouse)
+ ```
+ 
+ Useful TUI flags: `--style ascii` (letter glyphs), `--no-color`, `--as black`
+ (render from Black's perspective for testing the orientation flip).
+ 
+ WASM cleanliness check (proves `chess-core` has no platform deps):
+ 
+ ```bash
+ cargo build --target wasm32-unknown-unknown -p chess-core
+ ```
+ 
++Web frontend:
++
++```bash
++make play-web                         # local dev: chess-net + trunk serve
++make serve-web-prod ADDR=0.0.0.0:7878 # release WASM + compressed static serve
++```
++
++Use `play-web` only for local development. Remote users should hit the
++production path so they download the release WASM bundle, not Trunk's
++debug/dev-server output.
++
+ ## License
+ 
+ MIT OR Apache-2.0
+ 
+ ## Roadmap & lessons learned
+ 
+ Forward-looking work — long-term ideas, deferred items, things needing
+ evaluation — lives in [`TODO.md`](TODO.md), prioritised P1 → P3 with effort
+ estimates (S/M/L/XL). Items with accompanying research, design notes, or paused
+ troubleshooting link to a corresponding [`backlog/<slug>.md`](backlog/) doc.
+ 
+ Backward-looking knowledge — past traps and non-obvious debugging — lives in
+ [`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
+ message and land on the root cause + workaround instead of re-debugging from
+ scratch.
+ 
+ ## Resources
+ 
+ - [Free Online Chinese Chess | Play Xiangqi](https://www.xiangqi.com/)
+diff --git a/TODO.md b/TODO.md
+index 8f11611..0b3b315 100644
+--- a/TODO.md
++++ b/TODO.md
+@@ -1,104 +1,105 @@
+ # TODO
+ 
+ Long-term backlog for Chinese Chess. See AGENTS.md
+ for the maintenance workflow that agents should follow.
+ 
+ > **For agents**: when the user surfaces an idea explicitly **not** being
+ > implemented this session (signals: "maybe later", "nice to have",
+ > "工程量太大需要再評估", "先記下來"), add it here with priority + effort tags.
+ > Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files —
+ > `TODO.md` is the single backlog index. Long-form research goes in
+ > [`backlog/<slug>.md`](backlog/).
+ 
+ <!-- Use the exact section order: P1, P2, P3, P?, Done.
+      The bundled scripts/todo-kanban.sh validator only inspects top-level
+      `- [ ]` and `- ✅` items inside these sections. Prose paragraphs,
+      blockquotes, indented sub-bullets, HTML comments, and `---` rules are
+      ignored — feel free to add inline guidance like this without breaking
+      machine readability. -->
+ 
+ ## P1
+ 
+ Likely next batch — items you'd reach for if you sat down to work today.
+ 
+ - [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+ - [ ] **[M] Phase 2 — chains-with-dark-hops (`暗連`)** — DARK_CAPTURE single-hop ships; chains still stop at face-down tiles. Extend `ChainHop` to `captured: Option<Piece>` (None = dark hop), thread through `sanitize_for_observer`, and let `extend_recursive` continue past hidden tiles when both DARK_CA
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Assessing plan updates**
+
+I need to determine if there's a need to update the current plan based on the user’s request. Since we're in Plan Mode finalization, I might want to present a revised proposed plan. If decisions are already made, I'll wrap it all up in a proposed format. There could be minor updates, so I’ll note essential adjustments related to server handling and compression. I don't think it's necessary to ask additional questions since the user’s already asked for an evaluation.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Updating the proposed plan**
+
+I need to add the GitHub Pages static build target and consider the base path and manual WebSocket base while deciding whether to keep the loading shell unchanged. The current Makefile includes build-web and serve-web-prod, which should be noted in the updated plan. I'll also check if GitHub Actions pages are relevant and if build.rs exists. It might be useful to mention that the current commit added specific details, yet it’s already included. I should ensure the plan is structured appropriately when presenting it.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering static Pages and base path**
+
+I’m recognizing a potential issue with the static Pages and the Leptos Router regarding the base path. I need to figure out how to implement the compile-time base path using environment variables. If the app can read an environment variable like `option_env!("CHESS_WEB_BASE_PATH")` at compile time, then using `env!` might be the key. However, I also need to consider that without a build.rs file, Cargo won’t rerun when the environment changes, which could be a challenge.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Investigating Router paths**
+
+I’m trying to figure out how to use the Router with base navigation paths. I need to check if Leptos’ `navigate_from_route` is base-aware. To avoid ambiguity, should I use `app_href` with the full base? If the Router base is `/chinese-chess`, then passing `/chinese-chess/play/room` might match correctly. I wonder if the Router location path includes `/chinese-chess/local`, though it seems like the base could strip that. I’ll need to look more closely at how Leptos’ navigation works.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+`a982e07` 已經把 release serve、loading shell、compression/cache headers 做掉了，所以不是照舊逐字實作。核心方向不變，但 plan 要刪掉重複事項，並把 GitHub Pages 的剩餘工作聚焦到 base path、404 fallback、手動 WS base、Pages workflow。
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `rg -n "fn navigate_from_route|navigate_from_route" ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src -g '*.rs' && sed -n '240,330p' ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/router.rs`</summary>
+```
+Chunk ID: b1ad2c
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 968
+Output:
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/router.rs:279:    pub(crate) fn navigate_from_route(
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/router.rs:469:            if let Err(e) = self.navigate_from_route(
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/hooks.rs:211:                if let Err(e) = router.navigate_from_route(&to, &options) {
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/history/mod.rs:88:                if let Err(e) = router.inner.navigate_from_route(
+            on_cleanup(move || click_event.remove());
+        }
+
+        Self { inner }
+    }
+
+    /// The current [`pathname`](https://developer.mozilla.org/en-US/docs/Web/API/Location/pathname).
+    pub fn pathname(&self) -> Memo<String> {
+        self.inner.location.pathname
+    }
+
+    /// The [`RouteContext`] of the base route.
+    pub fn base(&self) -> RouteContext {
+        self.inner.base.clone()
+    }
+
+    pub(crate) fn id(&self) -> usize {
+        self.inner.id
+    }
+
+    pub(crate) fn trailing_slash(&self) -> TrailingSlash {
+        self.inner.trailing_slash.clone()
+    }
+
+    /// A list of all possible routes this router can match.
+    pub fn possible_branches(&self) -> Vec<Branch> {
+        self.inner
+            .possible_routes
+            .borrow()
+            .clone()
+            .unwrap_or_default()
+    }
+}
+
+impl RouterContextInner {
+    #[cfg_attr(
+        any(debug_assertions, feature = "ssr"),
+        tracing::instrument(level = "trace", skip_all,)
+    )]
+    pub(crate) fn navigate_from_route(
+        self: Rc<Self>,
+        to: &str,
+        options: &NavigateOptions,
+    ) -> Result<(), NavigationError> {
+        let this = Rc::clone(&self);
+
+        untrack(move || {
+            let resolved_to = if options.resolve {
+                this.base.resolve_path(to)
+            } else {
+                resolve_path("", to, None).map(String::from)
+            };
+
+            // reset count of pending resources at global level
+            if let Some(global) = use_context::<GlobalSuspenseContext>() {
+                global.reset();
+            }
+
+            match resolved_to {
+                None => Err(NavigationError::NotRoutable(to.to_string())),
+                Some(resolved_to) => {
+                    if self.referrers.borrow().len() > 32 {
+                        return Err(NavigationError::MaxRedirects);
+                    }
+
+                    if resolved_to != this.reference.get()
+                        || options.state != (this.state).get()
+                    {
+                        {
+                            self.referrers.borrow_mut().push(LocationChange {
+                                value: self.reference.get(),
+                                replace: options.replace,
+                                scroll: options.scroll,
+                                state: self.state.get(),
+                            });
+                        }
+                        let len = self.referrers.borrow().len();
+
+                        let set_reference = self.set_reference;
+                        let set_state = self.set_state;
+                        let referrers = self.referrers.clone();
+                        let this = Rc::clone(&self);
+
+                        let resolved = resolved_to.to_string();
+                        let state = options.state.clone();
+                        set_reference.update(move |r| *r = resolved);
+
+                        set_state.update({
+                            let next_state = state.clone();
+                            move |state| *state = next_state
+                        });
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '330,470p' ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/router.rs`</summary>
+```
+Chunk ID: af169b
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 1313
+Output:
+                        });
+
+                        let global_suspense =
+                            use_context::<GlobalSuspenseContext>();
+                        let path_stack = self.path_stack;
+                        let is_navigating_back = self.is_back.get_untracked();
+                        if !is_navigating_back {
+                            path_stack.update_value(|stack| {
+                                stack.push(resolved_to.clone())
+                            });
+                        }
+
+                        let set_is_routing = use_context::<SetIsRouting>();
+                        if let Some(set_is_routing) = set_is_routing {
+                            set_is_routing.0.set(true);
+                        }
+                        spawn_local(async move {
+                            if let Some(set_is_routing) = set_is_routing {
+                                if let Some(global) = global_suspense {
+                                    global.with_inner(|s| s.to_future()).await;
+                                }
+                                set_is_routing.0.set(false);
+                            }
+
+                            if referrers.borrow().len() == len {
+                                this.navigate_end(LocationChange {
+                                    value: resolved_to,
+                                    replace: false,
+                                    scroll: true,
+                                    state,
+                                });
+                            }
+                        });
+                    } else {
+                        scroll_to_el(false);
+                    }
+
+                    Ok(())
+                }
+            }
+        })
+    }
+
+    pub(crate) fn navigate_end(self: Rc<Self>, mut next: LocationChange) {
+        let first = self.referrers.borrow().first().cloned();
+        if let Some(first) = first {
+            if next.value != first.value || next.state != first.state {
+                next.replace = first.replace;
+                next.scroll = first.scroll;
+                self.history.navigate(&next);
+            }
+            self.referrers.borrow_mut().clear();
+        }
+    }
+
+    #[cfg(not(feature = "ssr"))]
+    pub(crate) fn handle_anchor_click(self: Rc<Self>, ev: web_sys::Event) {
+        use wasm_bindgen::JsValue;
+
+        let ev = ev.unchecked_into::<web_sys::MouseEvent>();
+        if ev.default_prevented()
+            || ev.button() != 0
+            || ev.meta_key()
+            || ev.alt_key()
+            || ev.ctrl_key()
+            || ev.shift_key()
+        {
+            return;
+        }
+
+        let composed_path = ev.composed_path();
+        let mut a: Option<web_sys::HtmlAnchorElement> = None;
+        for i in 0..composed_path.length() {
+            if let Ok(el) = composed_path
+                .get(i)
+                .dyn_into::<web_sys::HtmlAnchorElement>()
+            {
+                a = Some(el);
+            }
+        }
+        if let Some(a) = a {
+            let href = a.href();
+            let target = a.target();
+
+            // let browser handle this event if link has target,
+            // or if it doesn't have href or state
+            // TODO "state" is set as a prop, not an attribute
+            if !target.is_empty()
+                || (href.is_empty() && !a.has_attribute("state"))
+            {
+                return;
+            }
+
+            let rel = a.get_attribute("rel").unwrap_or_default();
+            let mut rel = rel.split([' ', '\t']);
+
+            // let browser handle event if it has rel=external or download
+            if a.has_attribute("download") || rel.any(|p| p == "external") {
+                return;
+            }
+
+            let url = Url::try_from(href.as_str()).unwrap();
+            let path_name = crate::history::unescape_minimal(&url.pathname);
+
+            // let browser handle this event if it leaves our domain
+            // or our base path
+            if url.origin
+                != leptos_dom::helpers::location().origin().unwrap_or_default()
+                || (!self.base_path.is_empty()
+                    && !path_name.is_empty()
+                    && !path_name
+                        .to_lowercase()
+                        .starts_with(&self.base_path.to_lowercase()))
+            {
+                return;
+            }
+
+            let to = path_name
+                + if url.search.is_empty() { "" } else { "?" }
+                + &unescape(&url.search)
+                + &unescape(&url.hash);
+            let state =
+                leptos_dom::helpers::get_property(a.unchecked_ref(), "state")
+                    .ok()
+                    .and_then(|value| {
+                        if value == JsValue::UNDEFINED {
+                            None
+                        } else {
+                            Some(value)
+                        }
+    
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `rg -n "pub fn resolve_path|fn resolve_path|struct RouteContext|impl RouteContext" ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src -g '*.rs' | head -80`</summary>
+```
+Chunk ID: b63900
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 265
+Output:
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/matching/resolve_path.rs:7:pub fn resolve_path<'a>(
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:313:pub struct RouteContext {
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:317:impl RouteContext {
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:422:    pub fn resolve_path(&self, to: &str) -> Option<String> {
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:431:    pub(crate) fn resolve_path_tracked(&self, to: &str) -> Option<String> {
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:452:pub(crate) struct RouteContextInner {
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,120p' ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/matching/resolve_path.rs && rg -n "impl RouteContext" ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src -g '*.rs'`</summary>
+```
+Chunk ID: 4780f5
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 727
+Output:
+// Implementation based on Solid Router
+// see <https://github.com/solidjs/solid-router/blob/main/src/utils.ts>
+
+use std::borrow::Cow;
+
+#[doc(hidden)]
+pub fn resolve_path<'a>(
+    base: &'a str,
+    path: &'a str,
+    from: Option<&'a str>,
+) -> Option<Cow<'a, str>> {
+    if has_scheme(path) {
+        Some(path.into())
+    } else {
+        let base_path = normalize(base, false);
+        let from_path = from.map(|from| normalize(from, false));
+        let result = if let Some(from_path) = from_path {
+            if path.starts_with('/') {
+                base_path
+            } else if from_path.to_lowercase().find(&base_path.to_lowercase())
+                != Some(0)
+            {
+                base_path + from_path
+            } else {
+                from_path
+            }
+        } else {
+            base_path
+        };
+
+        let result_empty = result.is_empty();
+        let prefix = if result_empty { "/".into() } else { result };
+
+        Some(prefix + normalize(path, result_empty))
+    }
+}
+
+fn has_scheme(path: &str) -> bool {
+    path.starts_with("//")
+        || path.starts_with("tel:")
+        || path.starts_with("mailto:")
+        || path
+            .split_once("://")
+            .map(|(prefix, _)| {
+                prefix.chars().all(
+                    |c: char| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9'),
+                )
+            })
+            .unwrap_or(false)
+}
+
+#[doc(hidden)]
+fn normalize(path: &str, omit_slash: bool) -> Cow<'_, str> {
+    let s = path.trim_start_matches('/');
+    let trim_end = s
+        .chars()
+        .rev()
+        .take_while(|c| *c == '/')
+        .count()
+        .saturating_sub(1);
+    let s = &s[0..s.len() - trim_end];
+    if s.is_empty() || omit_slash || begins_with_query_or_hash(s) {
+        s.into()
+    } else {
+        format!("/{s}").into()
+    }
+}
+
+#[doc(hidden)]
+pub fn join_paths<'a>(from: &'a str, to: &'a str) -> String {
+    let from = remove_wildcard(&normalize(from, false));
+    from + normalize(to, false).as_ref()
+}
+
+fn begins_with_query_or_hash(text: &str) -> bool {
+    matches!(text.chars().next(), Some('#') | Some('?'))
+}
+
+fn remove_wildcard(text: &str) -> String {
+    text.rsplit_once('*')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or(text)
+        .trim_end_matches('/')
+        .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn normalize_query_string_with_opening_slash() {
+        assert_eq!(normalize("/?foo=bar", false), "?foo=bar");
+    }
+
+    #[test]
+    fn normalize_retain_trailing_slash() {
+        assert_eq!(normalize("foo/bar/", false), "/foo/bar/");
+    }
+
+    #[test]
+    fn normalize_dedup_trailing_slashes() {
+        assert_eq!(normalize("foo/bar/////", false), "/foo/bar/");
+    }
+}
+/Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs:317:impl RouteContext {
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '313,440p' ~/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_router-0.6.15/src/components/route.rs`</summary>
+```
+Chunk ID: 0390fa
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 1030
+Output:
+pub struct RouteContext {
+    pub(crate) inner: Rc<RouteContextInner>,
+}
+
+impl RouteContext {
+    #[cfg_attr(
+        any(debug_assertions, feature = "ssr"),
+        tracing::instrument(level = "trace", skip_all,)
+    )]
+    pub(crate) fn new(
+        router: &RouterContext,
+        child: impl Fn() -> Option<RouteContext> + 'static,
+        matcher: impl Fn() -> Option<RouteMatch> + 'static,
+    ) -> Option<Self> {
+        let base = router.base();
+        let base = base.path();
+        let RouteMatch { path_match, route } = matcher()?;
+        let PathMatch { path, .. } = path_match;
+        let RouteDefinition {
+            view: element,
+            id,
+            data,
+            ..
+        } = route.key;
+        let params = create_memo(move |_| {
+            matcher()
+                .map(|matched| matched.path_match.params)
+                .unwrap_or_default()
+        });
+
+        let inner = Rc::new(RouteContextInner {
+            id,
+            base_path: base,
+            child: Box::new(child),
+            path: create_rw_signal(path),
+            original_path: route.original_path.to_string(),
+            params,
+            outlet: Box::new(move || Some(element())),
+            data: RefCell::new(None),
+        });
+        if let Some(loader) = data {
+            let data = {
+                let inner = Rc::clone(&inner);
+                provide_context(RouteContext { inner });
+                (loader.data)()
+            };
+            *inner.data.borrow_mut() = Some(data);
+        }
+
+        Some(RouteContext { inner })
+    }
+
+    pub(crate) fn id(&self) -> usize {
+        self.inner.id
+    }
+
+    /// Returns the URL path of the current route,
+    /// including param values in their places.
+    ///
+    /// e.g., this will return `/article/0` rather than `/article/:id`.
+    /// For the opposite behavior, see [`RouteContext::original_path`].
+    #[track_caller]
+    pub fn path(&self) -> String {
+        #[cfg(debug_assertions)]
+        let caller = std::panic::Location::caller();
+
+        self.inner.path.try_get_untracked().unwrap_or_else(|| {
+            leptos::logging::debug_warn!(
+                "at {caller}, you call `.path()` on a `<Route/>` that has \
+                 already been disposed"
+            );
+            Default::default()
+        })
+    }
+
+    pub(crate) fn set_path(&self, path: String) {
+        self.inner.path.set(path);
+    }
+
+    /// Returns the original URL path of the current route,
+    /// with the param name rather than the matched parameter itself.
+    ///
+    /// e.g., this will return `/article/:id` rather than `/article/0`
+    /// For the opposite behavior, see [`RouteContext::path`].
+    pub fn original_path(&self) -> &str {
+        &self.inner.original_path
+    }
+
+    /// A reactive wrapper for the route parameters that are currently matched.
+    pub fn params(&self) -> Memo<ParamsMap> {
+        self.inner.params
+    }
+
+    pub(crate) fn base(path: &str, fallback: Option<fn() -> View>) -> Self {
+        Self {
+            inner: Rc::new(RouteContextInner {
+                id: 0,
+                base_path: path.to_string(),
+                child: Box::new(|| None),
+                path: create_rw_signal(path.to_string()),
+                original_path: path.to_string(),
+                params: create_memo(|_| ParamsMap::new()),
+                outlet: Box::new(move || fallback.as_ref().map(move |f| f())),
+                data: Default::default(),
+            }),
+        }
+    }
+
+    /// Resolves a relative route, relative to the current route's path.
+    pub fn resolve_path(&self, to: &str) -> Option<String> {
+        resolve_path(
+            &self.inner.base_path,
+            to,
+            Some(&self.inner.path.get_untracked()),
+        )
+        .map(String::from)
+    }
+
+    pub(crate) fn resolve_path_tracked(&self, to: &str) -> Option<String> {
+        resolve_path(&self.inner.base_path, to, Some(&self.inner.path.get()))
+            .map(Cow::into_owned)
+    }
+
+    /// The nested child route, if any.
+    pub fn child(&self) -> Option<RouteContext> {
+        (self.inner.child)()
+    }
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:49Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering PlayPage setup**
+
+I'm thinking about the PlayPage functionality. If we don't have a static base, we should probably show a setup form that includes the room details. After the user submits that, it would navigate to the same `play/:room?ws=...` link. For the server mode, we have the same-origin base available, which is good to keep in mind. It’s interesting to see how these elements interact!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,80p' rust-toolchain.toml`</summary>
+```
+Chunk ID: 4824e4
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 28
+Output:
+[toolchain]
+channel    = "stable"
+components = ["rustfmt", "clippy"]
+targets    = ["wasm32-unknown-unknown"]
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:36:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git ls-files clients/chess-web/dist clients/chess-web/dist-static .gitignore .github/workflows/pages.yml && sed -n '1,120p' .gitignore 2>/dev/null`</summary>
+```
+Chunk ID: 2899f3
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 46
+Output:
+.gitignore
+/target
+**/*.rs.bk
+
+# Trunk build output (chess-web)
+clients/chess-web/dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Insta pending snapshots
+**/*.snap.new
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 16:37:11Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Updating project plan**
+
+I’m thinking about whether to include dist-static in the .gitignore since it’s a Pages artifact and doesn't need to be tracked. I believe the decision is made, so updating the plan is next. The final plan should have a clear title, a brief summary, and outline public APIs/interfaces/types, tests, and assumptions—all in a concise format, possibly in Chinese. I plan to wrap the proposed plan and ensure that existing tests are referenced without unnecessary duplication.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:37:11Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Clarifying build and serve plans**
+
+I've replaced `serve-web-server` with `serve-web-prod` in the previous plan. The `build-web-server` might be optional, and adding an alias could be a nice touch, though not necessary. I plan to keep the `build-web` server the same and add `build-web-static`. Additionally, I want `build-web-static` to set the necessary environment variables. My goal is to ensure that `WEB_BASE` is properly configured without too much detail but clearly defined behavior regarding slashes. Normalizing the trailing slash could be done via a script snippet.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 16:37:11Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Naming the GitHub project**
+
+I'm thinking about naming the GitHub Pages project `chinese-chess`. It seems like a good fit, considering the context and what the project is about. I need to clarify any assumptions related to this choice, such as how it aligns with the overall goals of the project and if the name is unique enough to avoid confusion with other projects. Let’s finalize that name while ensuring it reflects the project's purpose accurately!
+</details></think>
+
+---
+
+_**User (2026-05-07 23:51:08Z)**_
+
+Implement Plan
+
+---
+
+_**Agent (gpt-5.5 2026-05-07 23:51:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Inspecting the current repo**
+
+I need to implement some changes, but first, I have to inspect the current repo. There’s a chance that agent-history-hygiene has triggered some issues, especially if the spec story is messy or possibly already committed. The user mentioned implementing a plan, so I need to make code edits carefully. My best approach is to begin by checking the status first and see where the changes are necessary.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:21Z)**_
+
+我會按剛才更新後的 plan 直接實作：先確認目前 HEAD 與檔案狀態，再改 Web config/routing/WS base、Makefile/CI，最後跑針對性測試與 build。
+
+_**Agent (gpt-5.5 2026-05-07 23:51:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git status --short && git rev-parse --short HEAD`</summary>
+```
+Chunk ID: 46b88e
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 20
+Output:
+ M .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+a982e07
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `rg -n "href=|use_navigate|nav_for|format!\(\"/|<a |<A |window\.location|localStorage|Storage|ws_base|lobby_url|room_url" clients/chess-web/src clients/chess-web/Cargo.toml clients/chess-web/index.html Makefile .github -g '!clients/chess-web/dist/**'`</summary>
+```
+Chunk ID: 04f8a2
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 861
+Output:
+clients/chess-web/Cargo.toml:33:web-sys       = { version = "0.3", features = ["Window", "Location", "Storage"] }
+clients/chess-web/index.html:8:    <link data-trunk rel="css" href="style.css"/>
+clients/chess-web/src/prefs.rs:1://! User-facing FX preferences, persisted in `localStorage`.
+clients/chess-web/src/prefs.rs:8://! Storage keys are stable (`chess.fx.confetti`, `chess.fx.checkBanner`)
+clients/chess-web/src/prefs.rs:37:    /// Hydrate from `localStorage` and arm `create_effect` watchers that
+clients/chess-web/src/prefs.rs:46:        // calling `localStorage` on every flip is safe and cheap.
+clients/chess-web/src/prefs.rs:64:fn local_storage() -> Option<web_sys::Storage> {
+clients/chess-web/src/config.rs:5:pub fn ws_base() -> String {
+clients/chess-web/src/config.rs:14:pub fn lobby_url() -> String {
+clients/chess-web/src/config.rs:15:    format!("{}/lobby", ws_base())
+clients/chess-web/src/config.rs:18:pub fn room_url(room: &str, password: Option<&str>, spectator: bool) -> String {
+clients/chess-web/src/config.rs:19:    let base = format!("{}/ws/{}", ws_base(), encode(room));
+clients/chess-web/src/routes.rs:89:        format!("/local/{}", variant_slug(variant))
+clients/chess-web/src/routes.rs:91:        format!("/local/{}?{}", variant_slug(variant), q)
+clients/chess-web/src/components/sidebar.rs:74:    // default to true on first visit and persist via localStorage.
+clients/chess-web/src/components/sidebar.rs:109:            <a class="back-link" href="/">"← Back to picker"</a>
+clients/chess-web/src/components/captured.rs:7://! lives on `Prefs` so the choice persists in `localStorage`.
+clients/chess-web/src/pages/local.rs:41:                    <a href="/" class="back-link">"← Back to picker"</a>
+clients/chess-web/src/pages/lobby.rs:3:use leptos_router::use_navigate;
+clients/chess-web/src/pages/lobby.rs:5:use crate::config::lobby_url;
+clients/chess-web/src/pages/lobby.rs:14:    let (handle, incoming, conn) = connect(lobby_url());
+clients/chess-web/src/pages/lobby.rs:28:    let navigate = use_navigate();
+clients/chess-web/src/pages/lobby.rs:29:    let nav_for_join = navigate.clone();
+clients/chess-web/src/pages/lobby.rs:33:            format!("/play/{}", id)
+clients/chess-web/src/pages/lobby.rs:35:            format!("/play/{}?password={}", id, urlencode(&pw))
+clients/chess-web/src/pages/lobby.rs:37:        nav_for_join(&target, Default::default());
+clients/chess-web/src/pages/lobby.rs:40:    let nav_for_watch = navigate;
+clients/chess-web/src/pages/lobby.rs:48:        nav_for_watch(&format!("/play/{}?{}", id, qs), Default::default());
+clients/chess-web/src/pages/lobby.rs:61:            <a href="/" class="back-link">"← Back to picker"</a>
+clients/chess-web/src/pages/play.rs:15:use crate::config::room_url;
+clients/chess-web/src/pages/play.rs:34:    let url = room_url(&room(), password().as_deref(), watch_only());
+clients/chess-web/src/pages/play.rs:379:            <a class="back-link" href="/lobby">"← Back to lobby"</a>
+clients/chess-web/src/pages/picker.rs:63:            <A href=href class="btn btn-primary card-cta">"Start Xiangqi →"</A>
+clients/chess-web/src/pages/picker.rs:168:            <A href=href class="btn btn-primary card-cta">"Start Banqi →"</A>
+clients/chess-web/src/pages/picker.rs:176:        <A href="/local/three-kingdom" class="variant-card">
+clients/chess-web/src/pages/picker.rs:186:        <A href="/lobby" class="variant-card variant-card--online">
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `find clients/chess-web/src -maxdepth 3 -type f -print | sort && sed -n '1,140p' clients/chess-web/src/lib.rs && sed -n '1,120p' clients/chess-web/Cargo.toml`</summary>
+```
+Chunk ID: a185aa
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 782
+Output:
+clients/chess-web/src/app.rs
+clients/chess-web/src/components/board.rs
+clients/chess-web/src/components/captured.rs
+clients/chess-web/src/components/chat_panel.rs
+clients/chess-web/src/components/confetti.rs
+clients/chess-web/src/components/end_overlay.rs
+clients/chess-web/src/components/mod.rs
+clients/chess-web/src/components/sidebar.rs
+clients/chess-web/src/config.rs
+clients/chess-web/src/glyph.rs
+clients/chess-web/src/lib.rs
+clients/chess-web/src/orient.rs
+clients/chess-web/src/pages/lobby.rs
+clients/chess-web/src/pages/local.rs
+clients/chess-web/src/pages/mod.rs
+clients/chess-web/src/pages/picker.rs
+clients/chess-web/src/pages/play.rs
+clients/chess-web/src/prefs.rs
+clients/chess-web/src/routes.rs
+clients/chess-web/src/state.rs
+clients/chess-web/src/ws.rs
+//! `chess-web` — Leptos + WASM frontend for chess-core.
+//!
+//! Native (`cargo check --workspace`) compiles only the pure-logic modules
+//! (orient, glyph, routes, state); the leptos UI and the WS layer are
+//! wasm32-gated so the workspace target check stays clean. Build for the
+//! browser with `trunk serve` (or `cargo build --target wasm32-unknown-unknown
+//! -p chess-web`).
+
+pub mod glyph;
+pub mod orient;
+pub mod routes;
+pub mod state;
+
+#[cfg(target_arch = "wasm32")]
+mod app;
+#[cfg(target_arch = "wasm32")]
+mod components;
+#[cfg(target_arch = "wasm32")]
+mod config;
+#[cfg(target_arch = "wasm32")]
+mod pages;
+#[cfg(target_arch = "wasm32")]
+mod prefs;
+#[cfg(target_arch = "wasm32")]
+mod ws;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::wasm_bindgen;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(start)]
+pub fn start() {
+    console_error_panic_hook::set_once();
+    leptos::mount_to_body(app::App);
+}
+[package]
+name        = "chess-web"
+description = "Leptos + WASM frontend for chess-core. SPA — local pass-and-play and online play via chess-net."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# Native (cargo check --workspace) sees a tiny lib + the pure-logic modules
+# (orient, glyph, routes, state). Leptos and the browser-only deps are
+# wasm32-gated so the workspace check passes. chess-net is pulled in with
+# `default-features = false` so axum/tokio do NOT end up in the WASM bundle.
+[dependencies]
+chess-core = { path = "../../crates/chess-core" }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+chess-net  = { path = "../../crates/chess-net", default-features = false }
+
+[dev-dependencies]
+smallvec = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+leptos        = { version = "0.6", features = ["csr"] }
+leptos_router = { version = "0.6", features = ["csr"] }
+console_error_panic_hook = "0.1.7"
+wasm-bindgen  = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys       = { version = "0.3", features = ["Window", "Location", "Storage"] }
+js-sys        = "0.3"
+gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+futures-util  = { workspace = true }
+futures       = "0.3"
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,130p' Makefile && find .github/workflows -maxdepth 1 -type f -print -exec sed -n '1,180p' {} \;`</summary>
+```
+Chunk ID: f17381
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 1153
+Output:
+# Convenience targets for local development. The canonical build/test
+# flow is plain `cargo`; this just wraps the multi-process net launcher.
+
+SESSION ?= chess-local
+PORT    ?= 7878
+ADDR    ?= 127.0.0.1:$(PORT)
+VARIANT ?= xiangqi
+SERVER_ARGS ?=
+
+.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+
+help:
+	@echo "Targets:"
+	@echo "  build         build chess-net-server + chess-tui (debug)"
+	@echo "  server        run a single chess-net-server on :$(PORT)"
+	@echo "  play-local    tmux: window0=2 chess-tui --connect, window1=server"
+	@echo "                (single hard-coded room — same as the MVP launcher)"
+	@echo "  play-lobby    tmux: window0=3 chess-tui panes (2 picker + 1 --lobby"
+	@echo "                watcher), window1=server. Exercises multi-room flow."
+	@echo "  play-web      tmux: window0=server, window1=trunk serve (SPA on :8080,"
+	@echo "                proxies /ws + /lobby to chess-net :$(PORT)). Requires"
+	@echo "                trunk (cargo install trunk) + wasm32-unknown-unknown."
+	@echo "                Dev only: do not use trunk serve for remote users."
+	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
+	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
+	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
+	@echo "  stop-local    kill the play-local tmux session"
+	@echo "  stop-lobby    kill the play-lobby tmux session"
+	@echo "  stop-web      kill the play-web tmux session"
+	@echo "  stop-spectator kill the play-spectator tmux session"
+	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+	@echo "  fmt | clippy | test | wasm   individual gates"
+	@echo ""
+	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
+	@echo "Banqi example:        make play-lobby VARIANT=banqi"
+	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
+	@echo "Custom port:          make play-lobby PORT=9000"
+
+build:
+	cargo build -p chess-net -p chess-tui
+
+server: build
+	./target/debug/chess-net-server --port $(PORT) $(VARIANT)
+
+play-local:
+	@scripts/play-local.sh $(SESSION) $(PORT) $(VARIANT)
+
+play-lobby:
+	@scripts/play-lobby.sh chess-lobby $(PORT) $(VARIANT)
+
+play-web:
+	@scripts/play-web.sh chess-web $(PORT) $(VARIANT)
+
+play-spectator:
+	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
+
+build-web:
+	cd clients/chess-web && NO_COLOR=false trunk build --release
+
+serve-web-prod: build-web
+	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
+
+stop-local:
+	-tmux kill-session -t $(SESSION) 2>/dev/null
+
+stop-lobby:
+	-tmux kill-session -t chess-lobby 2>/dev/null
+
+stop-web:
+	-tmux kill-session -t chess-web 2>/dev/null
+
+stop-spectator:
+	-tmux kill-session -t chess-spec 2>/dev/null
+
+# Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
+check: fmt clippy test wasm
+
+fmt:
+	cargo fmt --check
+
+clippy:
+	cargo clippy --workspace --all-targets -- -D warnings
+
+test:
+	cargo test --workspace
+
+wasm:
+	cargo build --target wasm32-unknown-unknown -p chess-core
+.github/workflows/ci.yml
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+      - name: depth-3 perft (release)
+        run: cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+
+  wasm:
+    runs-on: ubuntu-latest
+    name: wasm-cleanliness
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Build chess-core for wasm32
+        run: cargo build --target wasm32-unknown-unknown -p chess-core
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:28Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Implementing changes**
+
+I need to implement the necessary updates, but I'll take note of the dirty spec story for now. It seems I shouldn't modify anything unless the status is final. I should also edit as needed and consider using the apply_patch function. Next, it’s important to inspect all relevant files to ensure I'm looking at the complete picture, especially the pages at the bottom. I’ll make sure everything is checked thoroughly!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:31Z)**_
+
+目前只有 SpecStory transcript 是 dirty，我不會改它；實作會集中在 Web crate、Makefile、`.gitignore`、Pages workflow。接著我會新增 build-time config 與 base-aware helpers，再把現有硬編碼 `/...` 導航接過來。
+
+_**Agent (gpt-5.5 2026-05-07 23:51:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,460p' clients/chess-web/src/pages/play.rs`</summary>
+```
+Chunk ID: 0e7be5
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 3504
+Output:
+use chess_core::board::BoardShape;
+use chess_core::coord::Square;
+use chess_core::piece::Side;
+use chess_core::rules::RuleSet;
+use chess_core::state::GameStatus;
+use chess_core::view::{PlayerView, VisibleCell};
+use chess_net::protocol::{ChatLine, ClientMsg, ServerMsg};
+use leptos::*;
+use leptos_router::{use_params_map, use_query_map};
+
+use crate::components::board::Board;
+use crate::components::captured::CapturedStrip;
+use crate::components::chat_panel::ChatPanel;
+use crate::components::end_overlay::EndOverlay;
+use crate::config::room_url;
+use crate::prefs::Prefs;
+use crate::routes::variant_slug;
+use crate::state::{end_chain_move, find_move, truncate_front, ClientRole};
+use crate::ws::{connect, ConnState, WsHandle};
+
+const CHAT_HISTORY_CAP: usize = 50;
+
+#[component]
+pub fn PlayPage() -> impl IntoView {
+    let params = use_params_map();
+    let query = use_query_map();
+    let room = move || params.with(|p| p.get("room").cloned().unwrap_or_default());
+    let password = move || query.with(|q| q.get("password").cloned().filter(|s| !s.is_empty()));
+    let watch_only = move || {
+        query.with(|q| q.get("role").map(|r| r.eq_ignore_ascii_case("spectator")).unwrap_or(false))
+    };
+
+    // Open the WS once on mount. Spectator opt-in propagates into the URL.
+    let url = room_url(&room(), password().as_deref(), watch_only());
+    let (handle, incoming, conn) = connect(url);
+
+    let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
+    let (role, set_role) = create_signal::<Option<ClientRole>>(None);
+    let (view_signal, set_view) = create_signal::<Option<PlayerView>>(None);
+    let (chat, set_chat) = create_signal::<Vec<ChatLine>>(Vec::new());
+    let (toast, set_toast) = create_signal::<Option<String>>(None);
+
+    create_effect(move |_| match incoming.get() {
+        Some(ServerMsg::Hello { observer, rules: r, view: v, .. }) => {
+            set_role.set(Some(ClientRole::Player(observer)));
+            set_rules.set(Some(r));
+            set_view.set(Some(v));
+            set_toast.set(None);
+        }
+        Some(ServerMsg::Spectating { rules: r, view: v, .. }) => {
+            set_role.set(Some(ClientRole::Spectator));
+            set_rules.set(Some(r));
+            set_view.set(Some(v));
+            set_toast.set(None);
+        }
+        Some(ServerMsg::Update { view: v }) => {
+            set_view.set(Some(v));
+        }
+        Some(ServerMsg::ChatHistory { lines }) => {
+            set_chat.set(lines);
+        }
+        Some(ServerMsg::Chat { line }) => {
+            set_chat.update(|buf| {
+                buf.push(line);
+                truncate_front(buf, CHAT_HISTORY_CAP);
+            });
+        }
+        Some(ServerMsg::Error { message }) => {
+            set_toast.set(Some(message));
+        }
+        Some(ServerMsg::Rooms { .. }) | None => {}
+    });
+
+    let chat_handle = handle.clone();
+    let on_chat_send: Callback<String> = Callback::new(move |text: String| {
+        chat_handle.send(ClientMsg::Chat { text });
+    });
+
+    let handle_for_board = handle.clone();
+    let handle_for_sidebar = handle;
+    let room_label = room();
+
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
+    // The overlay needs a non-`Option` view signal once the welcome lands.
+    // Wrap in a `Show` so we don't mount it pre-welcome (and so the watcher
+    // inside doesn't see a fake "transition" on first connect).
+    let view_for_overlay = Signal::derive(move || view_signal.get());
+    let role_for_overlay: Signal<Option<ClientRole>> = role.into();
+
+    view! {
+        <section class="game-page">
+            <div class="board-pane">
+                <Show
+                    when=move || view_signal.get().is_some() && role.get().is_some()
+                    fallback=move || view! { <ConnPlaceholder room=room() conn=conn/> }
+                >
+                    <BoardWrapper
+                        view_signal=view_signal
+                        role=role
+                        handle=handle_for_board.clone()
+                    />
+                    <EndOverlay
+                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+                        role=role_for_overlay
+                        enabled=fx_confetti
+                    />
+                    <CapturedStrip
+                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+                    />
+                </Show>
+                <Show when=move || toast.get().is_some()>
+                    <div class="toast" on:click=move |_| set_toast.set(None)>
+                        {move || toast.get().unwrap_or_default()}
+                    </div>
+                </Show>
+            </div>
+            <div class="right-column">
+                <OnlineSidebar
+                    room=room_label
+               
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,220p' clients/chess-web/src/components/sidebar.rs`</summary>
+```
+Chunk ID: 8203ce
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 1452
+Output:
+//! Sidebar: variant + turn + status + history-length + undo / new-game buttons.
+//!
+//! `wip=true` (three-kingdom banqi until the engine ships) hides turn /
+//! legal-move counts and disables the action buttons — the board overlay
+//! tells the user what's happening; the sidebar just stays out of the way.
+
+use chess_core::board::BoardShape;
+use chess_core::piece::Side;
+use chess_core::rules::Variant;
+use chess_core::state::{DrawReason, GameStatus, WinReason};
+use chess_core::view::PlayerView;
+use leptos::*;
+
+use crate::glyph::{self, Style};
+use crate::prefs::Prefs;
+
+#[component]
+pub fn Sidebar(
+    variant: Variant,
+    #[prop(into)] view: Signal<PlayerView>,
+    #[prop(into)] on_new_game: Callback<()>,
+    #[prop(into)] on_undo: Callback<()>,
+    #[prop(default = false)] wip: bool,
+) -> impl IntoView {
+    let style = Style::Cjk;
+    let variant_label = match variant {
+        Variant::Xiangqi => "Xiangqi 象棋",
+        Variant::Banqi => "Banqi 暗棋",
+        Variant::ThreeKingdomBanqi => "Three-Kingdom 三國暗棋",
+    };
+
+    // Display the piece-colour to move, not the seat name. After a banqi
+    // first-flip the seat (`side_to_move`) and the colour the seat plays
+    // (`current_color`) diverge — players think in terms of colour.
+    let turn_text = move || {
+        let v = view.get();
+        glyph::side_name(v.current_color, style).to_string()
+    };
+    let turn_class = move || {
+        let v = view.get();
+        match v.current_color {
+            Side::RED => "turn-red",
+            Side::BLACK => "turn-black",
+            _ => "turn-green",
+        }
+    };
+
+    let status_view = move || -> View {
+        let v = view.get();
+        match v.status {
+            GameStatus::Ongoing => view! { <p class="status ongoing">"Ongoing"</p> }.into_view(),
+            GameStatus::Won { winner, reason } => {
+                let side = glyph::side_name(winner, style);
+                let reason = win_reason_label(reason);
+                view! {
+                    <p class="status won">
+                        {format!("{} wins — {}", side, reason)}
+                    </p>
+                }
+                .into_view()
+            }
+            GameStatus::Drawn { reason } => view! {
+                <p class="status drawn">
+                    {format!("Drawn — {}", draw_reason_label(reason))}
+                </p>
+            }
+            .into_view(),
+        }
+    };
+
+    let legal_count = move || view.with(|v| v.legal_moves.len());
+
+    // Pull FX prefs from context (provided by `app.rs::App`). Both signals
+    // default to true on first visit and persist via localStorage.
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti = prefs.fx_confetti;
+    let fx_check_banner = prefs.fx_check_banner;
+
+    let show_check = move || {
+        let v = view.get();
+        // Check banner is xiangqi-only and gated by the user pref.
+        fx_check_banner.get()
+            && matches!(v.shape, BoardShape::Xiangqi9x10)
+            && v.in_check
+            && matches!(v.status, GameStatus::Ongoing)
+    };
+
+    view! {
+        <aside class="sidebar">
+            <h3 class="variant-label">{variant_label}</h3>
+            <Show when=move || !wip fallback=|| view! {
+                <p class="status drawn">"Engine WIP — board interaction disabled."</p>
+            }>
+                <Show when=show_check>
+                    <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+                </Show>
+                <div class="turn-row">
+                    <span class="turn-prefix">"Turn: "</span>
+                    <span class=turn_class>{turn_text}</span>
+                </div>
+                {status_view}
+                <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
+            </Show>
+            <div class="sidebar-actions">
+                <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
+                <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
+            </div>
+            <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
+            <a class="back-link" href="/">"← Back to picker"</a>
+        </aside>
+    }
+}
+
+#[component]
+fn FxToggles(fx_confetti: RwSignal<bool>, fx_check_banner: RwSignal<bool>) -> impl IntoView {
+    view! {
+        <div class="fx-toggles">
+            <label>
+                <input
+                    type="checkbox"
+                    prop:checked=move || fx_confetti.get()
+                    on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+                />
+                <span>"Victory effects (confetti + banner)"</span>
+            </label>
+            <label>
+                <input
+                    type="checkbox"
+                    prop:checked=move || fx_check_banner.
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:51:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,220p' clients/chess-web/src/prefs.rs && sed -n '1,340p' clients/chess-web/src/routes.rs`</summary>
+```
+Chunk ID: b27211
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 3511
+Output:
+//! User-facing FX preferences, persisted in `localStorage`.
+//!
+//! Two switches, both default ON:
+//! * `fx_confetti` — show end-of-game confetti + VICTORY/DEFEAT/DRAW overlay.
+//! * `fx_check_banner` — show the "將軍 / CHECK" badge in the sidebar when
+//!   the side-to-move is in check (xiangqi only).
+//!
+//! Storage keys are stable (`chess.fx.confetti`, `chess.fx.checkBanner`)
+//! so a user toggling once carries the choice across sessions. Missing
+//! values read as `true`. We persist `"1"` / `"0"` rather than booleans
+//! so future debugging via DevTools is obvious.
+//!
+//! All `web_sys` calls are wrapped in `Option`/`Result` chains so a
+//! sandboxed context with no `window` (or storage disabled) silently
+//! falls back to in-memory defaults — no panics.
+//!
+//! This module is wasm32-only; the workspace native check skips it.
+
+use leptos::*;
+
+use crate::state::CapturedSort;
+
+const KEY_CONFETTI: &str = "chess.fx.confetti";
+const KEY_CHECK_BANNER: &str = "chess.fx.checkBanner";
+const KEY_CAPTURED_SORT: &str = "chess.ui.capturedSort";
+
+#[derive(Copy, Clone)]
+pub struct Prefs {
+    pub fx_confetti: RwSignal<bool>,
+    pub fx_check_banner: RwSignal<bool>,
+    /// Sort order for the sidebar captured-pieces panel. Persists
+    /// across sessions; toggled via the panel header button.
+    pub captured_sort: RwSignal<CapturedSort>,
+}
+
+impl Prefs {
+    /// Hydrate from `localStorage` and arm `create_effect` watchers that
+    /// persist any future change. Designed to be called once at app
+    /// boot and `provide_context`-shared with all routes.
+    pub fn hydrate() -> Self {
+        let fx_confetti = create_rw_signal(read_bool(KEY_CONFETTI, true));
+        let fx_check_banner = create_rw_signal(read_bool(KEY_CHECK_BANNER, true));
+        let captured_sort = create_rw_signal(read_captured_sort());
+
+        // Persist on change. The closures only run inside the browser, so
+        // calling `localStorage` on every flip is safe and cheap.
+        create_effect(move |_| {
+            let v = fx_confetti.get();
+            write_bool(KEY_CONFETTI, v);
+        });
+        create_effect(move |_| {
+            let v = fx_check_banner.get();
+            write_bool(KEY_CHECK_BANNER, v);
+        });
+        create_effect(move |_| {
+            let v = captured_sort.get();
+            write_captured_sort(v);
+        });
+
+        Self { fx_confetti, fx_check_banner, captured_sort }
+    }
+}
+
+fn local_storage() -> Option<web_sys::Storage> {
+    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+}
+
+fn read_bool(key: &str, default_value: bool) -> bool {
+    let Some(storage) = local_storage() else { return default_value };
+    match storage.get_item(key) {
+        Ok(Some(s)) => s != "0",
+        _ => default_value,
+    }
+}
+
+fn write_bool(key: &str, value: bool) {
+    if let Some(storage) = local_storage() {
+        let _ = storage.set_item(key, if value { "1" } else { "0" });
+    }
+}
+
+fn read_captured_sort() -> CapturedSort {
+    let Some(storage) = local_storage() else { return CapturedSort::default() };
+    match storage.get_item(KEY_CAPTURED_SORT) {
+        Ok(Some(s)) if s == "rank" => CapturedSort::Rank,
+        _ => CapturedSort::Time,
+    }
+}
+
+fn write_captured_sort(value: CapturedSort) {
+    if let Some(storage) = local_storage() {
+        let s = match value {
+            CapturedSort::Time => "time",
+            CapturedSort::Rank => "rank",
+        };
+        let _ = storage.set_item(KEY_CAPTURED_SORT, s);
+    }
+}
+//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+//!
+//! Pure logic — native-testable. The picker page builds a query string from
+//! its form state via [`build_local_query`]; the local page parses it back
+//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
+
+use chess_core::rules::{
+    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+};
+
+pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+    match slug {
+        "xiangqi" => Some(Variant::Xiangqi),
+        "banqi" => Some(Variant::Banqi),
+        "three-kingdom" => Some(Variant::ThreeKingdomBanqi),
+        _ => None,
+    }
+}
+
+pub fn variant_slug(variant: Variant) -> &'static str {
+    match variant {
+        Variant::Xiangqi => "xiangqi",
+        Variant::Banqi => "banqi",
+        Variant::ThreeKingdomBanqi => "three-kingdom",
+    }
+}
+
+/// URL-derived rule choices for `/local/:variant`. Used as an intermediate
+/// between the picker form and the engine `RuleSet`.
+#[derive(Clone, Eq, PartialEq, Debug, Default)]
+pub struct LocalRulesParams {
+    /// Xiangqi only. `false` (default) = casual / no self-check filter;
+    /// `true` = standard rules where leaving your general in check is illegal.
+    pub strict: bool,
+    /// Banqi only. Bitflag set; `DARK_CAPTURE_TRADE` auto-implies
+    /// `DARK_CAPTURE` after [`house::normalize`] in the pa
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:52:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Implementing Rust Configuration**
+
+I need to implement files and build configuration in Rust for a project. I'm considering whether to have static constants available for both wasm and native apps. It seems the app will only use wasm, and the routing can simply employ `option_env!`, so maybe a `build.rs` file isn't necessary? But then again, if I add `build.rs`, it should rerun if the environment changes. I have to decide on helper modules and whether build-time constants are needed in pure routes. I'll also probably want a function to return a base path.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:52:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Configuring Test Environment and Routing**
+
+I see that in the test environment, the default server is empty, but `app_href` can accept a base parameter for testing. I plan to implement a couple of public functions: setting constants for hosting and base path using `env!`, but that requires setting them in `build.rs`. I’m thinking the `app_base_path()` should return an `Option<&'static str>` in case it's empty.
+
+For routing functions, I want to ensure proper normalization and handling of leading slashes when constructing URLs. It looks like I need to factor in Leptos Router behavior as well to manage base paths correctly.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:52:32Z)**_
+
+我會先把純邏輯放進 `routes.rs`，讓 base path 和 WS base normalization 可以用 native tests 鎖住；瀏覽器端的 localStorage 與 query glue 則留在 `config.rs`。
+
+_**Agent (gpt-5.5 2026-05-07 23:52:45Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Add: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/build.rs`**
+
+```diff
++fn main() {
++    println!("cargo:rerun-if-env-changed=CHESS_WEB_HOSTING");
++    println!("cargo:rerun-if-env-changed=CHESS_WEB_BASE_PATH");
++
++    let hosting = std::env::var("CHESS_WEB_HOSTING").unwrap_or_else(|_| "server".to_string());
++    let hosting = match hosting.as_str() {
++        "static" => "static",
++        _ => "server",
++    };
++
++    let raw_base = std::env::var("CHESS_WEB_BASE_PATH").unwrap_or_default();
++    let base = normalize_base_path(&raw_base);
++
++    println!("cargo:rustc-env=CHESS_WEB_HOSTING={hosting}");
++    println!("cargo:rustc-env=CHESS_WEB_BASE_PATH={base}");
++}
++
++fn normalize_base_path(raw: &str) -> String {
++    let trimmed = raw.trim().trim_matches('/');
++    if trimmed.is_empty() {
++        String::new()
++    } else {
++        format!("/{trimmed}")
++    }
++}
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs`**
+
+```diff
+@@
+ use chess_core::rules::{
+     house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+ };
+ 
++pub fn hosting_mode() -> &'static str {
++    env!("CHESS_WEB_HOSTING")
++}
++
++pub fn is_static_hosting() -> bool {
++    hosting_mode() == "static"
++}
++
++pub fn base_path() -> &'static str {
++    env!("CHESS_WEB_BASE_PATH")
++}
++
++pub fn router_base() -> Option<&'static str> {
++    let base = base_path();
++    if base.is_empty() { None } else { Some(base) }
++}
++
++pub fn app_href(path: &str) -> String {
++    app_href_with_base(base_path(), path)
++}
++
++pub fn app_href_with_base(base: &str, path: &str) -> String {
++    let path = if path.is_empty() { "/" } else { path };
++    let path = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
++    let base = normalize_base_path(base);
++    if base.is_empty() {
++        path
++    } else if path == "/" {
++        format!("{base}/")
++    } else {
++        format!("{base}{path}")
++    }
++}
++
++fn normalize_base_path(base: &str) -> String {
++    let trimmed = base.trim().trim_matches('/');
++    if trimmed.is_empty() {
++        String::new()
++    } else {
++        format!("/{trimmed}")
++    }
++}
++
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub enum WsBaseError {
++    Empty,
++    BadScheme,
++}
++
++pub fn normalize_ws_base(raw: &str) -> Result<String, WsBaseError> {
++    let trimmed = raw.trim().trim_end_matches('/');
++    if trimmed.is_empty() {
++        return Err(WsBaseError::Empty);
++    }
++    if !(trimmed.starts_with("ws://") || trimmed.starts_with("wss://")) {
++        return Err(WsBaseError::BadScheme);
++    }
++    Ok(trimmed.to_string())
++}
++
+ pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+@@
+     fn build_local_href_skips_query_when_defaults() {
+@@
+     }
++
++    #[test]
++    fn app_href_adds_base_path() {
++        assert_eq!(app_href_with_base("", "/local/xiangqi"), "/local/xiangqi");
++        assert_eq!(app_href_with_base("/", "/local/xiangqi"), "/local/xiangqi");
++        assert_eq!(
++            app_href_with_base("/chinese-chess", "/local/xiangqi"),
++            "/chinese-chess/local/xiangqi"
++        );
++        assert_eq!(app_href_with_base("chinese-chess", "lobby"), "/chinese-chess/lobby");
++        assert_eq!(app_href_with_base("/chinese-chess/", "/"), "/chinese-chess/");
++        assert_eq!(
++            app_href_with_base("/chinese-chess", "/local/banqi?seed=7"),
++            "/chinese-chess/local/banqi?seed=7"
++        );
++    }
++
++    #[test]
++    fn ws_base_normalizes_websocket_urls_only() {
++        assert_eq!(normalize_ws_base(" wss://example.com/ws-root/ "), Ok("wss://example.com/ws-root".to_string()));
++        assert_eq!(normalize_ws_base("ws://127.0.0.1:7878"), Ok("ws://127.0.0.1:7878".to_string()));
++        assert_eq!(normalize_ws_base(""), Err(WsBaseError::Empty));
++        assert_eq!(normalize_ws_base("https://example.com"), Err(WsBaseError::BadScheme));
++        assert_eq!(normalize_ws_base("/ws"), Err(WsBaseError::BadScheme));
++    }
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:52:50Z)**_
+
+接著我會改 `config.rs`：server build 仍用同源 WS，static build 則要求 `?ws=` 或 localStorage 裡的手動 server base。
+
+_**Agent (gpt-5.5 2026-05-07 23:53:11Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/config.rs`**
+
+```diff
+@@
+-//! WebSocket URL helpers. Same-origin by default — Trunk dev-server proxies
+-//! `/ws` and `/lobby` to chess-net at :7878 (see `Trunk.toml`); in production
+-//! chess-net serves the `dist/` build itself, so origin == host.
++//! WebSocket URL helpers. Server-hosted builds use same-origin by default:
++//! Trunk dev-server proxies `/ws` and `/lobby` to chess-net at :7878, while
++//! production chess-net serves `dist/` at the same origin as the WS routes.
++//!
++//! Static builds (GitHub Pages) cannot assume same-origin WS routes, so they
++//! require a user-provided `?ws=wss://host` URL or a stored localStorage value.
+ 
+-pub fn ws_base() -> String {
++use crate::routes::{is_static_hosting, normalize_ws_base, WsBaseError};
++
++pub const WS_QUERY_KEY: &str = "ws";
++pub const WS_STORAGE_KEY: &str = "chess-web.ws-base";
++
++#[derive(Clone, Debug, Eq, PartialEq)]
++pub struct WsBase {
++    pub base: String,
++    pub persist_in_urls: bool,
++}
++
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub enum WsBaseChoiceError {
++    Missing,
++    Invalid(WsBaseError),
++}
++
++pub fn resolve_ws_base(raw_query: Option<String>) -> Result<WsBase, WsBaseChoiceError> {
++    if let Some(raw) = raw_query {
++        let base = normalize_ws_base(&raw).map_err(WsBaseChoiceError::Invalid)?;
++        write_stored_ws_base(&base);
++        return Ok(WsBase { base, persist_in_urls: true });
++    }
++
++    if let Some(stored) = read_stored_ws_base() {
++        if let Ok(base) = normalize_ws_base(&stored) {
++            return Ok(WsBase { base, persist_in_urls: is_static_hosting() });
++        }
++    }
++
++    if is_static_hosting() {
++        Err(WsBaseChoiceError::Missing)
++    } else {
++        Ok(WsBase { base: same_origin_ws_base(), persist_in_urls: false })
++    }
++}
++
++pub fn same_origin_ws_base() -> String {
+     let win = web_sys::window().expect("no window");
+     let loc = win.location();
+     let proto = loc.protocol().unwrap_or_else(|_| "http:".into());
+     let scheme = if proto == "https:" { "wss" } else { "ws" };
+     let host = loc.host().unwrap_or_default();
+     format!("{}://{}", scheme, host)
+ }
+ 
+-pub fn lobby_url() -> String {
+-    format!("{}/lobby", ws_base())
++pub fn lobby_url(ws: &WsBase) -> String {
++    format!("{}/lobby", ws.base)
+ }
+ 
+-pub fn room_url(room: &str, password: Option<&str>, spectator: bool) -> String {
+-    let base = format!("{}/ws/{}", ws_base(), encode(room));
++pub fn room_url(ws: &WsBase, room: &str, password: Option<&str>, spectator: bool) -> String {
++    let base = format!("{}/ws/{}", ws.base, encode(room));
+     let mut params: Vec<String> = Vec::new();
+     if let Some(pw) = password.filter(|p| !p.is_empty()) {
+         params.push(format!("password={}", encode(pw)));
+@@
+     }
+ }
+ 
++pub fn ws_query_pair(ws: &WsBase) -> Option<String> {
++    ws.persist_in_urls.then(|| format!("{WS_QUERY_KEY}={}", encode(&ws.base)))
++}
++
++pub fn append_query_pairs(path: &str, pairs: impl IntoIterator<Item = String>) -> String {
++    let pairs: Vec<String> = pairs.into_iter().filter(|s| !s.is_empty()).collect();
++    if pairs.is_empty() {
++        path.to_string()
++    } else {
++        let sep = if path.contains('?') { '&' } else { '?' };
++        format!("{path}{sep}{}", pairs.join("&"))
++    }
++}
++
++pub fn read_stored_ws_base() -> Option<String> {
++    local_storage().and_then(|storage| storage.get_item(WS_STORAGE_KEY).ok().flatten())
++}
++
++pub fn write_stored_ws_base(base: &str) {
++    if let Some(storage) = local_storage() {
++        let _ = storage.set_item(WS_STORAGE_KEY, base);
++    }
++}
++
++fn local_storage() -> Option<web_sys::Storage> {
++    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
++}
++
+ fn encode(s: &str) -> String {
+     js_sys::encode_uri_component(s).as_string().unwrap_or_default()
+ }
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:17Z)**_
+
+現在新增一個小的 WS 設定畫面，讓 static build 在沒有 `?ws=` 時不會嘗試連 GitHub Pages 自己的 origin。
+
+_**Agent (gpt-5.5 2026-05-07 23:53:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Add: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/ws_setup.rs`**
+
+```diff
++use leptos::*;
++
++use crate::config::{append_query_pairs, read_stored_ws_base, write_stored_ws_base, ws_query_pair, WsBase};
++use crate::routes::{app_href, normalize_ws_base, WsBaseError};
++
++#[component]
++pub fn WsSetup(
++    title: &'static str,
++    next_path: String,
++    #[prop(optional)] detail: Option<&'static str>,
++    #[prop(optional)] initial_error: Option<&'static str>,
++) -> impl IntoView {
++    let stored = read_stored_ws_base().unwrap_or_else(|| "wss://".to_string());
++    let input = create_rw_signal(stored);
++    let error = create_rw_signal(initial_error.map(str::to_string));
++
++    let connect = {
++        let next_path = next_path.clone();
++        move |_| {
++            let raw = input.get_untracked();
++            match normalize_ws_base(&raw) {
++                Ok(base) => {
++                    write_stored_ws_base(&base);
++                    let ws = WsBase { base, persist_in_urls: true };
++                    let target = append_query_pairs(&next_path, ws_query_pair(&ws));
++                    if let Some(win) = web_sys::window() {
++                        let _ = win.location().set_href(&app_href(&target));
++                    }
++                }
++                Err(WsBaseError::Empty) => error.set(Some("Enter a websocket server URL.".into())),
++                Err(WsBaseError::BadScheme) => {
++                    error.set(Some("Use a full ws:// or wss:// server URL.".into()))
++                }
++            }
++        }
++    };
++
++    view! {
++        <section class="lobby">
++            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
++            <h2>{title}</h2>
++            <p class="subtitle">
++                {detail.unwrap_or("This static build needs a chess-net websocket server. GitHub Pages uses HTTPS, so remote play should use wss://.")}
++            </p>
++            <div class="lobby-form">
++                <input
++                    class="text-input"
++                    type="text"
++                    placeholder="wss://your-server.example"
++                    prop:value=move || input.get()
++                    on:input=move |ev| {
++                        error.set(None);
++                        input.set(event_target_value(&ev));
++                    }
++                    on:keydown=move |ev| {
++                        if ev.key() == "Enter" {
++                            connect(());
++                        }
++                    }
++                />
++                <button class="btn btn-primary" on:click=connect>"Connect"</button>
++            </div>
++            <Show when=move || error.get().is_some()>
++                <p class="conn-banner error">{move || error.get().unwrap_or_default()}</p>
++            </Show>
++        </section>
++    }
++}
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/mod.rs`**
+
+```diff
+@@
+ pub mod end_overlay;
++pub mod ws_setup;
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,80p' clients/chess-web/src/components/mod.rs`</summary>
+```
+Chunk ID: 73d60d
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 32
+Output:
+pub mod board;
+pub mod captured;
+pub mod chat_panel;
+pub mod confetti;
+pub mod end_overlay;
+pub mod ws_setup;
+pub mod sidebar;
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:45Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering Rust integration**
+
+I think I need to ensure that the order for rustfmt is okay. It seems like I also need to focus on the app Router base; that's crucial. I'm wondering how best to structure this to make sure everything integrates smoothly. Let’s explore this a bit further to confirm the right approach! I want to make sure I’m getting this right for a clean setup.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:45Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/app.rs`**
+
+```diff
+@@
+ use crate::pages::{lobby::LobbyPage, local::LocalPage, picker::Picker, play::PlayPage};
+ use crate::prefs::Prefs;
++use crate::routes::router_base;
+@@
+     view! {
+-        <Router>
++        <Router base=router_base()>
+             <main class="app-shell">
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:52Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Updating links appropriately**
+
+I need to update the links for the picker, local, and sidebar. Using "rel external" will help avoid any routing issues, but I might need to consider a full reload on back actions. There's also the need to import "app_href." The picker initially uses capital "A," but I’ll switch it to lowercase "a" and utilize "app_href." For dynamic links, I’ll use "app_href(&build_local_href)." That should work fine!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:53:52Z)**_
+
+接著把 picker、local/sidebar back links 改成 base-aware URL。這些入口點用完整 href，對 GitHub Pages 的 404 fallback 最穩。
+
+_**Agent (gpt-5.5 2026-05-07 23:54:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/picker.rs`**
+
+```diff
+@@
+ use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+ use leptos::*;
+-use leptos_router::A;
+ 
+-use crate::routes::{build_local_href, LocalRulesParams};
++use crate::routes::{app_href, build_local_href, LocalRulesParams};
+@@
+     let href = move || {
+         let params = LocalRulesParams { strict: strict.get(), ..Default::default() };
+-        build_local_href(Variant::Xiangqi, &params)
++        app_href(&build_local_href(Variant::Xiangqi, &params))
+     };
+@@
+-            <A href=href class="btn btn-primary card-cta">"Start Xiangqi →"</A>
++            <a href=href rel="external" class="btn btn-primary card-cta">"Start Xiangqi →"</a>
+@@
+     let href = move || {
+         let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
+         let params = LocalRulesParams { strict: false, house: house(), seed };
+-        build_local_href(Variant::Banqi, &params)
++        app_href(&build_local_href(Variant::Banqi, &params))
+     };
+@@
+-            <A href=href class="btn btn-primary card-cta">"Start Banqi →"</A>
++            <a href=href rel="external" class="btn btn-primary card-cta">"Start Banqi →"</a>
+@@
+-        <A href="/local/three-kingdom" class="variant-card">
++        <a href=app_href("/local/three-kingdom") rel="external" class="variant-card">
+             <h2>"Three-Kingdom 三國暗棋"</h2>
+             <p>"3-player banqi. Engine still WIP — board renders but moves are gated."</p>
+-        </A>
++        </a>
+@@
+-        <A href="/lobby" class="variant-card variant-card--online">
++        <a href=app_href("/lobby") rel="external" class="variant-card variant-card--online">
+             <h2>"Online"</h2>
+             <p>"Browse rooms or create your own."</p>
+-        </A>
++        </a>
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs`**
+
+```diff
+@@
+ use crate::prefs::Prefs;
+-use crate::routes::{build_rule_set, parse_local_rules, parse_variant_slug};
++use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug};
+@@
+-                    <a href="/" class="back-link">"← Back to picker"</a>
++                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/sidebar.rs`**
+
+```diff
+@@
+ use crate::glyph::{self, Style};
+ use crate::prefs::Prefs;
++use crate::routes::app_href;
+@@
+-            <a class="back-link" href="/">"← Back to picker"</a>
++            <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:54:12Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Updating lobby structure**
+
+I need to focus on updating the lobby. I’m considering using WsSetup and resolve_ws_base to ensure everything is set up properly. It looks like I'll use the LobbyConnected component and possibly the URL navigate method, particularly set_href, to avoid any router issues. I’ll need to handle query maps carefully and render an error message if something is invalid. Also, I'll implement a helper for error labels and work on path building with app_href.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:54:13Z)**_
+
+現在改 Online lobby：同源模式照常連 `/lobby`，static 模式則先解析 `?ws=` 或儲存值，沒有就顯示剛新增的 WS 設定畫面。
+
+_**Agent (gpt-5.5 2026-05-07 23:54:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lobby.rs`**
+
+```diff
+@@
+ use chess_net::protocol::{ClientMsg, RoomStatus, RoomSummary, ServerMsg};
+ use leptos::*;
+-use leptos_router::use_navigate;
++use leptos_router::use_query_map;
+ 
+-use crate::config::lobby_url;
++use crate::components::ws_setup::WsSetup;
++use crate::config::{
++    append_query_pairs, lobby_url, resolve_ws_base, ws_query_pair, WsBase, WsBaseChoiceError,
++    WS_QUERY_KEY,
++};
++use crate::routes::{app_href, WsBaseError};
+ use crate::ws::{connect, ConnState};
+ 
+ #[component]
+ pub fn LobbyPage() -> impl IntoView {
++    let query = use_query_map();
++    let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
++    match resolve_ws_base(raw_ws) {
++        Ok(ws_base) => view! { <LobbyConnected ws_base=ws_base/> }.into_view(),
++        Err(err) => view! {
++            <WsSetup
++                title="Online lobby"
++                next_path="/lobby".to_string()
++                initial_error=ws_error_label(err)
++            />
++        }
++        .into_view(),
++    }
++}
++
++#[component]
++fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
+     let (rooms, set_rooms) = create_signal::<Vec<RoomSummary>>(vec![]);
+     let (room_input, set_room_input) = create_signal::<String>(String::new());
+     let (password_input, set_password_input) = create_signal::<String>(String::new());
+ 
+-    let (handle, incoming, conn) = connect(lobby_url());
++    let (handle, incoming, conn) = connect(lobby_url(&ws_base));
+@@
+-    let navigate = use_navigate();
+-    let nav_for_join = navigate.clone();
++    let ws_for_join = ws_base.clone();
+     let go_to_room: Callback<String> = Callback::new(move |id: String| {
+         let pw = password_input.get_untracked();
+-        let target = if pw.is_empty() {
+-            format!("/play/{}", id)
+-        } else {
+-            format!("/play/{}?password={}", id, urlencode(&pw))
+-        };
+-        nav_for_join(&target, Default::default());
++        let mut pairs = Vec::new();
++        if let Some(pair) = ws_query_pair(&ws_for_join) {
++            pairs.push(pair);
++        }
++        if !pw.is_empty() {
++            pairs.push(format!("password={}", urlencode(&pw)));
++        }
++        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
+     });
+ 
+-    let nav_for_watch = navigate;
++    let ws_for_watch = ws_base.clone();
+     let watch_room: Callback<String> = Callback::new(move |id: String| {
+         let pw = password_input.get_untracked();
+-        let qs = if pw.is_empty() {
+-            "role=spectator".to_string()
+-        } else {
+-            format!("role=spectator&password={}", urlencode(&pw))
+-        };
+-        nav_for_watch(&format!("/play/{}?{}", id, qs), Default::default());
++        let mut pairs = Vec::new();
++        if let Some(pair) = ws_query_pair(&ws_for_watch) {
++            pairs.push(pair);
++        }
++        pairs.push("role=spectator".to_string());
++        if !pw.is_empty() {
++            pairs.push(format!("password={}", urlencode(&pw)));
++        }
++        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
+     });
+@@
+-            <a href="/" class="back-link">"← Back to picker"</a>
++            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+@@
+ }
++
++fn navigate_external(path: &str) {
++    if let Some(win) = web_sys::window() {
++        let _ = win.location().set_href(&app_href(path));
++    }
++}
++
++fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
++    match err {
++        WsBaseChoiceError::Missing => None,
++        WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
++        WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
++            Some("Use a full ws:// or wss:// server URL.")
++        }
++    }
++}
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:54:36Z)**_
+
+接著改 Play 頁：它會沿用相同的 `ws` query/localStorage 邏輯，並確保回 lobby 的連結保留手動 WS base。
+
+_**Agent (gpt-5.5 2026-05-07 23:54:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs`**
+
+```diff
+@@
+ use leptos_router::{use_params_map, use_query_map};
+ 
+ use crate::components::board::Board;
+ use crate::components::captured::CapturedStrip;
+ use crate::components::chat_panel::ChatPanel;
+ use crate::components::end_overlay::EndOverlay;
+-use crate::config::room_url;
++use crate::components::ws_setup::WsSetup;
++use crate::config::{
++    append_query_pairs, resolve_ws_base, room_url, ws_query_pair, WsBase, WsBaseChoiceError,
++    WS_QUERY_KEY,
++};
+ use crate::prefs::Prefs;
+-use crate::routes::variant_slug;
++use crate::routes::{app_href, variant_slug, WsBaseError};
+ use crate::state::{end_chain_move, find_move, truncate_front, ClientRole};
+ use crate::ws::{connect, ConnState, WsHandle};
+@@
+ pub fn PlayPage() -> impl IntoView {
+     let params = use_params_map();
+     let query = use_query_map();
+     let room = move || params.with(|p| p.get("room").cloned().unwrap_or_default());
+     let password = move || query.with(|q| q.get("password").cloned().filter(|s| !s.is_empty()));
+@@
+         query.with(|q| q.get("role").map(|r| r.eq_ignore_ascii_case("spectator")).unwrap_or(false))
+     };
++    let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
++
++    let room_now = room();
++    let next_path = {
++        let mut pairs = Vec::new();
++        if let Some(pw) = password() {
++            pairs.push(format!("password={}", urlencode(&pw)));
++        }
++        if watch_only() {
++            pairs.push("role=spectator".to_string());
++        }
++        append_query_pairs(&format!("/play/{room_now}"), pairs)
++    };
++    let ws_base = match resolve_ws_base(raw_ws) {
++        Ok(base) => base,
++        Err(err) => {
++            return view! {
++                <WsSetup
++                    title="Online room"
++                    next_path=next_path
++                    initial_error=ws_error_label(err)
++                />
++            }
++            .into_view();
++        }
++    };
++
++    view! {
++        <PlayConnected
++            ws_base=ws_base
++            room=room_now
++            password=password()
++            watch_only=watch_only()
++        />
++    }
++    .into_view()
++}
+ 
++#[component]
++fn PlayConnected(
++    ws_base: WsBase,
++    room: String,
++    password: Option<String>,
++    watch_only: bool,
++) -> impl IntoView {
+     // Open the WS once on mount. Spectator opt-in propagates into the URL.
+-    let url = room_url(&room(), password().as_deref(), watch_only());
++    let url = room_url(&ws_base, &room, password.as_deref(), watch_only);
+     let (handle, incoming, conn) = connect(url);
+@@
+-    let room_label = room();
++    let room_label = room.clone();
+@@
+-                    fallback=move || view! { <ConnPlaceholder room=room() conn=conn/> }
++                    fallback=move || view! { <ConnPlaceholder room=room.clone() conn=conn/> }
+@@
+                     conn=conn
+                     handle=handle_for_sidebar
++                    ws_base=ws_base.clone()
+                 />
+@@
+     }
+ }
+@@
+ fn OnlineSidebar(
+     room: String,
+     role: ReadSignal<Option<ClientRole>>,
+     view_signal: ReadSignal<Option<PlayerView>>,
+     rules: ReadSignal<Option<RuleSet>>,
+     conn: ReadSignal<ConnState>,
+     handle: WsHandle,
++    ws_base: WsBase,
+ ) -> impl IntoView {
+@@
+     view! {
+         <aside class="sidebar">
+@@
+-            <a class="back-link" href="/lobby">"← Back to lobby"</a>
++            <a class="back-link" href=back_to_lobby_href(&ws_base) rel="external">"← Back to lobby"</a>
+         </aside>
+     }
+ }
++
++fn back_to_lobby_href(ws_base: &WsBase) -> String {
++    app_href(&append_query_pairs("/lobby", ws_query_pair(ws_base)))
++}
++
++fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
++    match err {
++        WsBaseChoiceError::Missing => None,
++        WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
++        WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
++            Some("Use a full ws:// or wss:// server URL.")
++        }
++    }
++}
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `tail -80 clients/chess-web/src/pages/play.rs && rg -n "urlencode|OnlineSidebar|PlayConnected|room\(\)" clients/chess-web/src/pages/play.rs`</summary>
+```
+Chunk ID: 481f9c
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 786
+Output:
+        ConnState::Connecting => "Connecting…",
+        ConnState::Open => "Connected",
+        ConnState::Closed => "Disconnected",
+        ConnState::Error => "Error",
+    };
+
+    let resign = {
+        let handle = handle.clone();
+        move |_| {
+            handle.send(ClientMsg::Resign);
+        }
+    };
+    let rematch = {
+        let handle = handle.clone();
+        move |_| {
+            handle.send(ClientMsg::Rematch);
+        }
+    };
+
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti = prefs.fx_confetti;
+    let fx_check_banner = prefs.fx_check_banner;
+    let show_check = move || {
+        let Some(v) = view_signal.get() else { return false };
+        fx_check_banner.get()
+            && matches!(v.shape, BoardShape::Xiangqi9x10)
+            && v.in_check
+            && matches!(v.status, GameStatus::Ongoing)
+    };
+
+    view! {
+        <aside class="sidebar">
+            <h3 class="variant-label">{format!("Online — room {}", room)}</h3>
+            <p class="muted">{variant_label}</p>
+            <p class=role_class>{role_label}</p>
+            <Show when=show_check>
+                <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+            </Show>
+            <p>{turn_label}</p>
+            <p class="muted">{conn_label}</p>
+            <div class="sidebar-actions">
+                <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
+                <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
+            </div>
+            <div class="fx-toggles">
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_confetti.get()
+                        on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+                    />
+                    <span>"Victory effects (confetti + banner)"</span>
+                </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_check_banner.get()
+                        on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
+                    />
+                    <span>"將軍 / CHECK warning"</span>
+                </label>
+            </div>
+            <a class="back-link" href=back_to_lobby_href(&ws_base) rel="external">"← Back to lobby"</a>
+        </aside>
+    }
+}
+
+fn back_to_lobby_href(ws_base: &WsBase) -> String {
+    app_href(&append_query_pairs("/lobby", ws_query_pair(ws_base)))
+}
+
+fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
+    match err {
+        WsBaseChoiceError::Missing => None,
+        WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
+        WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
+            Some("Use a full ws:// or wss:// server URL.")
+        }
+    }
+}
+38:    let room_now = room();
+42:            pairs.push(format!("password={}", urlencode(&pw)));
+64:        <PlayConnected
+75:fn PlayConnected(
+167:                <OnlineSidebar
+320:fn OnlineSidebar(
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs`**
+
+```diff
+@@
+ fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
+     match err {
+         WsBaseChoiceError::Missing => None,
+         WsBaseChoiceError::Invalid(WsBaseError::Empty) => Some("Enter a websocket server URL."),
+         WsBaseChoiceError::Invalid(WsBaseError::BadScheme) => {
+             Some("Use a full ws:// or wss:// server URL.")
+         }
+     }
+ }
++
++fn urlencode(s: &str) -> String {
++    js_sys::encode_uri_component(s).as_string().unwrap_or_default()
++}
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:27Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering web-sys update**
+
+I think I need to update the Cargo web-sys for KeyboardEvent. It's possible there's a more recent version or some improvements I should apply. I'll check the documentation to see what changes have been made. Then I'll follow the necessary steps to ensure everything is updated correctly. It’s important to keep things running smoothly, and I want to be sure I’m not missing anything. Let’s get this sorted out!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:27Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/Cargo.toml`**
+
+```diff
+@@
+-web-sys       = { version = "0.3", features = ["Window", "Location", "Storage"] }
++web-sys       = { version = "0.3", features = ["Window", "Location", "Storage", "KeyboardEvent"] }
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:34Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating dependencies and links**
+
+I think I need to check if the Cargo.lock file needs an update after running cargo. It's also sticking out to me that the build script doesn't seem to have any package build-dependencies. Additionally, I should look into ensuring the app_href is included in other links. I’ll have to run a search or use another method to confirm these changes. Overall, it feels a bit disorganized, but I'm on the case!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `rg -n "href=\"/|href=app_href|use_navigate|format!\(\"/play|room_url\(|lobby_url\(|ws_base\(" clients/chess-web/src`</summary>
+```
+Chunk ID: d35088
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 908
+Output:
+clients/chess-web/src/routes.rs:60:pub fn normalize_ws_base(raw: &str) -> Result<String, WsBaseError> {
+clients/chess-web/src/routes.rs:345:        assert_eq!(normalize_ws_base(" wss://example.com/ws-root/ "), Ok("wss://example.com/ws-root".to_string()));
+clients/chess-web/src/routes.rs:346:        assert_eq!(normalize_ws_base("ws://127.0.0.1:7878"), Ok("ws://127.0.0.1:7878".to_string()));
+clients/chess-web/src/routes.rs:347:        assert_eq!(normalize_ws_base(""), Err(WsBaseError::Empty));
+clients/chess-web/src/routes.rs:348:        assert_eq!(normalize_ws_base("https://example.com"), Err(WsBaseError::BadScheme));
+clients/chess-web/src/routes.rs:349:        assert_eq!(normalize_ws_base("/ws"), Err(WsBaseError::BadScheme));
+clients/chess-web/src/config.rs:25:pub fn resolve_ws_base(raw_query: Option<String>) -> Result<WsBase, WsBaseChoiceError> {
+clients/chess-web/src/config.rs:27:        let base = normalize_ws_base(&raw).map_err(WsBaseChoiceError::Invalid)?;
+clients/chess-web/src/config.rs:28:        write_stored_ws_base(&base);
+clients/chess-web/src/config.rs:32:    if let Some(stored) = read_stored_ws_base() {
+clients/chess-web/src/config.rs:33:        if let Ok(base) = normalize_ws_base(&stored) {
+clients/chess-web/src/config.rs:41:        Ok(WsBase { base: same_origin_ws_base(), persist_in_urls: false })
+clients/chess-web/src/config.rs:45:pub fn same_origin_ws_base() -> String {
+clients/chess-web/src/config.rs:54:pub fn lobby_url(ws: &WsBase) -> String {
+clients/chess-web/src/config.rs:58:pub fn room_url(ws: &WsBase, room: &str, password: Option<&str>, spectator: bool) -> String {
+clients/chess-web/src/config.rs:88:pub fn read_stored_ws_base() -> Option<String> {
+clients/chess-web/src/config.rs:92:pub fn write_stored_ws_base(base: &str) {
+clients/chess-web/src/components/sidebar.rs:110:            <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
+clients/chess-web/src/components/ws_setup.rs:13:    let stored = read_stored_ws_base().unwrap_or_else(|| "wss://".to_string());
+clients/chess-web/src/components/ws_setup.rs:21:            match normalize_ws_base(&raw) {
+clients/chess-web/src/components/ws_setup.rs:23:                    write_stored_ws_base(&base);
+clients/chess-web/src/components/ws_setup.rs:40:            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+clients/chess-web/src/pages/local.rs:41:                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+clients/chess-web/src/pages/play.rs:47:        append_query_pairs(&format!("/play/{room_now}"), pairs)
+clients/chess-web/src/pages/play.rs:49:    let ws_base = match resolve_ws_base(raw_ws) {
+clients/chess-web/src/pages/play.rs:82:    let url = room_url(&ws_base, &room, password.as_deref(), watch_only);
+clients/chess-web/src/pages/picker.rs:175:        <a href=app_href("/local/three-kingdom") rel="external" class="variant-card">
+clients/chess-web/src/pages/picker.rs:185:        <a href=app_href("/lobby") rel="external" class="variant-card variant-card--online">
+clients/chess-web/src/pages/lobby.rs:17:    match resolve_ws_base(raw_ws) {
+clients/chess-web/src/pages/lobby.rs:36:    let (handle, incoming, conn) = connect(lobby_url(&ws_base));
+clients/chess-web/src/pages/lobby.rs:60:        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
+clients/chess-web/src/pages/lobby.rs:74:        navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
+clients/chess-web/src/pages/lobby.rs:87:            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:41Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Planning code formatting and build environment**
+
+I'm considering how to structure long assertions and plan to use rustfmt later. There's an issue with the app_href in the view macro, which returns a String instead of a closure. That might be alright, but I need to ensure dynamic href closures work correctly in the picker. I'll encounter compile errors during the build process in the native environment, so I have to remember that build.rs sets the environment. I also need to create a Makefile.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:55:41Z)**_
+
+接著更新 Makefile 和 `.gitignore`，把現有 production serve 保留，另外新增 Pages 專用 static build 產物。
+
+_**Agent (gpt-5.5 2026-05-07 23:55:52Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/Makefile`**
+
+```diff
+@@
+ SERVER_ARGS ?=
++WEB_BASE ?= /chinese-chess
+ 
+-.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
++.PHONY: help build server play-local play-lobby play-web play-spectator build-web build-web-server build-web-static serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+@@
+ 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+ 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
+ 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
++	@echo "  build-web-server same as build-web (server/same-origin web build)"
++	@echo "  build-web-static GitHub Pages build (writes clients/chess-web/dist-static)"
+ 	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
+@@
+-	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
++	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT) WEB_BASE=$(WEB_BASE)"
+ 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
+ 	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
++	@echo "GitHub Pages example: make build-web-static WEB_BASE=/chinese-chess"
+ 	@echo "Custom port:          make play-lobby PORT=9000"
+@@
+ build-web:
+-	cd clients/chess-web && NO_COLOR=false trunk build --release
++	cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
++
++build-web-server: build-web
++
++build-web-static:
++	cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH=$(WEB_BASE) trunk build --release --public-url $(WEB_BASE)/ --dist dist-static
++	cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+ 
+ serve-web-prod: build-web
+ 	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.gitignore`**
+
+```diff
+@@
+ # Trunk build output (chess-web)
+ clients/chess-web/dist/
++clients/chess-web/dist-static/
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:02Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/Makefile`**
+
+```diff
+@@
+ build-web-static:
+-	cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH=$(WEB_BASE) trunk build --release --public-url $(WEB_BASE)/ --dist dist-static
++	cd clients/chess-web && base="$(WEB_BASE)"; base="$${base%/}"; if [ -z "$$base" ]; then base="/"; fi; public_url="$$base/"; if [ "$$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$$base" trunk build --release --public-url "$$public_url" --dist dist-static
+ 	cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:07Z)**_
+
+我會新增 GitHub Pages workflow，跟現有 CI 分開：只負責 build static artifact 並部署 Pages。
+
+_**Agent (gpt-5.5 2026-05-07 23:56:13Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Add: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/.github/workflows/pages.yml`**
+
+```diff
++name: pages
++
++on:
++  push:
++    branches: [main]
++  workflow_dispatch:
++
++permissions:
++  contents: read
++  pages: write
++  id-token: write
++
++concurrency:
++  group: pages
++  cancel-in-progress: false
++
++jobs:
++  build:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: dtolnay/rust-toolchain@stable
++        with:
++          targets: wasm32-unknown-unknown
++      - uses: Swatinem/rust-cache@v2
++      - name: Install Trunk
++        run: cargo install trunk --version 0.21.14 --locked
++      - name: Build static web
++        run: make build-web-static WEB_BASE=/chinese-chess
++      - uses: actions/configure-pages@v5
++      - uses: actions/upload-pages-artifact@v3
++        with:
++          path: clients/chess-web/dist-static
++
++  deploy:
++    needs: build
++    runs-on: ubuntu-latest
++    environment:
++      name: github-pages
++      url: ${{ steps.deployment.outputs.page_url }}
++    steps:
++      - id: deployment
++        uses: actions/deploy-pages@v4
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:19Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering code formatting**
+
+I need to check the documentation later, but first, I think I should run `cargo fmt` to format my code. Is that the right step? It seems that formatting is allowed now, so I should just proceed with it. I'm wondering if I'll need to compile anything afterward, but for now, focusing on running `cargo fmt` seems like the best course of action. Let's get this done!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:20Z)**_
+
+核心檔案已改完，現在先跑格式化和 `chess-web` 測試，讓型別和 native pure-logic tests 先把明顯問題抓出來。
+
+_**Agent (gpt-5.5 2026-05-07 23:56:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo fmt`</summary>
+```
+Chunk ID: 7af6c5
+Wall time: 0.4896 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --check`</summary>
+```
+Chunk ID: 44d630
+Wall time: 0.0000 seconds
+Process exited with code 2
+Original token count: 3540
+Output:
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4257: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4263: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4266: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4268: space before tab in indent.
++ 	@echo "Targets:"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4269: space before tab in indent.
++ 	@echo "  build         build chess-net-server + chess-tui (debug)"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4270: space before tab in indent.
++ 	@echo "  server        run a single chess-net-server on :$(PORT)"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4271: space before tab in indent.
++ 	@echo "  play-local    tmux: window0=2 chess-tui --connect, window1=server"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4272: space before tab in indent.
++ 	@echo "                (single hard-coded room — same as the MVP launcher)"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4273: space before tab in indent.
++ 	@echo "  play-lobby    tmux: window0=3 chess-tui panes (2 picker + 1 --lobby"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4274: space before tab in indent.
++ 	@echo "                watcher), window1=server. Exercises multi-room flow."
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4275: space before tab in indent.
++ 	@echo "  play-web      tmux: window0=server, window1=trunk serve (SPA on :8080,"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4276: space before tab in indent.
++ 	@echo "                proxies /ws + /lobby to chess-net :$(PORT)). Requires"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4277: space before tab in indent.
++ 	@echo "                trunk (cargo install trunk) + wasm32-unknown-unknown."
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4279: space before tab in indent.
++ 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4280: space before tab in indent.
++ 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4281: space before tab in indent.
++ 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4283: space before tab in indent.
++ 	@echo "  stop-local    kill the play-local tmux session"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4284: space before tab in indent.
++ 	@echo "  stop-lobby    kill the play-lobby tmux session"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4285: space before tab in indent.
++ 	@echo "  stop-web      kill the play-web tmux session"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4286: space before tab in indent.
++ 	@echo "  stop-spectator kill the play-spectator tmux session"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4287: space before tab in indent.
++ 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4288: space before tab in indent.
++ 	@echo "  fmt | clippy | test | wasm   individual gates"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4289: space before tab in indent.
++ 	@echo ""
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4292: space before tab in indent.
++ 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4294: space before tab in indent.
++ 	@echo "Custom port:          make play-lobby PORT=9000"
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4295: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4297: space before tab in indent.
++ 	cargo build -p chess-net -p chess-tui
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4298: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4300: space before tab in indent.
++ 	./target/debug/chess-net-server --port $(PORT) $(VARIANT)
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4301: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4303: space before tab in indent.
++ 	@scripts/play-local.sh $(SESSION) $(PORT) $(VARIANT)
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4304: trailing whitespace.
++ 
+.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md:4306: spac
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:28Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating git diff check**
+
+I'm looking to check differences in my project that includes any changes from user-generated files. I want to note this down for later. I think I might run my own diff check to exclude certain files. A command I could use is `git diff --check -- . ':!.specstory...'`. Plus, I should consider running `cargo test` to ensure everything is functioning properly. This should help clarify any issues!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:29Z)**_
+
+`git diff --check` 只在已存在的 dirty SpecStory transcript 上報 whitespace；那不是這次實作檔案，我會用排除 transcript 的檢查繼續驗證本次變更。
+
+_**Agent (gpt-5.5 2026-05-07 23:56:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --check -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md'`</summary>
+```
+Chunk ID: d11115
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo test -p chess-web`</summary>
+```
+Chunk ID: 62b211
+Wall time: 1.0025 seconds
+Process running with session ID 38546
+Original token count: 26
+Output:
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 2ace48
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 691
+Output:
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.90s
+     Running unittests src/lib.rs (target/debug/deps/chess_web-06652bcd95272332)
+
+running 38 tests
+test glyph::tests::glyph_table_total_for_red_and_black ... ok
+test glyph::tests::hidden_renders ... ok
+test glyph::tests::red_and_black_distinct_in_cjk ... ok
+test orient::tests::banqi_round_trip_and_dims ... ok
+test orient::tests::out_of_bounds_returns_none ... ok
+test orient::tests::xiangqi_black_round_trip ... ok
+test orient::tests::xiangqi_red_and_black_are_180_rotations ... ok
+test orient::tests::xiangqi_red_corner_layout ... ok
+test orient::tests::xiangqi_red_round_trip ... ok
+test routes::tests::app_href_adds_base_path ... ok
+test routes::tests::banqi_dark_capture_token_parses ... ok
+test routes::tests::banqi_dark_chain_alias_still_parses_to_dark_capture ... ok
+test routes::tests::banqi_dark_trade_implies_dark_capture ... ok
+test routes::tests::banqi_house_csv_round_trips ... ok
+test routes::tests::banqi_house_overrides_preset_when_both_set ... ok
+test routes::tests::banqi_preset_taiwan_picks_chain_and_rush ... ok
+test routes::tests::build_local_href_includes_query_when_non_default ... ok
+test routes::tests::build_local_href_skips_query_when_defaults ... ok
+test routes::tests::known_slugs_parse ... ok
+test routes::tests::slug_round_trip ... ok
+test routes::tests::three_kingdom_ignores_query ... ok
+test routes::tests::unknown_house_token_is_dropped_silently ... ok
+test routes::tests::unknown_slug_returns_none ... ok
+test routes::tests::ws_base_normalizes_websocket_urls_only ... ok
+test routes::tests::xiangqi_default_is_casual ... ok
+test routes::tests::xiangqi_strict_query_yields_strict_ruleset ... ok
+test state::tests::captured_sort_rank_orders_largest_first ... ok
+test state::tests::captured_sort_time_preserves_chronological_order ... ok
+test state::tests::captured_sort_toggle_round_trips ... ok
+test state::tests::client_role_observer_defaults_red_for_spectator ... ok
+test state::tests::end_chain_move_returns_none_when_no_chain_lock ... ok
+test state::tests::end_chain_move_returns_some_when_chain_lock_set ... ok
+test state::tests::find_move_locates_xiangqi_step ... ok
+test state::tests::legal_targets_empty_for_non_piece_square ... ok
+test state::tests::legal_targets_for_chariot_in_corner ... ok
+test state::tests::legal_targets_in_chain_mode_excludes_end_chain_and_does_not_panic ... ok
+test state::tests::truncate_front_drops_oldest_when_over_cap ... ok
+test state::tests::truncate_front_noop_when_under_cap ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:47Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering build tasks**
+
+I need to run a cargo check for the WebAssembly before I build the web app. It's essential because I want to catch any likely errors during the compilation of the WASM. After that, I should run a command to make the web server build. It seems like a good step to make sure everything is ready for deployment. I'll just have to keep an eye on it all as I progress.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:47Z)**_
+
+native tests 已過。下一步跑兩個 Web build：server/same-origin build 和 GitHub Pages static build，這會真正編譯 wasm32 UI 部分並驗證 Trunk public-url/404 產物。
+
+_**Agent (gpt-5.5 2026-05-07 23:56:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make build-web-server`</summary>
+```
+Chunk ID: ed2cbe
+Wall time: 1.0028 seconds
+Process running with session ID 14928
+Original token count: 87
+Output:
+cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+2026-05-07T23:56:48.473722Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T23:56:48.478466Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:56:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: e1a955
+Wall time: 0.0000 seconds
+Process exited with code 2
+Original token count: 1263
+Output:
+error[E0308]: mismatched types
+  --> clients/chess-web/src/app.rs:16:22
+   |
+ 9 | pub fn App() -> impl IntoView {
+   |                 ------------- expected `&'static str` because of return type
+...
+16 |         <Router base=router_base()>
+   |                      ^^^^^^^^^^^^^ expected `&str`, found `Option<&str>`
+   |
+   = note: expected reference `&'static str`
+                   found enum `std::option::Option<&'static str>`
+help: consider using `Option::expect` to unwrap the `std::option::Option<&'static str>` value, panicking if the value is an `Option::None`
+   |
+16 |         <Router base=router_base().expect("REASON")>
+   |                                   +++++++++++++++++
+
+error[E0631]: type mismatch in closure arguments
+    --> clients/chess-web/src/components/ws_setup.rs:63:58
+     |
+  21 |         move |_| {
+     |         -------- found signature defined here
+...
+  63 |                 <button class="btn btn-primary" on:click=connect>"Connect"</button>
+     |                                                 --       ^^^^^^^ expected due to this
+     |                                                 |
+     |                                                 required by a bound introduced by this call
+     |
+     = note: expected closure signature `fn(MouseEvent) -> _`
+                found closure signature `fn(()) -> _`
+note: required by a bound in `leptos::HtmlElement::<El>::on`
+    --> /Users/daviddwlee84/.cargo/registry/src/mirrors.tuna.tsinghua.edu.cn-4dc01642fd091eda/leptos_dom-0.6.15/src/html.rs:1139:33
+     |
+1135 |     pub fn on<E: EventDescriptor + 'static>(
+     |            -- required by a bound in this associated function
+...
+1139 |         mut event_handler: impl FnMut(E::EventType) + 'static,
+     |                                 ^^^^^^^^^^^^^^^^^^^ required by this bound in `HtmlElement::<El>::on`
+help: consider wrapping the function in a closure
+     |
+  63 |                 <button class="btn btn-primary" on:click=|arg0: MouseEvent| connect(/* () */)>"Connect"</button>
+     |                                                          ++++++++++++++++++        ++++++++++
+
+error[E0308]: mismatched types
+  --> clients/chess-web/src/pages/lobby.rs:23:31
+   |
+14 | pub fn LobbyPage() -> impl IntoView {
+   |                       ------------- expected `&'static str` because of return type
+...
+23 |                 initial_error=ws_error_label(err)
+   |                               ^^^^^^^^^^^^^^^^^^^ expected `&str`, found `Option<&str>`
+   |
+   = note: expected reference `&'static str`
+                   found enum `std::option::Option<&'static str>`
+help: consider using `Option::expect` to unwrap the `std::option::Option<&'static str>` value, panicking if the value is an `Option::None`
+   |
+23 |                 initial_error=ws_error_label(err).expect("REASON")
+   |                                                  +++++++++++++++++
+
+error[E0308]: mismatched types
+  --> clients/chess-web/src/pages/play.rs:56:35
+   |
+28 | pub fn PlayPage() -> impl IntoView {
+   |                      ------------- expected `&'static str` because of return type
+...
+56 |                     initial_error=ws_error_label(err)
+   |                                   ^^^^^^^^^^^^^^^^^^^ expected `&str`, found `Option<&str>`
+   |
+   = note: expected reference `&'static str`
+                   found enum `std::option::Option<&'static str>`
+help: consider using `Option::expect` to unwrap the `std::option::Option<&'static str>` value, panicking if the value is an `Option::None`
+   |
+56 |                     initial_error=ws_error_label(err).expect("REASON")
+   |                                                      +++++++++++++++++
+
+Some errors have detailed explanations: E0308, E0631.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `chess-web` (lib) due to 4 previous errors
+2026-05-07T23:56:52.110348Z ERROR ❌ error
+error from build pipeline
+
+Caused by:
+    0: HTML build pipeline failed (1 errors), showing first
+    1: error from asset pipeline
+    2: running cargo build
+    3: error during cargo build execution
+    4: cargo call to executable 'cargo' with args: '["build", "--target=wasm32-unknown-unknown", "--manifest-path", "/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/Cargo.toml", "--release"]' returned a bad status: exit status: 101
+2026-05-07T23:56:52.110814Z ERROR error from build pipeline
+2026-05-07T23:56:52.110954Z  INFO   1: HTML build pipeline failed (1 errors), showing first
+2026-05-07T23:56:52.110955Z  INFO   2: error from asset pipeline
+2026-05-07T23:56:52.110956Z  INFO   3: running cargo build
+2026-05-07T23:56:52.110957Z  INFO   4: error during cargo build execution
+2026-05-07T23:56:52.110957Z  INFO   5: cargo call to executable 'cargo' with args: '["build", "--target=wasm32-unknown-unknown", "--manifest-path", "/Volumes/Da
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:05Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Working on closures**
+
+I’m thinking about how I need two closures. I want to use `let submit = move || {...};` but I need to consider cloning since closures aren’t copyable. So, I’m looking into using `Callback<()>`. I’ll set it up with `let submit = Callback::new(move |_| {...});` and then add an onclick that moves the closure and calls `submit.call(())`. Also, I have to keep in mind that I need a patch too.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:05Z)**_
+
+WASM build 抓到幾個 Leptos prop/macro 型別問題，不是設計問題。我會把 Router base 分支明確化，並把 WS 設定 component 的 optional error/submit handler 改成 Leptos 0.6 更穩的寫法。
+
+_**Agent (gpt-5.5 2026-05-07 23:57:17Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/app.rs`**
+
+```diff
+@@
+ pub fn App() -> impl IntoView {
+@@
+-    view! {
+-        <Router base=router_base()>
++    if let Some(base) = router_base() {
++        view! {
++            <Router base=base>
++                <AppShell/>
++            </Router>
++        }
++        .into_view()
++    } else {
++        view! {
++            <Router>
++                <AppShell/>
++            </Router>
++        }
++        .into_view()
++    }
++}
++
++#[component]
++fn AppShell() -> impl IntoView {
++    view! {
+             <main class="app-shell">
+                 <Routes>
+                     <Route path="/" view=Picker/>
+@@
+                 </Routes>
+             </main>
+-        </Router>
+     }
+ }
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/ws_setup.rs`**
+
+```diff
+@@
+-use crate::config::{
+-    append_query_pairs, read_stored_ws_base, write_stored_ws_base, ws_query_pair, WsBase,
+-};
++use crate::config::{append_query_pairs, read_stored_ws_base, write_stored_ws_base, ws_query_pair, WsBase};
+@@
+     next_path: String,
+     #[prop(optional)] detail: Option<&'static str>,
+-    #[prop(optional)] initial_error: Option<&'static str>,
++    #[prop(default = "")] initial_error: &'static str,
+ ) -> impl IntoView {
+     let stored = read_stored_ws_base().unwrap_or_else(|| "wss://".to_string());
+     let input = create_rw_signal(stored);
+-    let error = create_rw_signal(initial_error.map(str::to_string));
++    let error = create_rw_signal(if initial_error.is_empty() {
++        None
++    } else {
++        Some(initial_error.to_string())
++    });
+ 
+-    let connect = {
++    let connect: Callback<()> = {
+         let next_path = next_path.clone();
+-        move |_| {
++        Callback::new(move |_| {
+             let raw = input.get_untracked();
+             match normalize_ws_base(&raw) {
+                 Ok(base) => {
+@@
+                     error.set(Some("Use a full ws:// or wss:// server URL.".into()))
+                 }
+             }
+-        }
++        })
+     };
+@@
+                     on:keydown=move |ev| {
+                         if ev.key() == "Enter" {
+-                            connect(());
++                            connect.call(());
+                         }
+                     }
+                 />
+-                <button class="btn btn-primary" on:click=connect>"Connect"</button>
++                <button class="btn btn-primary" on:click=move |_| connect.call(())>"Connect"</button>
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:24Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lobby.rs`**
+
+```diff
+@@
+                 title="Online lobby"
+                 next_path="/lobby".to_string()
+-                initial_error=ws_error_label(err)
++                initial_error=ws_error_label(err).unwrap_or("")
+             />
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs`**
+
+```diff
+@@
+                     title="Online room"
+                     next_path=next_path
+-                    initial_error=ws_error_label(err)
++                    initial_error=ws_error_label(err).unwrap_or("")
+                 />
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo fmt`</summary>
+```
+Chunk ID: 0b56d4
+Wall time: 0.0607 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo test -p chess-web`</summary>
+```
+Chunk ID: 983366
+Wall time: 0.2332 seconds
+Process exited with code 0
+Original token count: 691
+Output:
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/chess_web-06652bcd95272332)
+
+running 38 tests
+test glyph::tests::glyph_table_total_for_red_and_black ... ok
+test glyph::tests::hidden_renders ... ok
+test orient::tests::banqi_round_trip_and_dims ... ok
+test glyph::tests::red_and_black_distinct_in_cjk ... ok
+test orient::tests::xiangqi_black_round_trip ... ok
+test orient::tests::xiangqi_red_and_black_are_180_rotations ... ok
+test orient::tests::out_of_bounds_returns_none ... ok
+test orient::tests::xiangqi_red_round_trip ... ok
+test orient::tests::xiangqi_red_corner_layout ... ok
+test routes::tests::app_href_adds_base_path ... ok
+test routes::tests::banqi_dark_capture_token_parses ... ok
+test routes::tests::banqi_dark_chain_alias_still_parses_to_dark_capture ... ok
+test routes::tests::banqi_dark_trade_implies_dark_capture ... ok
+test routes::tests::banqi_house_csv_round_trips ... ok
+test routes::tests::banqi_house_overrides_preset_when_both_set ... ok
+test routes::tests::banqi_preset_taiwan_picks_chain_and_rush ... ok
+test routes::tests::build_local_href_includes_query_when_non_default ... ok
+test routes::tests::build_local_href_skips_query_when_defaults ... ok
+test routes::tests::known_slugs_parse ... ok
+test routes::tests::slug_round_trip ... ok
+test routes::tests::three_kingdom_ignores_query ... ok
+test routes::tests::unknown_house_token_is_dropped_silently ... ok
+test routes::tests::unknown_slug_returns_none ... ok
+test routes::tests::ws_base_normalizes_websocket_urls_only ... ok
+test routes::tests::xiangqi_default_is_casual ... ok
+test routes::tests::xiangqi_strict_query_yields_strict_ruleset ... ok
+test state::tests::captured_sort_rank_orders_largest_first ... ok
+test state::tests::captured_sort_time_preserves_chronological_order ... ok
+test state::tests::captured_sort_toggle_round_trips ... ok
+test state::tests::client_role_observer_defaults_red_for_spectator ... ok
+test state::tests::end_chain_move_returns_none_when_no_chain_lock ... ok
+test state::tests::end_chain_move_returns_some_when_chain_lock_set ... ok
+test state::tests::find_move_locates_xiangqi_step ... ok
+test state::tests::legal_targets_for_chariot_in_corner ... ok
+test state::tests::legal_targets_in_chain_mode_excludes_end_chain_and_does_not_panic ... ok
+test state::tests::truncate_front_drops_oldest_when_over_cap ... ok
+test state::tests::truncate_front_noop_when_under_cap ... ok
+test state::tests::legal_targets_empty_for_non_piece_square ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make build-web-server`</summary>
+```
+Chunk ID: 3f7232
+Wall time: 1.0025 seconds
+Process running with session ID 32520
+Original token count: 87
+Output:
+cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+2026-05-07T23:57:37.079888Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T23:57:37.084388Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: b8290b
+Wall time: 0.7261 seconds
+Process exited with code 0
+Original token count: 42
+Output:
+    Finished `release` profile [optimized] target(s) in 6.31s
+2026-05-07T23:57:44.765744Z  INFO applying new distribution
+2026-05-07T23:57:44.766358Z  INFO ✅ success
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make build-web-static WEB_BASE=/chinese-chess`</summary>
+```
+Chunk ID: 0c3017
+Wall time: 1.0013 seconds
+Process running with session ID 64567
+Original token count: 163
+Output:
+cd clients/chess-web && base="/chinese-chess"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-07T23:57:50.599837Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T23:57:50.600428Z  INFO 📦 starting build
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:57:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 951035
+Wall time: 1.3497 seconds
+Process exited with code 0
+Original token count: 63
+Output:
+    Finished `release` profile [optimized] target(s) in 5.54s
+2026-05-07T23:57:57.351592Z  INFO applying new distribution
+2026-05-07T23:57:57.352067Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:05Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Inspecting static assets**
+
+I think I need to inspect a static index asset and maybe consider using grep for static strings. It seems like a straightforward task, but I should think through the best approach to ensure I catch everything I need. I'll want to make sure I'm thorough in my inspection while also being cautious not to overlook any important details in the process. Let's explore this together and see how it goes!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,80p' clients/chess-web/dist-static/index.html && test -f clients/chess-web/dist-static/404.html && echo 404-ok`</summary>
+```
+Chunk ID: 32900c
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 528
+Output:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Chinese Chess</title>
+    
+<script type="module">
+import init, * as bindings from '/chinese-chess/chess-web-e1df06829d14bbaa.js';
+const wasm = await init({ module_or_path: '/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <link rel="stylesheet" href="/chinese-chess/style-9ed3811f9c7188de.css" integrity="sha384-LPkHpssK/CBG1qwBOI5nXrVMiYsH/1fpO02GspdHaeJ4YFhboMO1BSCX331jxwdI"/>
+<link rel="modulepreload" href="/chinese-chess/chess-web-e1df06829d14bbaa.js" crossorigin="anonymous" integrity="sha384-bnvSv0bevzWaj/S4IbvgBZyyj7aG2GjcEhvZ1KNDkSg9EQHdsImjzyLl5SSYbsTz"><link rel="preload" href="/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm" crossorigin="anonymous" integrity="sha384-l08egPG483++zeN92YW5iukZwz4RTgaBcNfF042faDPT/0w4rqLs0rFvR4K/dVPl" as="fetch" type="application/wasm"></head>
+<body>
+    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">
+        <div class="boot-card">
+            <div class="boot-mark" aria-hidden="true">帥</div>
+            <p class="boot-kicker">Chinese Chess</p>
+            <h1>Loading board engine</h1>
+            <p class="boot-copy">
+                Downloading and starting the Rust WASM client. First load can take longer on remote links.
+            </p>
+            <div class="boot-progress" aria-hidden="true"><span></span></div>
+        </div>
+    </div>
+    <noscript>
+        <p class="boot-noscript">JavaScript and WebAssembly are required to play Chinese Chess in the browser.</p>
+    </noscript>
+    <script>
+        window.addEventListener("TrunkApplicationStarted", () => {
+            const loader = document.getElementById("boot-loader");
+            if (!loader) return;
+            loader.classList.add("boot-loader--done");
+            window.setTimeout(() => loader.remove(), 180);
+        });
+    </script>
+</body>
+</html>
+404-ok
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `find clients/chess-web/dist-static -maxdepth 1 -type f -print -exec ls -lh {} \;`</summary>
+```
+Chunk ID: 5827fd
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 199
+Output:
+clients/chess-web/dist-static/index.html
+-rw-r--r--@ 1 daviddwlee84  staff   2.1K May  8 07:57 clients/chess-web/dist-static/index.html
+clients/chess-web/dist-static/404.html
+-rw-r--r--@ 1 daviddwlee84  staff   2.1K May  8 07:57 clients/chess-web/dist-static/404.html
+clients/chess-web/dist-static/chess-web-e1df06829d14bbaa_bg.wasm
+-rw-r--r--@ 1 daviddwlee84  staff   853K May  8 07:57 clients/chess-web/dist-static/chess-web-e1df06829d14bbaa_bg.wasm
+clients/chess-web/dist-static/chess-web-e1df06829d14bbaa.js
+-rw-r--r--@ 1 daviddwlee84  staff    55K May  8 07:57 clients/chess-web/dist-static/chess-web-e1df06829d14bbaa.js
+clients/chess-web/dist-static/style-9ed3811f9c7188de.css
+-rw-r--r--@ 1 daviddwlee84  staff    20K May  8 07:57 clients/chess-web/dist-static/style-9ed3811f9c7188de.css
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `rg -n "chinese-chess|websocket server|chess-web.ws-base|/lobby|/ws/" clients/chess-web/dist-static -g '*.js' -g '*.html'`</summary>
+```
+Chunk ID: 238ffe
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 463
+Output:
+clients/chess-web/dist-static/index.html:9:import init, * as bindings from '/chinese-chess/chess-web-e1df06829d14bbaa.js';
+clients/chess-web/dist-static/index.html:10:const wasm = await init({ module_or_path: '/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm' });
+clients/chess-web/dist-static/index.html:19:    <link rel="stylesheet" href="/chinese-chess/style-9ed3811f9c7188de.css" integrity="sha384-LPkHpssK/CBG1qwBOI5nXrVMiYsH/1fpO02GspdHaeJ4YFhboMO1BSCX331jxwdI"/>
+clients/chess-web/dist-static/index.html:20:<link rel="modulepreload" href="/chinese-chess/chess-web-e1df06829d14bbaa.js" crossorigin="anonymous" integrity="sha384-bnvSv0bevzWaj/S4IbvgBZyyj7aG2GjcEhvZ1KNDkSg9EQHdsImjzyLl5SSYbsTz"><link rel="preload" href="/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm" crossorigin="anonymous" integrity="sha384-l08egPG483++zeN92YW5iukZwz4RTgaBcNfF042faDPT/0w4rqLs0rFvR4K/dVPl" as="fetch" type="application/wasm"></head>
+clients/chess-web/dist-static/404.html:9:import init, * as bindings from '/chinese-chess/chess-web-e1df06829d14bbaa.js';
+clients/chess-web/dist-static/404.html:10:const wasm = await init({ module_or_path: '/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm' });
+clients/chess-web/dist-static/404.html:19:    <link rel="stylesheet" href="/chinese-chess/style-9ed3811f9c7188de.css" integrity="sha384-LPkHpssK/CBG1qwBOI5nXrVMiYsH/1fpO02GspdHaeJ4YFhboMO1BSCX331jxwdI"/>
+clients/chess-web/dist-static/404.html:20:<link rel="modulepreload" href="/chinese-chess/chess-web-e1df06829d14bbaa.js" crossorigin="anonymous" integrity="sha384-bnvSv0bevzWaj/S4IbvgBZyyj7aG2GjcEhvZ1KNDkSg9EQHdsImjzyLl5SSYbsTz"><link rel="preload" href="/chinese-chess/chess-web-e1df06829d14bbaa_bg.wasm" crossorigin="anonymous" integrity="sha384-l08egPG483++zeN92YW5iukZwz4RTgaBcNfF042faDPT/0w4rqLs0rFvR4K/dVPl" as="fetch" type="application/wasm"></head>
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering server setup**
+
+I'm wondering if we need to start the server for the user to try the implementation, but since we're working with GitHub static, could we use chess-net in server mode? I see that there's a suggestion to start a local dev server if needed. However, there’s a note about not ending sessions while executing commands, which creates some confusion. It sounds like we could skip starting the server since the user didn’t ask for live code but should verify everything first.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Examining session usage**
+
+I'm trying to figure out how sessions work here. The instruction about not ending while exec_command sessions are running seems to indicate that we shouldn't leave those tests, but maybe it refers to exceptions with the dev server. We could start the server to provide a URL and make decisions after more validation. I wonder if I need to inspect static HTML linking app routes with the browser, as that might not require a server path. Maybe using a temporary server for mapping could help facilitate this.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Reviewing development tasks**
+
+I’ve resolved some errors after making fixes, and now the web server is building correctly. It looks like the wasm compiled well. I need to run a few more checks and possibly update the README and docs. The user’s request for implementation makes the documentation update necessary, especially concerning the trunk installation process with cargo. It’s important to ensure GitHub Pages is set up correctly without causing permission issues during workflow. A little organization with the workflow files will help!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:31Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Updating documentation**
+
+I need to update the documentation to include information about the static build. Applying the patch to the README is essential to ensure that everything is accurate and up-to-date. It's important that the user has all the relevant details to understand the changes we've made. I should also consider whether there are other sections in the documentation that could use some revision alongside this patch. Keeping clear and precise documentation is key!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:31Z)**_
+
+兩種 Trunk build 都已通過，static 產物也確認有 `/chinese-chess/` asset URLs 和 `404.html`。我再把 README / Web docs 補上新的雙模式命令，讓 Makefile 和 Pages 行為可被維護者直接找到。
+
+_**Agent (gpt-5.5 2026-05-07 23:58:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/README.md`**
+
+```diff
+@@
+ Web frontend:
+ 
+ ```bash
+ make play-web                         # local dev: chess-net + trunk serve
+ make serve-web-prod ADDR=0.0.0.0:7878 # release WASM + compressed static serve
++make build-web-static                 # GitHub Pages artifact under clients/chess-web/dist-static
+ ```
+ 
+ Use `play-web` only for local development. Remote users should hit the
+ production path so they download the release WASM bundle, not Trunk's
+ debug/dev-server output.
++
++The GitHub Pages build is local-play ready. Online play from Pages needs a
++separate chess-net server URL entered in the Web lobby (`wss://...` on HTTPS).
+```
+
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/trunk-leptos-wasm.md`**
+
+```diff
+@@
+ ## Production build
+ 
+ ```bash
+ make serve-web-prod ADDR=0.0.0.0:7878            # release SPA + WS, remote-ready
+ 
+@@
+ ```
+ 
++There are two production-style web builds:
++
++- `make build-web` / `make build-web-server` — server-hosted, same-origin
++  build under `clients/chess-web/dist`. Use with `chess-net --static-dir`.
++- `make build-web-static WEB_BASE=/chinese-chess` — GitHub Pages build under
++  `clients/chess-web/dist-static`. It sets Trunk's public URL to the Pages
++  subpath and copies `index.html` to `404.html` for SPA hard-refresh fallback.
++
++The static build cannot assume `/lobby` and `/ws/<room>` exist on GitHub
++Pages. Its Online lobby asks for a websocket base URL (`wss://...`) and
++preserves it as `?ws=...` across lobby/play routes; Local pass-and-play works
++without a server.
++
+ `trunk build --release`:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:47Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating project setup**
+
+I’m thinking about running some commands for my project setup. I might need to run `fmt`, but I'm unsure if I really need the docs first. Should I try running `make build` after that? Maybe I should check the workspace with `cargo check`, and possibly run `clippy` too. But before anything, I think I need to check the `git status` for any changes. It seems like a good plan, but I'm double-checking all steps!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo fmt --check`</summary>
+```
+Chunk ID: 999412
+Wall time: 0.5208 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo test -p chess-net --test static_serve`</summary>
+```
+Chunk ID: 56fb26
+Wall time: 0.6920 seconds
+Process exited with code 0
+Original token count: 96
+Output:
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.57s
+     Running tests/static_serve.rs (target/debug/deps/static_serve-3ed0a48f6ce14996)
+
+running 2 tests
+test spa_fallback_serves_index_with_no_cache ... ok
+test hashed_wasm_asset_is_gzip_compressed_and_immutable ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git status --short`</summary>
+```
+Chunk ID: 4a0ba1
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 158
+Output:
+ M .gitignore
+ M .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+ M Makefile
+ M README.md
+ M clients/chess-web/Cargo.toml
+ M clients/chess-web/src/app.rs
+ M clients/chess-web/src/components/mod.rs
+ M clients/chess-web/src/components/sidebar.rs
+ M clients/chess-web/src/config.rs
+ M clients/chess-web/src/pages/lobby.rs
+ M clients/chess-web/src/pages/local.rs
+ M clients/chess-web/src/pages/picker.rs
+ M clients/chess-web/src/pages/play.rs
+ M clients/chess-web/src/routes.rs
+ M docs/trunk-leptos-wasm.md
+?? .github/workflows/pages.yml
+?? clients/chess-web/build.rs
+?? clients/chess-web/src/components/ws_setup.rs
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --stat -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md'`</summary>
+```
+Chunk ID: 460d0e
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 227
+Output:
+ .gitignore                                  |  1 +
+ Makefile                                    | 16 ++++-
+ README.md                                   |  4 ++
+ clients/chess-web/Cargo.toml                |  2 +-
+ clients/chess-web/src/app.rs                | 22 ++++++-
+ clients/chess-web/src/components/mod.rs     |  1 +
+ clients/chess-web/src/components/sidebar.rs |  3 +-
+ clients/chess-web/src/config.rs             | 84 +++++++++++++++++++++++---
+ clients/chess-web/src/pages/lobby.rs        | 82 ++++++++++++++++++-------
+ clients/chess-web/src/pages/local.rs        |  4 +-
+ clients/chess-web/src/pages/picker.rs       | 19 +++---
+ clients/chess-web/src/pages/play.rs         | 80 +++++++++++++++++++++++--
+ clients/chess-web/src/routes.rs             | 92 +++++++++++++++++++++++++++++
+ docs/trunk-leptos-wasm.md                   | 13 ++++
+ 14 files changed, 370 insertions(+), 53 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:58:54Z)**_
+
+格式檢查、`chess-web` tests、`chess-net` static serve tests 都過了。再跑一次 workspace tests，確認 build.rs/Cargo.toml 的變更沒有影響其他 crate。
+
+_**Agent (gpt-5.5 2026-05-07 23:58:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo test --workspace`</summary>
+```
+Chunk ID: cbea18
+Wall time: 1.0027 seconds
+Process running with session ID 63253
+Original token count: 10
+Output:
+   Compiling async-compression v0.4.42
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 38266a
+Wall time: 5.0031 seconds
+Process running with session ID 63253
+Original token count: 85
+Output:
+   Compiling tower-http v0.5.2
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+   Compiling chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:12Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: c69a0a
+Wall time: 5.0026 seconds
+Process running with session ID 63253
+Original token count: 5281
+Output:
+    Finished `test` profile [optimized + debuginfo] target(s) in 12.38s
+     Running unittests src/lib.rs (target/debug/deps/chess_ai-1346bc58acd89f56)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/chess_cli-8aab0b13a437fdfe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/chess_core-b7db04984ace70ba)
+
+running 78 tests
+test board::grid::tests::banqi_yields_32_squares ... ok
+test board::grid::tests::xiangqi_yields_90_squares ... ok
+test board::shape::tests::custom_mask_respected ... ok
+test board::shape::tests::banqi_dimensions ... ok
+test board::shape::tests::rectangular_all_cells_playable ... ok
+test board::shape::tests::xiangqi_dimensions ... ok
+test board::tests::banqi_board_has_32_cells ... ok
+test board::tests::ray_off_board_no_blocker ... ok
+test board::tests::ray_walks_until_blocker ... ok
+test board::tests::step_off_board_is_none ... ok
+test board::tests::xiangqi_round_trip_file_rank ... ok
+test board::zones::tests::banqi_home_halves_partition_the_board ... ok
+test board::zones::tests::xiangqi_red_palace_corners ... ok
+test board::zones::tests::xiangqi_river_is_two_middle_ranks ... ok
+test coord::tests::direction_constants_complete ... ok
+test coord::tests::direction_deltas_consistent ... ok
+test coord::tests::square_none_sentinel_distinct ... ok
+test piece::tests::banqi_rank_strictly_decreasing_general_to_soldier ... ok
+test piece::tests::side_opposite_is_involution ... ok
+test notation::iccs::tests::flip_decodes_to_reveal ... ok
+test piece::tests::piece_kind_all_covers_seven_distinct ... ok
+test notation::iccs::tests::decode_from_view_flip_in_banqi ... ok
+test notation::iccs::tests::parse_h2e2_in_xiangqi ... ok
+test replay::tests::iter_states_yields_n_plus_one ... ok
+test replay::tests::play_to_out_of_range_errors ... ok
+test notation::iccs::tests::decode_from_view_matches_state ... ok
+test notation::iccs::tests::round_trip_simple_step ... ok
+test rules::banqi::tests::cannon_jumps_over_screen ... ok
+test rules::banqi::tests::chain_capture_disabled_means_only_single_capture ... ok
+test rules::banqi::tests::chariot_rush_emits_long_slides ... ok
+test rules::banqi::tests::chain_capture_emits_when_enabled ... ok
+test notation::iccs::tests::bad_notation_rejected ... ok
+test rules::banqi::tests::chain_capture_make_unmake_round_trip ... ok
+test rules::banqi::tests::fresh_banqi_only_emits_reveals ... ok
+test rules::banqi::tests::rank_capture_table ... ok
+test replay::tests::fork_from_midgame_diverges ... ok
+test rules::banqi::tests::solo_chariot_one_step_orthogonal ... ok
+test rules::house::tests::presets_are_distinct ... ok
+test rules::house::tests::dark_capture_trade_normalizes_to_include_dark_capture ... ok
+test replay::tests::from_game_captures_history_and_initial ... ok
+test rules::house::tests::taiwan_preset_has_chain_and_rush ... ok
+test replay::tests::play_to_round_trip ... ok
+test rules::tests::banqi_ruleset_carries_house_rules ... ok
+test rules::tests::banqi_ruleset_with_seed ... ok
+test replay::tests::play_to_intermediate_steps_match_history ... ok
+test rules::tests::xiangqi_ruleset_defaults ... ok
+test rules::xiangqi::tests::flying_general_is_check ... ok
+test rules::xiangqi::tests::cannon_can_jump_to_capture ... ok
+test rules::xiangqi::tests::opening_red_general_not_in_check ... ok
+test rules::xiangqi::tests::make_unmake_round_trip ... ok
+test rules::xiangqi::tests::opening_position_yields_nonzero_legal_moves ... ok
+test setup::tests::banqi_different_seeds_differ ... ok
+test setup::tests::banqi_initial_all_hidden ... ok
+test setup::tests::banqi_seed_is_deterministic ... ok
+test setup::tests::xiangqi_generals_in_palaces ... ok
+test setup::tests::xiangqi_initial_has_32_pieces ... ok
+test snapshot::tests::banqi_face_down_round_trip ... ok
+test replay::tests::json_round_trip ... ok
+test snapshot::tests::json_round_trip ... ok
+test snapshot::tests::parse_minimal_xiangqi ... ok
+test snapshot::tests::parse_with_house_rules_and_seed ... ok
+test snapshot::tests::rank_order_top_is_highest ... ok
+test snapshot::tests::malformed_input_rejected ... ok
+test snapshot::tests::xiangqi_initial_round_trip_pos ... ok
+test state::state_tests::banqi_no_progress_resets_on_reveal ... ok
+test state::turn_order::tests::advance_skipping_skips_eliminated ... ok
+test state::turn_order::tests::three_player_cycles ... ok
+test state::turn_order::tests::two_player_alternates ... ok
+test state::state_tests::no_progress_plies_advance_then_reset_on_capture ... ok
+test state::state_tests::opening_xiangqi_status_ongoing_after_refresh ... ok
+test view::tests::fresh_banqi_view_has_all_hidden_for_any_observer ... ok
+test view::tests::banqi_view_never_flags_in_check ... ok
+test view::te
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: f7b6e3
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 63
+Output:
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:32Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Fixing query approach**
+
+I realize that my current approach isn’t quite what I want. I need to adjust how I consult stored data. Maybe I should only consult it if it's static, or I could consider querying manually every time. It seems like the implementation should change so that if the raw data is "Some," I go for a manual query. But if it’s static and there’s something missing in the stored data, I should handle it differently. Alright, patching this up!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:32Z)**_
+
+我注意到一個行為細節需要修正：server build 不應被以前 static build 存下的 localStorage WS base 影響。現在我會調整成只有 static build 會讀儲存值；server build 除非 URL 明確帶 `?ws=`，否則永遠 same-origin。
+
+_**Agent (gpt-5.5 2026-05-07 23:59:35Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
+**Update: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/config.rs`**
+
+```diff
+@@
+-    if let Some(stored) = read_stored_ws_base() {
+-        if let Ok(base) = normalize_ws_base(&stored) {
+-            return Ok(WsBase { base, persist_in_urls: is_static_hosting() });
++    if is_static_hosting() {
++        if let Some(stored) = read_stored_ws_base() {
++            if let Ok(base) = normalize_ws_base(&stored) {
++                return Ok(WsBase { base, persist_in_urls: true });
++            }
+         }
+-    }
+ 
+-    if is_static_hosting() {
+         Err(WsBaseChoiceError::Missing)
+     } else {
+         Ok(WsBase { base: same_origin_ws_base(), persist_in_urls: false })
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:43Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering config testing**
+
+I need to consider tests for the configuration that isn't native. Adding pure resolve could be a good idea, but since the config for wasm hasn't been tested yet, I should approach this carefully. I'll think about running the formatter and tests for the build. Since the wasm config has changed, a rebuild is necessary. Maybe I should run Clippy first, followed by formatting, testing chess-web, and then consider building the web server, possibly in a static way.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo fmt --check`</summary>
+```
+Chunk ID: 2208bc
+Wall time: 0.1096 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo test -p chess-web`</summary>
+```
+Chunk ID: 105a2d
+Wall time: 1.0028 seconds
+Process running with session ID 88835
+Original token count: 64
+Output:
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `test` profile [optimized + debuginfo] target(s) in 1.10s
+     Running unittests src/lib.rs (target/debug/deps/chess_web-06652bcd95272332)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --check -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md'`</summary>
+```
+Chunk ID: 3ce34f
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 52641d
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 653
+Output:
+
+running 38 tests
+test glyph::tests::glyph_table_total_for_red_and_black ... ok
+test glyph::tests::hidden_renders ... ok
+test glyph::tests::red_and_black_distinct_in_cjk ... ok
+test orient::tests::out_of_bounds_returns_none ... ok
+test orient::tests::xiangqi_black_round_trip ... ok
+test orient::tests::banqi_round_trip_and_dims ... ok
+test orient::tests::xiangqi_red_and_black_are_180_rotations ... ok
+test orient::tests::xiangqi_red_corner_layout ... ok
+test orient::tests::xiangqi_red_round_trip ... ok
+test routes::tests::banqi_preset_taiwan_picks_chain_and_rush ... ok
+test routes::tests::known_slugs_parse ... ok
+test routes::tests::slug_round_trip ... ok
+test routes::tests::three_kingdom_ignores_query ... ok
+test routes::tests::banqi_dark_capture_token_parses ... ok
+test routes::tests::banqi_house_csv_round_trips ... ok
+test routes::tests::banqi_dark_trade_implies_dark_capture ... ok
+test routes::tests::build_local_href_skips_query_when_defaults ... ok
+test routes::tests::unknown_house_token_is_dropped_silently ... ok
+test routes::tests::banqi_house_overrides_preset_when_both_set ... ok
+test routes::tests::app_href_adds_base_path ... ok
+test routes::tests::build_local_href_includes_query_when_non_default ... ok
+test routes::tests::banqi_dark_chain_alias_still_parses_to_dark_capture ... ok
+test routes::tests::xiangqi_default_is_casual ... ok
+test routes::tests::ws_base_normalizes_websocket_urls_only ... ok
+test routes::tests::unknown_slug_returns_none ... ok
+test state::tests::captured_sort_rank_orders_largest_first ... ok
+test routes::tests::xiangqi_strict_query_yields_strict_ruleset ... ok
+test state::tests::captured_sort_time_preserves_chronological_order ... ok
+test state::tests::captured_sort_toggle_round_trips ... ok
+test state::tests::client_role_observer_defaults_red_for_spectator ... ok
+test state::tests::end_chain_move_returns_none_when_no_chain_lock ... ok
+test state::tests::end_chain_move_returns_some_when_chain_lock_set ... ok
+test state::tests::find_move_locates_xiangqi_step ... ok
+test state::tests::legal_targets_empty_for_non_piece_square ... ok
+test state::tests::truncate_front_noop_when_under_cap ... ok
+test state::tests::legal_targets_for_chariot_in_corner ... ok
+test state::tests::truncate_front_drops_oldest_when_over_cap ... ok
+test state::tests::legal_targets_in_chain_mode_excludes_end_chain_and_does_not_panic ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-07 23:59:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make build-web-server`</summary>
+```
+Chunk ID: d6c7bf
+Wall time: 1.0034 seconds
+Process running with session ID 99137
+Original token count: 87
+Output:
+cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+2026-05-07T23:59:54.672700Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-07T23:59:54.677025Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:00:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 839b58
+Wall time: 3.2906 seconds
+Process exited with code 0
+Original token count: 42
+Output:
+    Finished `release` profile [optimized] target(s) in 7.29s
+2026-05-08T00:00:03.317837Z  INFO applying new distribution
+2026-05-08T00:00:03.318439Z  INFO ✅ success
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:00:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make build-web-static WEB_BASE=/chinese-chess`</summary>
+```
+Chunk ID: 25c814
+Wall time: 1.0015 seconds
+Process running with session ID 2897
+Original token count: 150
+Output:
+cd clients/chess-web && base="/chinese-chess"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-08T00:00:20.514322Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-08T00:00:20.514765Z  INFO 📦 starting build
+    Blocking waiting for file lock on package cache
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:00:41Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: d6f693
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 63
+Output:
+    Finished `release` profile [optimized] target(s) in 6.88s
+2026-05-08T00:00:29.309526Z  INFO applying new distribution
+2026-05-08T00:00:29.310724Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:00:57Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering code checks**
+
+I’m thinking about whether I should run Clippy to catch any issues. We’ve already done some workspace tests, but I wonder if Clippy can help identify anything like dead functions. Should I run it across all targets since I’ve changed some code relating to native? It seems like a good idea, but I’m not completely sure if that’s necessary. I'll consider my options before proceeding.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:00:57Z)**_
+
+兩個 release build 都再次通過。最後跑 clippy workspace，這會覆蓋 CI 的主要 lint gate；若通過我就整理改動摘要。
+
+_**Agent (gpt-5.5 2026-05-08 00:00:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `cargo clippy --workspace --all-targets -- -D warnings`</summary>
+```
+Chunk ID: 22110c
+Wall time: 1.0017 seconds
+Process running with session ID 66260
+Original token count: 52
+Output:
+    Checking chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:05Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 22e7b0
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 44
+Output:
+    Checking chess-tui v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.98s
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Inspecting differences for issues**
+
+I need to inspect the differences to catch any potential issues that might arise. It’s a crucial step, especially if there’s a chance something could go wrong. I want to ensure that I’m thorough and methodical in this process. I might need to double-check certain aspects, so I can truly look out for anything that stands out as problematic. It’s all about being careful and catching those little things before they become bigger problems.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md' | sed -n '1,260p'`</summary>
+```
+Chunk ID: 1601a8
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 2561
+Output:
+diff --git a/.gitignore b/.gitignore
+index c84ea0c..9c3840f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -3,6 +3,7 @@
+ 
+ # Trunk build output (chess-web)
+ clients/chess-web/dist/
++clients/chess-web/dist-static/
+ 
+ # IDE
+ .idea/
+diff --git a/Makefile b/Makefile
+index b6eb42d..ca912e7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,8 +6,9 @@ PORT    ?= 7878
+ ADDR    ?= 127.0.0.1:$(PORT)
+ VARIANT ?= xiangqi
+ SERVER_ARGS ?=
++WEB_BASE ?= /chinese-chess
+ 
+-.PHONY: help build server play-local play-lobby play-web play-spectator build-web serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
++.PHONY: help build server play-local play-lobby play-web play-spectator build-web build-web-server build-web-static serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
+ 
+ help:
+ 	@echo "Targets:"
+@@ -24,6 +25,8 @@ help:
+ 	@echo "  play-spectator tmux: 1 server + 2 chess-tui players + 1 spectator pane."
+ 	@echo "                 Demo for the v3 chat ('t') + spectator (?role=spectator) flow."
+ 	@echo "  build-web     trunk build --release (writes clients/chess-web/dist)"
++	@echo "  build-web-server same as build-web (server/same-origin web build)"
++	@echo "  build-web-static GitHub Pages build (writes clients/chess-web/dist-static)"
+ 	@echo "  serve-web-prod build release web assets, then serve SPA + WS from chess-net"
+ 	@echo "  stop-local    kill the play-local tmux session"
+ 	@echo "  stop-lobby    kill the play-lobby tmux session"
+@@ -32,9 +35,10 @@ help:
+ 	@echo "  check         pre-push gates: fmt + clippy + test + wasm"
+ 	@echo "  fmt | clippy | test | wasm   individual gates"
+ 	@echo ""
+-	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT)"
++	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT) WEB_BASE=$(WEB_BASE)"
+ 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
+ 	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
++	@echo "GitHub Pages example: make build-web-static WEB_BASE=/chinese-chess"
+ 	@echo "Custom port:          make play-lobby PORT=9000"
+ 
+ build:
+@@ -56,7 +60,13 @@ play-spectator:
+ 	@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
+ 
+ build-web:
+-	cd clients/chess-web && NO_COLOR=false trunk build --release
++	cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
++
++build-web-server: build-web
++
++build-web-static:
++	cd clients/chess-web && base="$(WEB_BASE)"; base="$${base%/}"; if [ -z "$$base" ]; then base="/"; fi; public_url="$$base/"; if [ "$$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$$base" trunk build --release --public-url "$$public_url" --dist dist-static
++	cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+ 
+ serve-web-prod: build-web
+ 	cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
+diff --git a/README.md b/README.md
+index cc7a107..329e5a4 100644
+--- a/README.md
++++ b/README.md
+@@ -50,12 +50,16 @@ Web frontend:
+ ```bash
+ make play-web                         # local dev: chess-net + trunk serve
+ make serve-web-prod ADDR=0.0.0.0:7878 # release WASM + compressed static serve
++make build-web-static                 # GitHub Pages artifact under clients/chess-web/dist-static
+ ```
+ 
+ Use `play-web` only for local development. Remote users should hit the
+ production path so they download the release WASM bundle, not Trunk's
+ debug/dev-server output.
+ 
++The GitHub Pages build is local-play ready. Online play from Pages needs a
++separate chess-net server URL entered in the Web lobby (`wss://...` on HTTPS).
++
+ ## License
+ 
+ MIT OR Apache-2.0
+diff --git a/clients/chess-web/Cargo.toml b/clients/chess-web/Cargo.toml
+index 34731f4..9f71332 100644
+--- a/clients/chess-web/Cargo.toml
++++ b/clients/chess-web/Cargo.toml
+@@ -30,7 +30,7 @@ leptos_router = { version = "0.6", features = ["csr"] }
+ console_error_panic_hook = "0.1.7"
+ wasm-bindgen  = "0.2"
+ wasm-bindgen-futures = "0.4"
+-web-sys       = { version = "0.3", features = ["Window", "Location", "Storage"] }
++web-sys       = { version = "0.3", features = ["Window", "Location", "Storage", "KeyboardEvent"] }
+ js-sys        = "0.3"
+ gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+ futures-util  = { workspace = true }
+diff --git a/clients/chess-web/src/app.rs b/clients/chess-web/src/app.rs
+index 39570f6..ce1129d 100644
+--- a/clients/chess-web/src/app.rs
++++ b/clients/chess-web/src/app.rs
+@@ -3,6 +3,7 @@ use leptos_router::{Route, Router, Routes};
+ 
+ use crate::pages::{lobby::LobbyPage, local::LocalPage, picker::Picker, play::PlayPage};
+ use crate::prefs::Prefs;
++use crate::routes::router_base;
+ 
+ #[component]
+ pub fn App() -> impl IntoView {
+@
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git status --short`</summary>
+```
+Chunk ID: 62d035
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 158
+Output:
+ M .gitignore
+ M .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+ M Makefile
+ M README.md
+ M clients/chess-web/Cargo.toml
+ M clients/chess-web/src/app.rs
+ M clients/chess-web/src/components/mod.rs
+ M clients/chess-web/src/components/sidebar.rs
+ M clients/chess-web/src/config.rs
+ M clients/chess-web/src/pages/lobby.rs
+ M clients/chess-web/src/pages/local.rs
+ M clients/chess-web/src/pages/picker.rs
+ M clients/chess-web/src/pages/play.rs
+ M clients/chess-web/src/routes.rs
+ M docs/trunk-leptos-wasm.md
+?? .github/workflows/pages.yml
+?? clients/chess-web/build.rs
+?? clients/chess-web/src/components/ws_setup.rs
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,140p' clients/chess-web/src/config.rs && sed -n '1,140p' clients/chess-web/src/routes.rs`</summary>
+```
+Chunk ID: dc51da
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 2034
+Output:
+//! WebSocket URL helpers. Server-hosted builds use same-origin by default:
+//! Trunk dev-server proxies `/ws` and `/lobby` to chess-net at :7878, while
+//! production chess-net serves `dist/` at the same origin as the WS routes.
+//!
+//! Static builds (GitHub Pages) cannot assume same-origin WS routes, so they
+//! require a user-provided `?ws=wss://host` URL or a stored localStorage value.
+
+use crate::routes::{is_static_hosting, normalize_ws_base, WsBaseError};
+
+pub const WS_QUERY_KEY: &str = "ws";
+pub const WS_STORAGE_KEY: &str = "chess-web.ws-base";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WsBase {
+    pub base: String,
+    pub persist_in_urls: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WsBaseChoiceError {
+    Missing,
+    Invalid(WsBaseError),
+}
+
+pub fn resolve_ws_base(raw_query: Option<String>) -> Result<WsBase, WsBaseChoiceError> {
+    if let Some(raw) = raw_query {
+        let base = normalize_ws_base(&raw).map_err(WsBaseChoiceError::Invalid)?;
+        write_stored_ws_base(&base);
+        return Ok(WsBase { base, persist_in_urls: true });
+    }
+
+    if is_static_hosting() {
+        if let Some(stored) = read_stored_ws_base() {
+            if let Ok(base) = normalize_ws_base(&stored) {
+                return Ok(WsBase { base, persist_in_urls: true });
+            }
+        }
+
+        Err(WsBaseChoiceError::Missing)
+    } else {
+        Ok(WsBase { base: same_origin_ws_base(), persist_in_urls: false })
+    }
+}
+
+pub fn same_origin_ws_base() -> String {
+    let win = web_sys::window().expect("no window");
+    let loc = win.location();
+    let proto = loc.protocol().unwrap_or_else(|_| "http:".into());
+    let scheme = if proto == "https:" { "wss" } else { "ws" };
+    let host = loc.host().unwrap_or_default();
+    format!("{}://{}", scheme, host)
+}
+
+pub fn lobby_url(ws: &WsBase) -> String {
+    format!("{}/lobby", ws.base)
+}
+
+pub fn room_url(ws: &WsBase, room: &str, password: Option<&str>, spectator: bool) -> String {
+    let base = format!("{}/ws/{}", ws.base, encode(room));
+    let mut params: Vec<String> = Vec::new();
+    if let Some(pw) = password.filter(|p| !p.is_empty()) {
+        params.push(format!("password={}", encode(pw)));
+    }
+    if spectator {
+        params.push("role=spectator".to_string());
+    }
+    if params.is_empty() {
+        base
+    } else {
+        format!("{}?{}", base, params.join("&"))
+    }
+}
+
+pub fn ws_query_pair(ws: &WsBase) -> Option<String> {
+    ws.persist_in_urls.then(|| format!("{WS_QUERY_KEY}={}", encode(&ws.base)))
+}
+
+pub fn append_query_pairs(path: &str, pairs: impl IntoIterator<Item = String>) -> String {
+    let pairs: Vec<String> = pairs.into_iter().filter(|s| !s.is_empty()).collect();
+    if pairs.is_empty() {
+        path.to_string()
+    } else {
+        let sep = if path.contains('?') { '&' } else { '?' };
+        format!("{path}{sep}{}", pairs.join("&"))
+    }
+}
+
+pub fn read_stored_ws_base() -> Option<String> {
+    local_storage().and_then(|storage| storage.get_item(WS_STORAGE_KEY).ok().flatten())
+}
+
+pub fn write_stored_ws_base(base: &str) {
+    if let Some(storage) = local_storage() {
+        let _ = storage.set_item(WS_STORAGE_KEY, base);
+    }
+}
+
+fn local_storage() -> Option<web_sys::Storage> {
+    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+}
+
+fn encode(s: &str) -> String {
+    js_sys::encode_uri_component(s).as_string().unwrap_or_default()
+}
+//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+//!
+//! Pure logic — native-testable. The picker page builds a query string from
+//! its form state via [`build_local_query`]; the local page parses it back
+//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
+
+use chess_core::rules::{
+    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+};
+
+pub fn hosting_mode() -> &'static str {
+    env!("CHESS_WEB_HOSTING")
+}
+
+pub fn is_static_hosting() -> bool {
+    hosting_mode() == "static"
+}
+
+pub fn base_path() -> &'static str {
+    env!("CHESS_WEB_BASE_PATH")
+}
+
+pub fn router_base() -> Option<&'static str> {
+    let base = base_path();
+    if base.is_empty() {
+        None
+    } else {
+        Some(base)
+    }
+}
+
+pub fn app_href(path: &str) -> String {
+    app_href_with_base(base_path(), path)
+}
+
+pub fn app_href_with_base(base: &str, path: &str) -> String {
+    let path = if path.is_empty() { "/" } else { path };
+    let path = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
+    let base = normalize_base_path(base);
+    if base.is_empty() {
+        path
+    } else if path == "/" {
+        format!("{base}/")
+    } else {
+        format!("{base}{path}")
+    }
+}
+
+fn normalize_base_path(base: &str) -> String {
+    let trimmed = base.trim().trim_matches('/');
+    if trimmed.is_empty() {
+        String::new()
+    } else {
+        format!("/{trimmed}")
+    }
+}
+
+#[derive(Cl
+... (truncated)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:36Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating front-end testing options**
+
+It looks like we've already used the `/chinese` for our final artifact. Running `/` means any changes to the dist-static index get ignored. So no final is needed. Maybe I should consider using browser testing? Starting a server could be a good idea since the front end is significant. But I see all builds are involved. Perhaps I can suggest we test in the in-app browser, especially after major frontend changes.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `sed -n '1,180p' .github/workflows/pages.yml && sed -n '1,130p' clients/chess-web/src/components/ws_setup.rs`</summary>
+```
+Chunk ID: 40f745
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 951
+Output:
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: cargo install trunk --version 0.21.14 --locked
+      - name: Build static web
+        run: make build-web-static WEB_BASE=/chinese-chess
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: clients/chess-web/dist-static
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+use leptos::*;
+
+use crate::config::{
+    append_query_pairs, read_stored_ws_base, write_stored_ws_base, ws_query_pair, WsBase,
+};
+use crate::routes::{app_href, normalize_ws_base, WsBaseError};
+
+#[component]
+pub fn WsSetup(
+    title: &'static str,
+    next_path: String,
+    #[prop(optional)] detail: Option<&'static str>,
+    #[prop(default = "")] initial_error: &'static str,
+) -> impl IntoView {
+    let stored = read_stored_ws_base().unwrap_or_else(|| "wss://".to_string());
+    let input = create_rw_signal(stored);
+    let error = create_rw_signal(if initial_error.is_empty() {
+        None
+    } else {
+        Some(initial_error.to_string())
+    });
+
+    let connect: Callback<()> = {
+        let next_path = next_path.clone();
+        Callback::new(move |_| {
+            let raw = input.get_untracked();
+            match normalize_ws_base(&raw) {
+                Ok(base) => {
+                    write_stored_ws_base(&base);
+                    let ws = WsBase { base, persist_in_urls: true };
+                    let target = append_query_pairs(&next_path, ws_query_pair(&ws));
+                    if let Some(win) = web_sys::window() {
+                        let _ = win.location().set_href(&app_href(&target));
+                    }
+                }
+                Err(WsBaseError::Empty) => error.set(Some("Enter a websocket server URL.".into())),
+                Err(WsBaseError::BadScheme) => {
+                    error.set(Some("Use a full ws:// or wss:// server URL.".into()))
+                }
+            }
+        })
+    };
+
+    view! {
+        <section class="lobby">
+            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+            <h2>{title}</h2>
+            <p class="subtitle">
+                {detail.unwrap_or("This static build needs a chess-net websocket server. GitHub Pages uses HTTPS, so remote play should use wss://.")}
+            </p>
+            <div class="lobby-form">
+                <input
+                    class="text-input"
+                    type="text"
+                    placeholder="wss://your-server.example"
+                    prop:value=move || input.get()
+                    on:input=move |ev| {
+                        error.set(None);
+                        input.set(event_target_value(&ev));
+                    }
+                    on:keydown=move |ev| {
+                        if ev.key() == "Enter" {
+                            connect.call(());
+                        }
+                    }
+                />
+                <button class="btn btn-primary" on:click=move |_| connect.call(())>"Connect"</button>
+            </div>
+            <Show when=move || error.get().is_some()>
+                <p class="conn-banner error">{move || error.get().unwrap_or_default()}</p>
+            </Show>
+        </section>
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:01:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --name-only -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md' && git diff --check -- . ':!.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md'`</summary>
+```
+Chunk ID: 02fb08
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 103
+Output:
+.gitignore
+Makefile
+README.md
+clients/chess-web/Cargo.toml
+clients/chess-web/src/app.rs
+clients/chess-web/src/components/mod.rs
+clients/chess-web/src/components/sidebar.rs
+clients/chess-web/src/config.rs
+clients/chess-web/src/pages/lobby.rs
+clients/chess-web/src/pages/local.rs
+clients/chess-web/src/pages/picker.rs
+clients/chess-web/src/pages/play.rs
+clients/chess-web/src/routes.rs
+docs/trunk-leptos-wasm.md
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating GitHub workflow issues**
+
+I’m looking into the `git diff --name-only` command, which doesn't include untracked files — that’s fine. There might be a delay with the `cargo install trunk` in the workflow. I wonder if I should use `actions/configure-pages` before the build. Permissions for GitHub Pages need to be set correctly. I noticed that passing `WEB_BASE=/chinese-chess` in `make build-web-static` might cause issues if unquoted. It’s good to confirm that `env -u` works on macOS too. I should also check the `.PHONY` line and consider adding a pages workflow to the diff stat manually. That's a lot to consider!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering project build steps**
+
+I’m thinking about whether to run `find clients/chess-web/dist-static` after the final build, but it seems unnecessary. I should inspect if there are any modifications to Cargo.lock, but the status shows none, which is good. I'm also pondering the use of agent-history-hygiene since there's a dirty `.specstory` tracked file. It seems unnecessary to commit it, yet I must remember to note the existing dirty transcript. Although the instruction says to start a local dev server for the build, it wasn't part of the user's request. Maybe I should mention that I didn’t leave a server running and suggest using `make serve-web-prod` or `make play-web`.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Planning for server setup**
+
+The developer explicitly mentioned that for a site or app needing a dev server, I should start the local dev server after implementation and provide the user with the URL. I want to ensure we comply with this. I’m considering starting the production server using `make serve-web-prod ADDR=127.0.0.1:7878`, but it will run indefinitely. Maybe I can initiate it with an exec session and make a final note about that for clarity.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering server execution**
+
+I'm figuring out some potential conflicts with the dev server and sessions that might still be running. There’s a question about whether I should start the server, as doing so could lead to a port conflict. I could use `lsof` to check port 7878, but since the Makefile defaults to that, maybe I’ll go with 8787 instead. The user might want to try server mode, but for static pages, it’s not necessary. I’ll clarify instructions based on this.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating server start conditions**
+
+I’m considering starting the server only if it’s necessary for the site or app to function properly, especially with routing or online changes. It could be useful to run a short-lived server just for testing, but the instructions say to provide a URL, which complicates things. Since the user didn’t explicitly ask for a server, I might avoid starting it to prevent unresolved sessions. I could mention the command clearly while noting that I might not need to leave the server running.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Deciding on server startup**
+
+The instruction emphasizes building the project and starting a local dev server while providing a URL, so I should probably follow that. I’m considering if it’s okay to leave the session running at the end. I’ll make sure to start on port 8787, as that’s the plan. However, I'm also concerned about what happens if the server fails, so I should keep that in mind while moving forward with the task.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+我會啟動一個本機 production-style server mode 讓你可以直接試，使用非預設 `8787` 避免撞到現有開發服務。
+
+_**Agent (gpt-5.5 2026-05-08 00:02:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `make serve-web-prod ADDR=127.0.0.1:8787 VARIANT=xiangqi`</summary>
+```
+Chunk ID: ae0388
+Wall time: 1.0012 seconds
+Process running with session ID 62267
+Original token count: 61
+Output:
+cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+2026-05-08T00:02:15.831482Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-08T00:02:15.840517Z  INFO 📦 starting build
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 956e6f
+Wall time: 5.0011 seconds
+Process running with session ID 62267
+Original token count: 198
+Output:
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `release` profile [optimized] target(s) in 7.09s
+2026-05-08T00:02:24.790527Z  INFO applying new distribution
+2026-05-08T00:02:24.791151Z  INFO ✅ success
+cargo run -p chess-net -- --addr 127.0.0.1:8787 --static-dir clients/chess-web/dist xiangqi 
+   Compiling alloc-no-stdlib v2.0.4
+   Compiling simd-adler32 v0.3.9
+   Compiling adler2 v2.0.1
+   Compiling crc32fast v1.5.0
+   Compiling compression-core v0.4.32
+   Compiling chess-core v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-core)
+   Compiling alloc-stdlib v0.2.2
+   Compiling miniz_oxide v0.8.9
+   Compiling brotli-decompressor v5.0.0
+   Compiling flate2 v1.1.9
+   Compiling brotli v8.0.2
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:31Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 768a85
+Wall time: 5.0023 seconds
+Process running with session ID 62267
+Original token count: 118
+Output:
+   Compiling compression-codecs v0.4.38
+   Compiling async-compression v0.4.42
+   Compiling tower-http v0.5.2
+   Compiling chess-net v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/crates/chess-net)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.47s
+     Running `target/debug/chess-net-server --addr '127.0.0.1:8787' --static-dir clients/chess-web/dist xiangqi`
+[server] listening on ws://127.0.0.1:8787
+[server] serving static dir at /
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:45Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering server management**
+
+I’ve got the server running, and I’m thinking I might need to do some curl tests to check for any smoke or issues while it’s running. It’s essential to ensure everything is functioning smoothly and efficiently. Keeping an eye on potential problems helps me catch things early on, which is super important! I wonder if there are any specific tests I should prioritize or any known issues I should look out for during this process.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `curl -I http://127.0.0.1:8787/ && curl -I http://127.0.0.1:8787/local/xiangqi`</summary>
+```
+Chunk ID: 5f75aa
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 257
+Output:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0  2033    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+content-type: text/html
+accept-ranges: bytes
+last-modified: Fri, 08 May 2026 00:02:24 GMT
+content-length: 2033
+cache-control: no-cache
+date: Fri, 08 May 2026 00:02:46 GMT
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0  2033    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+content-type: text/html
+accept-ranges: bytes
+last-modified: Fri, 08 May 2026 00:02:24 GMT
+content-length: 2033
+cache-control: no-cache
+date: Fri, 08 May 2026 00:02:46 GMT
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `curl -s http://127.0.0.1:8787/rooms`</summary>
+```
+Chunk ID: adedee
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 1
+Output:
+[]
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:02:53Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git status --short`</summary>
+```
+Chunk ID: 98ecae
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 158
+Output:
+ M .gitignore
+ M .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+ M Makefile
+ M README.md
+ M clients/chess-web/Cargo.toml
+ M clients/chess-web/src/app.rs
+ M clients/chess-web/src/components/mod.rs
+ M clients/chess-web/src/components/sidebar.rs
+ M clients/chess-web/src/config.rs
+ M clients/chess-web/src/pages/lobby.rs
+ M clients/chess-web/src/pages/local.rs
+ M clients/chess-web/src/pages/picker.rs
+ M clients/chess-web/src/pages/play.rs
+ M clients/chess-web/src/routes.rs
+ M docs/trunk-leptos-wasm.md
+?? .github/workflows/pages.yml
+?? clients/chess-web/build.rs
+?? clients/chess-web/src/components/ws_setup.rs
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:03:05Z)**_
+
+Implemented the plan.
+
+Main changes:
+- Added server/static web build config via `CHESS_WEB_HOSTING` and `CHESS_WEB_BASE_PATH`.
+- Added base-aware routing/links for GitHub Pages under `/chinese-chess`.
+- Added static Online fallback: `?ws=wss://...` or saved `localStorage["chess-web.ws-base"]`.
+- Added `make build-web-server`, `make build-web-static`, `dist-static/404.html`, and `.github/workflows/pages.yml`.
+- Updated README/docs for server vs GitHub Pages usage.
+
+Verification passed:
+- `cargo fmt --check`
+- `cargo test -p chess-web`
+- `cargo test -p chess-net --test static_serve`
+- `cargo test --workspace`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `make build-web-server`
+- `make build-web-static WEB_BASE=/chinese-chess`
+- curl smoke for `/`, `/local/xiangqi`, and `/rooms`
+
+I also started the production-style local server here:
+
+`http://127.0.0.1:8787/`
+
+Note: `.specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md` was already dirty and remains dirty; I did not touch it. Full `git diff --check` reports whitespace there, while the check excluding that transcript passes.
+
+---
+
+_**User (2026-05-08 00:04:43Z)**_
+
+git commit & use gh CLI to deploy the GitHub Page and make sure you wait until you check the site is successfully running
+
+---
+
+_**Agent (gpt-5.5 2026-05-08 00:04:59Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Checking deployment status**
+
+I’m thinking about whether to initiate an action or just inspect the remote repository first. I realize the network is operational, but I shouldn’t give a final update until I run some checks. First, I need to establish the current status and probably commit any necessary changes. Should I use GitHub tools for this? I should be careful since there’s an ongoing server session, and I can stop the deployment before finalizing it.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:01Z)**_
+
+我會把本次實作和對應 SpecStory transcript 一起納入提交，先做狀態/secret-scan 檢查，再 commit、push，然後用 `gh` 觀察 Pages workflow 到完成並檢查公開站點。
+
+_**Agent (gpt-5.5 2026-05-08 00:05:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git status --short`</summary>
+```
+Chunk ID: 90a81f
+Wall time: 0.0006 seconds
+Process exited with code 0
+Original token count: 158
+Output:
+ M .gitignore
+ M .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md
+ M Makefile
+ M README.md
+ M clients/chess-web/Cargo.toml
+ M clients/chess-web/src/app.rs
+ M clients/chess-web/src/components/mod.rs
+ M clients/chess-web/src/components/sidebar.rs
+ M clients/chess-web/src/config.rs
+ M clients/chess-web/src/pages/lobby.rs
+ M clients/chess-web/src/pages/local.rs
+ M clients/chess-web/src/pages/picker.rs
+ M clients/chess-web/src/pages/play.rs
+ M clients/chess-web/src/routes.rs
+ M docs/trunk-leptos-wasm.md
+?? .github/workflows/pages.yml
+?? clients/chess-web/build.rs
+?? clients/chess-web/src/components/ws_setup.rs
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git remote -v && gh repo view --json nameWithOwner,url,defaultBranchRef`</summary>
+```
+Chunk ID: 76497e
+Wall time: 1.0016 seconds
+Process running with session ID 88199
+Original token count: 37
+Output:
+origin	https://github.com/daviddwlee84/Chinese-Chess_Xiangqi.git (fetch)
+origin	https://github.com/daviddwlee84/Chinese-Chess_Xiangqi.git (push)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `command -v gitleaks || true; command -v pre-commit || true; git config user.name; git config user.email`</summary>
+```
+Chunk ID: 548efe
+Wall time: 0.0007 seconds
+Process exited with code 0
+Original token count: 26
+Output:
+/opt/homebrew/bin/gitleaks
+/Users/daviddwlee84/.local/bin/pre-commit
+Da-Wei Lee
+daviddwlee84@gmail.com
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 89b77d
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 38
+Output:
+{"defaultBranchRef":{"name":"main"},"nameWithOwner":"daviddwlee84/Chinese-Chess_Xiangqi","url":"https://github.com/daviddwlee84/Chinese-Chess_Xiangqi"}
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:28Z)**_
+
+repo 有 `gitleaks` 和 `pre-commit`，我會先看 hook 設定並 staged scan，避免把 transcript 裡的敏感資訊推上去。
+
+_**Agent (gpt-5.5 2026-05-08 00:05:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `ls -la .pre-commit-config.yaml .gitleaks.toml 2>/dev/null || true; sed -n '1,220p' .pre-commit-config.yaml 2>/dev/null`</summary>
+```
+Chunk ID: b1026f
+Wall time: 0.0000 seconds
+Process exited with code 1
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git diff --stat`</summary>
+```
+Chunk ID: 0495e9
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 250
+Output:
+ .gitignore                                         |    1 +
+ .../2026-05-07_15-52-23Z-web-online-github-page.md | 5247 ++++++++++++++++++++
+ Makefile                                           |   16 +-
+ README.md                                          |    4 +
+ clients/chess-web/Cargo.toml                       |    2 +-
+ clients/chess-web/src/app.rs                       |   22 +-
+ clients/chess-web/src/components/mod.rs            |    1 +
+ clients/chess-web/src/components/sidebar.rs        |    3 +-
+ clients/chess-web/src/config.rs                    |   84 +-
+ clients/chess-web/src/pages/lobby.rs               |   82 +-
+ clients/chess-web/src/pages/local.rs               |    4 +-
+ clients/chess-web/src/pages/picker.rs              |   19 +-
+ clients/chess-web/src/pages/play.rs                |   80 +-
+ clients/chess-web/src/routes.rs                    |   92 +
+ docs/trunk-leptos-wasm.md                          |   13 +
+ 15 files changed, 5617 insertions(+), 53 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `gitleaks dir --redact --no-banner .`</summary>
+```
+Chunk ID: 3903c2
+Wall time: 1.0006 seconds
+Process running with session ID 54947
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 77d6cf
+Wall time: 5.0019 seconds
+Process running with session ID 54947
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: eace71
+Wall time: 5.0016 seconds
+Process running with session ID 54947
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:05:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: d775a2
+Wall time: 5.0019 seconds
+Process running with session ID 54947
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:08Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Evaluating scanning process**
+
+I’m considering whether the scan is too extensive since it includes the entire directory, which might take a while. Should I stop it? I wonder if pressing ctrl-c would work, but maybe it’s better to wait for output. However, while it's still running, I’m thinking stopping it and staging changes with Git later might be a more efficient approach. It’s a bit of a dilemma here!
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:09Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+write_stdin failed: stdin is closed for this session; rerun exec_command with tty=true to keep stdin open
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:14Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 18318e
+Wall time: 5.0092 seconds
+Process running with session ID 54947
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `ps -axo pid,ppid,command | rg 'gitleaks dir|PID'`</summary>
+```
+Chunk ID: b23ce0
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 44
+Output:
+  PID  PPID COMMAND
+69621 10138 gitleaks dir --redact --no-banner .
+73292 10138 /bin/zsh -c ps -axo pid,ppid,command | rg 'gitleaks dir|PID'
+73298 73292 rg gitleaks dir|PID
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `kill 69621`</summary>
+```
+Chunk ID: 94eb8a
+Wall time: 0.0000 seconds
+Process exited with code 0
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:37Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="write_stdin"><details>
+<summary>Tool use: **write_stdin**</summary>
+```
+Chunk ID: 29e2dd
+Wall time: 0.0000 seconds
+Process exited with code -1
+Original token count: 0
+Output:
+```
+</details></tool-use>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:46Z)**_
+
+<think><details><summary>Thought Process</summary>
+**Considering gitleaks usage**
+
+I need to access stage files to run gitleaks with a command like `gitleaks git --staged` after staging everything. However, I’m noticing that the `.specstory` file is quite large, which could complicate the scanning. Plus, there’s no precommit configuration in place right now. So, I'm thinking I should find a way to scan the staged files efficiently, especially given the size of the file I'm dealing with.
+</details></think>
+
+_**Agent (gpt-5.5 2026-05-08 00:06:46Z)**_
+
+全目錄 `gitleaks dir` 會掃到 build/cache 太慢，我已停掉；改用 staged-only 掃描，這才符合提交前檢查。接下來 stage 本次變更和 transcript。
+
+_**Agent (gpt-5.5 2026-05-08 00:06:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="exec_command"><details>
+<summary>Tool use: **exec_command** `git add .gitignore Makefile README.md clients/chess-web/Cargo.toml clients/chess-web/build.rs clients/chess-web/src/app.rs clients/chess-web/src/components/mod.rs clients/chess-web/src/components/sidebar.rs clients/chess-web/src/components/ws_setup.rs clients/chess-web/src/config.rs clients/chess-web/src/pages/lobby.rs clients/chess-web/src/pages/local.rs clients/chess-web/src/pages/picker.rs clients/chess-web/src/pages/play.rs clients/chess-web/src/routes.rs docs/trunk-leptos-wasm.md .github/workflows/pages.yml .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md && git status --short`</summary>
+
+**Input:**
+
+- cmd: `git add .gitignore Makefile README.md clients/chess-web/Cargo.toml clients/chess-web/build.rs clients/chess-web/src/app.rs clients/chess-web/src/components/mod.rs clients/chess-web/src/components/sidebar.rs clients/chess-web/src/components/ws_setup.rs clients/chess-web/src/config.rs clients/chess-web/src/pages/lobby.rs clients/chess-web/src/pages/local.rs clients/chess-web/src/pages/picker.rs clients/chess-web/src/pages/play.rs clients/chess-web/src/routes.rs docs/trunk-leptos-wasm.md .github/workflows/pages.yml .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md && git status --short`
+- command: `git add .gitignore Makefile README.md clients/chess-web/Cargo.toml clients/chess-web/build.rs clients/chess-web/src/app.rs clients/chess-web/src/components/mod.rs clients/chess-web/src/components/sidebar.rs clients/chess-web/src/components/ws_setup.rs clients/chess-web/src/config.rs clients/chess-web/src/pages/lobby.rs clients/chess-web/src/pages/local.rs clients/chess-web/src/pages/picker.rs clients/chess-web/src/pages/play.rs clients/chess-web/src/routes.rs docs/trunk-leptos-wasm.md .github/workflows/pages.yml .specstory/history/2026-05-07_15-52-23Z-web-online-github-page.md && git status --short`
+- max_output_tokens: `12000`
+- workdir: `/Volumes/Data/Program/tries/2026-05-06-chinese-chess`
+- yield_time_ms: `1000`
+
+</details></tool-use>

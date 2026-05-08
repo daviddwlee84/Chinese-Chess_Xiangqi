@@ -3,6 +3,7 @@
 
 # Trunk build output (chess-web)
 clients/chess-web/dist/
+clients/chess-web/dist-static/
 
 # IDE
 .idea/
