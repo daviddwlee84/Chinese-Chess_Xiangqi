@@ -6,7 +6,7 @@ PORT    ?= 7878
 ADDR    ?= 127.0.0.1:$(PORT)
 VARIANT ?= xiangqi
 SERVER_ARGS ?=
-WEB_BASE ?= /chinese-chess
+WEB_BASE ?= /Chinese-Chess_Xiangqi
 
 .PHONY: help build server play-local play-lobby play-web play-spectator build-web build-web-server build-web-static serve-web-prod stop-local stop-lobby stop-web stop-spectator check fmt clippy test wasm
 
@@ -38,7 +38,7 @@ help:
 	@echo "Vars: SESSION=$(SESSION) PORT=$(PORT) ADDR=$(ADDR) VARIANT=$(VARIANT) WEB_BASE=$(WEB_BASE)"
 	@echo "Banqi example:        make play-lobby VARIANT=banqi"
 	@echo "Remote web example:   make serve-web-prod ADDR=0.0.0.0:7878"
-	@echo "GitHub Pages example: make build-web-static WEB_BASE=/chinese-chess"
+	@echo "GitHub Pages example: make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi"
 	@echo "Custom port:          make play-lobby PORT=9000"
 
 build:

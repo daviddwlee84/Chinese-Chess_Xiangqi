@@ -26,7 +26,7 @@ jobs:
       - name: Install Trunk
         run: cargo install trunk --version 0.21.14 --locked
       - name: Build static web
-        run: make build-web-static WEB_BASE=/chinese-chess
+        run: make build-web-static WEB_BASE=/${{ github.event.repository.name }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -194,7 +194,7 @@ There are two production-style web builds:
 
 - `make build-web` / `make build-web-server` — server-hosted, same-origin
   build under `clients/chess-web/dist`. Use with `chess-net --static-dir`.
-- `make build-web-static WEB_BASE=/chinese-chess` — GitHub Pages build under
+- `make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi` — GitHub Pages build under
   `clients/chess-web/dist-static`. It sets Trunk's public URL to the Pages
   subpath and copies `index.html` to `404.html` for SPA hard-refresh fallback.
 
