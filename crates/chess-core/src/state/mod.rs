@@ -709,17 +709,20 @@ fn has_capture_from(state: &GameState, from: crate::coord::Square, attacker: Pie
         let Some(to) = board.step(from, dir) else { continue };
         match board.get(to) {
             None => {}
+            Some(target)
+                if !target.revealed && house.contains(HouseRules::DARK_CAPTURE) =>
+            {
+                return true;
+            }
             Some(target) if !target.revealed => {
-                if house.contains(HouseRules::DARK_CAPTURE) {
-                    return true;
-                }
+                // Dark target but DARK_CAPTURE rule disabled: blocked.
+                let _ = target;
             }
             Some(target) if target.piece.side == attacker.side => {}
-            Some(target) => {
-                if can_capture(attacker.kind, target.piece.kind) {
-                    return true;
-                }
+            Some(target) if can_capture(attacker.kind, target.piece.kind) => {
+                return true;
             }
+            Some(_) => {}
         }
     }
 
@@ -748,10 +751,14 @@ fn has_capture_from(state: &GameState, from: crate::coord::Square, attacker: Pie
             let Some(to) = board.step(from, dir) else { continue };
             match board.get(to) {
                 None => {}
+                Some(target)
+                    if !target.revealed && house.contains(HouseRules::DARK_CAPTURE) =>
+                {
+                    return true;
+                }
                 Some(target) if !target.revealed => {
-                    if house.contains(HouseRules::DARK_CAPTURE) {
-                        return true;
-                    }
+                    // Dark target but DARK_CAPTURE rule disabled: blocked.
+                    let _ = target;
                 }
                 Some(target) if target.piece.side == attacker.side => {}
                 Some(_) => return true,
