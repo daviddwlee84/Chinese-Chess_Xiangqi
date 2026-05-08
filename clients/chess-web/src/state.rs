@@ -133,8 +133,8 @@ pub fn split_and_sort_captured(pieces: &[Piece], sort: CapturedSort) -> (Vec<Pie
     let mut red: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::RED).copied().collect();
     let mut black: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::BLACK).copied().collect();
     if sort == CapturedSort::Rank {
-        red.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
-        black.sort_by(|a, b| piece_rank_value(b.kind).cmp(&piece_rank_value(a.kind)));
+        red.sort_by_key(|p| std::cmp::Reverse(piece_rank_value(p.kind)));
+        black.sort_by_key(|p| std::cmp::Reverse(piece_rank_value(p.kind)));
     }
     (red, black)
 }

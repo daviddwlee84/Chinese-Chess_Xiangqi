@@ -144,9 +144,7 @@ fn gen_horse_diagonal(
         match board.get(to) {
             // Empty diagonal: blocked. Diagonal moves require a capture.
             None => {}
-            Some(target)
-                if !target.revealed && house.contains(HouseRules::DARK_CAPTURE) =>
-            {
+            Some(target) if !target.revealed && house.contains(HouseRules::DARK_CAPTURE) => {
                 out.push(Move::DarkCapture { from, to, revealed: None, attacker: None });
             }
             Some(target) if !target.revealed => {
