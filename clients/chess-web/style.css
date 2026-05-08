@@ -386,6 +386,10 @@ body {
     width: 100%;
     height: auto;
     max-height: 80vh;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
 }
 .board-bg { fill: var(--board); }
 .grid { stroke: var(--grid); stroke-width: 1.5; }
@@ -450,7 +454,11 @@ body {
 .btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
 
 /* Hit-test cells. Transparent but clickable. */
-.cell-hit { fill: transparent; cursor: pointer; }
+.cell-hit {
+    fill: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+}
 .cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
 
 /* Sidebar. */
