@@ -736,3 +736,24 @@ body {
     color: var(--muted);
     font-size: 0.9rem;
 }
+.picker-hero__source {
+    flex: 0 0 auto;
+    margin-left: auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.picker-hero__source:hover,
+.picker-hero__source:focus-visible {
+    color: var(--accent);
+    background: rgba(212, 165, 92, 0.18);
+    transform: translateY(-1px);
+}
+.picker-hero__source svg { display: block; }
