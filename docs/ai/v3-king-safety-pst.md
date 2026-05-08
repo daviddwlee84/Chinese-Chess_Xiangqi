@@ -60,17 +60,25 @@ identical to v2. So v3 is a strict superset of v2 in playing strength
 
 ## Difficulty mapping
 
-Same as v1 / v2:
+Same depths as v1 / v2; the **randomness** defaults changed in 2026-05-09
+to make Hard feel less repetitive (user feedback: "AI 幾乎會走一樣的步").
 
-| Difficulty | Default depth | Move-pick rule |
-|---|---|---|
-| Easy | 1 | uniform random pick from top-3 by score |
-| Normal | 3 | random pick within ±10 cp of best |
-| Hard | 4 | strict best (deterministic given a seed) |
+| Difficulty | Default depth | Default randomness | Move-pick rule |
+|---|---|---|---|
+| Easy | 1 | `Randomness::CHAOTIC` | top-10 moves within ±150 cp of best |
+| Normal | 3 | `Randomness::VARIED` | top-5 within ±60 cp |
+| Hard | 4 | `Randomness::SUBTLE` | top-3 within ±20 cp (was strict-best pre-2026-05-09) |
 
-The 10 cp Normal-mode tolerance is now meaningless for King-losing
-moves — those score -50_000 cp from the AI's POV, way outside the ±10
-window. So Normal also defends the King correctly.
+Hard's new `SUBTLE` default avoids the "AI plays the same opening every
+game" complaint while keeping strength loss imperceptible (±20 cp at
+depth 4 ≈ noise compared to typical position evaluation swings of
+50-300 cp). Pass `randomness: Some(Randomness::STRICT)` in
+[`AiOptions`](../../crates/chess-ai/src/lib.rs) to opt back into
+deterministic best-move play (regression tests, replays, tournaments).
+
+`KING_VALUE` (50_000 cp) is much larger than any of these tolerance
+windows, so all variation presets still avoid king-blindness — losing
+the General is filtered out by the `cp_window` even at `Randomness::CHAOTIC`.
 
 ## Tests
 

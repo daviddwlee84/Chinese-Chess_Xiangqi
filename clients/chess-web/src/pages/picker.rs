@@ -1,7 +1,7 @@
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
 
-use chess_ai::{Difficulty, Strategy};
+use chess_ai::{Difficulty, Randomness, Strategy};
 use chess_core::piece::Side;
 
 use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode};
@@ -49,6 +49,9 @@ fn XiangqiCard() -> impl IntoView {
     let player_red = create_rw_signal(true);
     let difficulty = create_rw_signal(Difficulty::Normal);
     let ai_strategy = create_rw_signal(Strategy::default());
+    // None = "use difficulty default"; Some(_) = explicit override.
+    // Encoded into the URL via `&variation=`.
+    let ai_variation = create_rw_signal::<Option<Randomness>>(None);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
         let params = LocalRulesParams {
@@ -57,6 +60,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_side,
             ai_difficulty: difficulty.get(),
             ai_strategy: ai_strategy.get(),
+            ai_variation: ai_variation.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -166,6 +170,54 @@ fn XiangqiCard() -> impl IntoView {
                             on:change=move |_| ai_strategy.set(Strategy::MaterialV1)
                         />
                         <span>"v1 — material only (original MVP). Picks at random in the opening."</span>
+                    </label>
+                </fieldset>
+                <fieldset class="card-fieldset">
+                    <legend>"Variation"</legend>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-variation"
+                            prop:checked=move || ai_variation.get().is_none()
+                            on:change=move |_| ai_variation.set(None)
+                        />
+                        <span>"Default — chosen by difficulty (Easy=Chaotic, Normal=Varied, Hard=Subtle)."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-variation"
+                            prop:checked=move || ai_variation.get() == Some(Randomness::STRICT)
+                            on:change=move |_| ai_variation.set(Some(Randomness::STRICT))
+                        />
+                        <span>"Strict — always the best move (deterministic, no variation)."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-variation"
+                            prop:checked=move || ai_variation.get() == Some(Randomness::SUBTLE)
+                            on:change=move |_| ai_variation.set(Some(Randomness::SUBTLE))
+                        />
+                        <span>"Subtle — top-3 within ±20 cp."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-variation"
+                            prop:checked=move || ai_variation.get() == Some(Randomness::VARIED)
+                            on:change=move |_| ai_variation.set(Some(Randomness::VARIED))
+                        />
+                        <span>"Varied — top-5 within ±60 cp."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-variation"
+                            prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
+                            on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
+                        />
+                        <span>"Chaotic — top-10 within ±150 cp (weak Hard, fun for learners)."</span>
                     </label>
                 </fieldset>
             </Show>

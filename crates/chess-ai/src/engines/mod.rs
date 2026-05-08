@@ -21,7 +21,7 @@ use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
 use crate::search::{score_root_moves, ScoredMove};
-use crate::{AiMoveResult, AiOptions, Difficulty};
+use crate::{AiMoveResult, AiOptions, Randomness};
 
 /// A search engine: picks a move for the side to move in `state`.
 ///
@@ -99,35 +99,111 @@ fn run<E: Evaluator>(
         return None;
     }
 
-    let best_score = scored.iter().map(|sm| sm.score).max().unwrap();
-    let chosen = match opts.difficulty {
-        Difficulty::Easy => {
-            // Pick uniformly from top-3 by score.
-            let mut sorted: Vec<&ScoredMove> = scored.iter().collect();
-            sorted.sort_by_key(|sm| std::cmp::Reverse(sm.score));
-            let take = sorted.len().min(3);
-            let pick = sorted[..take].choose(&mut rng).copied().unwrap();
-            (pick.mv.clone(), pick.score)
-        }
-        Difficulty::Normal => {
-            // Best-or-near-best: any move within 10cp of best, picked at random.
-            let near: Vec<&ScoredMove> =
-                scored.iter().filter(|sm| best_score - sm.score <= 10).collect();
-            let pick = near.choose(&mut rng).copied().unwrap();
-            (pick.mv.clone(), pick.score)
-        }
-        Difficulty::Hard => {
-            // Strict best (first occurrence on ties — deterministic).
-            let pick = scored.iter().find(|sm| sm.score == best_score).unwrap();
-            (pick.mv.clone(), pick.score)
-        }
-    };
+    let randomness = opts.effective_randomness();
+    let chosen = pick_with_randomness(&scored, randomness, &mut rng);
 
-    // Tiny noise on Easy/Normal via the same rng so identical positions
-    // with different seeds vary even when scores tie cleanly. (Hard stays
-    // stable — deterministic by construction.)
+    // Tiny noise burn so identical positions with different seeds vary
+    // even when the chosen move ties cleanly. Cheap.
     let _: u8 = rng.gen();
 
     let _ = engine_label; // hook for future logging — keeps the name() in scope.
-    Some(AiMoveResult { mv: chosen.0, score: chosen.1, depth, nodes })
+    Some(AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes })
+}
+
+/// Apply the [`Randomness`] policy to a list of scored root moves and
+/// return the survivor that the seeded RNG picked. Pulled out as a
+/// standalone helper so a unit test can pin the policy independently
+/// of the search.
+///
+/// Algorithm:
+/// 1. Find best score.
+/// 2. Filter to moves within `cp_window` cp of best.
+/// 3. Sort filtered survivors descending by score.
+/// 4. Take at most `top_k.max(1)` of them.
+/// 5. RNG picks one uniformly.
+fn pick_with_randomness<'a>(
+    scored: &'a [ScoredMove],
+    r: Randomness,
+    rng: &mut ChaCha8Rng,
+) -> &'a ScoredMove {
+    debug_assert!(!scored.is_empty(), "caller must check for empty");
+    let best = scored.iter().map(|sm| sm.score).max().expect("non-empty");
+    let cp_window = r.cp_window.max(0);
+    let top_k = r.top_k.max(1);
+
+    let mut eligible: Vec<&ScoredMove> =
+        scored.iter().filter(|sm| best - sm.score <= cp_window).collect();
+    // Stable sort by score desc, breaking ties by original index so the
+    // "first occurrence" determinism of strict mode is preserved.
+    eligible.sort_by(|a, b| b.score.cmp(&a.score));
+    let take = eligible.len().min(top_k);
+    let pool = &eligible[..take];
+    pool.choose(rng).copied().expect("pool non-empty when scored non-empty")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chess_core::coord::Square;
+    use chess_core::moves::Move;
+
+    fn fake_step(score: i32) -> ScoredMove {
+        // Construct a fake move; coords don't matter for the picker test.
+        ScoredMove { mv: Move::Step { from: Square(0), to: Square(1) }, score }
+    }
+
+    fn pool() -> Vec<ScoredMove> {
+        vec![fake_step(100), fake_step(95), fake_step(80), fake_step(50), fake_step(0)]
+    }
+
+    #[test]
+    fn strict_picks_best_only() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let p = pool();
+        let pick = pick_with_randomness(&p, Randomness::STRICT, &mut rng);
+        assert_eq!(pick.score, 100);
+    }
+
+    #[test]
+    fn subtle_picks_within_window() {
+        // Window 20 → eligible: 100, 95, 80; top-3 = all three. RNG picks one.
+        let p = pool();
+        for seed in 0..20u64 {
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let pick = pick_with_randomness(&p, Randomness::SUBTLE, &mut rng);
+            assert!(
+                [100, 95, 80].contains(&pick.score),
+                "subtle picked outside top-3-within-20: {}",
+                pick.score
+            );
+        }
+    }
+
+    #[test]
+    fn varied_picks_within_60cp() {
+        let p = pool();
+        for seed in 0..20u64 {
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let pick = pick_with_randomness(&p, Randomness::VARIED, &mut rng);
+            assert!(pick.score >= 100 - 60, "varied picked below window: {}", pick.score);
+        }
+    }
+
+    #[test]
+    fn top_k_zero_treated_as_one() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let p = pool();
+        let pick = pick_with_randomness(&p, Randomness { top_k: 0, cp_window: 200 }, &mut rng);
+        assert_eq!(pick.score, 100, "top_k=0 should clamp to 1 (best only)");
+    }
+
+    #[test]
+    fn determinism_same_seed_same_pick() {
+        let p = pool();
+        let mut rng_a = ChaCha8Rng::seed_from_u64(42);
+        let mut rng_b = ChaCha8Rng::seed_from_u64(42);
+        let a = pick_with_randomness(&p, Randomness::CHAOTIC, &mut rng_a);
+        let b = pick_with_randomness(&p, Randomness::CHAOTIC, &mut rng_b);
+        assert_eq!(a.score, b.score);
+    }
 }

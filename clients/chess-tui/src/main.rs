@@ -25,7 +25,7 @@ use std::io::{self, Stdout};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use chess_ai::{Difficulty, Strategy};
+use chess_ai::{Difficulty, Randomness, Strategy};
 use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, RuleSet};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -126,6 +126,12 @@ enum Cmd {
         /// only) are preserved for regression / comparison.
         #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V3)]
         ai_engine: EngineArg,
+        /// Move-pick variation: how much randomness on top of the search.
+        /// `default` lets the difficulty pick (Easy=Chaotic, Normal=Varied,
+        /// Hard=Subtle). Override with `strict` for deterministic play
+        /// (regression / replays) or higher presets for varied games.
+        #[arg(long = "ai-variation", value_enum, default_value_t = VariationArg::Default)]
+        ai_variation: VariationArg,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -206,6 +212,33 @@ impl EngineArg {
     }
 }
 
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum VariationArg {
+    /// Use the difficulty's default randomness preset.
+    Default,
+    /// Always the best move (deterministic given a seed).
+    Strict,
+    /// Top-3 within ±20 cp.
+    Subtle,
+    /// Top-5 within ±60 cp.
+    Varied,
+    /// Top-10 within ±150 cp.
+    Chaotic,
+}
+
+impl VariationArg {
+    /// `None` = use difficulty default; `Some(_)` = explicit override.
+    fn into_randomness(self) -> Option<Randomness> {
+        match self {
+            VariationArg::Default => None,
+            VariationArg::Strict => Some(Randomness::STRICT),
+            VariationArg::Subtle => Some(Randomness::SUBTLE),
+            VariationArg::Varied => Some(Randomness::VARIED),
+            VariationArg::Chaotic => Some(Randomness::CHAOTIC),
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -242,7 +275,7 @@ fn main() -> Result<()> {
     } else {
         match &cli.cmd {
             None => AppState::new_picker(style, use_color, observer),
-            Some(Cmd::Xiangqi { strict, ai, ai_side, ai_difficulty, ai_engine }) => {
+            Some(Cmd::Xiangqi { strict, ai, ai_side, ai_difficulty, ai_engine, ai_variation }) => {
                 let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
                 if *ai {
                     let cfg = VsAiConfig {
@@ -252,6 +285,7 @@ fn main() -> Result<()> {
                         },
                         difficulty: ai_difficulty.into_difficulty(),
                         strategy: ai_engine.into_strategy(),
+                        randomness: ai_variation.into_randomness(),
                     };
                     AppState::new_game_vs_ai(rules, style, use_color, cfg)
                 } else {

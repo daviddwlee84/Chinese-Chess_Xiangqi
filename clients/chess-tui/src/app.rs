@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use chess_ai::{AiOptions, Difficulty, Strategy};
+use chess_ai::{AiOptions, Difficulty, Randomness, Strategy};
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::moves::Move;
@@ -105,11 +105,18 @@ pub struct VsAiConfig {
     pub ai_side: Side,
     pub difficulty: Difficulty,
     pub strategy: Strategy,
+    /// `None` = use difficulty default; `Some(_)` = explicit override.
+    pub randomness: Option<Randomness>,
 }
 
 impl Default for VsAiConfig {
     fn default() -> Self {
-        Self { ai_side: Side::BLACK, difficulty: Difficulty::Normal, strategy: Strategy::default() }
+        Self {
+            ai_side: Side::BLACK,
+            difficulty: Difficulty::Normal,
+            strategy: Strategy::default(),
+            randomness: None,
+        }
     }
 }
 
@@ -607,10 +614,15 @@ impl AppState {
         // --as flag, so the player's pieces always sit on the bottom.
         let player_side = cfg.ai_side.opposite();
         let mut s = Self::new_game_inner(rules, style, use_color, player_side, Some(cfg));
+        let variation_label = match cfg.randomness.and_then(|r| r.preset_name()) {
+            Some(name) => format!(", variation={}", name),
+            None => String::new(),
+        };
         let label = format!(
-            "vs AI ({}, engine={}). You play {}. Press ?/help for keys.",
+            "vs AI ({}, engine={}{}). You play {}. Press ?/help for keys.",
             cfg.difficulty.as_str(),
             cfg.strategy.as_str(),
+            variation_label,
             if player_side == Side::RED { "RED" } else { "BLACK" },
         );
         if let Screen::Game(g) = &mut s.screen {
@@ -1735,6 +1747,7 @@ impl AppState {
             max_depth: None,
             seed: Some(seed),
             strategy: cfg.strategy,
+            randomness: cfg.randomness,
         };
         let Some(result) = chess_ai::choose_move(&g.state, &opts) else {
             return;

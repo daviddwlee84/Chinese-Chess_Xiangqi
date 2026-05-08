@@ -4,7 +4,7 @@
 //! its form state via [`build_local_query`]; the local page parses it back
 //! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
 
-use chess_ai::{Difficulty, Strategy};
+use chess_ai::{Difficulty, Randomness, Strategy};
 use chess_core::piece::Side;
 use chess_core::rules::{
     house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
@@ -124,6 +124,11 @@ pub struct LocalRulesParams {
     /// (v2 since 2026-05-08). Versioned, switchable, non-overwriting:
     /// older strategies stay reachable via `?engine=v1`.
     pub ai_strategy: Strategy,
+    /// `VsAi` only — randomness preset. `None` = use the difficulty
+    /// default (`Difficulty::default_randomness`); `Some(_)` = explicit
+    /// override (typically a [`Randomness`] preset like
+    /// [`Randomness::STRICT`]). URL token: `&variation=strict|subtle|varied|chaotic`.
+    pub ai_variation: Option<Randomness>,
 }
 
 impl Default for LocalRulesParams {
@@ -136,6 +141,7 @@ impl Default for LocalRulesParams {
             ai_side: Side::BLACK,
             ai_difficulty: Difficulty::Normal,
             ai_strategy: Strategy::default(),
+            ai_variation: None,
         }
     }
 }
@@ -163,6 +169,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     let ai_difficulty =
         get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
     let ai_strategy = get("engine").as_deref().and_then(Strategy::parse).unwrap_or_default();
+    let ai_variation = get("variation").as_deref().and_then(Randomness::parse);
     LocalRulesParams {
         strict,
         house: house::normalize(house),
@@ -171,6 +178,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_side,
         ai_difficulty,
         ai_strategy,
+        ai_variation,
     }
 }
 
@@ -196,6 +204,13 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 // the recommended setup.
                 if params.ai_strategy != Strategy::default() {
                     parts.push(format!("engine={}", params.ai_strategy.as_str()));
+                }
+                // Only emit variation= when the user explicitly overrode
+                // the difficulty default (and the override is one of the
+                // known presets — custom Randomness values can't be
+                // round-tripped through the URL).
+                if let Some(name) = params.ai_variation.and_then(|r| r.preset_name()) {
+                    parts.push(format!("variation={}", name));
                 }
             }
         }
@@ -485,6 +500,43 @@ mod tests {
     fn xiangqi_engine_unknown_token_falls_back_to_default() {
         let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "v999")]));
         assert_eq!(p.ai_strategy, Strategy::default());
+    }
+
+    #[test]
+    fn xiangqi_variation_round_trips() {
+        for (token, expected) in &[
+            ("strict", Randomness::STRICT),
+            ("subtle", Randomness::SUBTLE),
+            ("varied", Randomness::VARIED),
+            ("chaotic", Randomness::CHAOTIC),
+        ] {
+            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("variation", token)]));
+            assert_eq!(p.ai_variation, Some(*expected));
+            let q = build_local_query(Variant::Xiangqi, &p);
+            assert!(
+                q.contains(&format!("variation={}", token)),
+                "round-trip failed for {}: {}",
+                token,
+                q
+            );
+        }
+    }
+
+    #[test]
+    fn xiangqi_variation_omitted_when_default() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(
+            !q.contains("variation="),
+            "default (None) variation should not be emitted; got {}",
+            q
+        );
+    }
+
+    #[test]
+    fn xiangqi_variation_unknown_token_falls_back_to_none() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("variation", "garbage")]));
+        assert_eq!(p.ai_variation, None);
     }
 
     #[test]

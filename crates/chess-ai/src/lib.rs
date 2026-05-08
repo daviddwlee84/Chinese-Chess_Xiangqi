@@ -66,6 +66,106 @@ impl Difficulty {
             Difficulty::Hard => 4,
         }
     }
+
+    /// Default move-pick policy for this difficulty. Easy is wild
+    /// (encourages varied games for human learners); Normal is moderate;
+    /// Hard is *subtle* (NOT strict by default since 2026-05-09 — the
+    /// previous strict-best behaviour led to repetitive games. Pass
+    /// `Randomness::STRICT` explicitly when you want determinism, e.g.
+    /// for regression tests).
+    pub fn default_randomness(self) -> Randomness {
+        match self {
+            Difficulty::Easy => Randomness::CHAOTIC,
+            Difficulty::Normal => Randomness::VARIED,
+            Difficulty::Hard => Randomness::SUBTLE,
+        }
+    }
+}
+
+/// Move-pick policy applied after the search returns scored root moves.
+///
+/// Two filters compose:
+/// 1. **`cp_window`** — only moves whose score is within `cp_window`
+///    centipawns of the best are eligible.
+/// 2. **`top_k`** — among eligible moves sorted by score, keep at most
+///    the top `top_k`.
+///
+/// The seed RNG then picks one uniformly from the survivors.
+///
+/// `top_k = 1, cp_window = 0` reproduces the strict-best behaviour
+/// (deterministic given a seed). Larger values trade strength for
+/// variation. See the [`Randomness::STRICT`], [`Randomness::SUBTLE`],
+/// [`Randomness::VARIED`], [`Randomness::CHAOTIC`] presets.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct Randomness {
+    /// Maximum number of top-scoring moves to consider for the random
+    /// pick. `0` is treated as `1` (always at least one move).
+    pub top_k: usize,
+    /// Centipawn tolerance: only moves whose score is `>= best - cp_window`
+    /// are eligible. `0` = strict best only.
+    pub cp_window: i32,
+}
+
+impl Randomness {
+    /// No variation — always the strict best move (deterministic given
+    /// a seed). Useful for regression tests and "I want THE best move
+    /// every time" play.
+    pub const STRICT: Self = Self { top_k: 1, cp_window: 0 };
+
+    /// Mild variation: pick from top-3 within ±20 cp. Imperceptible
+    /// strength loss; keeps games from feeling repetitive. Default for
+    /// `Difficulty::Hard` since 2026-05-09.
+    pub const SUBTLE: Self = Self { top_k: 3, cp_window: 20 };
+
+    /// Moderate variation: top-5 within ±60 cp. Real moves sometimes
+    /// missed; trades some elo for fun. Default for `Difficulty::Normal`.
+    pub const VARIED: Self = Self { top_k: 5, cp_window: 60 };
+
+    /// Wide variation: top-10 within ±150 cp. Effectively a "weak Hard"
+    /// — useful for human learners who want varied opposition. Default
+    /// for `Difficulty::Easy`.
+    pub const CHAOTIC: Self = Self { top_k: 10, cp_window: 150 };
+
+    /// URL/CLI canonical preset name, or `None` if these aren't preset
+    /// values (i.e., user constructed `Randomness { ... }` manually).
+    pub fn preset_name(self) -> Option<&'static str> {
+        if self == Self::STRICT {
+            Some("strict")
+        } else if self == Self::SUBTLE {
+            Some("subtle")
+        } else if self == Self::VARIED {
+            Some("varied")
+        } else if self == Self::CHAOTIC {
+            Some("chaotic")
+        } else {
+            None
+        }
+    }
+
+    /// Inverse of [`Randomness::preset_name`]. Accepts a few aliases.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "strict" | "off" | "none" | "deterministic" => Some(Self::STRICT),
+            "subtle" | "low" => Some(Self::SUBTLE),
+            "varied" | "medium" | "med" => Some(Self::VARIED),
+            "chaotic" | "wild" | "high" => Some(Self::CHAOTIC),
+            _ => None,
+        }
+    }
+
+    /// Iteration helper for the picker dropdown.
+    pub const ALL: [Self; 4] = [Self::STRICT, Self::SUBTLE, Self::VARIED, Self::CHAOTIC];
+
+    /// Human-readable label for the picker dropdown.
+    pub fn label(self) -> &'static str {
+        match self.preset_name() {
+            Some("strict") => "Strict — always the best move (deterministic)",
+            Some("subtle") => "Subtle — top-3 within ±20 cp (recommended for Hard)",
+            Some("varied") => "Varied — top-5 within ±60 cp",
+            Some("chaotic") => "Chaotic — top-10 within ±150 cp",
+            _ => "Custom",
+        }
+    }
 }
 
 /// Engine version selector. New versions are *added*, never replacing old
@@ -141,13 +241,23 @@ pub struct AiOptions {
     /// deterministic — the caller may pass a fresh seed per move for variety.
     pub seed: Option<u64>,
     /// Engine version to dispatch on. Defaults to [`Strategy::default`]
-    /// (v2 since 2026-05-08).
+    /// (v3 since 2026-05-09).
     pub strategy: Strategy,
+    /// Override [`Difficulty::default_randomness`]. `None` uses the
+    /// difficulty default; `Some(Randomness::STRICT)` forces deterministic
+    /// strict-best play regardless of difficulty.
+    pub randomness: Option<Randomness>,
 }
 
 impl AiOptions {
     pub fn new(difficulty: Difficulty) -> Self {
-        Self { difficulty, max_depth: None, seed: None, strategy: Strategy::default() }
+        Self {
+            difficulty,
+            max_depth: None,
+            seed: None,
+            strategy: Strategy::default(),
+            randomness: None,
+        }
     }
 
     /// Builder shortcut for callers that want to override the default
@@ -155,6 +265,12 @@ impl AiOptions {
     pub fn with_strategy(mut self, strategy: Strategy) -> Self {
         self.strategy = strategy;
         self
+    }
+
+    /// Resolved randomness policy: explicit override if provided, else
+    /// the difficulty default.
+    pub fn effective_randomness(&self) -> Randomness {
+        self.randomness.unwrap_or_else(|| self.difficulty.default_randomness())
     }
 }
 
@@ -197,8 +313,13 @@ mod tests {
         let state = GameState::new(RuleSet::xiangqi_casual());
         for strategy in Strategy::ALL {
             for diff in [Difficulty::Easy, Difficulty::Normal, Difficulty::Hard] {
-                let opts =
-                    AiOptions { difficulty: diff, max_depth: Some(2), seed: Some(7), strategy };
+                let opts = AiOptions {
+                    difficulty: diff,
+                    max_depth: Some(2),
+                    seed: Some(7),
+                    strategy,
+                    randomness: None,
+                };
                 let result = choose_move(&state, &opts).expect("must return a move");
                 let legal = state.legal_moves();
                 assert!(
@@ -236,6 +357,7 @@ mod tests {
                 max_depth: Some(2),
                 seed: Some(42),
                 strategy,
+                randomness: None,
             };
             let a = choose_move(&state, &opts).unwrap();
             let b = choose_move(&state, &opts).unwrap();
@@ -246,7 +368,9 @@ mod tests {
     #[test]
     fn hard_prefers_capture_when_free() {
         // Red chariot opposite Black soldier with nothing between — every
-        // material-aware engine at any depth ≥ 1 must take.
+        // material-aware engine at any depth ≥ 1 must take. Use STRICT
+        // randomness so the test is deterministic regardless of future
+        // changes to `Difficulty::default_randomness`.
         for strategy in Strategy::ALL {
             let mut state = GameState::new(RuleSet::xiangqi_casual());
             let board: Board = state.board.clone();
@@ -280,6 +404,7 @@ mod tests {
                 max_depth: Some(2),
                 seed: Some(0),
                 strategy,
+                randomness: Some(Randomness::STRICT),
             };
             let result = choose_move(&state, &opts).unwrap();
             match result.mv {
@@ -308,6 +433,7 @@ mod tests {
             max_depth: Some(2),
             seed: Some(0),
             strategy: Strategy::MaterialPstV2,
+            randomness: Some(Randomness::STRICT),
         };
         let r2 = choose_move(&state, &opts_v2).expect("v2 returns a move");
         // v2 evaluations of opening positions are generally non-zero
@@ -331,12 +457,14 @@ mod tests {
             max_depth: Some(2),
             seed: Some(0),
             strategy: Strategy::MaterialV1,
+            randomness: Some(Randomness::STRICT),
         };
         let v2 = AiOptions {
             difficulty: Difficulty::Hard,
             max_depth: Some(2),
             seed: Some(0),
             strategy: Strategy::MaterialPstV2,
+            randomness: Some(Randomness::STRICT),
         };
         let r1 = choose_move(&state, &v1).unwrap();
         let r2 = choose_move(&state, &v2).unwrap();
@@ -436,6 +564,7 @@ mod tests {
             max_depth: Some(2),
             seed: Some(0),
             strategy: Strategy::MaterialKingSafetyPstV3,
+            randomness: Some(Randomness::STRICT),
         };
         let r3 = choose_move(&state, &opts_v3).expect("v3 must return a move");
 
