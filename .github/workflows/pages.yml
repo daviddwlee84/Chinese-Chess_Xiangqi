@@ -27,7 +27,7 @@ jobs:
         run: cargo install trunk --version 0.21.14 --locked
       - name: Build static web
         run: make build-web-static WEB_BASE=/${{ github.event.repository.name }}
-      - uses: actions/configure-pages@v7
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: clients/chess-web/dist-static
