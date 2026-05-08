@@ -135,7 +135,9 @@ fn pick_with_randomness<'a>(
         scored.iter().filter(|sm| best - sm.score <= cp_window).collect();
     // Stable sort by score desc, breaking ties by original index so the
     // "first occurrence" determinism of strict mode is preserved.
-    eligible.sort_by(|a, b| b.score.cmp(&a.score));
+    // (Use `sort_by_key(Reverse(...))` rather than the equivalent
+    // closure form to satisfy clippy 1.95's `unnecessary_sort_by`.)
+    eligible.sort_by_key(|sm| std::cmp::Reverse(sm.score));
     let take = eligible.len().min(top_k);
     let pool = &eligible[..take];
     pool.choose(rng).copied().expect("pool non-empty when scored non-empty")

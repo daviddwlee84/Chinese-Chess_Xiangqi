@@ -65,4 +65,5 @@ The drift bites only on a release boundary (every ~6 weeks) and the recovery is 
 ## Related
 
 - Session that surfaced this: 2026-05-08, three CI round-trips before green (`0865ad9` → `3333751` → `0ce14c6`). Each round added one lint we hadn't seen locally.
+- 2026-05-09 recurrence #5: `clippy::unnecessary_sort_by` flagged `sort_by(|a,b| b.cmp(&a))` in `engines::pick_with_randomness`; CI rust 1.95 vs local rust 1.93. One-line fix: switch to `sort_by_key(|x| Reverse(x))`. The `rustup update stable` workaround at the top of this doc didn't help because `rustup` self-updated but the toolchain still resolved to 1.93 on this machine.
 - Same family of lints to expect on future clippy bumps: anything in <https://rust-lang.github.io/rust-clippy/master/index.html> that's marked `correctness` or `style` and added in the latest minor release.
