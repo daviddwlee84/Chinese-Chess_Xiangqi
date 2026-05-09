@@ -40,6 +40,20 @@ pub struct ScoredMove {
 /// Returns one [`ScoredMove`] per move tried; aborts early when the
 /// node budget is exhausted (the remaining moves stay unscored, which
 /// is fine — caller picks among what we managed to score).
+///
+/// **Important**: each root move is searched with a **full window**
+/// (`-MATE-1 .. MATE+1`) — we do NOT narrow alpha based on previously-
+/// scored root moves. This costs more nodes but ensures the returned
+/// `score` for each move is the move's *true* value, not a bound
+/// clamped to whatever the running best was.
+///
+/// Why: the [`crate::Randomness`] layer downstream picks a move from
+/// "top-K within ±cp_window of best". If alpha-beta at the root
+/// reports a suicide as "score = -132" (the running alpha, not the
+/// true -50_000 cp value), the randomness layer can't distinguish it
+/// from a genuinely-good move and may pick the suicide. Class-of-bug
+/// fix; see `pitfalls/alpha-beta-root-score-pollution.md` for the
+/// full write-up.
 pub fn score_root_moves<E: Evaluator>(
     state: &GameState,
     depth: u8,
@@ -55,19 +69,16 @@ pub fn score_root_moves<E: Evaluator>(
     let mut work = state.clone();
     let mut nodes: u32 = 0;
     let mut scored: Vec<ScoredMove> = Vec::with_capacity(ordered.len());
-    let mut alpha = -MATE - 1;
-    let beta = MATE + 1;
 
     for mv in ordered {
         if work.make_move(&mv).is_err() {
             continue;
         }
-        let score = -negamax(&mut work, depth.saturating_sub(1), -beta, -alpha, &mut nodes, eval);
+        // Full-window search — see fn doc.
+        let score =
+            -negamax(&mut work, depth.saturating_sub(1), -(MATE + 1), MATE + 1, &mut nodes, eval);
         let _ = work.unmake_move();
         scored.push(ScoredMove { mv, score });
-        if score > alpha {
-            alpha = score;
-        }
         if nodes >= NODE_BUDGET {
             break;
         }
@@ -145,6 +156,9 @@ pub fn is_capture(m: &Move) -> bool {
 /// MVV-LVA ordered, quiescence-aware root scoring. Same shape as
 /// [`score_root_moves`] but the recursion uses [`negamax_qmvv`] +
 /// [`quiescence::quiescence`] at the horizon.
+///
+/// Same **full-window-at-root** rule as [`score_root_moves`] — see that
+/// function's doc for why.
 pub fn score_root_moves_qmvv<E: Evaluator>(
     state: &GameState,
     depth: u8,
@@ -161,19 +175,22 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
     let mut work = state.clone();
     let mut nodes: u32 = 0;
     let mut scored: Vec<ScoredMove> = Vec::with_capacity(ordered.len());
-    let mut alpha = -MATE - 1;
-    let beta = MATE + 1;
 
     for (_score, mv) in ordered {
         if work.make_move(&mv).is_err() {
             continue;
         }
-        let v = -negamax_qmvv(&mut work, depth.saturating_sub(1), -beta, -alpha, &mut nodes, eval);
+        // Full-window search — see `score_root_moves` doc.
+        let v = -negamax_qmvv(
+            &mut work,
+            depth.saturating_sub(1),
+            -(MATE + 1),
+            MATE + 1,
+            &mut nodes,
+            eval,
+        );
         let _ = work.unmake_move();
         scored.push(ScoredMove { mv, score: v });
-        if v > alpha {
-            alpha = v;
-        }
         if nodes >= NODE_BUDGET {
             break;
         }

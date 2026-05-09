@@ -158,8 +158,8 @@ fn XiangqiCard() -> impl IntoView {
                         inputmode="numeric"
                         min="1"
                         max=MAX_AI_DEPTH.to_string()
-                        placeholder="(default)"
-                        class="text-input"
+                        placeholder="auto"
+                        class="text-input depth-input"
                         prop:value=move || ai_depth_text.get()
                         on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
                     />

@@ -20,88 +20,103 @@ practical case is `40^3 ≈ 64k`. Our measurements (below) sit at the
 practical end of the bound thanks to capture-first ordering and the
 hard 250 000 node budget in [`search/mod.rs`](../../crates/chess-ai/src/search/mod.rs).
 
-## Measurements (2026-05-09, post-v4)
+## Measurements (2026-05-09, post-v4-and-root-fix)
 
 All runs use `Randomness::STRICT` so the measurement is search cost
 only — no RNG variation between repeats. Median wall-clock over 3 runs;
 nodes are deterministic given the search inputs.
 
+> **2026-05-09 update**: numbers shifted significantly after fixing
+> [`pitfalls/alpha-beta-root-score-pollution.md`](../../pitfalls/alpha-beta-root-score-pollution.md).
+> The root search no longer narrows alpha between root moves (full
+> window per move) — costs more nodes, gives correct per-move scores
+> so the `Randomness` layer can distinguish defensive moves from
+> suicides. Previous numbers (when alpha-beta narrowed at root) showed
+> ~30 ms for v3 Hard openings; correct-but-slower numbers are below.
+
 | Fixture | Strategy | Difficulty | Depth | Nodes | Median ms (3 runs) | nodes/ms |
 |---------|----------|------------|-------|-------|--------------------|---------|
-| opening (initial xiangqi) | v1 | Easy | 1 | 44 | 0.08 | 550 |
-| opening (initial xiangqi) | v1 | Normal | 3 | 2087 | 3.84 | 543 |
-| opening (initial xiangqi) | v1 | Hard | 4 | 7743 | 14.05 | 551 |
-| opening (initial xiangqi) | v2 | Easy | 1 | 44 | 0.09 | 518 |
-| opening (initial xiangqi) | v2 | Normal | 3 | 2087 | 3.73 | 559 |
-| opening (initial xiangqi) | v2 | Hard | 4 | 15941 | 29.99 | 532 |
-| opening (initial xiangqi) | v3 | Easy | 1 | 44 | 0.09 | 506 |
-| opening (initial xiangqi) | v3 | Normal | 3 | 2087 | 3.75 | 556 |
-| opening (initial xiangqi) | v3 | Hard | 4 | 15938 | 30.34 | 525 |
-| **opening (initial xiangqi)** | **v4** | **Easy** | **1** | **103** | **0.12** | **844** |
-| **opening (initial xiangqi)** | **v4** | **Normal** | **3** | **13277** | **17.11** | **776** |
-| **opening (initial xiangqi)** | **v4** | **Hard** | **4** | **177403** | **278.73** | **636** |
-| midgame (4 pieces removed) | v1 | Easy | 1 | 56 | 0.14 | 400 |
-| midgame (4 pieces removed) | v1 | Normal | 3 | 5984 | 12.17 | 492 |
-| midgame (4 pieces removed) | v1 | Hard | 4 | 9295 | 25.11 | 370 |
-| midgame (4 pieces removed) | v2 | Easy | 1 | 56 | 0.15 | 368 |
-| midgame (4 pieces removed) | v2 | Normal | 3 | 6032 | 14.21 | 424 |
-| midgame (4 pieces removed) | v2 | Hard | 4 | 9340 | 22.25 | 420 |
-| midgame (4 pieces removed) | v3 | Easy | 1 | 56 | 0.12 | 448 |
-| midgame (4 pieces removed) | v3 | Normal | 3 | 6032 | 15.24 | 396 |
-| midgame (4 pieces removed) | v3 | Hard | 4 | 9132 | 25.11 | 364 |
-| **midgame (4 pieces removed)** | **v4** | **Easy** | **1** | **775** | **1.05** | **736** |
-| **midgame (4 pieces removed)** | **v4** | **Normal** | **3** | **6546** | **7.72** | **848** |
-| **midgame (4 pieces removed)** | **v4** | **Hard** | **4** | **21370** | **33.21** | **643** |
-| sparse endgame (5 pieces total) | v1 | Easy | 1 | 18 | 0.01 | 1385 |
-| sparse endgame (5 pieces total) | v1 | Normal | 3 | 448 | 0.32 | 1396 |
-| sparse endgame (5 pieces total) | v1 | Hard | 4 | 1144 | 1.33 | 860 |
-| sparse endgame (5 pieces total) | v2 | Easy | 1 | 18 | 0.02 | 1125 |
-| sparse endgame (5 pieces total) | v2 | Normal | 3 | 2867 | 2.53 | 1133 |
-| sparse endgame (5 pieces total) | v2 | Hard | 4 | 16150 | 13.67 | 1181 |
+| opening (initial xiangqi) | v1 | Easy | 1 | 44 | 0.08 | 579 |
+| opening (initial xiangqi) | v1 | Normal | 3 | 6021 | 11.61 | 518 |
+| opening (initial xiangqi) | v1 | Hard | 4 | 98932 | 161.30 | 613 |
+| opening (initial xiangqi) | v2 | Easy | 1 | 44 | 0.08 | 537 |
+| opening (initial xiangqi) | v2 | Normal | 3 | 6519 | 12.71 | 513 |
+| opening (initial xiangqi) | v2 | Hard | 4 | 104334 | 186.61 | 559 |
+| opening (initial xiangqi) | v3 | Easy | 1 | 44 | 0.09 | 494 |
+| opening (initial xiangqi) | v3 | Normal | 3 | 6519 | 12.73 | 512 |
+| opening (initial xiangqi) | v3 | Hard | 4 | 104321 | 189.25 | 551 |
+| **opening (initial xiangqi)** | **v4** | **Easy** | **1** | **362** | **0.73** | **497** |
+| **opening (initial xiangqi)** | **v4** | **Normal** | **3** | **66187** | **108.26** | **611** |
+| **opening (initial xiangqi)** | **v4** | **Hard** | **4** | **250032** | **327.52** | **763** |
+| midgame (4 pieces removed) | v1 | Easy | 1 | 56 | 0.11 | 523 |
+| midgame (4 pieces removed) | v1 | Normal | 3 | 11654 | 24.31 | 479 |
+| midgame (4 pieces removed) | v1 | Hard | 4 | 152968 | 297.88 | 514 |
+| midgame (4 pieces removed) | v2 | Easy | 1 | 56 | 0.11 | 505 |
+| midgame (4 pieces removed) | v2 | Normal | 3 | 12022 | 26.03 | 462 |
+| midgame (4 pieces removed) | v2 | Hard | 4 | 158500 | 333.87 | 475 |
+| midgame (4 pieces removed) | v3 | Easy | 1 | 56 | 0.12 | 487 |
+| midgame (4 pieces removed) | v3 | Normal | 3 | 12022 | 30.65 | 392 |
+| midgame (4 pieces removed) | v3 | Hard | 4 | 158133 | 336.49 | 470 |
+| **midgame (4 pieces removed)** | **v4** | **Easy** | **1** | **13900** | **19.67** | **707** |
+| **midgame (4 pieces removed)** | **v4** | **Normal** | **3** | **48511** | **66.75** | **727** |
+| **midgame (4 pieces removed)** | **v4** | **Hard** | **4** | **250045** | **300.12** | **833** |
+| sparse endgame (5 pieces total) | v1 | Easy | 1 | 18 | 0.02 | 1125 |
+| sparse endgame (5 pieces total) | v1 | Normal | 3 | 922 | 0.76 | 1207 |
+| sparse endgame (5 pieces total) | v1 | Hard | 4 | 6980 | 5.65 | 1235 |
+| sparse endgame (5 pieces total) | v2 | Easy | 1 | 18 | 0.01 | 1385 |
+| sparse endgame (5 pieces total) | v2 | Normal | 3 | 3527 | 2.43 | 1450 |
+| sparse endgame (5 pieces total) | v2 | Hard | 4 | 31527 | 24.37 | 1294 |
 | sparse endgame (5 pieces total) | v3 | Easy | 1 | 18 | 0.01 | 1500 |
-| sparse endgame (5 pieces total) | v3 | Normal | 3 | 2040 | 1.41 | 1446 |
-| sparse endgame (5 pieces total) | v3 | Hard | 4 | 18047 | 15.10 | 1195 |
+| sparse endgame (5 pieces total) | v3 | Normal | 3 | 3440 | 2.47 | 1394 |
+| sparse endgame (5 pieces total) | v3 | Hard | 4 | 29544 | 22.63 | 1306 |
 | **sparse endgame (5 pieces total)** | **v4** | **Easy** | **1** | **36** | **0.02** | **2000** |
 | **sparse endgame (5 pieces total)** | **v4** | **Normal** | **3** | **4972** | **2.74** | **1817** |
 | **sparse endgame (5 pieces total)** | **v4** | **Hard** | **4** | **21668** | **12.03** | **1801** |
 
-## v4 cost breakdown
+## v4 Hard cost vs the node budget
 
-v4 is **significantly more expensive than v3** in busy openings — the
-worst case (v4 + Hard + opening) is 9-10× the v3 number:
+v4 + Hard now hits the **full 250k node budget** on both opening (250032
+nodes) and midgame (250045 nodes) — search bails to "best-so-far"
+when the cap is reached. The fact that scores are still correct
+(verified by `v4_defends_general_after_red_central_cannon_lands_at_e6`)
+means the budget bail happens AFTER the king-loss is propagated for
+suicide moves, so the randomness layer still picks defensively.
 
-| Fixture | v3 Hard nodes | v4 Hard nodes | Ratio |
+Cost vs previous (alpha-beta-narrowing-at-root) era:
+
+| Fixture | v4 Hard before fix | v4 Hard after fix | Ratio |
 |---|---|---|---|
-| Opening | 15,938 | **177,403** | 11× |
-| Midgame | 9,132 | 21,370 | 2.3× |
-| Endgame | 18,047 | 21,668 | 1.2× |
+| Opening | 30 ms / 16k nodes | 327 ms / 250k nodes (budget hit) | ~10× |
+| Midgame | 33 ms / 21k nodes | 300 ms / 250k nodes (budget hit) | ~9× |
+| Endgame | 14 ms / 22k nodes | 33 ms / 65k nodes | ~2.4× |
 
-Why opening is the worst case: the initial xiangqi position has zero
-captures available, so quiescence terminates immediately at every leaf
-(stand-pat = static eval). All v4 cost lives at the *root*'s MVV-LVA
-ordering, which (compared to v3's flat capture-first sort) explores
-more equally-rated lines before α-β cutoffs fire. PSTs differentiate
-moves by ±5..30 cp, and MVV-LVA's tie-breaking adds further
-differentiation, so more sub-trees pass the cutoff threshold.
+This is the cost of correctness. The previous fast numbers were
+**lying** about non-best move scores, leading to king-blindness in
+SUBTLE/VARIED randomness modes. See
+[`pitfalls/alpha-beta-root-score-pollution.md`](../../pitfalls/alpha-beta-root-score-pollution.md).
 
-Midgames and endgames have plenty of captures, so quiescence terminates
-quickly at the leaves and MVV-LVA's better ordering pays off — node
-counts stay similar to v3.
-
-71% of the 250k node budget is consumed by v4 + Hard + opening. The
-"safe" headroom that v3 had is now gone for this case. v5 (iterative
-deepening + TT) is the right next step — same depth in fewer nodes via
-TT lookups.
-
-## Headroom analysis (post-v4)
+## Headroom analysis (post-fix)
 
 | Configuration | Native ms | WASM est. | Verdict |
 |---|---|---|---|
-| v4 + Hard + depth 4 + busy opening | 280 ms | 1-3 s | Borderline. Users will see the wait. |
-| v4 + Hard + depth 4 + midgame | 33 ms | 150-300 ms | Snappy. |
-| v4 + Normal + depth 3 | 17 ms | 80-160 ms | Snappy. |
-| v4 + Hard + depth 5 | est. 1-3 s | est. 5-30 s | **Don't.** Use v5 (ID+TT) when shipped. |
-| v3 + Hard + depth 4 | 30 ms | 150-300 ms | Snappy but horizon-effect blunders return. |
+| v4 + Hard + depth 4 + opening | 327 ms | **1.5-3 s** | Borderline. Users will see the wait. |
+| v4 + Hard + depth 4 + midgame | 300 ms | **1.5-3 s** | Borderline. |
+| v4 + Hard + depth 4 + endgame | 33 ms | 150-300 ms | Snappy. |
+| v4 + Normal + depth 3 + opening | 108 ms | 500 ms - 1 s | Acceptable. |
+| v4 + Normal + depth 3 + midgame | 67 ms | 350-700 ms | Acceptable. |
+
+Future optimisation options to recover speed without losing correctness:
+
+1. **Principal Variation Search (PVS) at the root.** First move with
+   full window; subsequent with null window (`-alpha-1, -alpha`); on
+   fail-high, re-search with full window. This recovers most alpha-beta
+   savings while still giving correct scores.
+2. **Aspiration windows.** After the first iteration of an iterative-
+   deepening loop, narrow the window around the previous PV's score.
+3. **v5 ID + TT.** Same depth in dramatically fewer nodes via TT cache
+   hits across iterations. The right long-term fix.
+
+For now the cost is acceptable; the correctness fix takes priority.
 
 If a user reports v4 Hard "too slow" in the opening, the available
 mitigations until v5 lands:

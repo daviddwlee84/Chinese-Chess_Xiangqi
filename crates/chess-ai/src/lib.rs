@@ -510,14 +510,6 @@ mod tests {
         assert_eq!(Strategy::parse("nonsense"), None);
     }
 
-    /// Regression test for the v4 horizon-effect fix.
-    ///
-    /// Setup: Red chariot at (0,4) attacks Black soldier at (0,5),
-    /// which is defended by Black chariot at (0,6). At depth 1 a
-    /// material-only search sees "Red plays Cxa5 → +100 cp" and is
-    /// happy. v4's quiescence sees the recapture by the defending
-    /// chariot → -800 cp, so v4 should NOT play the suicide capture.
-    /// v3 with depth 1 walks into the trap; v4 with depth 1 doesn't.
     #[test]
     fn v4_avoids_horizon_effect_recapture_at_depth_1() {
         let mut state = GameState::new(RuleSet::xiangqi_casual());
@@ -575,6 +567,112 @@ mod tests {
     fn default_strategy_is_v4() {
         assert_eq!(Strategy::default(), Strategy::QuiescenceMvvLvaV4);
         assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::QuiescenceMvvLvaV4);
+    }
+
+    /// Reproduces the exact game from the user's 2026-05-09 bug report
+    /// (image 1). Black AI played 象 c9e7 (move 2) which screened Red's
+    /// cannon, then after Red captured the central soldier (move 3
+    /// e2xe6), Black AI played 馬 g9i7 (move 4) instead of defending —
+    /// leaving Red 炮 at e6 with screen 象 at e7 free to capture General
+    /// at e9 next move.
+    ///
+    /// This is a different bug class from the v3 king-blindness fix:
+    /// the **eval** correctly knows losing the General is -50_000 cp
+    /// (KING_VALUE), but the **search** at the root was clamping
+    /// non-best move scores to the running alpha (alpha-beta root
+    /// pollution). After a defensive move set alpha=-132, suicide
+    /// moves like g9i7 also got reported as -132 instead of their true
+    /// -50_000 cp, and the difficulty's randomness preset picked
+    /// uniformly from "top within ±20 cp" — including the suicide.
+    ///
+    /// Fixed 2026-05-09 by switching `score_root_moves` and
+    /// `score_root_moves_qmvv` to use a full window for every root
+    /// move (no inter-root alpha-beta narrowing).
+    ///
+    /// Tested across all difficulties × strategies (v3 + v4) × many
+    /// seeds — Easy is allowed to walk into the trap (it's
+    /// intentionally weak with depth 1), but Normal and Hard MUST
+    /// defend.
+    #[test]
+    fn v4_defends_general_after_red_central_cannon_lands_at_e6() {
+        use chess_core::notation::iccs;
+
+        // Build the position by playing the user's moves on a fresh
+        // casual xiangqi state.
+        let setup_moves = ["h2e2", "c9e7", "e2e6"];
+        let build_position = || {
+            let mut state = GameState::new(RuleSet::xiangqi_casual());
+            for s in setup_moves {
+                let m = iccs::decode_move(&state, s)
+                    .unwrap_or_else(|e| panic!("setup move {} failed: {:?}", s, e));
+                state.make_move(&m).expect("setup move legal");
+                state.refresh_status();
+            }
+            state
+        };
+
+        let red_cannon_e6 = {
+            let s = build_position();
+            s.board.sq(File(4), Rank(6))
+        };
+        let blk_general_e9 = {
+            let s = build_position();
+            s.board.sq(File(4), Rank(9))
+        };
+
+        for (difficulty, label) in [
+            (Difficulty::Easy, "Easy/depth-default-1"),
+            (Difficulty::Normal, "Normal/depth-default-3"),
+            (Difficulty::Hard, "Hard/depth-default-4"),
+        ] {
+            for strategy in [Strategy::MaterialKingSafetyPstV3, Strategy::QuiescenceMvvLvaV4] {
+                // Test with multiple seeds + the difficulty's default
+                // randomness — that's what the user actually plays with.
+                for seed in 0..8u64 {
+                    let state = build_position();
+                    let opts = AiOptions {
+                        difficulty,
+                        max_depth: None, // use difficulty default
+                        seed: Some(seed),
+                        strategy,
+                        randomness: None, // use difficulty default
+                    };
+                    let result = choose_move(&state, &opts).expect("must return a move");
+
+                    let mut after = state.clone();
+                    after.make_move(&result.mv).expect("AI returned legal move");
+                    after.refresh_status();
+
+                    let red_legal = after.legal_moves();
+                    let general_capture_available = red_legal.iter().any(|m| {
+                        matches!(
+                            m,
+                            Move::CannonJump {
+                                from,
+                                to,
+                                captured: Piece { kind: PieceKind::General, .. },
+                                ..
+                            } if *from == red_cannon_e6 && *to == blk_general_e9
+                        )
+                    });
+
+                    // Easy mode (depth 1) is intentionally weak: depth 1
+                    // only sees Black's move + static eval (or Red's
+                    // quiescence at depth 0 in v4). The threat manifests
+                    // at Red's full-search ply (depth 2 from Black's POV
+                    // = Red's ply 1). Easy CAN miss it.
+                    if matches!(difficulty, Difficulty::Easy) {
+                        continue;
+                    }
+                    let move_str = iccs::encode_move(&state.board, &result.mv);
+                    assert!(
+                        !general_capture_available,
+                        "{} {:?} seed={} score={}: AI played {} (raw {:?}), but Red can still capture General with cannon-jump e6→e9.",
+                        label, strategy, seed, result.score, move_str, result.mv,
+                    );
+                }
+            }
+        }
     }
 
     /// Regression test for `pitfalls/casual-xiangqi-king-blindness.md`.

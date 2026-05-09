@@ -529,6 +529,15 @@ body {
     font: inherit;
 }
 .text-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+/* Search-depth number input: by default <input type=number> in the
+ * variant card uses 100% of grid width (which is narrow). Force a
+ * comfortable minimum so placeholder + 2-digit values fit without
+ * clipping. */
+.depth-input {
+    width: 100%;
+    min-width: 6rem;
+    box-sizing: border-box;
+}
 
 .rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
 .room-row {
