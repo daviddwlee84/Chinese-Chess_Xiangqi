@@ -765,6 +765,129 @@ body {
     color: var(--text);
 }
 
+/* AI debug panel — shown only when ?debug=1 is in the URL. Sits as a
+ * third column to the right of the sidebar (or wraps under the board
+ * on narrow viewports). The panel itself is scrollable so a 40-move
+ * scored list doesn't push the layout. */
+.debug-panel {
+    border: 1px dashed rgba(245, 166, 35, 0.4);
+    border-radius: 0.6rem;
+    padding: 0.8rem 0.9rem;
+    background: rgba(245, 166, 35, 0.04);
+    min-width: 16rem;
+    max-width: 22rem;
+    color: var(--fg);
+    align-self: start;
+}
+.debug-panel__title {
+    margin: 0 0 0.6rem 0;
+    font-size: 1rem;
+    color: var(--accent);
+}
+.debug-panel__empty {
+    font-size: 0.85rem;
+    margin: 0;
+}
+.debug-panel__meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.15rem 0.6rem;
+    margin: 0 0 0.6rem 0;
+    font-size: 0.8rem;
+}
+.debug-panel__meta > div {
+    display: contents;
+}
+.debug-panel__meta dt {
+    color: var(--muted);
+}
+.debug-panel__meta dd {
+    margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.debug-panel__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.78rem;
+    max-height: 26rem;
+    display: block;
+    overflow-y: auto;
+}
+.debug-panel__table thead th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.4rem;
+    position: sticky;
+    top: 0;
+    background: rgba(40, 30, 20, 0.92);
+}
+.debug-panel__row {
+    cursor: pointer;
+    transition: background 0.05s ease;
+}
+.debug-panel__row:hover {
+    background: rgba(245, 166, 35, 0.16);
+}
+.debug-panel__row td {
+    padding: 0.18rem 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.debug-panel__row--chosen {
+    background: rgba(245, 166, 35, 0.1);
+    font-weight: 600;
+}
+.debug-panel__row--good .debug-panel__score {
+    color: #6ade8a;
+}
+.debug-panel__row--blunder .debug-panel__score {
+    color: #f06464;
+}
+.debug-panel__rank {
+    color: var(--muted);
+    text-align: right;
+    width: 2.2rem;
+}
+.debug-panel__mv {
+    text-align: left;
+}
+.debug-panel__score {
+    text-align: right;
+    width: 5rem;
+}
+
+/* Board overlay highlights for the debug panel: dashed connector +
+ * yellow rings on from / to. Pure visual; SVG layer doesn't capture
+ * pointer events so click-through still works. */
+.board .debug-from {
+    fill: none;
+    stroke: rgba(245, 166, 35, 0.85);
+    stroke-width: 2;
+    stroke-dasharray: 3 3;
+    pointer-events: none;
+}
+.board .debug-to {
+    fill: rgba(245, 166, 35, 0.18);
+    stroke: rgba(245, 166, 35, 0.85);
+    stroke-width: 2;
+    pointer-events: none;
+}
+.board .debug-line {
+    stroke: rgba(245, 166, 35, 0.7);
+    stroke-width: 2.5;
+    stroke-dasharray: 6 4;
+    pointer-events: none;
+}
+
+/* Game-page layout already grid-positions board + sidebar. When the
+ * debug panel mounts, it becomes a third grid column. The page falls
+ * back to 1 column on narrow viewports. */
+.game-page:has(.debug-panel) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
 /* Picker hero — a tiny header above the variant grid so the page feels
  * like a landing screen rather than a bare form. SVG icon scales with
  * the heading; tagline stays muted. */

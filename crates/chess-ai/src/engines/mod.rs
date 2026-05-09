@@ -21,7 +21,7 @@ use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
 use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove};
-use crate::{AiMoveResult, AiOptions, Randomness};
+use crate::{AiAnalysis, AiMoveResult, AiOptions, Randomness, Strategy};
 
 /// A search engine: picks a move for the side to move in `state`.
 ///
@@ -103,28 +103,8 @@ fn run<E: Evaluator>(
     eval: &E,
     engine_label: &'static str,
 ) -> Option<AiMoveResult> {
-    if !matches!(state.status, chess_core::state::GameStatus::Ongoing) {
-        return None;
-    }
-
-    let depth = opts.max_depth.unwrap_or_else(|| opts.difficulty.default_depth()).max(1);
-    let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
-    let mut rng = ChaCha8Rng::seed_from_u64(seed);
-
-    let (scored, nodes) = score_root_moves(state, depth, eval);
-    if scored.is_empty() {
-        return None;
-    }
-
-    let randomness = opts.effective_randomness();
-    let chosen = pick_with_randomness(&scored, randomness, &mut rng);
-
-    // Tiny noise burn so identical positions with different seeds vary
-    // even when the chosen move ties cleanly. Cheap.
-    let _: u8 = rng.gen();
-
-    let _ = engine_label; // hook for future logging — keeps the name() in scope.
-    Some(AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes })
+    build_analysis(state, opts, eval, engine_label, Strategy::MaterialV1, /*qmvv=*/ false)
+        .map(|a| a.chosen)
 }
 
 /// Same as [`run`] but uses [`score_root_moves_qmvv`] (MVV-LVA + quiescence)
@@ -136,6 +116,69 @@ fn run_qmvv<E: Evaluator>(
     eval: &E,
     engine_label: &'static str,
 ) -> Option<AiMoveResult> {
+    build_analysis(
+        state,
+        opts,
+        eval,
+        engine_label,
+        Strategy::QuiescenceMvvLvaV4,
+        /*qmvv=*/ true,
+    )
+    .map(|a| a.chosen)
+}
+
+// ---------------------------------------------------------------------
+// Public analyze_v* entry points — same work as the run/run_qmvv
+// dispatchers, but return the full [`AiAnalysis`] instead of just the
+// chosen move. `lib.rs::analyze` matches on `Strategy` and dispatches.
+// ---------------------------------------------------------------------
+
+pub(crate) fn analyze_v1(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
+    build_analysis(state, opts, &MaterialV1, "negamax-v1", Strategy::MaterialV1, false)
+}
+
+pub(crate) fn analyze_v2(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
+    build_analysis(state, opts, &MaterialPstV2, "negamax-v2", Strategy::MaterialPstV2, false)
+}
+
+pub(crate) fn analyze_v3(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
+    build_analysis(
+        state,
+        opts,
+        &MaterialKingSafetyPstV3,
+        "negamax-v3",
+        Strategy::MaterialKingSafetyPstV3,
+        false,
+    )
+}
+
+pub(crate) fn analyze_v4(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
+    build_analysis(
+        state,
+        opts,
+        &MaterialKingSafetyPstV3,
+        "negamax-quiescence-mvv-lva-v4",
+        Strategy::QuiescenceMvvLvaV4,
+        true,
+    )
+}
+
+/// Unified search-and-pick path for both `run`/`run_qmvv` and the
+/// `analyze_v*` introspection entry points.
+///
+/// `qmvv = true` selects the MVV-LVA + quiescence root-scoring path
+/// (`score_root_moves_qmvv`); `false` selects the legacy capture-first
+/// path (`score_root_moves`). Both produce a `Vec<ScoredMove>` plus a
+/// node count; this function applies the randomness policy to pick
+/// `chosen` and assembles an [`AiAnalysis`].
+fn build_analysis<E: Evaluator>(
+    state: &GameState,
+    opts: &AiOptions,
+    eval: &E,
+    engine_label: &'static str,
+    strategy: Strategy,
+    qmvv: bool,
+) -> Option<AiAnalysis> {
     if !matches!(state.status, chess_core::state::GameStatus::Ongoing) {
         return None;
     }
@@ -144,17 +187,31 @@ fn run_qmvv<E: Evaluator>(
     let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
-    let (scored, nodes) = score_root_moves_qmvv(state, depth, eval);
+    let (mut scored, nodes) = if qmvv {
+        score_root_moves_qmvv(state, depth, eval)
+    } else {
+        score_root_moves(state, depth, eval)
+    };
     if scored.is_empty() {
         return None;
     }
 
     let randomness = opts.effective_randomness();
     let chosen = pick_with_randomness(&scored, randomness, &mut rng);
+    let chosen_result = AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes };
 
+    // Burn one byte of RNG so identical positions with different seeds
+    // vary even when the chosen move ties cleanly. (Hard stays stable
+    // — deterministic by construction when the user picks STRICT.)
     let _: u8 = rng.gen();
-    let _ = engine_label;
-    Some(AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes })
+
+    // Sort scored list best-first for the debug UI. Ties broken by
+    // original index (stable sort on `score`) — preserves "first
+    // occurrence wins" semantics from the picker.
+    scored.sort_by_key(|sm| std::cmp::Reverse(sm.score));
+
+    let _ = engine_label; // hook for future logging.
+    Some(AiAnalysis { chosen: chosen_result, scored, depth, nodes, strategy, randomness })
 }
 
 /// Apply the [`Randomness`] policy to a list of scored root moves and

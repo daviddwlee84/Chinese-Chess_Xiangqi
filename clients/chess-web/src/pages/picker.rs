@@ -54,6 +54,7 @@ fn XiangqiCard() -> impl IntoView {
     // Empty = use difficulty default depth; numeric = override (clamped
     // 1..=MAX_AI_DEPTH on parse).
     let ai_depth_text = create_rw_signal(String::new());
+    let ai_debug = create_rw_signal(false);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
         let ai_depth =
@@ -66,6 +67,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_strategy: ai_strategy.get(),
             ai_variation: ai_variation.get(),
             ai_depth,
+            ai_debug: ai_debug.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -163,6 +165,17 @@ fn XiangqiCard() -> impl IntoView {
                         prop:value=move || ai_depth_text.get()
                         on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
                     />
+                </fieldset>
+                <fieldset class="card-fieldset">
+                    <legend>"Debug (advanced)"</legend>
+                    <label class="check-row">
+                        <input
+                            type="checkbox"
+                            prop:checked=move || ai_debug.get()
+                            on:change=move |ev| ai_debug.set(event_target_checked(&ev))
+                        />
+                        <span>"AI debug panel — show all scored root moves + hover-to-highlight on board. Useful for understanding why the AI picked what it did."</span>
+                    </label>
                 </fieldset>
                 <fieldset class="card-fieldset">
                     <legend>"Engine"</legend>

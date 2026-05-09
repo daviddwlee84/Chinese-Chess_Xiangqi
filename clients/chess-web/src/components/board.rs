@@ -4,6 +4,7 @@
 
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
+use chess_core::moves::Move;
 use chess_core::piece::Side;
 use chess_core::view::{PlayerView, VisibleCell};
 use leptos::*;
@@ -25,12 +26,22 @@ pub fn Board(
     #[prop(into)] view: Signal<PlayerView>,
     #[prop(into)] selected: Signal<Option<Square>>,
     #[prop(into)] on_click: Callback<Square>,
+    /// Optional debug-overlay highlight for an arbitrary move (no
+    /// commitment — purely visual). Used by the AI debug panel to
+    /// render hover-to-show: which from/to squares the AI is considering.
+    /// `None` (default) renders nothing.
+    #[prop(optional, into)]
+    highlighted_move: Option<Signal<Option<Move>>>,
 ) -> impl IntoView {
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
     let view_h = (rows as i32 - 1) * CELL + PAD * 2;
     let viewbox = format!("0 0 {} {}", view_w, view_h);
     let style = Style::Cjk;
+    // `Signal<Option<Move>>` is Copy; default to a dead signal that's
+    // always None when the prop is omitted.
+    let highlighted_move: Signal<Option<Move>> =
+        highlighted_move.unwrap_or_else(|| Signal::derive(|| None));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
@@ -47,6 +58,7 @@ pub fn Board(
             <g class="overlay-top-layer">
                 {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
                 {move || selection_marker(selected.get(), observer, shape)}
+                {move || debug_highlight_marker(highlighted_move.get(), observer, shape)}
             </g>
             <g class="cells-layer">
                 {hit_cells(rows, cols, observer, shape, on_click)}
@@ -180,6 +192,46 @@ fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape)
         }
     }
     ().into_view()
+}
+
+/// Debug overlay: render a dashed `from → to` line + ringed dots at
+/// both endpoints, when the AI debug panel hovers a row. Purely
+/// visual; does not affect input. `None` renders nothing.
+fn debug_highlight_marker(mv: Option<Move>, observer: Side, shape: BoardShape) -> View {
+    let Some(m) = mv else { return ().into_view() };
+    let from_sq = m.origin_square();
+    let to_sq = m.to_square();
+    let (rows, cols) = display_dims(shape);
+
+    let mut from_xy: Option<(i32, i32)> = None;
+    let mut to_xy: Option<(i32, i32)> = None;
+    for row in 0..rows {
+        for col in 0..cols {
+            if square_at_display(row, col, observer, shape) == Some(from_sq) {
+                from_xy = Some(intersection(row, col));
+            }
+            if let Some(t) = to_sq {
+                if square_at_display(row, col, observer, shape) == Some(t) {
+                    to_xy = Some(intersection(row, col));
+                }
+            }
+        }
+    }
+    let Some((fx, fy)) = from_xy else { return ().into_view() };
+    let mut out: Vec<View> = Vec::with_capacity(3);
+    // Origin ring (always rendered).
+    out.push(view! { <circle class="debug-from" cx=fx cy=fy r="32"/> }.into_view());
+    if let Some((tx, ty)) = to_xy {
+        // Dashed connector + destination ring.
+        out.push(
+            view! {
+                <line class="debug-line" x1=fx y1=fy x2=tx y2=ty/>
+            }
+            .into_view(),
+        );
+        out.push(view! { <circle class="debug-to" cx=tx cy=ty r="32"/> }.into_view());
+    }
+    out.into_view()
 }
 
 fn chain_lock_marker(locked: Option<Square>, observer: Side, shape: BoardShape) -> View {

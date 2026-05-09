@@ -1,5 +1,6 @@
-use chess_ai::{AiOptions, Difficulty, Randomness, Strategy};
+use chess_ai::{AiAnalysis, AiOptions, Difficulty, Randomness, Strategy};
 use chess_core::coord::Square;
+use chess_core::moves::Move;
 use chess_core::piece::Side;
 use chess_core::rules::{RuleSet, Variant};
 use chess_core::state::{GameState, GameStatus};
@@ -9,6 +10,7 @@ use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
 use crate::components::captured::CapturedStrip;
+use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
@@ -27,6 +29,11 @@ struct VsAiConfig {
     randomness: Option<Randomness>,
     /// `None` = use difficulty default depth; `Some(N)` = explicit override.
     depth: Option<u8>,
+    /// When true, the AI move pump uses `chess_ai::analyze` (returns
+    /// the full scored root list) instead of `chess_ai::choose_move`,
+    /// and the local page mounts the `<DebugPanel>`. Pure UI feature
+    /// — same search work either way.
+    debug: bool,
 }
 
 #[component]
@@ -52,6 +59,7 @@ pub fn LocalPage() -> impl IntoView {
                 strategy: parsed.ai_strategy,
                 randomness: parsed.ai_variation,
                 depth: parsed.ai_depth,
+                debug: parsed.ai_debug,
             })
         } else {
             None
@@ -82,6 +90,12 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     let state = create_rw_signal(GameState::new(rules));
     let selected = create_rw_signal::<Option<Square>>(None);
     let ai_thinking = create_rw_signal(false);
+    // Most recent AI analysis (only populated when cfg.debug = true).
+    // Cleared on undo / new game so the panel doesn't show stale info.
+    let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+    // Hover-driven highlight for the AI debug panel: when the user
+    // hovers a row, board renders a from→to overlay. None = no highlight.
+    let highlighted_move = create_rw_signal::<Option<Move>>(None);
     // Bumped on every state change (player move, AI move, undo, new game).
     // The AI task captures the epoch when it starts and discards its result
     // if the epoch has changed by the time it returns — prevents stale AI
@@ -258,6 +272,8 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
         });
         selected.set(None);
         ai_thinking.set(false);
+        ai_analysis.set(None);
+        highlighted_move.set(None);
         move_epoch.update(|n| *n = n.wrapping_add(1));
     });
 
@@ -267,6 +283,8 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
             state.set(GameState::new(initial_rules.clone()));
             selected.set(None);
             ai_thinking.set(false);
+            ai_analysis.set(None);
+            highlighted_move.set(None);
             move_epoch.update(|n| *n = n.wrapping_add(1));
         }
     });
@@ -312,14 +330,23 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     ai_thinking.set(false);
                     return;
                 }
-                let chosen = chess_ai::choose_move(&snapshot, &opts);
+                // Always go through `analyze` so the debug panel can
+                // surface the full scored list. The cost is the same —
+                // `choose_move` internally calls `analyze` and discards
+                // everything but the chosen move. When `cfg.debug` is
+                // off we just don't mount the `<DebugPanel>`.
+                let analysis = chess_ai::analyze(&snapshot, &opts);
                 if move_epoch.get_untracked() != cur_epoch {
                     ai_thinking.set(false);
                     return;
                 }
-                if let Some(result) = chosen {
+                if let Some(a) = analysis {
+                    let chosen_mv = a.chosen.mv.clone();
+                    if cfg.debug {
+                        ai_analysis.set(Some(a));
+                    }
                     state.update(|s| {
-                        if s.make_move(&result.mv).is_ok() {
+                        if s.make_move(&chosen_mv).is_ok() {
                             s.refresh_status();
                         }
                     });
@@ -357,6 +384,13 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
         })
     });
 
+    let highlighted_move_signal: Signal<Option<Move>> = highlighted_move.into();
+    let on_debug_hover: Callback<Option<Move>> =
+        Callback::new(move |mv: Option<Move>| highlighted_move.set(mv));
+    let debug_enabled = ai.map(|cfg| cfg.debug).unwrap_or(false);
+    let board_for_debug = state.with_untracked(|s| s.board.clone());
+    let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
+
     view! {
         <section class="game-page">
             <div class="board-pane">
@@ -366,6 +400,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     view=view
                     selected=effective_selected
                     on_click=on_click
+                    highlighted_move=highlighted_move_signal
                 />
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">
@@ -408,6 +443,13 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 wip=wip
                 history=history_signal
             />
+            <Show when=move || debug_enabled>
+                <DebugPanel
+                    analysis=analysis_signal
+                    board=board_for_debug.clone()
+                    on_hover=on_debug_hover
+                />
+            </Show>
         </section>
     }
 }

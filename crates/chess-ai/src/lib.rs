@@ -27,8 +27,6 @@ pub mod search;
 use chess_core::moves::Move;
 use chess_core::state::GameState;
 
-use crate::engines::Engine;
-
 /// User-facing difficulty knob. Maps to a search depth and a randomisation
 /// policy in the engine layer (see [`engines::NegamaxV1`] /
 /// [`engines::NegamaxV2`]).
@@ -299,6 +297,39 @@ pub struct AiMoveResult {
     pub nodes: u32,
 }
 
+/// Re-export so consumers can build a debug UI on top of the scored
+/// root-move list without depending on `chess_ai::search` internals.
+pub use crate::search::ScoredMove;
+
+/// Full search introspection — what `choose_move` produces internally
+/// before the randomness layer narrows the result down to one move.
+///
+/// Built by [`analyze`] for debug / replay UIs. Returned in
+/// **ranked-best-first** order (sorted descending by `score`). The
+/// `chosen` field is what `choose_move` would have returned (already
+/// applies [`AiOptions::randomness`] / [`Difficulty::default_randomness`]).
+#[derive(Clone, Debug)]
+pub struct AiAnalysis {
+    /// The move the engine picked. Same as `choose_move(state, opts)`'s
+    /// returned `mv`.
+    pub chosen: AiMoveResult,
+    /// Every legal root move with its searched score, sorted descending
+    /// (best first). For depth-D search, each `score` is the value
+    /// after the search recursed D plies into that move's sub-tree.
+    /// Scores are side-relative to the side to move — positive favours
+    /// the AI.
+    pub scored: Vec<ScoredMove>,
+    /// Effective depth used (after `Difficulty::default_depth` /
+    /// `AiOptions::max_depth` resolution).
+    pub depth: u8,
+    /// Total nodes the search visited.
+    pub nodes: u32,
+    /// Strategy that produced this analysis.
+    pub strategy: Strategy,
+    /// Effective randomness policy that picked `chosen` from `scored`.
+    pub randomness: Randomness,
+}
+
 /// Pick a move for the side to move in `state`.
 ///
 /// Returns `None` only when there are no legal moves (caller should treat
@@ -308,11 +339,22 @@ pub struct AiMoveResult {
 /// is private to chess-ai for callers; downstream consumers should
 /// construct an [`AiOptions`] and call this single entry point.
 pub fn choose_move(state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> {
+    analyze(state, opts).map(|a| a.chosen)
+}
+
+/// Full introspective search — same work as [`choose_move`] but returns
+/// the *whole* scored root-move list plus metadata (depth, nodes,
+/// strategy, randomness). Use this when building a debug / analysis UI
+/// that wants to surface why the engine picked the move it did.
+///
+/// `None` only when there are no legal moves or the game is already
+/// terminated, matching [`choose_move`].
+pub fn analyze(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
     match opts.strategy {
-        Strategy::MaterialV1 => engines::NegamaxV1.choose_move(state, opts),
-        Strategy::MaterialPstV2 => engines::NegamaxV2.choose_move(state, opts),
-        Strategy::MaterialKingSafetyPstV3 => engines::NegamaxV3.choose_move(state, opts),
-        Strategy::QuiescenceMvvLvaV4 => engines::NegamaxQuiescenceMvvLvaV4.choose_move(state, opts),
+        Strategy::MaterialV1 => engines::analyze_v1(state, opts),
+        Strategy::MaterialPstV2 => engines::analyze_v2(state, opts),
+        Strategy::MaterialKingSafetyPstV3 => engines::analyze_v3(state, opts),
+        Strategy::QuiescenceMvvLvaV4 => engines::analyze_v4(state, opts),
     }
 }
 
@@ -567,6 +609,48 @@ mod tests {
     fn default_strategy_is_v4() {
         assert_eq!(Strategy::default(), Strategy::QuiescenceMvvLvaV4);
         assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::QuiescenceMvvLvaV4);
+    }
+
+    /// `analyze` returns the same chosen move as `choose_move` and a
+    /// non-empty scored list sorted descending by score.
+    #[test]
+    fn analyze_returns_full_scored_list_consistent_with_choose_move() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for strategy in Strategy::ALL {
+            let opts = AiOptions {
+                difficulty: Difficulty::Normal,
+                max_depth: Some(2),
+                seed: Some(7),
+                strategy,
+                randomness: Some(Randomness::STRICT),
+            };
+            let analysis =
+                analyze(&state, &opts).expect("analyze should return Some on opening position");
+            let chosen = choose_move(&state, &opts).expect("choose_move should match");
+
+            assert_eq!(analysis.chosen.mv, chosen.mv, "chosen move must match for {:?}", strategy);
+            assert_eq!(analysis.chosen.score, chosen.score);
+            assert_eq!(analysis.strategy, strategy);
+            assert!(!analysis.scored.is_empty(), "scored list non-empty for {:?}", strategy);
+            assert!(analysis.nodes > 0, "nodes > 0 for {:?}", strategy);
+
+            // Scored list is sorted descending by score.
+            for w in analysis.scored.windows(2) {
+                assert!(
+                    w[0].score >= w[1].score,
+                    "scored list not descending at {:?}: {} < {}",
+                    strategy,
+                    w[0].score,
+                    w[1].score,
+                );
+            }
+
+            // The chosen move should appear in the scored list with the
+            // same score (under STRICT it's the very top).
+            let found =
+                analysis.scored.iter().any(|sm| sm.mv == chosen.mv && sm.score == chosen.score);
+            assert!(found, "chosen move should appear in scored list for {:?}", strategy);
+        }
     }
 
     /// Reproduces the exact game from the user's 2026-05-09 bug report

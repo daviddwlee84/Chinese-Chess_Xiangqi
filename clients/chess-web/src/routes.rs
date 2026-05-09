@@ -134,6 +134,12 @@ pub struct LocalRulesParams {
     /// = explicit. Capped at `MAX_AI_DEPTH` to keep the worst-case
     /// browser response under ~10 s. URL token: `&depth=N`.
     pub ai_depth: Option<u8>,
+    /// `VsAi` only — opens the AI debug panel showing the engine's full
+    /// scored root-move list, hover-to-highlight on the board, and
+    /// search metadata (depth, nodes, strategy, randomness). URL token:
+    /// `&debug=1`. Default off (consumes ~no extra search cost — the
+    /// scored list is computed regardless; `&debug=1` just exposes it).
+    pub ai_debug: bool,
 }
 
 /// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
@@ -154,6 +160,7 @@ impl Default for LocalRulesParams {
             ai_strategy: Strategy::default(),
             ai_variation: None,
             ai_depth: None,
+            ai_debug: false,
         }
     }
 }
@@ -185,6 +192,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     let ai_depth = get("depth")
         .and_then(|s| s.parse::<u32>().ok())
         .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
+    let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
     LocalRulesParams {
         strict,
         house: house::normalize(house),
@@ -195,6 +203,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_strategy,
         ai_variation,
         ai_depth,
+        ai_debug,
     }
 }
 
@@ -233,6 +242,10 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 // recommended setup to stay short.
                 if let Some(d) = params.ai_depth {
                     parts.push(format!("depth={}", d));
+                }
+                // Debug panel toggle.
+                if params.ai_debug {
+                    parts.push("debug=1".to_string());
                 }
             }
         }
@@ -592,6 +605,34 @@ mod tests {
     fn xiangqi_depth_garbage_falls_back_to_none() {
         let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "abc")]));
         assert_eq!(p.ai_depth, None);
+    }
+
+    #[test]
+    fn xiangqi_debug_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", "1")]));
+        assert!(p.ai_debug);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("debug=1"), "debug= round-trip: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_debug_default_off_omitted_from_query() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        assert!(!p.ai_debug);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("debug="), "off should not be emitted; got {}", q);
+    }
+
+    #[test]
+    fn xiangqi_debug_accepts_truthy_aliases() {
+        for token in ["1", "true", "on"] {
+            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", token)]));
+            assert!(p.ai_debug, "token {:?} should enable debug", token);
+        }
+        for token in ["0", "false", "off", "garbage"] {
+            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", token)]));
+            assert!(!p.ai_debug, "token {:?} should NOT enable debug", token);
+        }
     }
 
     #[test]
