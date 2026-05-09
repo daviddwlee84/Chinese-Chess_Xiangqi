@@ -129,7 +129,18 @@ pub struct LocalRulesParams {
     /// override (typically a [`Randomness`] preset like
     /// [`Randomness::STRICT`]). URL token: `&variation=strict|subtle|varied|chaotic`.
     pub ai_variation: Option<Randomness>,
+    /// `VsAi` only — search depth override. `None` = use
+    /// `Difficulty::default_depth` (Easy=1, Normal=3, Hard=4); `Some(N)`
+    /// = explicit. Capped at `MAX_AI_DEPTH` to keep the worst-case
+    /// browser response under ~10 s. URL token: `&depth=N`.
+    pub ai_depth: Option<u8>,
 }
+
+/// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
+/// at depth 8 (~5 s) is the worst tolerable response time. Higher than
+/// 8 essentially demands iterative deepening + time budget — that's the
+/// v5 roadmap entry, not a knob to twist.
+pub const MAX_AI_DEPTH: u8 = 10;
 
 impl Default for LocalRulesParams {
     fn default() -> Self {
@@ -142,6 +153,7 @@ impl Default for LocalRulesParams {
             ai_difficulty: Difficulty::Normal,
             ai_strategy: Strategy::default(),
             ai_variation: None,
+            ai_depth: None,
         }
     }
 }
@@ -170,6 +182,9 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
     let ai_strategy = get("engine").as_deref().and_then(Strategy::parse).unwrap_or_default();
     let ai_variation = get("variation").as_deref().and_then(Randomness::parse);
+    let ai_depth = get("depth")
+        .and_then(|s| s.parse::<u32>().ok())
+        .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
     LocalRulesParams {
         strict,
         house: house::normalize(house),
@@ -179,6 +194,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_difficulty,
         ai_strategy,
         ai_variation,
+        ai_depth,
     }
 }
 
@@ -211,6 +227,12 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 // round-tripped through the URL).
                 if let Some(name) = params.ai_variation.and_then(|r| r.preset_name()) {
                     parts.push(format!("variation={}", name));
+                }
+                // Only emit depth= when the user overrode the difficulty's
+                // default. Allows the canonical short URL for the
+                // recommended setup to stay short.
+                if let Some(d) = params.ai_depth {
+                    parts.push(format!("depth={}", d));
                 }
             }
         }
@@ -537,6 +559,39 @@ mod tests {
     fn xiangqi_variation_unknown_token_falls_back_to_none() {
         let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("variation", "garbage")]));
         assert_eq!(p.ai_variation, None);
+    }
+
+    #[test]
+    fn xiangqi_depth_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "6")]));
+        assert_eq!(p.ai_depth, Some(6));
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("depth=6"), "depth round-trip: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_depth_clamped_to_max() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "999")]));
+        assert_eq!(p.ai_depth, Some(MAX_AI_DEPTH));
+    }
+
+    #[test]
+    fn xiangqi_depth_zero_clamped_to_one() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "0")]));
+        assert_eq!(p.ai_depth, Some(1));
+    }
+
+    #[test]
+    fn xiangqi_depth_omitted_when_default() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("depth="), "default (None) depth should not be emitted; got {}", q);
+    }
+
+    #[test]
+    fn xiangqi_depth_garbage_falls_back_to_none() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "abc")]));
+        assert_eq!(p.ai_depth, None);
     }
 
     #[test]

@@ -1,10 +1,9 @@
+use chess_ai::{Difficulty, Randomness, Strategy};
+use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
 
-use chess_ai::{Difficulty, Randomness, Strategy};
-use chess_core::piece::Side;
-
-use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode};
+use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
 
 #[component]
 pub fn Picker() -> impl IntoView {
@@ -52,8 +51,13 @@ fn XiangqiCard() -> impl IntoView {
     // None = "use difficulty default"; Some(_) = explicit override.
     // Encoded into the URL via `&variation=`.
     let ai_variation = create_rw_signal::<Option<Randomness>>(None);
+    // Empty = use difficulty default depth; numeric = override (clamped
+    // 1..=MAX_AI_DEPTH on parse).
+    let ai_depth_text = create_rw_signal(String::new());
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
+        let ai_depth =
+            ai_depth_text.with(|s| s.trim().parse::<u8>().ok().map(|d| d.clamp(1, MAX_AI_DEPTH)));
         let params = LocalRulesParams {
             strict: strict.get(),
             mode: mode.get(),
@@ -61,6 +65,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_difficulty: difficulty.get(),
             ai_strategy: ai_strategy.get(),
             ai_variation: ai_variation.get(),
+            ai_depth,
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -141,6 +146,23 @@ fn XiangqiCard() -> impl IntoView {
                         />
                         <span>"Hard — depth 4, may take a couple of seconds per move."</span>
                     </label>
+                </fieldset>
+                <fieldset class="card-fieldset">
+                    <legend>"Search depth (advanced)"</legend>
+                    <p class="hint">
+                        "Override the difficulty's default search depth (Easy=1, Normal=3, Hard=4). Higher = stronger but slower. Cap: "
+                        {MAX_AI_DEPTH.to_string()}". Leave blank to use the difficulty default."
+                    </p>
+                    <input
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        max=MAX_AI_DEPTH.to_string()
+                        placeholder="(default)"
+                        class="text-input"
+                        prop:value=move || ai_depth_text.get()
+                        on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
+                    />
                 </fieldset>
                 <fieldset class="card-fieldset">
                     <legend>"Engine"</legend>

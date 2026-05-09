@@ -25,6 +25,8 @@ struct VsAiConfig {
     strategy: Strategy,
     /// `None` = use difficulty default; `Some(_)` = explicit override.
     randomness: Option<Randomness>,
+    /// `None` = use difficulty default depth; `Some(N)` = explicit override.
+    depth: Option<u8>,
 }
 
 #[component]
@@ -49,6 +51,7 @@ pub fn LocalPage() -> impl IntoView {
                 difficulty: parsed.ai_difficulty,
                 strategy: parsed.ai_strategy,
                 randomness: parsed.ai_variation,
+                depth: parsed.ai_depth,
             })
         } else {
             None
@@ -296,7 +299,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
             let snapshot = state.get_untracked();
             let opts = AiOptions {
                 difficulty: cfg.difficulty,
-                max_depth: None,
+                max_depth: cfg.depth,
                 seed: Some(cur_epoch as u64 ^ 0xA5A5_5A5A_u64),
                 strategy: cfg.strategy,
                 randomness: cfg.randomness,

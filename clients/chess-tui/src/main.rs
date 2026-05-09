@@ -132,6 +132,13 @@ enum Cmd {
         /// (regression / replays) or higher presets for varied games.
         #[arg(long = "ai-variation", value_enum, default_value_t = VariationArg::Default)]
         ai_variation: VariationArg,
+        /// Override the difficulty's default search depth (Easy=1,
+        /// Normal=3, Hard=4). Higher = stronger but slower; native
+        /// search at depth 8+ may take seconds. Capped at 12 (TUI is
+        /// native — no browser cap concerns; cap is a sanity guard).
+        /// `0` = use difficulty default.
+        #[arg(long = "ai-depth", default_value_t = 0)]
+        ai_depth: u8,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -275,7 +282,15 @@ fn main() -> Result<()> {
     } else {
         match &cli.cmd {
             None => AppState::new_picker(style, use_color, observer),
-            Some(Cmd::Xiangqi { strict, ai, ai_side, ai_difficulty, ai_engine, ai_variation }) => {
+            Some(Cmd::Xiangqi {
+                strict,
+                ai,
+                ai_side,
+                ai_difficulty,
+                ai_engine,
+                ai_variation,
+                ai_depth,
+            }) => {
                 let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
                 if *ai {
                     let cfg = VsAiConfig {
@@ -286,6 +301,7 @@ fn main() -> Result<()> {
                         difficulty: ai_difficulty.into_difficulty(),
                         strategy: ai_engine.into_strategy(),
                         randomness: ai_variation.into_randomness(),
+                        depth: if *ai_depth == 0 { None } else { Some((*ai_depth).min(12)) },
                     };
                     AppState::new_game_vs_ai(rules, style, use_color, cfg)
                 } else {

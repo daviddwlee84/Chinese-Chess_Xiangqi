@@ -107,6 +107,8 @@ pub struct VsAiConfig {
     pub strategy: Strategy,
     /// `None` = use difficulty default; `Some(_)` = explicit override.
     pub randomness: Option<Randomness>,
+    /// `None` = use difficulty default depth; `Some(N)` = explicit override.
+    pub depth: Option<u8>,
 }
 
 impl Default for VsAiConfig {
@@ -116,6 +118,7 @@ impl Default for VsAiConfig {
             difficulty: Difficulty::Normal,
             strategy: Strategy::default(),
             randomness: None,
+            depth: None,
         }
     }
 }
@@ -618,11 +621,16 @@ impl AppState {
             Some(name) => format!(", variation={}", name),
             None => String::new(),
         };
+        let depth_label = match cfg.depth {
+            Some(d) => format!(", depth={}", d),
+            None => String::new(),
+        };
         let label = format!(
-            "vs AI ({}, engine={}{}). You play {}. Press ?/help for keys.",
+            "vs AI ({}, engine={}{}{}). You play {}. Press ?/help for keys.",
             cfg.difficulty.as_str(),
             cfg.strategy.as_str(),
             variation_label,
+            depth_label,
             if player_side == Side::RED { "RED" } else { "BLACK" },
         );
         if let Screen::Game(g) = &mut s.screen {
@@ -1744,7 +1752,7 @@ impl AppState {
             ^ (g.state.side_to_move.raw() as u64);
         let opts = AiOptions {
             difficulty: cfg.difficulty,
-            max_depth: None,
+            max_depth: cfg.depth,
             seed: Some(seed),
             strategy: cfg.strategy,
             randomness: cfg.randomness,
