@@ -26,20 +26,24 @@ cost (today: `v2`).
 URL query parameter on `/local/xiangqi`:
 
 ```
-/local/xiangqi?mode=ai&ai=black&diff=hard               # uses default (v3)
-/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v3     # explicit v3
-/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v2     # legacy material+PSTs (king-blind in casual)
+/local/xiangqi?mode=ai&ai=black&diff=hard               # uses default (v4)
+/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v4     # explicit v4 (quiescence + MVV-LVA)
+/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v3     # legacy (no quiescence)
+/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v2     # legacy (king-blind in casual)
 /local/xiangqi?mode=ai&ai=black&diff=hard&engine=v1     # legacy material-only
 
 /local/xiangqi?mode=ai&diff=hard&variation=strict       # deterministic, never deviates
 /local/xiangqi?mode=ai&diff=hard&variation=subtle       # top-3 within ±20 cp (Hard default)
 /local/xiangqi?mode=ai&diff=hard&variation=varied       # top-5 within ±60 cp
 /local/xiangqi?mode=ai&diff=hard&variation=chaotic      # top-10 within ±150 cp ("weak Hard")
+
+/local/xiangqi?mode=ai&depth=6                          # override search depth (1..=10)
 ```
 
-The picker exposes radios under "Engine" and "Variation" inside the
-vs-AI fieldset. Aliases accepted by the parser:
-- engine: `material`, `material-v1` → v1; `material-pst`, `material-pst-v2` → v2; `material-king-safety-pst`, `king-safety` → v3.
+The picker exposes radios under "Engine" and "Variation", plus a
+"Search depth (advanced)" number input, inside the vs-AI fieldset.
+Aliases accepted by the parser:
+- engine: `material`, `material-v1` → v1; `material-pst`, `material-pst-v2` → v2; `material-king-safety-pst`, `king-safety` → v3; `quiescence`, `quiescence-mvv-lva`, `qmvv` → v4.
 - variation: `strict`/`off`/`none`/`deterministic`; `subtle`/`low`; `varied`/`medium`/`med`; `chaotic`/`wild`/`high`.
 
 ### chess-tui
@@ -47,12 +51,14 @@ vs-AI fieldset. Aliases accepted by the parser:
 CLI flags on the `xiangqi` subcommand:
 
 ```
-chess-tui xiangqi --ai                              # vs computer (defaults: Black/Normal/v3/default-variation)
+chess-tui xiangqi --ai                              # vs computer (defaults: Black/Normal/v4)
+chess-tui xiangqi --ai --ai-engine v3               # legacy v3 (no quiescence)
 chess-tui xiangqi --ai --ai-engine v2               # legacy v2 (no king safety)
 chess-tui xiangqi --ai --ai-engine v1               # legacy material-only
-chess-tui xiangqi --ai --ai-side red --ai-difficulty hard --ai-engine v3
+chess-tui xiangqi --ai --ai-side red --ai-difficulty hard --ai-engine v4
 chess-tui xiangqi --ai --ai-difficulty hard --ai-variation strict   # deterministic Hard
 chess-tui xiangqi --ai --ai-difficulty hard --ai-variation chaotic  # high-variety Hard
+chess-tui xiangqi --ai --ai-depth 6                                 # override depth (1..=12)
 ```
 
 The picker entry "Xiangqi (象棋) vs Computer" uses the v3 default; the
@@ -65,9 +71,9 @@ use chess_ai::{AiOptions, Difficulty, Randomness, Strategy};
 
 let opts = AiOptions {
     difficulty: Difficulty::Hard,
-    max_depth: None,        // use Difficulty::default_depth
+    max_depth: None,        // use Difficulty::default_depth (or override)
     seed: Some(42),         // reproducible Easy/Normal randomness
-    strategy: Strategy::MaterialKingSafetyPstV3,
+    strategy: Strategy::QuiescenceMvvLvaV4,
     randomness: None,       // None = use Difficulty::default_randomness
     // randomness: Some(Randomness::STRICT),  // override: deterministic
 };
@@ -75,7 +81,7 @@ let result = chess_ai::choose_move(&state, &opts);
 ```
 
 `AiOptions::default()` and `AiOptions::new(Difficulty::Normal)` both
-default `strategy` to `Strategy::default()` (currently `MaterialKingSafetyPstV3`)
+default `strategy` to `Strategy::default()` (currently `QuiescenceMvvLvaV4`)
 and `randomness` to `None` (use the difficulty default).
 
 ## Difficulty + Randomness defaults
@@ -110,54 +116,29 @@ Built-in presets (in canonical "name token" form for URL/CLI):
 See [`perf.md`](perf.md) for measured nodes-per-search, wall-clock per
 move, and headroom analysis.
 
-TL;DR for current default (v3 + Hard + depth 4):
-- Native release: 15-30 ms per move
-- Browser WASM (estimated): 150-300 ms per move
-- Well within the 250k node budget; ample headroom for v4 (iterative
-  deepening + TT) to push past depth 4 without UI blocking.
-
-## Versions
-
-| Strategy | Algorithm | Eval | Default | Doc |
-|---|---|---|---|---|
-| `Strategy::MaterialV1` | negamax + α-β + capture-first | material only | no (legacy) | [`v1-material.md`](v1-material.md) |
-| `Strategy::MaterialPstV2` | negamax + α-β + capture-first | material + 7 hand-rolled PSTs | no (king-blind in casual mode) | [`v2-material-pst.md`](v2-material-pst.md) |
-| `Strategy::MaterialKingSafetyPstV3` | negamax + α-β + capture-first | v2 + General = 50_000 cp | **yes** (since 2026-05-09) | [`v3-king-safety-pst.md`](v3-king-safety-pst.md) |
-
-## Roadmap
-
-These are *not* shipped — they are the planned future variants. Each
-will land as a new `Strategy::*` variant + a new module under
-`crates/chess-ai/src/engines/`. Order is approximate; see
-`backlog/chess-ai-search.md` for the live priority and dependencies.
-
-| Future | Sketch | Why next |
-|---|---|---|
-| **v4** = NegamaxIdTtV4 | iterative deepening + Zobrist transposition table | reuses Zobrist work needed for threefold-repetition draw (P1 in `TODO.md`). Bigger strength jump than PSTs. |
-| **v5** = NegamaxQuiescenceV5 | quiescence + MVV-LVA capture ordering | stops the horizon-effect blunders v3/v4 still make on captures. |
-| **v6** = NegamaxWebWorkerV6 | same engine, hosted in a Web Worker | unblocks UI on `Hard` once ID/quiescence push node counts past the current 250k budget. |
-| **v7** = ISMCTSv7 (banqi only) | information-set MCTS | banqi has hidden tiles; alpha-beta would peek. Separate algorithm class. |
-| **v8** = PikafishBackendV8 | optional UCI backend (native only) | strongest bar; gated behind a Cargo feature so the WASM bundle stays clean-room. |
-
-Each future version inherits the same plug-and-play contract: pure
-`fn choose_move(&GameState, &AiOptions) -> Option<AiMoveResult>`, no
-frontend coupling, no globals.
+TL;DR for current default (v4 + Hard + depth 4):
+- Native release: 12-280 ms per move (varies wildly by position — opening is the worst case because quiescence has nothing to do at the leaves so the cost lives at the root)
+- Browser WASM (estimated): 60 ms - 3 s per move
+- v4 is ~9× more expensive than v3 in busy openings; midgame/endgame parity. Use `?engine=v3` if you want v3's speed without the horizon-effect fix.
 
 ## Crate layout
 
 ```
 crates/chess-ai/src/
-  lib.rs              — public API: choose_move, AiOptions, Difficulty, Strategy
-  search/mod.rs       — shared negamax + α-β framework, generic over Evaluator
+  lib.rs              — public API: choose_move, AiOptions, Difficulty, Randomness, Strategy
+  search/mod.rs       — shared negamax + α-β framework, generic over Evaluator (v1-v3 search + v4 qmvv search)
+  search/ordering.rs  — MVV-LVA helper (v4)
+  search/quiescence.rs — quiescence search (v4)
   eval/mod.rs         — Evaluator trait
   eval/material_v1.rs                — v1 evaluator (preserved verbatim)
   eval/material_pst_v2.rs            — v2 evaluator (material + PSTs)
-  eval/material_king_safety_pst_v3.rs — v3 evaluator (v2 + General = 50_000 cp)
-  engines/mod.rs      — Engine trait + NegamaxV1 + NegamaxV2 + NegamaxV3
+  eval/material_king_safety_pst_v3.rs — v3 evaluator (v2 + General = 50_000 cp); v4 reuses
+  engines/mod.rs      — Engine trait + NegamaxV1 + NegamaxV2 + NegamaxV3 + NegamaxQuiescenceMvvLvaV4
 ```
 
-Adding v4 means: a new `eval/` impl (or reuse v3), a new module
-`engines/negamax_id_tt_v4.rs`, and a new `Strategy::NegamaxIdTtV4`
+Adding v5 means: keep v3 evaluator (or write a new one), new module
+`engines/negamax_id_tt_v5.rs` (which wires Zobrist + iterative deepening
++ TT into the existing search), and a new `Strategy::NegamaxIdTtV5`
 variant + dispatch arm in `lib.rs::choose_move`. *No code is deleted.*
 
 ## Background research

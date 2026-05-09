@@ -184,11 +184,19 @@ pub enum Strategy {
     /// (see `pitfalls/casual-xiangqi-king-blindness.md`).
     MaterialPstV2,
     /// v3 (2026-05-09): v2 + General has 50_000 cp value (instead of 0).
-    /// Fixes king-blindness in casual mode where the AI would let its
-    /// own General be captured because the eval didn't penalise losing
-    /// it. Default since 2026-05-09.
-    #[default]
+    /// Fixes king-blindness in casual mode where the AI would walk into
+    /// 1-ply general-capture mates because the eval didn't penalise
+    /// losing the General. Was the default for a few hours on 2026-05-09;
+    /// superseded by v4 because horizon-effect blunders on captures
+    /// still slipped through.
     MaterialKingSafetyPstV3,
+    /// v4 (2026-05-09): same v3 evaluator, but the search now uses
+    /// MVV-LVA capture ordering and a quiescence search at the horizon.
+    /// Stops the "AI wins a chariot then loses it back next move" class
+    /// of horizon-effect blunder. Default since 2026-05-09. See
+    /// `docs/ai/v4-quiescence-mvv-lva.md`.
+    #[default]
+    QuiescenceMvvLvaV4,
 }
 
 impl Strategy {
@@ -199,6 +207,7 @@ impl Strategy {
             Strategy::MaterialV1 => "v1",
             Strategy::MaterialPstV2 => "v2",
             Strategy::MaterialKingSafetyPstV3 => "v3",
+            Strategy::QuiescenceMvvLvaV4 => "v4",
         }
     }
 
@@ -211,6 +220,9 @@ impl Strategy {
             "v3" | "material-king-safety-pst" | "material-king-safety-pst-v3" | "king-safety" => {
                 Some(Strategy::MaterialKingSafetyPstV3)
             }
+            "v4" | "quiescence" | "quiescence-mvv-lva" | "qmvv" => {
+                Some(Strategy::QuiescenceMvvLvaV4)
+            }
             _ => None,
         }
     }
@@ -220,15 +232,20 @@ impl Strategy {
         match self {
             Strategy::MaterialV1 => "Material only (v1, original MVP)",
             Strategy::MaterialPstV2 => "Material + piece-square tables (v2)",
-            Strategy::MaterialKingSafetyPstV3 => "Material + PSTs + king safety (v3, recommended)",
+            Strategy::MaterialKingSafetyPstV3 => "Material + PSTs + king safety (v3)",
+            Strategy::QuiescenceMvvLvaV4 => "Quiescence + MVV-LVA (v4, recommended)",
         }
     }
 
     /// Iteration helper — the picker uses this to render a dropdown.
     /// Order is "newest/recommended first" so the picker's natural
     /// top-of-list pick is the default.
-    pub const ALL: [Strategy; 3] =
-        [Strategy::MaterialKingSafetyPstV3, Strategy::MaterialPstV2, Strategy::MaterialV1];
+    pub const ALL: [Strategy; 4] = [
+        Strategy::QuiescenceMvvLvaV4,
+        Strategy::MaterialKingSafetyPstV3,
+        Strategy::MaterialPstV2,
+        Strategy::MaterialV1,
+    ];
 }
 
 #[derive(Clone, Debug)]
@@ -295,6 +312,7 @@ pub fn choose_move(state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> 
         Strategy::MaterialV1 => engines::NegamaxV1.choose_move(state, opts),
         Strategy::MaterialPstV2 => engines::NegamaxV2.choose_move(state, opts),
         Strategy::MaterialKingSafetyPstV3 => engines::NegamaxV3.choose_move(state, opts),
+        Strategy::QuiescenceMvvLvaV4 => engines::NegamaxQuiescenceMvvLvaV4.choose_move(state, opts),
     }
 }
 
@@ -487,13 +505,76 @@ mod tests {
         }
         assert_eq!(Strategy::parse("V2"), Some(Strategy::MaterialPstV2));
         assert_eq!(Strategy::parse("material-pst"), Some(Strategy::MaterialPstV2));
+        assert_eq!(Strategy::parse("V4"), Some(Strategy::QuiescenceMvvLvaV4));
+        assert_eq!(Strategy::parse("quiescence"), Some(Strategy::QuiescenceMvvLvaV4));
         assert_eq!(Strategy::parse("nonsense"), None);
     }
 
+    /// Regression test for the v4 horizon-effect fix.
+    ///
+    /// Setup: Red chariot at (0,4) attacks Black soldier at (0,5),
+    /// which is defended by Black chariot at (0,6). At depth 1 a
+    /// material-only search sees "Red plays Cxa5 → +100 cp" and is
+    /// happy. v4's quiescence sees the recapture by the defending
+    /// chariot → -800 cp, so v4 should NOT play the suicide capture.
+    /// v3 with depth 1 walks into the trap; v4 with depth 1 doesn't.
     #[test]
-    fn default_strategy_is_v3() {
-        assert_eq!(Strategy::default(), Strategy::MaterialKingSafetyPstV3);
-        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::MaterialKingSafetyPstV3);
+    fn v4_avoids_horizon_effect_recapture_at_depth_1() {
+        let mut state = GameState::new(RuleSet::xiangqi_casual());
+        let board: Board = state.board.clone();
+        let squares: Vec<Square> = board.squares().collect();
+        for sq in squares {
+            state.board.set(sq, None);
+        }
+        let red_gen = state.board.sq(File(4), Rank(0));
+        let blk_gen = state.board.sq(File(4), Rank(9));
+        state
+            .board
+            .set(red_gen, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::General))));
+        state.board.set(
+            blk_gen,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::General))),
+        );
+        let red_chariot = state.board.sq(File(0), Rank(4));
+        let blk_soldier = state.board.sq(File(0), Rank(5));
+        let blk_chariot_def = state.board.sq(File(0), Rank(6));
+        state.board.set(
+            red_chariot,
+            Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::Chariot))),
+        );
+        state.board.set(
+            blk_soldier,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))),
+        );
+        state.board.set(
+            blk_chariot_def,
+            Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Chariot))),
+        );
+
+        let opts_v4 = AiOptions {
+            difficulty: Difficulty::Normal,
+            max_depth: Some(1),
+            seed: Some(0),
+            strategy: Strategy::QuiescenceMvvLvaV4,
+            randomness: Some(Randomness::STRICT),
+        };
+        let r4 = choose_move(&state, &opts_v4).expect("v4 must return a move");
+        let played_suicide_capture = matches!(
+            &r4.mv,
+            Move::Capture { from, to, .. } if *from == red_chariot && *to == blk_soldier
+        );
+        assert!(
+            !played_suicide_capture,
+            "v4 at depth 1 walked into the recapture trap (Cxa5 → defended by Black chariot); \
+            quiescence should have caught the -800 cp followup. Got move: {:?}",
+            r4.mv
+        );
+    }
+
+    #[test]
+    fn default_strategy_is_v4() {
+        assert_eq!(Strategy::default(), Strategy::QuiescenceMvvLvaV4);
+        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::QuiescenceMvvLvaV4);
     }
 
     /// Regression test for `pitfalls/casual-xiangqi-king-blindness.md`.

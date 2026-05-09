@@ -170,10 +170,19 @@ fn XiangqiCard() -> impl IntoView {
                         <input
                             type="radio"
                             name="xiangqi-engine"
+                            prop:checked=move || ai_strategy.get() == Strategy::QuiescenceMvvLvaV4
+                            on:change=move |_| ai_strategy.set(Strategy::QuiescenceMvvLvaV4)
+                        />
+                        <span>"v4 — quiescence + MVV-LVA (recommended). Avoids horizon-effect blunders on captures."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-engine"
                             prop:checked=move || ai_strategy.get() == Strategy::MaterialKingSafetyPstV3
                             on:change=move |_| ai_strategy.set(Strategy::MaterialKingSafetyPstV3)
                         />
-                        <span>"v3 — material + PSTs + king safety (recommended). Defends against 1-ply mates in casual mode."</span>
+                        <span>"v3 — material + PSTs + king safety. Defends against 1-ply mates but has horizon-effect blunders on captures."</span>
                     </label>
                     <label class="radio-row">
                         <input

@@ -20,7 +20,7 @@ use crate::eval::material_king_safety_pst_v3::MaterialKingSafetyPstV3;
 use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
-use crate::search::{score_root_moves, ScoredMove};
+use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove};
 use crate::{AiMoveResult, AiOptions, Randomness};
 
 /// A search engine: picks a move for the side to move in `state`.
@@ -64,8 +64,8 @@ impl Engine for NegamaxV2 {
 /// v3 (2026-05-09): same search + PSTs as v2, but the evaluator gives
 /// the General a 50_000 cp value (instead of 0) so casual-rules games
 /// no longer let the AI walk into 1-ply mates by ignoring the King.
-/// Default engine since 2026-05-09 — see
-/// `pitfalls/casual-xiangqi-king-blindness.md`.
+/// Was the default 2026-05-09 → 2026-05-09; superseded by v4 because
+/// horizon-effect blunders on captures still slipped through.
 #[derive(Default, Clone, Copy, Debug)]
 pub struct NegamaxV3;
 
@@ -75,6 +75,23 @@ impl Engine for NegamaxV3 {
     }
     fn name(&self) -> &'static str {
         "negamax-v3"
+    }
+}
+
+/// v4 (2026-05-09): same v3 evaluator (material + PSTs + king safety),
+/// but the search now uses MVV-LVA capture ordering and a quiescence
+/// search at the horizon. Stops the "AI wins a chariot then loses it
+/// back next move" class of horizon-effect blunder.
+/// Default since 2026-05-09. See `docs/ai/v4-quiescence-mvv-lva.md`.
+#[derive(Default, Clone, Copy, Debug)]
+pub struct NegamaxQuiescenceMvvLvaV4;
+
+impl Engine for NegamaxQuiescenceMvvLvaV4 {
+    fn choose_move(&self, state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> {
+        run_qmvv(state, opts, &MaterialKingSafetyPstV3, "negamax-quiescence-mvv-lva-v4")
+    }
+    fn name(&self) -> &'static str {
+        "negamax-quiescence-mvv-lva-v4"
     }
 }
 
@@ -107,6 +124,36 @@ fn run<E: Evaluator>(
     let _: u8 = rng.gen();
 
     let _ = engine_label; // hook for future logging — keeps the name() in scope.
+    Some(AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes })
+}
+
+/// Same as [`run`] but uses [`score_root_moves_qmvv`] (MVV-LVA + quiescence)
+/// for the search. Pulled out as a separate function rather than a flag
+/// on `run` so the v1-v3 fast path stays untouched.
+fn run_qmvv<E: Evaluator>(
+    state: &GameState,
+    opts: &AiOptions,
+    eval: &E,
+    engine_label: &'static str,
+) -> Option<AiMoveResult> {
+    if !matches!(state.status, chess_core::state::GameStatus::Ongoing) {
+        return None;
+    }
+
+    let depth = opts.max_depth.unwrap_or_else(|| opts.difficulty.default_depth()).max(1);
+    let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+
+    let (scored, nodes) = score_root_moves_qmvv(state, depth, eval);
+    if scored.is_empty() {
+        return None;
+    }
+
+    let randomness = opts.effective_randomness();
+    let chosen = pick_with_randomness(&scored, randomness, &mut rng);
+
+    let _: u8 = rng.gen();
+    let _ = engine_label;
     Some(AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth, nodes })
 }
 

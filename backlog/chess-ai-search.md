@@ -32,20 +32,45 @@ The strategy-vs-RL/AlphaZero/Pikafish decision is in
   Was the default 2026-05-08 → 2026-05-09; superseded by v3 because it
   shared v1's casual-mode king-blindness — see
   [`pitfalls/casual-xiangqi-king-blindness.md`](../pitfalls/casual-xiangqi-king-blindness.md).
-- ✅ **v3 — `Strategy::MaterialKingSafetyPstV3`** (2026-05-09, default).
+- ✅ **v3 — `Strategy::MaterialKingSafetyPstV3`** (2026-05-09).
   v2 + General has 50_000 cp value (instead of 0). Fixes the casual-mode
-  king-blindness bug where the AI would walk into 1-ply general-capture
-  mates because the eval didn't penalise losing the General. See
+  king-blindness bug. See
   [`docs/ai/v3-king-safety-pst.md`](../docs/ai/v3-king-safety-pst.md).
+  Was the default for a few hours on 2026-05-09; superseded by v4 because
+  horizon-effect blunders on captures still slipped through.
+- ✅ **v4 — `Strategy::QuiescenceMvvLvaV4`** (2026-05-09, default).
+  Same v3 evaluator, but the search now uses MVV-LVA capture ordering
+  and a quiescence search at the horizon. Stops the "AI wins a chariot
+  then loses it back next move" class of horizon-effect blunder.
+  Cost: ~9× v3 in busy openings (uses ~71% of the 250k node budget at
+  Hard depth 4). See [`docs/ai/v4-quiescence-mvv-lva.md`](../docs/ai/v4-quiescence-mvv-lva.md).
+
+## User-side configuration shipped 2026-05-09
+
+In addition to the engine versions above, the AI exposes:
+
+- `?engine=v1|v2|v3|v4` (web) / `--ai-engine` (TUI) — version selector.
+- `?variation=strict|subtle|varied|chaotic` / `--ai-variation` —
+  randomness preset (`Randomness { top_k, cp_window }`). Decouples
+  variation from difficulty so e.g. `Hard + STRICT` is deterministic
+  and `Easy + STRICT` is "depth 1 always best".
+- `?depth=N` (1..=10) / `--ai-depth N` (1..=12) — explicit depth
+  override. Lets users push past the difficulty default for stress
+  testing.
 
 ## Roadmap
 
-### v4 — `Strategy::NegamaxIdTtV4` (next)
+### v5 — `Strategy::NegamaxIdTtV5` (next)
 
 Iterative deepening + Zobrist transposition table.
 
-- **Why next**: biggest single-version strength jump. Also reuses the
-  Zobrist hashing infrastructure needed for the P1 TODO
+- **Why next**: v4's busy-opening cost (280 ms native, 1-3 s WASM) is
+  the new ceiling. The single biggest mitigation is a TT — many
+  positions are reached via multiple move orders, and v4 re-searches
+  each one. With a TT, depth-4 search shrinks back toward v3 cost
+  range. Iterative deepening reuses shallow PVs as ordering hints for
+  deeper search → fewer nodes for the same depth.
+- **Bonus**: shares Zobrist hashing with the P1 TODO
   "threefold-repetition draw detection" — doing them together avoids
   writing Zobrist twice.
 - **Tasks**:
@@ -53,32 +78,20 @@ Iterative deepening + Zobrist transposition table.
     `chess-core`, not `chess-ai`, so the repetition detector can share).
   - Add a small TT (~64 MB) keyed by Zobrist, storing
     `{score, depth, bound, best_move}`.
-  - Iterative deepening loop in `engines/negamax_id_tt_v4.rs`:
+  - Iterative deepening loop in `engines/negamax_id_tt_v5.rs`:
     deepen until `Difficulty::default_depth` or time budget hits.
-  - Use TT best-move as primary move ordering hint (PV-first).
+  - Use TT best-move as primary move ordering hint (PV-first), fall
+    back to MVV-LVA.
 - **Risk**: TT memory in WASM. 64 MB is fine for desktop browsers but
   noticeable on mobile. Cap at 16 MB for WASM target via a `cfg`.
-
-### v5 — `Strategy::NegamaxQuiescenceV5`
-
-Quiescence search + MVV-LVA capture ordering.
-
-- **Why**: stops horizon-effect blunders v3/v4 still make on capture
-  exchanges. The single biggest source of "AI gave up its chariot for a
-  pawn" complaints.
-- **Tasks**:
-  - Capture-only search at horizon nodes until quiet.
-  - Replace `is_capture` flat ordering with MVV-LVA
-    (most-valuable-victim, least-valuable-attacker) → better α-β cutoffs.
-- **Depends on**: v4 (TT).
 
 ### v6 — `Strategy::NegamaxWebWorkerV6`
 
 Same engine as v4/v5, but hosted in a Web Worker.
 
-- **Why**: by v5 the node budget will routinely hit 250k+ on Hard, and
-  the main-thread search will start dropping animation frames. Move it
-  off the UI thread.
+- **Why**: by v5 the time budget approach makes "deeper at busy
+  positions" cheap, but the main-thread search will still drop animation
+  frames during a 500 ms+ search. Move it off the UI thread.
 - **Notes**:
   - chess-tui doesn't need this — native is fast enough.
   - chess-web change: a worker glue file plus a `MessageChannel`-based
@@ -102,7 +115,7 @@ Information-set Monte Carlo Tree Search for banqi.
   - PUCT / UCB1 selection.
   - Determinisation sampler with the right prior (count-based on still-
     unflipped tiles).
-- **Standalone**: doesn't depend on v4-v6; can ship in parallel.
+- **Standalone**: doesn't depend on v5-v6; can ship in parallel.
 
 ### v8 — `Strategy::PikafishBackendV8` (optional)
 

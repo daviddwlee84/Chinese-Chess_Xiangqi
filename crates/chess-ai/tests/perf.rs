@@ -108,6 +108,7 @@ fn perf_table() {
         ("v1", Strategy::MaterialV1),
         ("v2", Strategy::MaterialPstV2),
         ("v3", Strategy::MaterialKingSafetyPstV3),
+        ("v4", Strategy::QuiescenceMvvLvaV4),
     ];
     let difficulties =
         [("Easy", Difficulty::Easy), ("Normal", Difficulty::Normal), ("Hard", Difficulty::Hard)];

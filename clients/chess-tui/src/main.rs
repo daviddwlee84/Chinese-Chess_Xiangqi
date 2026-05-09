@@ -121,10 +121,11 @@ enum Cmd {
         /// AI difficulty.
         #[arg(long = "ai-difficulty", value_enum, default_value_t = DifficultyArg::Normal)]
         ai_difficulty: DifficultyArg,
-        /// Engine version. v3 (material + PSTs + king safety) is the
-        /// default and recommended; v2 (no king safety) and v1 (material
-        /// only) are preserved for regression / comparison.
-        #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V3)]
+        /// Engine version. v4 (quiescence + MVV-LVA) is the default
+        /// and recommended; v3 (no quiescence), v2 (no king safety),
+        /// and v1 (material only) are preserved for regression /
+        /// comparison.
+        #[arg(long = "ai-engine", value_enum, default_value_t = EngineArg::V4)]
         ai_engine: EngineArg,
         /// Move-pick variation: how much randomness on top of the search.
         /// `default` lets the difficulty pick (Easy=Chaotic, Normal=Varied,
@@ -204,9 +205,13 @@ enum EngineArg {
     /// Material + piece-square tables. Plays principled openings;
     /// can lose its general in casual mode (king-blindness bug).
     V2,
-    /// Material + PSTs + king safety (recommended). Defends against
-    /// 1-ply mates that v1/v2 miss in casual mode.
+    /// Material + PSTs + king safety. Defends against 1-ply mates
+    /// but still has horizon-effect blunders on capture exchanges.
     V3,
+    /// Quiescence + MVV-LVA on top of v3 (recommended). Avoids
+    /// horizon-effect blunders ("won a chariot then lost it back
+    /// next move").
+    V4,
 }
 
 impl EngineArg {
@@ -215,6 +220,7 @@ impl EngineArg {
             EngineArg::V1 => Strategy::MaterialV1,
             EngineArg::V2 => Strategy::MaterialPstV2,
             EngineArg::V3 => Strategy::MaterialKingSafetyPstV3,
+            EngineArg::V4 => Strategy::QuiescenceMvvLvaV4,
         }
     }
 }

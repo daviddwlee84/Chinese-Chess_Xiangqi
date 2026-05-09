@@ -20,7 +20,7 @@ practical case is `40^3 ≈ 64k`. Our measurements (below) sit at the
 practical end of the bound thanks to capture-first ordering and the
 hard 250 000 node budget in [`search/mod.rs`](../../crates/chess-ai/src/search/mod.rs).
 
-## Measurements (2026-05-09)
+## Measurements (2026-05-09, post-v4)
 
 All runs use `Randomness::STRICT` so the measurement is search cost
 only — no RNG variation between repeats. Median wall-clock over 3 runs;
@@ -28,84 +28,88 @@ nodes are deterministic given the search inputs.
 
 | Fixture | Strategy | Difficulty | Depth | Nodes | Median ms (3 runs) | nodes/ms |
 |---------|----------|------------|-------|-------|--------------------|---------|
-| opening (initial xiangqi) | v1 | Easy | 1 | 44 | 0.07 | 603 |
-| opening (initial xiangqi) | v1 | Normal | 3 | 2087 | 3.45 | 606 |
-| opening (initial xiangqi) | v1 | Hard | 4 | 7743 | 14.86 | 521 |
-| opening (initial xiangqi) | v2 | Easy | 1 | 44 | 0.12 | 358 |
-| opening (initial xiangqi) | v2 | Normal | 3 | 2087 | 3.73 | 560 |
-| opening (initial xiangqi) | v2 | Hard | 4 | 15941 | 29.98 | 532 |
-| opening (initial xiangqi) | v3 | Easy | 1 | 44 | 0.08 | 543 |
-| opening (initial xiangqi) | v3 | Normal | 3 | 2087 | 3.81 | 548 |
-| opening (initial xiangqi) | v3 | Hard | 4 | 15938 | 29.39 | 542 |
-| midgame (4 pieces removed) | v1 | Easy | 1 | 56 | 0.10 | 554 |
-| midgame (4 pieces removed) | v1 | Normal | 3 | 5984 | 11.16 | 536 |
-| midgame (4 pieces removed) | v1 | Hard | 4 | 9295 | 20.43 | 455 |
-| midgame (4 pieces removed) | v2 | Easy | 1 | 56 | 0.16 | 350 |
-| midgame (4 pieces removed) | v2 | Normal | 3 | 6032 | 12.34 | 489 |
-| midgame (4 pieces removed) | v2 | Hard | 4 | 9340 | 21.74 | 430 |
-| midgame (4 pieces removed) | v3 | Easy | 1 | 56 | 0.15 | 381 |
-| midgame (4 pieces removed) | v3 | Normal | 3 | 6032 | 12.51 | 482 |
-| midgame (4 pieces removed) | v3 | Hard | 4 | 9132 | 21.03 | 434 |
+| opening (initial xiangqi) | v1 | Easy | 1 | 44 | 0.08 | 550 |
+| opening (initial xiangqi) | v1 | Normal | 3 | 2087 | 3.84 | 543 |
+| opening (initial xiangqi) | v1 | Hard | 4 | 7743 | 14.05 | 551 |
+| opening (initial xiangqi) | v2 | Easy | 1 | 44 | 0.09 | 518 |
+| opening (initial xiangqi) | v2 | Normal | 3 | 2087 | 3.73 | 559 |
+| opening (initial xiangqi) | v2 | Hard | 4 | 15941 | 29.99 | 532 |
+| opening (initial xiangqi) | v3 | Easy | 1 | 44 | 0.09 | 506 |
+| opening (initial xiangqi) | v3 | Normal | 3 | 2087 | 3.75 | 556 |
+| opening (initial xiangqi) | v3 | Hard | 4 | 15938 | 30.34 | 525 |
+| **opening (initial xiangqi)** | **v4** | **Easy** | **1** | **103** | **0.12** | **844** |
+| **opening (initial xiangqi)** | **v4** | **Normal** | **3** | **13277** | **17.11** | **776** |
+| **opening (initial xiangqi)** | **v4** | **Hard** | **4** | **177403** | **278.73** | **636** |
+| midgame (4 pieces removed) | v1 | Easy | 1 | 56 | 0.14 | 400 |
+| midgame (4 pieces removed) | v1 | Normal | 3 | 5984 | 12.17 | 492 |
+| midgame (4 pieces removed) | v1 | Hard | 4 | 9295 | 25.11 | 370 |
+| midgame (4 pieces removed) | v2 | Easy | 1 | 56 | 0.15 | 368 |
+| midgame (4 pieces removed) | v2 | Normal | 3 | 6032 | 14.21 | 424 |
+| midgame (4 pieces removed) | v2 | Hard | 4 | 9340 | 22.25 | 420 |
+| midgame (4 pieces removed) | v3 | Easy | 1 | 56 | 0.12 | 448 |
+| midgame (4 pieces removed) | v3 | Normal | 3 | 6032 | 15.24 | 396 |
+| midgame (4 pieces removed) | v3 | Hard | 4 | 9132 | 25.11 | 364 |
+| **midgame (4 pieces removed)** | **v4** | **Easy** | **1** | **775** | **1.05** | **736** |
+| **midgame (4 pieces removed)** | **v4** | **Normal** | **3** | **6546** | **7.72** | **848** |
+| **midgame (4 pieces removed)** | **v4** | **Hard** | **4** | **21370** | **33.21** | **643** |
 | sparse endgame (5 pieces total) | v1 | Easy | 1 | 18 | 0.01 | 1385 |
-| sparse endgame (5 pieces total) | v1 | Normal | 3 | 448 | 0.46 | 974 |
-| sparse endgame (5 pieces total) | v1 | Hard | 4 | 1144 | 0.91 | 1260 |
-| sparse endgame (5 pieces total) | v2 | Easy | 1 | 18 | 0.01 | 1385 |
-| sparse endgame (5 pieces total) | v2 | Normal | 3 | 2867 | 2.19 | 1310 |
-| sparse endgame (5 pieces total) | v2 | Hard | 4 | 16150 | 12.37 | 1305 |
-| sparse endgame (5 pieces total) | v3 | Easy | 1 | 18 | 0.01 | 1385 |
-| sparse endgame (5 pieces total) | v3 | Normal | 3 | 2040 | 1.49 | 1372 |
-| sparse endgame (5 pieces total) | v3 | Hard | 4 | 18047 | 13.96 | 1292 |
+| sparse endgame (5 pieces total) | v1 | Normal | 3 | 448 | 0.32 | 1396 |
+| sparse endgame (5 pieces total) | v1 | Hard | 4 | 1144 | 1.33 | 860 |
+| sparse endgame (5 pieces total) | v2 | Easy | 1 | 18 | 0.02 | 1125 |
+| sparse endgame (5 pieces total) | v2 | Normal | 3 | 2867 | 2.53 | 1133 |
+| sparse endgame (5 pieces total) | v2 | Hard | 4 | 16150 | 13.67 | 1181 |
+| sparse endgame (5 pieces total) | v3 | Easy | 1 | 18 | 0.01 | 1500 |
+| sparse endgame (5 pieces total) | v3 | Normal | 3 | 2040 | 1.41 | 1446 |
+| sparse endgame (5 pieces total) | v3 | Hard | 4 | 18047 | 15.10 | 1195 |
+| **sparse endgame (5 pieces total)** | **v4** | **Easy** | **1** | **36** | **0.02** | **2000** |
+| **sparse endgame (5 pieces total)** | **v4** | **Normal** | **3** | **4972** | **2.74** | **1817** |
+| **sparse endgame (5 pieces total)** | **v4** | **Hard** | **4** | **21668** | **12.03** | **1801** |
 
-## Headroom analysis
+## v4 cost breakdown
 
-The current `Difficulty::Hard` (depth 4) costs **15-30 ms wall-clock**
-on native release. Even the worst measured case (opening v3 Hard) is
-30 ms — well under the 250k node budget (only 6% used) and well under
-any human-perceptible latency.
+v4 is **significantly more expensive than v3** in busy openings — the
+worst case (v4 + Hard + opening) is 9-10× the v3 number:
 
-What we could push without users noticing:
+| Fixture | v3 Hard nodes | v4 Hard nodes | Ratio |
+|---|---|---|---|
+| Opening | 15,938 | **177,403** | 11× |
+| Midgame | 9,132 | 21,370 | 2.3× |
+| Endgame | 18,047 | 21,668 | 1.2× |
 
-| Target depth | Estimated cost | Verdict |
-|---|---|---|
-| **5** | ~10× current (200-300 ms) | Snappy. Well within human tolerance. |
-| **6** | ~100× current (~3 s) | Borderline. Needs "AI thinking…" UI affordance. |
-| **7** | ~1000× current (~30 s) | Unacceptable without iterative deepening + time budget. |
+Why opening is the worst case: the initial xiangqi position has zero
+captures available, so quiescence terminates immediately at every leaf
+(stand-pat = static eval). All v4 cost lives at the *root*'s MVV-LVA
+ordering, which (compared to v3's flat capture-first sort) explores
+more equally-rated lines before α-β cutoffs fire. PSTs differentiate
+moves by ±5..30 cp, and MVV-LVA's tie-breaking adds further
+differentiation, so more sub-trees pass the cutoff threshold.
 
-This is why the v4 roadmap entry is **iterative deepening + transposition
-table** — the right way to push past depth 4 isn't to bump the depth
-constant, it's to deepen until a time budget runs out and reuse work
-across iterations via the TT.
+Midgames and endgames have plenty of captures, so quiescence terminates
+quickly at the leaves and MVV-LVA's better ordering pays off — node
+counts stay similar to v3.
 
-## Why v2/v3 visit more nodes than v1
+71% of the 250k node budget is consumed by v4 + Hard + opening. The
+"safe" headroom that v3 had is now gone for this case. v5 (iterative
+deepening + TT) is the right next step — same depth in fewer nodes via
+TT lookups.
 
-The capture-first move ordering produces α-β cutoffs based on score
-*differences*. v1's flat material eval makes positions look
-near-symmetric (everything is 0 or ±100 cp), so the cutoff threshold
-is reached earlier and many sub-trees get pruned. v2 and v3 add PST
-deltas (±5..30 cp), which differentiate moves more finely → α-β has
-more "real" candidates to explore before pruning fires.
+## Headroom analysis (post-v4)
 
-This is a *strength-vs-cost trade-off*, not a regression. v3 explores
-~2× the nodes of v1 at the same depth and plays significantly better
-moves; the wall-clock is still under 30 ms.
+| Configuration | Native ms | WASM est. | Verdict |
+|---|---|---|---|
+| v4 + Hard + depth 4 + busy opening | 280 ms | 1-3 s | Borderline. Users will see the wait. |
+| v4 + Hard + depth 4 + midgame | 33 ms | 150-300 ms | Snappy. |
+| v4 + Normal + depth 3 | 17 ms | 80-160 ms | Snappy. |
+| v4 + Hard + depth 5 | est. 1-3 s | est. 5-30 s | **Don't.** Use v5 (ID+TT) when shipped. |
+| v3 + Hard + depth 4 | 30 ms | 150-300 ms | Snappy but horizon-effect blunders return. |
 
-The endgame v2/v3 spike (16-18k nodes) is because the sparse 5-piece
-position has very few captures, so capture-first ordering provides
-almost no help — α-β has to lean entirely on score-based cutoffs,
-which take longer to develop without high-frequency captures.
+If a user reports v4 Hard "too slow" in the opening, the available
+mitigations until v5 lands:
 
-## WASM expectations
-
-Native release profile: ~30 ms worst case Hard.
-Browser WASM (Trunk + wasm-bindgen, release profile): typically
-**5-10× slower** than native ⇒ ~150-300 ms per Hard move. Still snappy.
-
-The 80 ms `gloo_timers::TimeoutFuture` yield in
-[`clients/chess-web/src/pages/local.rs`](../../clients/chess-web/src/pages/local.rs)
-is for the "AI thinking…" banner repaint, not for engine work. If WASM
-search ever creeps past 200-300 ms (e.g. v4 with deeper iterative
-deepening), the v6 roadmap entry — moving search to a Web Worker —
-becomes the right fix, not bumping the yield.
+- Drop to `Difficulty::Normal` + `&depth=3` for v4-quality at v3-cost.
+- Switch to `?engine=v3` for v3 speed (accepting the horizon-effect
+  blunders).
+- Set `?depth=3` to cap depth without changing difficulty's randomness.
 
 ## Reproducing
 

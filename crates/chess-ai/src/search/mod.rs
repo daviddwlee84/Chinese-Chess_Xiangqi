@@ -10,6 +10,9 @@
 //! later v3+) share the same search code with zero duplication. The
 //! evaluator is borrowed (`&E`) — search never mutates it.
 
+pub mod ordering;
+pub mod quiescence;
+
 use chess_core::moves::Move;
 use chess_core::state::GameState;
 
@@ -129,4 +132,99 @@ pub fn is_capture(m: &Move) -> bool {
             | Move::ChainCapture { .. }
             | Move::DarkCapture { .. }
     )
+}
+
+// ---------------------------------------------------------------------
+// v4: quiescence + MVV-LVA variant of the same negamax loop. Lives next
+// to the v1-v3 search so they can share the [`Evaluator`] generic and
+// the [`NODE_BUDGET`] / [`MATE`] constants. v5+ versions will likely
+// add yet another `score_root_moves_*` variant rather than thread more
+// flags into this one.
+// ---------------------------------------------------------------------
+
+/// MVV-LVA ordered, quiescence-aware root scoring. Same shape as
+/// [`score_root_moves`] but the recursion uses [`negamax_qmvv`] +
+/// [`quiescence::quiescence`] at the horizon.
+pub fn score_root_moves_qmvv<E: Evaluator>(
+    state: &GameState,
+    depth: u8,
+    eval: &E,
+) -> (Vec<ScoredMove>, u32) {
+    let moves = state.legal_moves();
+    if moves.is_empty() {
+        return (Vec::new(), 0);
+    }
+    let mut ordered: Vec<(i32, Move)> =
+        moves.into_iter().map(|m| (ordering::mvv_lva_score(state, &m), m)).collect();
+    ordered.sort_by_key(|(s, _)| std::cmp::Reverse(*s));
+
+    let mut work = state.clone();
+    let mut nodes: u32 = 0;
+    let mut scored: Vec<ScoredMove> = Vec::with_capacity(ordered.len());
+    let mut alpha = -MATE - 1;
+    let beta = MATE + 1;
+
+    for (_score, mv) in ordered {
+        if work.make_move(&mv).is_err() {
+            continue;
+        }
+        let v = -negamax_qmvv(&mut work, depth.saturating_sub(1), -beta, -alpha, &mut nodes, eval);
+        let _ = work.unmake_move();
+        scored.push(ScoredMove { mv, score: v });
+        if v > alpha {
+            alpha = v;
+        }
+        if nodes >= NODE_BUDGET {
+            break;
+        }
+    }
+    (scored, nodes)
+}
+
+/// Negamax + α-β with MVV-LVA move ordering and quiescence search at
+/// the horizon. Drop-in replacement for [`negamax`] in v4.
+pub fn negamax_qmvv<E: Evaluator>(
+    state: &mut GameState,
+    depth: u8,
+    mut alpha: i32,
+    beta: i32,
+    nodes: &mut u32,
+    eval: &E,
+) -> i32 {
+    *nodes = nodes.saturating_add(1);
+    let moves = state.legal_moves();
+    if moves.is_empty() {
+        return -MATE + depth as i32;
+    }
+    if *nodes >= NODE_BUDGET {
+        return eval.evaluate(state);
+    }
+    if depth == 0 {
+        // Hand off to quiescence instead of returning the static eval.
+        return quiescence::quiescence(state, alpha, beta, nodes, eval, quiescence::Q_MAX_PLIES);
+    }
+
+    // MVV-LVA ordering instead of flat capture-first.
+    let mut ordered: Vec<(i32, Move)> =
+        moves.into_iter().map(|m| (ordering::mvv_lva_score(state, &m), m)).collect();
+    ordered.sort_by_key(|(s, _)| std::cmp::Reverse(*s));
+
+    let mut best = -MATE - 1;
+    for (_score, mv) in ordered {
+        if state.make_move(&mv).is_err() {
+            continue;
+        }
+        let v = -negamax_qmvv(state, depth - 1, -beta, -alpha, nodes, eval);
+        let _ = state.unmake_move();
+        if v > best {
+            best = v;
+        }
+        if v > alpha {
+            alpha = v;
+        }
+        if alpha >= beta {
+            break;
+        }
+    }
+    best
 }
