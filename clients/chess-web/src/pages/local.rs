@@ -12,11 +12,10 @@ use crate::components::board::{Board, ThreatOverlay};
 use crate::components::captured::{CapturedSlot, CapturedStrip};
 use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::{EndOverlay, MirrorHalf};
-use crate::components::eval_bar::EvalBar;
 use crate::components::eval_chart::EvalChart;
 use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
-use crate::eval::EvalSample;
+use crate::eval::{push_or_replace_sample, EvalSample};
 use crate::prefs::{Prefs, ThreatMode};
 use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
 use crate::state::{end_chain_move, find_move, hover_threat_squares};
@@ -329,10 +328,17 @@ fn LocalGame(
             ThreatMode::NetLoss => (v.threats.net_loss.clone(), Vec::new()),
             ThreatMode::MateThreat => (Vec::new(), v.threats.mate_threats.clone()),
         };
-        // Hover preview is independent of the mode selector; it ONLY
-        // fires when the user has a piece selected AND the toggle is
-        // on AND the selected piece belongs to the observer.
-        let hover_squares = if fx_threat_hover.get() {
+        // Hover preview is gated on BOTH the hover toggle AND the
+        // threat mode being on — when the user has set Threat=Off they
+        // expect no threat-related rings of any kind on the board, even
+        // the secondary hover-preview ones. Previously these were
+        // independent (per the comment) but that turned into a UX trap
+        // where toggling Threat=Off still left red rings appearing
+        // around the selected piece's "defended" pieces. Keep the
+        // hover toggle as the secondary fine-grained control: it can
+        // turn the preview off while the mode stays on, but turning
+        // mode off kills the preview unconditionally.
+        let hover_squares = if fx_threat_hover.get() && mode != ThreatMode::Off {
             if let Some(sq) = effective_selected.get() {
                 hover_threat_squares(&v, observer, sq)
             } else {
@@ -571,6 +577,7 @@ fn LocalGame(
                 }
                 if let Some(a) = analysis {
                     let chosen_mv = a.chosen.mv.clone();
+                    let ai_pov_score = a.chosen.score;
                     // Cache AI's POV analysis ONLY for ?debug=1 mode.
                     // Goes into `debug_analysis` (separate from
                     // `hint_analysis`) so the hint pump's later writes
@@ -586,6 +593,29 @@ fn LocalGame(
                         }
                     });
                     move_epoch.update(|n| *n = n.wrapping_add(1));
+                    // Win-rate sample for the post-AI-move position.
+                    // The analysis we just used was scored from the AI's
+                    // POV at the pre-move state; after the make_move()
+                    // above, side_to_move has flipped to the human, so
+                    // the new state's stm-POV cp = -ai_pov_score.
+                    // Recording it here (the moment the analysis is
+                    // used) — not via a reactive effect that watches
+                    // analysis-and-state — guarantees the sample's
+                    // (ply, stm) pair matches the analysis's actual
+                    // position. The earlier reactive-effect design had
+                    // a stale-pairing race: when state changed, the
+                    // effect fired immediately with the OLD analysis +
+                    // NEW state.history.len(), producing a sample that
+                    // looked correct by ply count but carried last
+                    // turn's cp. See pitfalls/eval-sample-stale-analysis-race.md.
+                    if evalbar_enabled {
+                        let new_ply = state.with_untracked(|s| s.history.len());
+                        let new_stm = state.with_untracked(|s| s.side_to_move);
+                        push_or_replace_sample(
+                            eval_samples,
+                            EvalSample::new(new_ply, new_stm, -ai_pov_score),
+                        );
+                    }
                 }
                 ai_thinking.set(false);
             });
@@ -698,57 +728,42 @@ fn LocalGame(
                     return;
                 }
                 if let Some(a) = analysis {
+                    // Win-rate sample for the snapshot's position.
+                    // The snapshot's `side_to_move` and `history.len()`
+                    // pair correctly with `a.chosen.score` (which is
+                    // already in the snapshot's stm POV — that's what
+                    // the analyzer returns at the root). Recording it
+                    // here, alongside the analysis-set, avoids the
+                    // earlier reactive-effect race that paired stale
+                    // analyses with newer state. Replaces any existing
+                    // sample for this ply (the AI move pump may have
+                    // already recorded one with the same value; both
+                    // are correct and replacing is a no-op of equal
+                    // values).
+                    if evalbar_enabled {
+                        push_or_replace_sample(
+                            eval_samples,
+                            EvalSample::new(
+                                snapshot.history.len(),
+                                snapshot.side_to_move,
+                                a.chosen.score,
+                            ),
+                        );
+                    }
                     hint_analysis.set(Some(a));
                 }
             });
         });
     }
 
-    // ---- Eval-sample sync effect ----
-    //
-    // Watches both analysis caches + the history length. When a fresh
-    // analysis lands AND its position is the *current* state AND there
-    // are fewer recorded samples than plies played, push a new
-    // [`EvalSample`]. The `position_hash` check (via the snapshot the
-    // analysis was computed against, indirectly verified by checking
-    // that history.len() matches what we'd expect for this sample)
-    // protects against pushing samples for stale positions while
-    // search effects race.
-    //
-    // Sample at `samples[N]` is the AI's eval of the position **after**
-    // ply N was played (N=0 = initial, N=1 = after first move, …).
-    // We deduplicate by ply: if samples already contains an entry for
-    // history.len(), we skip — handles the common case where both AI
-    // pump and hint pump produce an analysis for the same position
-    // (in vs-AI mode, only one runs per turn; this guard is defensive).
-    if evalbar_enabled {
-        create_effect(move |_| {
-            // Track all three so the effect re-runs whenever any update.
-            let history_len = state.with(|s| s.history.len());
-            let stm = state.with(|s| s.side_to_move);
-            // Read analyses untracked? No — we want to fire on either
-            // landing. Tracked reads.
-            let dbg = debug_analysis.get();
-            let hnt = hint_analysis.get();
-            // Pick whichever analysis exists (prefer hint — it's the
-            // side-to-move's POV, which is the most recent for the
-            // current position; debug_analysis can be stale by one
-            // ply between the AI moving and the hint pump catching up).
-            let analysis = hnt.or(dbg);
-            let Some(a) = analysis else { return };
-            // Already have a sample for this position?
-            let next_ply = history_len;
-            let already_present = eval_samples.with(|v| v.iter().any(|s| s.ply == next_ply));
-            if already_present {
-                return;
-            }
-            // Push the new sample. The cp from `analyze` is
-            // side-to-move-relative; `EvalSample::new` does the
-            // Red-POV normalisation.
-            let sample = EvalSample::new(next_ply, stm, a.chosen.score);
-            eval_samples.update(|v| v.push(sample));
-        });
-    }
+    // (Eval-sample writes happen directly inside the AI move pump and
+    // hint pump above — see their `push_or_replace_sample(...)` calls.
+    // The earlier reactive-effect approach pulled samples by watching
+    // `(state, debug_analysis, hint_analysis)` together, which raced:
+    // when state updated, the effect fired immediately with the OLD
+    // analyses + NEW state.history.len(), producing samples whose cp
+    // belonged to the previous position. Writing from inside the pumps
+    // pairs each sample with the analysis that produced it.)
 
     let prefs = expect_context::<Prefs>();
     let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
@@ -810,14 +825,23 @@ fn LocalGame(
 
     let mirror_signal: Signal<bool> = Signal::derive(move || mirror);
 
-    // Eval-display derived signals — exposed to <EvalBar>, the
-    // sidebar's badge, and <EvalChart>. When `evalbar_enabled` is
-    // false, `eval_samples` stays empty so all three components see
-    // empty / None and either hide themselves or render placeholders.
+    // Eval-display derived signals — exposed to the sidebar's badge
+    // and `<EvalChart>`. When `evalbar_enabled` is false, `eval_samples`
+    // stays empty so both the badge and chart see empty / None and
+    // either hide themselves or render nothing.
+    //
+    // Per user feedback (2026-05-10): the previous design had a
+    // separate vertical eval bar SVG attached to the right side of the
+    // board. That was removed because it duplicated the sidebar's
+    // headline badge and broke board layout / click hit-testing on
+    // some viewports. Sidebar badge is now the single source of truth
+    // for the live win-rate display, gated on `evalbar_enabled` so it
+    // doesn't appear (empty) when the flag is off.
     let current_eval: Signal<Option<EvalSample>> =
         Signal::derive(move || eval_samples.with(|v| v.last().copied()));
     let eval_samples_signal: Signal<Vec<EvalSample>> = eval_samples.into();
-    let evalbar_show = move || evalbar_enabled;
+    let sidebar_eval_badge: Option<Signal<Option<EvalSample>>> =
+        if evalbar_enabled { Some(current_eval) } else { None };
     let chart_show =
         Signal::derive(move || evalbar_enabled && eval_samples.with(|v| !v.is_empty()));
 
@@ -828,15 +852,8 @@ fn LocalGame(
             s.refresh_status();
         });
     };
-    let game_page_class = move || {
-        if evalbar_show() {
-            "game-page game-page--with-evalbar"
-        } else {
-            "game-page"
-        }
-    };
     view! {
-        <section class=game_page_class>
+        <section class="game-page">
             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
                 <Show when=move || mirror && !wip>
                     <button
@@ -907,9 +924,6 @@ fn LocalGame(
                     </button>
                 </Show>
             </div>
-            <Show when=evalbar_show>
-                <EvalBar sample=current_eval/>
-            </Show>
             <Sidebar
                 variant=variant
                 view=view
@@ -918,7 +932,7 @@ fn LocalGame(
                 wip=wip
                 history=history_signal
                 hint_toggle=sidebar_hint_toggle
-                eval_badge=current_eval
+                eval_badge=sidebar_eval_badge
             />
             <Show when=move || panel_visible.get()>
                 <DebugPanel

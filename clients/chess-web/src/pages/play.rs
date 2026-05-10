@@ -504,7 +504,7 @@ fn BoardWrapper(
             ThreatMode::NetLoss => (v.threats.net_loss.clone(), Vec::new()),
             ThreatMode::MateThreat => (Vec::new(), v.threats.mate_threats.clone()),
         };
-        let hover_squares = if fx_threat_hover.get() {
+        let hover_squares = if fx_threat_hover.get() && mode != ThreatMode::Off {
             if let Some(sq) = effective_selected.get() {
                 hover_threat_squares(&v, obs, sq)
             } else {

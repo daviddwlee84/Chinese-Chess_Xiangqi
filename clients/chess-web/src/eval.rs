@@ -18,6 +18,8 @@
 //! ([`chess_ai::cp_to_win_pct`]) so chess-tui can share the math.
 
 use chess_core::piece::Side;
+#[cfg(target_arch = "wasm32")]
+use leptos::*;
 
 /// One AI evaluation snapshot taken after a specific ply was played.
 ///
@@ -71,6 +73,33 @@ pub fn stm_cp_to_red_win_pct(cp_stm_pov: i32, side_to_move: Side) -> f32 {
         Side::RED => stm_pct,
         _ => 1.0 - stm_pct,
     }
+}
+
+/// Push a fresh sample into the per-ply samples vector, replacing any
+/// existing entry for the same ply (the freshest analysis wins).
+///
+/// Both the AI move pump and the hint pump can produce a sample for
+/// the same position (vs-AI mode: AI moves, then hint pump fires for
+/// the next position; both write samples for adjacent plies, but the
+/// hint pump's analysis post-dates the AI pump's). The dedup-by-ply
+/// behaviour keeps the vector indexed by ply without duplicates while
+/// allowing later analyses to refine the cp value (especially helpful
+/// when the AI pump used a quick eval and the hint pump used Hard
+/// search at the same depth).
+///
+/// Wasm-only because the leptos `RwSignal` type isn't available on
+/// the native workspace check (chess-web compiles its UI modules
+/// `wasm32`-only). The helper itself is the only chess-web code that
+/// touches `RwSignal` from a non-wasm-gated module.
+#[cfg(target_arch = "wasm32")]
+pub fn push_or_replace_sample(samples: RwSignal<Vec<EvalSample>>, sample: EvalSample) {
+    samples.update(|v| {
+        if let Some(idx) = v.iter().position(|s| s.ply == sample.ply) {
+            v[idx] = sample;
+        } else {
+            v.push(sample);
+        }
+    });
 }
 
 #[cfg(test)]

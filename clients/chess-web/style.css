@@ -201,15 +201,7 @@ body {
     align-items: start;
 }
 .game-page--single { grid-template-columns: 1fr; }
-/* Three-column variant when `?evalbar=1` is on: thin eval-bar column
- * sits between the board pane and the sidebar. The eval bar stretches
- * to match the board pane's height via `align-self: stretch` so its
- * top/bottom align with the board's edges. */
-.game-page--with-evalbar { grid-template-columns: minmax(0, 1fr) 32px 280px; }
-@media (max-width: 720px) {
-    .game-page { grid-template-columns: 1fr; }
-    .game-page--with-evalbar { grid-template-columns: 1fr; }
-}
+@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
 
 /* Non-mirror viewport fit (desktop / two-column layout). Cap the board
  * pane to the available viewport height (minus `.app-shell`'s 2rem top +
@@ -1482,76 +1474,19 @@ body {
 }
 
 /* ============================================================
- * AI win-rate display (?evalbar=1) — three pieces:
- *   1. `.eval-bar`     — vertical SVG strip next to the board
- *   2. `.eval-badge`   — sidebar `紅 % • 黑 %` pill
- *   3. `.eval-chart`   — post-game SVG line chart (also visible mid-game)
+ * AI win-rate display (?evalbar=1) — two pieces:
+ *   1. `.eval-badge`   — sidebar `紅 % • 黑 %` pill (live during play)
+ *   2. `.eval-chart`   — SVG line chart (live during play, also visible
+ *                        post-game when the trend is fully populated)
  * Plus per-row `.move-history__delta` annotations on history rows.
+ *
+ * History: an earlier revision had a third piece — a vertical SVG eval
+ * bar attached to the right edge of the board. It was removed
+ * 2026-05-10 because (a) it duplicated the sidebar badge's information
+ * and (b) the layout-glue required to align its height with the board
+ * SVG was fragile across viewports (broke click hit-testing on iPad
+ * landscape). Sidebar badge is now the single live-display surface.
  * ============================================================ */
-
-/* --- Vertical eval bar (chess.com / lichess style) --- */
-/*
- * Mounted as a top-level grid item of `.game-page` (between
- * `.board-pane` and `<Sidebar>`) when the URL has `?evalbar=1`. The
- * page-level `.game-page--with-evalbar` modifier class adds the third
- * grid column. `align-self: stretch` makes the bar match the board
- * pane's height so its top/bottom visually align with the board's
- * edges. On mobile (`<= 720px`) the page collapses to one column and
- * the bar stacks above the sidebar — narrow but still readable.
- */
-.eval-bar {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    align-self: stretch;
-    width: 32px;
-    min-height: 0;
-    border: 1px solid var(--grid);
-    border-radius: 0.3rem;
-    overflow: hidden;
-    background: var(--bg);
-}
-
-.eval-bar__svg {
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-.eval-bar__bg-black {
-    fill: #2b2624;
-}
-.eval-bar__fill-red {
-    fill: #b86b3d;
-    transition: y 0.4s ease, height 0.4s ease;
-}
-.eval-bar__boundary {
-    stroke: var(--accent);
-    stroke-width: 0.6;
-    transition: y1 0.4s ease, y2 0.4s ease;
-}
-
-.eval-bar__label {
-    position: absolute;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 0.65rem;
-    font-weight: 600;
-    color: var(--fg);
-    text-shadow: 0 0 3px var(--bg);
-    pointer-events: none;
-}
-.eval-bar__label--top {
-    top: 2px;
-    color: #ddd2c4;
-}
-.eval-bar__label--bot {
-    bottom: 2px;
-    color: #f9c8a3;
-}
 
 /* --- Sidebar `紅 % • 黑 %` badge --- */
 

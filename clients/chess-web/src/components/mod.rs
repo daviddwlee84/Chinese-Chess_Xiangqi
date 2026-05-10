@@ -4,7 +4,6 @@ pub mod chat_panel;
 pub mod confetti;
 pub mod debug_panel;
 pub mod end_overlay;
-pub mod eval_bar;
 pub mod eval_chart;
 pub mod move_history;
 pub mod pwa;
