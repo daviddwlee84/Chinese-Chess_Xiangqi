@@ -37,7 +37,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
-use crate::app::{AppState, CapturedSort, VsAiConfig};
+use crate::app::{AppState, CapturedSort, ThreatMode, VsAiConfig};
 use crate::glyph::Style;
 use crate::input::{from_key, from_mouse, Action};
 use crate::url::{normalize_connect_url, normalize_lobby_url};
@@ -68,6 +68,24 @@ struct Cli {
     /// (chronological — useful for following 暗連 chains live).
     #[arg(long, value_enum, default_value_t = CapturedSortArg::Time)]
     captured_sort: CapturedSortArg,
+
+    /// Threat-highlight mode for the board (mirrors the web Display
+    /// setting). Default `net-loss` ('被捉') — visually clean enough
+    /// to leave on. `off` disables; `attacked` shows every piece an
+    /// opponent could capture next ply (busy mid-game); `mate-threat`
+    /// only fires when an actual checkmate-in-1 is on the board
+    /// (xiangqi only).
+    #[arg(long = "threat-mode", value_enum, default_value_t = ThreatModeArg::NetLoss)]
+    threat_mode: ThreatModeArg,
+
+    /// When set, also show the 'what-if' threat preview when a piece
+    /// is selected (TUI analogue of the web hover toggle): rings any
+    /// of your other pieces that would become newly vulnerable if
+    /// the selected one moves away. Off by default — selection is a
+    /// frequent gesture and we don't want every selection to flicker
+    /// the whole board.
+    #[arg(long = "threat-on-select")]
+    threat_on_select: bool,
 
     /// Render from this side's perspective (debug; default RED). Ignored
     /// when `--connect` is set — the server assigns a side on join.
@@ -194,6 +212,29 @@ enum SideArg {
 enum CapturedSortArg {
     Time,
     Rank,
+}
+
+/// CLI surface for [`crate::app::ThreatMode`]. Same four-way enum;
+/// kept separate so the value-name kebab-case (`net-loss`) doesn't
+/// leak into the app-state type. See the `--threat-mode` CLI doc
+/// above for usage.
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum ThreatModeArg {
+    Off,
+    Attacked,
+    NetLoss,
+    MateThreat,
+}
+
+impl ThreatModeArg {
+    fn into_threat_mode(self) -> ThreatMode {
+        match self {
+            ThreatModeArg::Off => ThreatMode::Off,
+            ThreatModeArg::Attacked => ThreatMode::Attacked,
+            ThreatModeArg::NetLoss => ThreatMode::NetLoss,
+            ThreatModeArg::MateThreat => ThreatMode::MateThreat,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -356,6 +397,8 @@ fn main() -> Result<()> {
     app.show_confetti = show_confetti;
     app.show_check_banner = show_check_banner;
     app.captured_sort = captured_sort;
+    app.threat_mode = cli.threat_mode.into_threat_mode();
+    app.threat_on_select = cli.threat_on_select;
     run(app)
 }
 

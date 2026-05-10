@@ -135,6 +135,20 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     } else {
         Vec::new()
     };
+    // Threat overlay (Display setting). Pulls from the engine-cached
+    // `view.threats` for the static buckets; computes the optional
+    // hover-on-select bucket on demand from `g_ref.state` (which we
+    // have direct access to in Game mode — no PlayerView round-trip
+    // needed). Net mode runs through `compute_threat_sets_view`,
+    // which can only consult the projected view.
+    let threats = compute_threat_sets_local(
+        &view,
+        observer,
+        app.threat_mode,
+        app.threat_on_select,
+        effective_selected,
+        &g_ref.state,
+    );
     draw_board(
         frame,
         chunks[0],
@@ -146,6 +160,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         effective_selected,
         &mut rect,
         &highlighted_pv,
+        &threats,
     );
     app.board_rect = rect;
     let captured_sort = app.captured_sort;
@@ -200,6 +215,17 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
             let mut rect = app.board_rect;
             // Net mode: no AI here, no debug PV to highlight. Pass empty.
             let empty_pv: Vec<Move> = Vec::new();
+            // Net mode threat overlay: no GameState handy (we only
+            // see the projected view), so the hover-on-select bucket
+            // is best-effort via `compute_threat_sets_view` (xiangqi
+            // only — banqi reconstruction would leak hidden info).
+            let threats = compute_threat_sets_view(
+                view,
+                observer,
+                app.threat_mode,
+                app.threat_on_select,
+                effective_selected,
+            );
             draw_board(
                 frame,
                 chunks[0],
@@ -211,6 +237,7 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 effective_selected,
                 &mut rect,
                 &empty_pv,
+                &threats,
             );
             app.board_rect = rect;
             let captured_sort = app.captured_sort;
@@ -504,6 +531,145 @@ const HELP_LINES_LOBBY: &[&str] = &[
     "q / Ctrl-C  quit",
 ];
 
+/// Build a `ThreatSets` for Game-mode rendering. Has direct access
+/// to `state` (the authoritative `GameState`), so the optional
+/// hover-on-select bucket runs on a clone of `state` with the
+/// selected piece removed — same delta semantic as the web's
+/// `hover_threat_squares`.
+///
+/// Static / mate buckets come straight from `view.threats`, which is
+/// already pre-projected for the observer.
+fn compute_threat_sets_local(
+    view: &PlayerView,
+    observer: Side,
+    mode: crate::app::ThreatMode,
+    hover_on: bool,
+    selected: Option<Square>,
+    state: &chess_core::state::GameState,
+) -> ThreatSets {
+    use crate::app::ThreatMode;
+    let (static_squares, mate_squares) = match mode {
+        ThreatMode::Off => (Vec::new(), Vec::new()),
+        ThreatMode::Attacked => (view.threats.attacked.clone(), Vec::new()),
+        ThreatMode::NetLoss => (view.threats.net_loss.clone(), Vec::new()),
+        ThreatMode::MateThreat => (Vec::new(), view.threats.mate_threats.clone()),
+    };
+    let hover_squares = if hover_on {
+        if let Some(sel) = selected {
+            hover_threat_squares_from_state(state, observer, sel)
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+    ThreatSets {
+        static_squares: static_squares.into_iter().collect(),
+        mate_squares: mate_squares.into_iter().collect(),
+        hover_squares: hover_squares.into_iter().collect(),
+    }
+}
+
+/// Net-mode counterpart to `compute_threat_sets_local`. Has only the
+/// projected `PlayerView` available, so the hover-on-select bucket
+/// is best-effort — and only attempted on xiangqi (banqi state
+/// reconstruction would leak hidden info; see the web's
+/// `state::reconstruct_xiangqi_state_for_analysis` for the same
+/// constraint).
+fn compute_threat_sets_view(
+    view: &PlayerView,
+    observer: Side,
+    mode: crate::app::ThreatMode,
+    hover_on: bool,
+    selected: Option<Square>,
+) -> ThreatSets {
+    use crate::app::ThreatMode;
+    let (static_squares, mate_squares) = match mode {
+        ThreatMode::Off => (Vec::new(), Vec::new()),
+        ThreatMode::Attacked => (view.threats.attacked.clone(), Vec::new()),
+        ThreatMode::NetLoss => (view.threats.net_loss.clone(), Vec::new()),
+        ThreatMode::MateThreat => (Vec::new(), view.threats.mate_threats.clone()),
+    };
+    let hover_squares = if hover_on && matches!(view.shape, BoardShape::Xiangqi9x10) {
+        if let Some(sel) = selected {
+            hover_threat_squares_from_view(view, observer, sel)
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+    ThreatSets {
+        static_squares: static_squares.into_iter().collect(),
+        mate_squares: mate_squares.into_iter().collect(),
+        hover_squares: hover_squares.into_iter().collect(),
+    }
+}
+
+/// Newly-vulnerable observer pieces if the piece at `selected` were
+/// removed from the board. Direct GameState path used by Game mode.
+/// See the web's `crate::state::hover_threat_squares` for the same
+/// semantic on the projected-view path.
+fn hover_threat_squares_from_state(
+    state: &chess_core::state::GameState,
+    observer: Side,
+    selected: Square,
+) -> Vec<Square> {
+    use chess_core::state::GameStatus;
+    if !matches!(state.status, GameStatus::Ongoing) {
+        return Vec::new();
+    }
+    let Some(pos) = state.board.get(selected) else { return Vec::new() };
+    if pos.piece.side != observer {
+        return Vec::new();
+    }
+    let before: std::collections::HashSet<Square> =
+        state.attacked_pieces(observer).into_iter().collect();
+    let mut without = state.clone();
+    without.board.set(selected, None);
+    without
+        .attacked_pieces(observer)
+        .into_iter()
+        .filter(|sq| !before.contains(sq) && *sq != selected)
+        .collect()
+}
+
+/// Net-mode hover preview: rebuild a casual xiangqi `GameState` from
+/// the view, then run the same delta as `hover_threat_squares_from_state`.
+/// Banqi reconstruction is impossible without leaking hidden info, so
+/// this returns empty for any non-xiangqi shape.
+fn hover_threat_squares_from_view(
+    view: &PlayerView,
+    observer: Side,
+    selected: Square,
+) -> Vec<Square> {
+    use chess_core::board::Board;
+    use chess_core::rules::RuleSet;
+    use chess_core::state::{GameState, GameStatus};
+    if !matches!(view.shape, BoardShape::Xiangqi9x10) {
+        return Vec::new();
+    }
+    if !matches!(view.status, GameStatus::Ongoing) {
+        return Vec::new();
+    }
+    let mut state = GameState::new(RuleSet::xiangqi_casual());
+    let mut board = Board::new(view.shape);
+    for (idx, cell) in view.cells.iter().enumerate() {
+        let sq = Square(idx as u16);
+        let pos = match cell {
+            VisibleCell::Empty => None,
+            VisibleCell::Hidden => return Vec::new(),
+            VisibleCell::Revealed(p) => Some(*p),
+        };
+        board.set(sq, pos);
+    }
+    state.board = board;
+    state.side_to_move = view.side_to_move;
+    state.status = view.status;
+    state.chain_lock = view.chain_lock;
+    hover_threat_squares_from_state(&state, observer, selected)
+}
+
 #[allow(clippy::too_many_arguments)]
 // Optional `highlighted_pv`: PV chain to highlight on the board (debug
 // overlay). Element 0 is the AI's chosen move, 1..N is the predicted
@@ -520,6 +686,7 @@ fn draw_board(
     selected: Option<Square>,
     board_rect: &mut Option<RectPx>,
     highlighted_pv: &[Move],
+    threats: &ThreatSets,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Board ");
     let inner = block.inner(area);
@@ -577,6 +744,7 @@ fn draw_board(
             border_style,
             &debug_from,
             &debug_to,
+            threats,
         ));
 
         // Between row (skip after last rank)
@@ -623,6 +791,7 @@ fn rank_row<'a>(
     border_style: TuiStyle,
     debug_from: &std::collections::HashSet<Square>,
     debug_to: &std::collections::HashSet<Square>,
+    threats: &ThreatSets,
 ) -> Line<'a> {
     let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
     spans.push(Span::raw(rank_label(observer, shape, display_row)));
@@ -644,6 +813,7 @@ fn rank_row<'a>(
                 display_col,
                 debug_from,
                 debug_to,
+                threats,
             ),
             None => (intersection_glyph(false, style).to_string(), TuiStyle::default(), false),
         };
@@ -662,6 +832,22 @@ fn rank_row<'a>(
     }
 
     Line::from(spans)
+}
+
+/// Threat-highlight buckets passed down to `intersection_or_piece` so
+/// each cell can paint a tinted background when its square shows up
+/// in any of the three lists. Mirrors
+/// `crate::components::board::ThreatOverlay` on the web side; same
+/// semantic split (static / mate / hover) — see that struct's docs.
+///
+/// Passed as `&ThreatSets` rather than three loose params so adding
+/// a fourth bucket later only touches the struct, not every
+/// signature in the render path.
+#[derive(Default)]
+pub(crate) struct ThreatSets {
+    pub static_squares: std::collections::HashSet<Square>,
+    pub mate_squares: std::collections::HashSet<Square>,
+    pub hover_squares: std::collections::HashSet<Square>,
 }
 
 /// Per-cell content for a rank row.
@@ -683,6 +869,7 @@ fn intersection_or_piece(
     display_col: u8,
     debug_from: &std::collections::HashSet<Square>,
     debug_to: &std::collections::HashSet<Square>,
+    threats: &ThreatSets,
 ) -> (String, TuiStyle, bool) {
     let cell = &view.cells[sq.0 as usize];
     let is_cursor = (display_row, display_col) == cursor;
@@ -693,6 +880,13 @@ fn intersection_or_piece(
     // forcing this selection (not their own click) and can recall
     // that Esc / Enter on it ends the chain.
     let is_chain_locked = view.chain_lock == Some(sq);
+    // Threat-highlight buckets — applied BEFORE selection / cursor so
+    // user-driven highlights still take visual priority. Mate (mode C)
+    // wins over static (mode A/B) when both fire on the same square,
+    // hover loses to both (it's an extra hint, not a primary signal).
+    let is_threat_static = threats.static_squares.contains(&sq);
+    let is_threat_mate = threats.mate_squares.contains(&sq);
+    let is_threat_hover = threats.hover_squares.contains(&sq);
 
     let (text, is_glyph_w2) = match cell {
         VisibleCell::Empty => {
@@ -735,6 +929,23 @@ fn intersection_or_piece(
     }
     if debug_to.contains(&sq) {
         s = s.bg(Color::Rgb(30, 70, 100));
+    }
+    // Threat tints — also applied before selection/cursor so the
+    // user's interactive choices visually win. Stack order chosen so
+    // mate (the strongest signal — strict 叫殺) overrides static
+    // (mode A/B), and hover (the orthogonal toggle, weakest) is
+    // applied first so a square promoted into the static / mate set
+    // visually wins. All three use red-family backgrounds; mate
+    // shifts toward magenta to mirror the web `.threat-mark--mate`
+    // class.
+    if is_threat_hover {
+        s = s.bg(Color::Rgb(60, 20, 20));
+    }
+    if is_threat_static {
+        s = s.bg(Color::Rgb(95, 25, 25));
+    }
+    if is_threat_mate {
+        s = s.bg(Color::Rgb(110, 25, 90));
     }
     if is_selected {
         // Brown for a regular user-driven selection, brighter orange

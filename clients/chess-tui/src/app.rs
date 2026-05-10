@@ -516,6 +516,19 @@ pub struct AppState {
     /// User pref: sort order for the sidebar captured-pieces panel.
     /// Default `Time`, toggle with `g`. Preserved across screens.
     pub captured_sort: CapturedSort,
+    /// User pref: which threat-highlight mode to render on the board.
+    /// Default `NetLoss` ('被捉'); set via `--threat-mode`. Preserved
+    /// across screen transitions like the FX prefs above. Same
+    /// semantic as the web client's `Prefs::fx_threat_mode`.
+    pub threat_mode: ThreatMode,
+    /// User pref: when ON, treat 'piece selected' as a hover signal
+    /// for the 'what-if' threat preview — ring any of the player's
+    /// other pieces that would become newly vulnerable if the
+    /// selected piece moves away. OFF by default; toggle via the
+    /// `--threat-on-select` CLI flag (no in-game keybind yet — file
+    /// in `TODO.md` if it gets requested). Mirrors the web's
+    /// `Prefs::fx_threat_hover` semantically.
+    pub threat_on_select: bool,
 }
 
 /// Sort order for the sidebar "captured pieces" panel. `Time` keeps
@@ -544,6 +557,27 @@ impl CapturedSort {
             CapturedSort::Rank => "rank",
         }
     }
+}
+
+/// Threat-highlight mode for the board renderer. TUI mirror of the
+/// web client's `crate::prefs::ThreatMode`; both share the same four
+/// semantics. The TUI doesn't persist this across runs (no
+/// localStorage equivalent without bringing in a config file) — set
+/// it per-invocation with `--threat-mode`.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+pub enum ThreatMode {
+    /// Off — no highlight rendered.
+    Off,
+    /// Mode A — every revealed piece an opponent could capture in
+    /// one ply (the literal '被攻擊'). Visually busy mid-game.
+    Attacked,
+    /// Mode B — pieces whose Static Exchange Evaluation predicts
+    /// material loss ('被捉'). The recommended default.
+    #[default]
+    NetLoss,
+    /// Mode C — opponent piece-squares constituting a checkmate-in-1
+    /// threat ('叫殺'). Xiangqi only.
+    MateThreat,
 }
 
 /// Rank-ordering for `CapturedSort::Rank`. Larger value = stronger piece
@@ -634,6 +668,8 @@ impl AppState {
             prev_status_local: None,
             prev_status_net: None,
             captured_sort: CapturedSort::Time,
+            threat_mode: ThreatMode::default(),
+            threat_on_select: false,
         }
     }
 
@@ -855,12 +891,16 @@ impl AppState {
         let captured_sort = self.captured_sort;
         let history_open = self.history_open;
         let debug_open = self.debug_open;
+        let threat_mode = self.threat_mode;
+        let threat_on_select = self.threat_on_select;
         *self = fresh;
         self.show_confetti = confetti;
         self.show_check_banner = check;
         self.captured_sort = captured_sort;
         self.history_open = history_open;
         self.debug_open = debug_open;
+        self.threat_mode = threat_mode;
+        self.threat_on_select = threat_on_select;
         // debug_cursor is NOT preserved — fresh game = different scored
         // moves, so the cursor must reset.
     }
