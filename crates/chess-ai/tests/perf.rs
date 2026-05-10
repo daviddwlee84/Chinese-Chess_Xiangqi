@@ -125,6 +125,7 @@ fn perf_table() {
                     seed: Some(0),
                     strategy,
                     randomness: Some(Randomness::STRICT),
+                    node_budget: None,
                 };
                 let mut nodes = 0u32;
                 let mut depth = 0u8;

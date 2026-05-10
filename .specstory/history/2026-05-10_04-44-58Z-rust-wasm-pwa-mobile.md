@@ -9282,13 +9282,13 @@ _**User (2026-05-10 09:09:03Z)**_
 
 _**User (2026-05-10 09:09:32Z)**_
 
-感覺不錯 目前美中不足是 [Image #11] Banqi seed 那邊 UI 有點超出去
-另外 也許可以給 Xangqi Pass-and-play 加上一個mirror的選項 這樣黑方的字都反著印 （這樣如果玩家用手機坐在對面玩 則可以看自己的棋子都是正的,
-此外在這個模式之下可以把己方死亡的棋子列在對手那方 （原本是統一列在棋盤下方）
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/11.png]
 
 _**User (2026-05-10 09:09:32Z)**_
 
-[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/11.png]
+感覺不錯 目前美中不足是 [Image #11] Banqi seed 那邊 UI 有點超出去
+另外 也許可以給 Xangqi Pass-and-play 加上一個mirror的選項 這樣黑方的字都反著印 （這樣如果玩家用手機坐在對面玩 則可以看自己的棋子都是正的,
+此外在這個模式之下可以把己方死亡的棋子列在對手那方 （原本是統一列在棋盤下方）
 
 ---
 
@@ -24186,3 +24186,438 @@ CI-equivalent checks
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.65s
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:16:08Z)**_
+
+Both clean. Commit, push, watch:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:16:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage changes
+
+`git add -A && git status --short`
+
+```text
+M  .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+M  clients/chess-web/src/pages/local.rs
+M  clients/chess-web/style.css
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:16:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit fixes
+
+```bash
+git commit -m "$(cat <<'EOF'
+fix(chess-web): mirror viewport-fit + resign button placement
+
+Three regressions from the prior mirror-mode commit:
+
+- Selecting a piece "enlarged" the board on iPad. Cause:
+  `.board-pane--mirror > svg.board { width: auto; height: auto }`
+  overrode the global `.board { width: 100% }`, so the SVG rendered
+  at its viewBox intrinsic pixel size (way larger than the column).
+  Restore `width: 100%; height: 100%` so `preserveAspectRatio` does
+  the letterbox we wanted.
+- Resign buttons overlapped the captured strips because they were
+  `position: absolute` at top/bottom-right of the pane. Move them to
+  flex children of `.board-pane--mirror` (top before MirroredAbove,
+  bottom after MirroredBelow), `align-self: flex-{start,end}` per
+  seat, top still rotated 180°. No more overlap.
+- Sidebar looked spaced-out on iPad because
+  `.game-page--mirror { align-items: stretch }` stretched the aside
+  to viewport height; its grid rows then grew to fill. Drop the
+  modifier; the default `align-items: start` is what we want. The
+  pane is constrained directly via `.board-pane--mirror { height:
+  calc(100dvh - 4rem) }` (the 4rem accounts for `.app-shell`
+  vertical padding).
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -5
+```
+
+```text
+[main 3807ed9] fix(chess-web): mirror viewport-fit + resign button placement
+ 3 files changed, 803 insertions(+), 43 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:16:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Push and list CI
+
+`git push origin main 2>&1 | tail -5 && sleep 4 && gh run list --branch main --limit 2`
+
+```text
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   6bcf9d9..3807ed9  main -> main
+queued		fix(chess-web): mirror viewport-fit + resign button placement	ci	main	push	25626131924	2s	2026-05-10T10:16:31Z
+queued		fix(chess-web): mirror viewport-fit + resign button placement	pages	main	push	25626131928	2s	2026-05-10T10:16:31Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:18:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Watch both CI runs
+
+`gh run watch 25626131924 --exit-status 2>&1 | tail -3 ; echo "---" ; gh run watch 25626131928 --exit-status 2>&1 | tail -3 ; echo "---FINAL---" ; gh run list --branch main --limit 2`
+
+```text
+  ✓ Post Run Swatinem/rust-cache@v2
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+---
+Run pages (25626131928) has already completed with 'success'
+---FINAL---
+completed	success	fix(chess-web): mirror viewport-fit + resign button placement	ci	main	push	25626131924	1m23s	2026-05-10T10:16:31Z
+completed	success	fix(chess-web): mirror viewport-fit + resign button placement	pages	main	push	25626131928	1m10s	2026-05-10T10:16:31Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:18:12Z)**_
+
+Pushed `3807ed9`, both CI runs ✅ green (`ci` 1m23s, `pages` 1m10s).
+
+What this fixes after the live deploy:
+
+- **Board no longer "enlarges" on selection** — the `width: auto; height: auto` override from the previous commit was forcing the SVG to its viewBox pixel size; now restored to `width: 100%; height: 100%` so `preserveAspectRatio` letterboxes within the pane.
+- **Resign buttons no longer overlap captured strips** — moved from `position: absolute` to flex children: top button is the first flex child (above the top captured strip, rotated 180°, aligned to flex-start); bottom button is the last flex child (below the bottom strip, aligned to flex-end).
+- **Sidebar rhythm restored** — dropped `.game-page--mirror { align-items: stretch }` which was forcing the aside to fill viewport height and ballooning its grid gaps. The board pane is now constrained directly with `height: calc(100dvh - 4rem)`.
+
+---
+
+_**User (2026-05-10 10:20:53Z)**_
+
+[Image #18] 很接近了!
+
+_**User (2026-05-10 10:20:53Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/18.png]
+
+_**User (2026-05-10 10:25:19Z)**_
+
+[Image #18] 很接近了! 現在只要把非mirror mode 也能限制畫面大小不要超出去變滑動即可
+
+_**User (2026-05-10 10:25:19Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/18.jpeg]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:04Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check play.rs board-pane usage
+
+`grep -n "board-pane\|class=\"board-pane" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/play.rs | head`
+
+```text
+291:            <div class="board-pane">
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+288	
+289	    view! {
+290	        <section class="game-page">
+291	            <div class="board-pane">
+292	                <Show when=move || hints_allowed.get().unwrap_or(false)>
+293	                    <div class="hints-banner">
+294	                        "🧠 AI hints enabled in this room — visible to both players + spectators."
+295	                    </div>
+296	                </Show>
+297	                <Show
+298	                    when=move || view_signal.get().is_some() && role.get().is_some()
+299	                    fallback=move || view! { <ConnPlaceholder room=room.clone() conn=conn/> }
+300	                >
+301	                    <BoardWrapper
+302	                        view_signal=view_signal
+303	                        role=role
+304	                        handle=handle_for_board.clone()
+305	                        highlighted_pv=highlighted_pv_signal
+306	                    />
+307	                    <EndOverlay
+308	                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+309	                        role=role_for_overlay
+310	                        enabled=fx_confetti
+311	                    />
+312	                    <CapturedStrip
+313	                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+314	                    />
+315	                </Show>
+316	                <Show when=move || toast.get().is_some()>
+317	                    <div class="toast" on:click=move |_| set_toast.set(None)>
+318	                        {move || toast.get().unwrap_or_default()}
+319	                    </div>
+320	                </Show>
+321	            </div>
+322	            <div class="right-column">
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify wasm builds
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+    Blocking waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.83s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:37Z)**_
+
+CSS-only change so no Rust rebuild needed. Commit, push, watch:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit and push
+
+```bash
+git add clients/chess-web/style.css && git commit -m "$(cat <<'EOF'
+fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop
+
+Same `max-height: calc(100dvh - 4rem)` + flex-column treatment from
+mirror mode now applies to all `.board-pane` at >=721px so single-screen
+xiangqi / banqi / online / vs-AI no longer require a page scroll.
+
+Mobile / portrait (single-column at <=720px) stays exempt — the
+sidebar stacks below the board there, so capping the pane would push
+sidebar off-screen.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3 && git push origin main 2>&1 | tail -3
+```
+
+```text
+[main d0feb29] fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop
+ 1 file changed, 25 insertions(+)
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   3807ed9..d0feb29  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:26:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List runs
+
+`sleep 4 && gh run list --branch main --limit 2`
+
+```text
+queued		fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop	pages	main	push	25626326174	6s	2026-05-10T10:26:49Z
+queued		fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop	ci	main	push	25626326171	7s	2026-05-10T10:26:48Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:28:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Watch CI
+
+`gh run watch 25626326171 --exit-status 2>&1 | tail -3 ; echo "---" ; gh run watch 25626326174 --exit-status 2>&1 | tail -3 ; echo "---" ; gh run list --branch main --limit 2`
+
+```text
+  ✓ Post Run Swatinem/rust-cache@v2
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+---
+Run pages (25626326174) has already completed with 'success'
+---
+completed	success	fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop	pages	main	push	25626326174	1m7s	2026-05-10T10:26:49Z
+completed	success	fix(chess-web): apply viewport-fit to non-mirror board-pane on desktop	ci	main	push	25626326171	1m18s	2026-05-10T10:26:48Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:28:21Z)**_
+
+Both ✅ green (`ci` 1m18s, `pages` 1m07s). Pushed `d0feb29`.
+
+The same `max-height: calc(100dvh - 4rem)` + flex-column treatment now applies to every `.board-pane` at viewport widths ≥721px (i.e., the two-column desktop / iPad-landscape layout), so all variants — xiangqi, banqi, online, vs-AI — fit the screen without a page scrollbar. Mobile portrait (≤720px, where the sidebar stacks below) stays exempt so the sidebar isn't pushed off-screen.
+
+---
+
+_**User (2026-05-10 10:32:58Z)**_
+
+目前發現的問題是 [Image #19] 當玩家點棋子走一步 畫面會瞬間縮小 [Image #20] （render AI thinking) 這個是不是能做成重疊的floating toast之類的 不要render在棋盤上？（因爲這個AI想得非常快 所以一閃而過）
+
+_**User (2026-05-10 10:32:58Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/19.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/20.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find banner styles
+
+`grep -n "chain-banner\|ai-thinking" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head`
+
+```text
+554:.chain-banner {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+552	    pointer-events: none;
+553	}
+554	.chain-banner {
+555	    margin-top: 0.5rem;
+556	    padding: 0.4rem 0.8rem;
+557	    background: rgba(245, 166, 35, 0.15);
+558	    border: 1px solid #f5a623;
+559	    border-radius: 0.4rem;
+560	    color: #f5a623;
+561	    display: inline-flex;
+562	    align-items: center;
+563	    gap: 0.5rem;
+564	}
+565	.btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
+566
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:32Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Build verify
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.62s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit and push
+
+```bash
+git add clients/chess-web/style.css && git commit -m "$(cat <<'EOF'
+fix(chess-web): float chain / AI-thinking banners over the board
+
+The mount/unmount of `.chain-banner` and `.ai-thinking-banner` was
+adding/removing a flex row inside `.board-pane`, which snapped the SVG
+to a smaller size for one frame on every move. Convert both banners to
+`position: absolute` toasts pinned to the top-center of the board with
+a small shadow so the player still notices them. Now SVG layout stays
+constant across the AI tick and the toast appears as a brief floater.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3 && git push origin main 2>&1 | tail -3
+```
+
+```text
+[main c0c3f08] fix(chess-web): float chain / AI-thinking banners over the board
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   d0feb29..c0c3f08  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:33:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List CI
+
+`sleep 4 && gh run list --branch main --limit 2`
+
+```text
+queued		fix(chess-web): float chain / AI-thinking banners over the board	ci	main	push	25626463271	6s	2026-05-10T10:33:51Z
+in_progress		fix(chess-web): float chain / AI-thinking banners over the board	pages	main	push	25626463272	6s	2026-05-10T10:33:51Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:35:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait for CI
+
+`gh run watch 25626463271 --exit-status 2>&1 | tail -3 ; gh run watch 25626463272 --exit-status 2>&1 | tail -3 ; gh run list --branch main --limit 2`
+
+```text
+  ✓ Post Run Swatinem/rust-cache@v2
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+Run pages (25626463272) has already completed with 'success'
+completed	success	fix(chess-web): float chain / AI-thinking banners over the board	pages	main	push	25626463272	1m2s	2026-05-10T10:33:51Z
+completed	success	fix(chess-web): float chain / AI-thinking banners over the board	ci	main	push	25626463271	1m17s	2026-05-10T10:33:51Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:35:21Z)**_
+
+Both ✅ green (`ci` 1m17s, `pages` 1m02s). Pushed `c0c3f08`.
+
+The chain-banner + AI-thinking banner are now floating toasts (`position: absolute`, pinned top-center over the board) instead of inline flex children. Now they mount/unmount without reflowing the flex column, so the SVG stays the same size across moves — no more snap-shrink on each click. The AI-thinking toast appears briefly as a floating chip during the bot's tick.

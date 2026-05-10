@@ -154,6 +154,15 @@ enum Cmd {
         /// `0` = use difficulty default.
         #[arg(long = "ai-depth", default_value_t = 0)]
         ai_depth: u8,
+        /// Override the engine's per-search node-count cap. The v5
+        /// engine auto-scales the budget with `--ai-depth` (250 k at
+        /// depth ≤4, doubling per extra ply, capped at 16 M); v1-v4
+        /// use a flat 250 k. Set this to force a different value
+        /// (smaller = faster but shallower realized depth; larger =
+        /// reach the full requested depth on big boards). `0` = use
+        /// the engine's auto default.
+        #[arg(long = "ai-budget", default_value_t = 0)]
+        ai_budget: u32,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -317,6 +326,7 @@ fn main() -> Result<()> {
                 ai_engine,
                 ai_variation,
                 ai_depth,
+                ai_budget,
             }) => {
                 let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
                 if *ai {
@@ -329,6 +339,7 @@ fn main() -> Result<()> {
                         strategy: ai_engine.into_strategy(),
                         randomness: ai_variation.into_randomness(),
                         depth: if *ai_depth == 0 { None } else { Some((*ai_depth).min(12)) },
+                        node_budget: if *ai_budget == 0 { None } else { Some(*ai_budget) },
                     };
                     AppState::new_game_vs_ai(rules, style, use_color, cfg)
                 } else {

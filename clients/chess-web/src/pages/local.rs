@@ -29,6 +29,11 @@ struct VsAiConfig {
     randomness: Option<Randomness>,
     /// `None` = use difficulty default depth; `Some(N)` = explicit override.
     depth: Option<u8>,
+    /// `None` = use the engine's auto-scaled budget (v5: depth-scaled,
+    /// v1-v4: flat NODE_BUDGET); `Some(N)` = explicit override.
+    /// Set via the picker's Custom-difficulty inputs and round-tripped
+    /// through the URL `&budget=N` token.
+    node_budget: Option<u32>,
 }
 
 /// AI insight panel configuration — independent of `VsAiConfig` so
@@ -79,6 +84,7 @@ pub fn LocalPage() -> impl IntoView {
                     strategy: parsed.ai_strategy,
                     randomness: parsed.ai_variation,
                     depth: parsed.ai_depth,
+                    node_budget: parsed.ai_node_budget,
                 })
             } else {
                 None
@@ -458,6 +464,7 @@ fn LocalGame(
                 seed: Some(cur_epoch as u64 ^ 0xA5A5_5A5A_u64),
                 strategy: cfg.strategy,
                 randomness: cfg.randomness,
+                node_budget: cfg.node_budget,
             };
             wasm_bindgen_futures::spawn_local(async move {
                 // One animation frame's worth of yield so the "AI thinking…"
@@ -530,6 +537,7 @@ fn LocalGame(
         let hint_difficulty = ai.map(|c| c.difficulty).unwrap_or(Difficulty::Hard);
         let hint_strategy = ai.map(|c| c.strategy).unwrap_or_else(Strategy::default);
         let hint_depth = ai.and_then(|c| c.depth);
+        let hint_node_budget = ai.and_then(|c| c.node_budget);
         let hint_ai_side = ai.map(|c| c.ai_side);
 
         create_effect(move |_| {
@@ -578,6 +586,7 @@ fn LocalGame(
                 seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
                 strategy: hint_strategy,
                 randomness: Some(chess_ai::Randomness::STRICT),
+                node_budget: hint_node_budget,
             };
             wasm_bindgen_futures::spawn_local(async move {
                 // Yield a frame so the UI repaints before the search

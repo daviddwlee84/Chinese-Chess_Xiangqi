@@ -276,6 +276,18 @@ pub struct AiOptions {
     /// difficulty default; `Some(Randomness::STRICT)` forces deterministic
     /// strict-best play regardless of difficulty.
     pub randomness: Option<Randomness>,
+    /// Override the per-search node-count cap. `None` defers to
+    /// [`crate::search::node_budget_for_depth`] for v5 (which scales
+    /// with `max_depth`) and to the flat
+    /// [`crate::search::NODE_BUDGET`] for v1-v4. `Some(N)` forces
+    /// the cap regardless of strategy or depth.
+    ///
+    /// Power-user knob exposed in the picker's "Custom" difficulty
+    /// row alongside `max_depth`. Larger budgets let v5 complete
+    /// more iterative-deepening iterations at the cost of wall-clock
+    /// time; the picker's max field caps at a value that still keeps
+    /// the worst-case WASM search under ~30 s.
+    pub node_budget: Option<u32>,
 }
 
 impl AiOptions {
@@ -286,6 +298,7 @@ impl AiOptions {
             seed: None,
             strategy: Strategy::default(),
             randomness: None,
+            node_budget: None,
         }
     }
 
@@ -417,6 +430,7 @@ mod tests {
                     seed: Some(7),
                     strategy,
                     randomness: None,
+                    node_budget: None,
                 };
                 let result = choose_move(&state, &opts).expect("must return a move");
                 let legal = state.legal_moves();
@@ -456,6 +470,7 @@ mod tests {
                 seed: Some(42),
                 strategy,
                 randomness: None,
+                node_budget: None,
             };
             let a = choose_move(&state, &opts).unwrap();
             let b = choose_move(&state, &opts).unwrap();
@@ -503,6 +518,7 @@ mod tests {
                 seed: Some(0),
                 strategy,
                 randomness: Some(Randomness::STRICT),
+                node_budget: None,
             };
             let result = choose_move(&state, &opts).unwrap();
             match result.mv {
@@ -532,6 +548,7 @@ mod tests {
             seed: Some(0),
             strategy: Strategy::MaterialPstV2,
             randomness: Some(Randomness::STRICT),
+            node_budget: None,
         };
         let r2 = choose_move(&state, &opts_v2).expect("v2 returns a move");
         // v2 evaluations of opening positions are generally non-zero
@@ -556,6 +573,7 @@ mod tests {
             seed: Some(0),
             strategy: Strategy::MaterialV1,
             randomness: Some(Randomness::STRICT),
+            node_budget: None,
         };
         let v2 = AiOptions {
             difficulty: Difficulty::Hard,
@@ -563,6 +581,7 @@ mod tests {
             seed: Some(0),
             strategy: Strategy::MaterialPstV2,
             randomness: Some(Randomness::STRICT),
+            node_budget: None,
         };
         let r1 = choose_move(&state, &v1).unwrap();
         let r2 = choose_move(&state, &v2).unwrap();
@@ -629,6 +648,7 @@ mod tests {
             seed: Some(0),
             strategy: Strategy::QuiescenceMvvLvaV4,
             randomness: Some(Randomness::STRICT),
+            node_budget: None,
         };
         let r4 = choose_move(&state, &opts_v4).expect("v4 must return a move");
         let played_suicide_capture = matches!(
@@ -661,6 +681,7 @@ mod tests {
                 seed: Some(7),
                 strategy,
                 randomness: Some(Randomness::STRICT),
+                node_budget: None,
             };
             let analysis =
                 analyze(&state, &opts).expect("analyze should return Some on opening position");
@@ -714,6 +735,7 @@ mod tests {
                 seed: Some(0),
                 strategy,
                 randomness: Some(Randomness::STRICT),
+                node_budget: None,
             };
             let a = analyze(&state, &opts).expect("analyze");
             assert_eq!(a.target_depth, 2, "target_depth should echo max_depth for {:?}", strategy);
@@ -756,6 +778,7 @@ mod tests {
                 seed: Some(0),
                 strategy: Strategy::default(),
                 randomness: Some(Randomness::STRICT),
+                node_budget: None,
             };
             let a = analyze(&state, &opts).expect("analyze");
             assert_eq!(
@@ -781,6 +804,7 @@ mod tests {
                     seed: Some(0),
                     strategy,
                     randomness: Some(Randomness::STRICT),
+                    node_budget: None,
                 };
                 let analysis = analyze(&state, &opts).expect("analyze");
                 // Find the chosen move's ScoredMove entry.
@@ -890,6 +914,7 @@ mod tests {
                         seed: Some(seed),
                         strategy,
                         randomness: None, // use difficulty default
+                        node_budget: None,
                     };
                     let result = choose_move(&state, &opts).expect("must return a move");
 
@@ -998,6 +1023,7 @@ mod tests {
             seed: Some(0),
             strategy: Strategy::MaterialKingSafetyPstV3,
             randomness: Some(Randomness::STRICT),
+            node_budget: None,
         };
         let r3 = choose_move(&state, &opts_v3).expect("v3 must return a move");
 

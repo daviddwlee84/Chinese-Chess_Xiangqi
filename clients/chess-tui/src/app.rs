@@ -109,6 +109,10 @@ pub struct VsAiConfig {
     pub randomness: Option<Randomness>,
     /// `None` = use difficulty default depth; `Some(N)` = explicit override.
     pub depth: Option<u8>,
+    /// `None` = use the engine's auto-scaled budget (v5: depth-scaled,
+    /// v1-v4: flat NODE_BUDGET); `Some(N)` = explicit override. Set
+    /// via the `--ai-budget N` CLI flag.
+    pub node_budget: Option<u32>,
 }
 
 impl Default for VsAiConfig {
@@ -119,6 +123,7 @@ impl Default for VsAiConfig {
             strategy: Strategy::default(),
             randomness: None,
             depth: None,
+            node_budget: None,
         }
     }
 }
@@ -656,12 +661,17 @@ impl AppState {
             Some(d) => format!(", depth={}", d),
             None => String::new(),
         };
+        let budget_label = match cfg.node_budget {
+            Some(b) => format!(", budget={}", b),
+            None => String::new(),
+        };
         let label = format!(
-            "vs AI ({}, engine={}{}{}). You play {}. Press ?/help for keys.",
+            "vs AI ({}, engine={}{}{}{}). You play {}. Press ?/help for keys.",
             cfg.difficulty.as_str(),
             cfg.strategy.as_str(),
             variation_label,
             depth_label,
+            budget_label,
             if player_side == Side::RED { "RED" } else { "BLACK" },
         );
         if let Screen::Game(g) = &mut s.screen {
@@ -1878,6 +1888,7 @@ impl AppState {
             seed: Some(seed),
             strategy: cfg.strategy,
             randomness: cfg.randomness,
+            node_budget: cfg.node_budget,
         };
         // Always call analyze (same cost as choose_move under the hood
         // — choose_move just discards the scored list). The TUI debug

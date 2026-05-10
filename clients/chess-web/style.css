@@ -692,6 +692,34 @@ body {
     box-sizing: border-box;
 }
 
+/* Custom-difficulty inline inputs (Search depth + Node budget). Mounted
+ * below the Custom radio inside the Difficulty fieldset; same visual
+ * weight as the radio rows so they read as part of the same group. */
+.custom-difficulty-inputs {
+    display: grid;
+    gap: 0.4rem;
+    margin-left: 1.6rem;          /* aligns with the radio's label text */
+    padding: 0.4rem 0.6rem;
+    border-left: 2px solid rgba(60, 80, 120, 0.18);
+    background: rgba(60, 80, 120, 0.04);
+    border-radius: 0 4px 4px 0;
+}
+.custom-input-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 1fr) minmax(0, 1.6fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+.custom-input-label {
+    color: var(--muted, #666);
+}
+.custom-input-cap {
+    color: var(--muted, #888);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
 .rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
 .room-row {
     display: grid;

@@ -20,8 +20,11 @@ use crate::eval::material_king_safety_pst_v3::MaterialKingSafetyPstV3;
 use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
-use crate::search::v5::score_root_moves_v5;
-use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove, NODE_BUDGET};
+use crate::search::v5::score_root_moves_v5_with_budget;
+use crate::search::{
+    node_budget_for_depth, score_root_moves_qmvv_with_budget, score_root_moves_with_budget,
+    ScoredMove, NODE_BUDGET,
+};
 use crate::{AiAnalysis, AiMoveResult, AiOptions, Randomness, Strategy};
 
 /// A search engine: picks a move for the side to move in `state`.
@@ -195,8 +198,13 @@ pub(crate) fn analyze_v5(state: &GameState, opts: &AiOptions) -> Option<AiAnalys
     let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
+    // Resolve the per-search node budget: explicit override on
+    // AiOptions wins; otherwise scale from the requested target_depth
+    // (the v5-policy default — see `crate::search::node_budget_for_depth`).
+    let node_budget = opts.node_budget.unwrap_or_else(|| node_budget_for_depth(target_depth));
+
     let (mut scored, nodes, reached_depth) =
-        score_root_moves_v5(state, target_depth, &MaterialKingSafetyPstV3);
+        score_root_moves_v5_with_budget(state, target_depth, &MaterialKingSafetyPstV3, node_budget);
     if scored.is_empty() {
         return None;
     }
@@ -251,11 +259,16 @@ fn build_analysis<E: Evaluator>(
     let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
+    // v1-v4 default to the flat NODE_BUDGET; v5 has its own
+    // depth-scaled default (see analyze_v5). AiOptions.node_budget
+    // overrides either.
+    let node_budget = opts.node_budget.unwrap_or(NODE_BUDGET);
+
     let legal_count = state.legal_moves().len();
     let (mut scored, nodes) = if qmvv {
-        score_root_moves_qmvv(state, depth, eval)
+        score_root_moves_qmvv_with_budget(state, depth, eval, node_budget)
     } else {
-        score_root_moves(state, depth, eval)
+        score_root_moves_with_budget(state, depth, eval, node_budget)
     };
     if scored.is_empty() {
         return None;
@@ -278,10 +291,9 @@ fn build_analysis<E: Evaluator>(
     // budget_hit for v1-v4: every scored move was searched at the full
     // requested depth, but the search may have run out of nodes before
     // reaching every legal root move. Detect by comparing scored.len()
-    // against legal_count, with NODE_BUDGET as a confirming signal.
-    // (Either condition alone could false-positive in degenerate cases
-    // — both together are tight.)
-    let budget_hit = scored.len() < legal_count && nodes >= NODE_BUDGET;
+    // against legal_count, with the resolved node_budget as a
+    // confirming signal.
+    let budget_hit = scored.len() < legal_count && nodes >= node_budget;
 
     let _ = engine_label; // hook for future logging.
     Some(AiAnalysis {

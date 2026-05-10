@@ -133,6 +133,18 @@ pub fn score_root_moves<E: Evaluator>(
     depth: u8,
     eval: &E,
 ) -> (Vec<ScoredMove>, u32) {
+    score_root_moves_with_budget(state, depth, eval, NODE_BUDGET)
+}
+
+/// Variant of [`score_root_moves`] that takes an explicit
+/// `node_budget`. Engine entry points wanting to honor
+/// `AiOptions::node_budget` call this directly.
+pub fn score_root_moves_with_budget<E: Evaluator>(
+    state: &GameState,
+    depth: u8,
+    eval: &E,
+    node_budget: u32,
+) -> (Vec<ScoredMove>, u32) {
     let moves = state.legal_moves();
     if moves.is_empty() {
         return (Vec::new(), 0);
@@ -149,12 +161,19 @@ pub fn score_root_moves<E: Evaluator>(
             continue;
         }
         // Full-window search — see fn doc.
-        let (child_score, child_pv) =
-            negamax(&mut work, depth.saturating_sub(1), -(MATE + 1), MATE + 1, &mut nodes, eval);
+        let (child_score, child_pv) = negamax(
+            &mut work,
+            depth.saturating_sub(1),
+            -(MATE + 1),
+            MATE + 1,
+            &mut nodes,
+            eval,
+            node_budget,
+        );
         let score = -child_score;
         let _ = work.unmake_move();
         scored.push(ScoredMove { mv, score, pv: child_pv });
-        if nodes >= NODE_BUDGET {
+        if nodes >= node_budget {
             break;
         }
     }
@@ -170,6 +189,10 @@ pub fn score_root_moves<E: Evaluator>(
 /// 0 is the move the side-to-move makes, element 1 is the opponent's
 /// reply, etc.). Empty when the search reached a leaf (no legal
 /// moves, depth == 0, or budget bail).
+///
+/// `node_budget` is the per-search hard cap; passed in so callers
+/// can honor `AiOptions::node_budget` overrides without changing the
+/// public surface of this function further.
 pub fn negamax<E: Evaluator>(
     state: &mut GameState,
     depth: u8,
@@ -177,6 +200,7 @@ pub fn negamax<E: Evaluator>(
     beta: i32,
     nodes: &mut u32,
     eval: &E,
+    node_budget: u32,
 ) -> (i32, Vec<Move>) {
     *nodes = nodes.saturating_add(1);
     let moves = state.legal_moves();
@@ -186,7 +210,7 @@ pub fn negamax<E: Evaluator>(
         // search prefer faster mates and slower losses.
         return (-MATE + depth as i32, Vec::new());
     }
-    if depth == 0 || *nodes >= NODE_BUDGET {
+    if depth == 0 || *nodes >= node_budget {
         return (eval.evaluate(state), Vec::new());
     }
 
@@ -199,7 +223,8 @@ pub fn negamax<E: Evaluator>(
         if state.make_move(&mv).is_err() {
             continue;
         }
-        let (child_score, child_pv) = negamax(state, depth - 1, -beta, -alpha, nodes, eval);
+        let (child_score, child_pv) =
+            negamax(state, depth - 1, -beta, -alpha, nodes, eval, node_budget);
         let score = -child_score;
         let _ = state.unmake_move();
         if score > best {
@@ -250,6 +275,18 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
     depth: u8,
     eval: &E,
 ) -> (Vec<ScoredMove>, u32) {
+    score_root_moves_qmvv_with_budget(state, depth, eval, NODE_BUDGET)
+}
+
+/// Variant of [`score_root_moves_qmvv`] that takes an explicit
+/// `node_budget`. Engine entry points wanting to honor
+/// `AiOptions::node_budget` call this directly.
+pub fn score_root_moves_qmvv_with_budget<E: Evaluator>(
+    state: &GameState,
+    depth: u8,
+    eval: &E,
+    node_budget: u32,
+) -> (Vec<ScoredMove>, u32) {
     let moves = state.legal_moves();
     if moves.is_empty() {
         return (Vec::new(), 0);
@@ -274,11 +311,12 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
             MATE + 1,
             &mut nodes,
             eval,
+            node_budget,
         );
         let v = -child_score;
         let _ = work.unmake_move();
         scored.push(ScoredMove { mv, score: v, pv: child_pv });
-        if nodes >= NODE_BUDGET {
+        if nodes >= node_budget {
             break;
         }
     }
@@ -288,6 +326,9 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
 /// Negamax + α-β with MVV-LVA move ordering and quiescence search at
 /// the horizon. Drop-in replacement for [`negamax`] in v4. Returns
 /// `(score, pv)` like [`negamax`].
+///
+/// `node_budget` is the per-search hard cap; passed in for the same
+/// reason as [`negamax`].
 pub fn negamax_qmvv<E: Evaluator>(
     state: &mut GameState,
     depth: u8,
@@ -295,13 +336,14 @@ pub fn negamax_qmvv<E: Evaluator>(
     beta: i32,
     nodes: &mut u32,
     eval: &E,
+    node_budget: u32,
 ) -> (i32, Vec<Move>) {
     *nodes = nodes.saturating_add(1);
     let moves = state.legal_moves();
     if moves.is_empty() {
         return (-MATE + depth as i32, Vec::new());
     }
-    if *nodes >= NODE_BUDGET {
+    if *nodes >= node_budget {
         return (eval.evaluate(state), Vec::new());
     }
     if depth == 0 {
@@ -326,7 +368,8 @@ pub fn negamax_qmvv<E: Evaluator>(
         if state.make_move(&mv).is_err() {
             continue;
         }
-        let (child_score, child_pv) = negamax_qmvv(state, depth - 1, -beta, -alpha, nodes, eval);
+        let (child_score, child_pv) =
+            negamax_qmvv(state, depth - 1, -beta, -alpha, nodes, eval, node_budget);
         let v = -child_score;
         let _ = state.unmake_move();
         if v > best {

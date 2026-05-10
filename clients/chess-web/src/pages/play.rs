@@ -270,6 +270,7 @@ fn PlayConnected(
                 seed: Some(0xDEBA9_u64),
                 strategy: Strategy::default(),
                 randomness: Some(chess_ai::Randomness::STRICT),
+                node_budget: None,
             };
             // Yield a frame so the board re-paints first; keeps the UI
             // snappy even if v5 Hard takes ~300 ms in WASM.

@@ -5,7 +5,9 @@ use leptos::*;
 
 use crate::components::pwa::PwaInstallBanner;
 use crate::prefs::Prefs;
-use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
+use crate::routes::{
+    app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH, MAX_AI_NODE_BUDGET,
+};
 
 #[component]
 pub fn Picker() -> impl IntoView {
@@ -80,14 +82,33 @@ fn XiangqiCard() -> impl IntoView {
     let strict = create_rw_signal(false);
     let mode = create_rw_signal(PlayMode::Pvp);
     let player_red = create_rw_signal(true);
+    // Difficulty signal stores the selected preset (Easy/Normal/Hard).
+    // When `is_custom` is true, this signal is ignored for depth
+    // resolution but still feeds the randomness fallback (since
+    // `Difficulty::default_randomness()` provides per-level defaults
+    // and there's no neutral "custom" randomness option). We pin the
+    // underlying value to `Hard` while in Custom mode so the fallback
+    // is `Randomness::SUBTLE` — power-user appropriate. Users wanting
+    // a different mix override via the Variation fieldset.
     let difficulty = create_rw_signal(Difficulty::Normal);
+    // Custom is rendered as a 4th radio in the Difficulty fieldset
+    // — click reveals the Search-depth + Node-budget inputs below
+    // (they're conditionally mounted via <Show when=is_custom>).
+    let is_custom = create_rw_signal(false);
     let ai_strategy = create_rw_signal(Strategy::default());
     // None = "use difficulty default"; Some(_) = explicit override.
     // Encoded into the URL via `&variation=`.
     let ai_variation = create_rw_signal::<Option<Randomness>>(None);
     // Empty = use difficulty default depth; numeric = override (clamped
-    // 1..=MAX_AI_DEPTH on parse).
+    // 1..=MAX_AI_DEPTH on parse). ONLY emitted to the URL when
+    // is_custom is true — preset difficulties always defer to
+    // `Difficulty::default_depth()`.
     let ai_depth_text = create_rw_signal(String::new());
+    // Empty = use the engine's auto-scaled budget (v5:
+    // node_budget_for_depth(target); v1-v4: flat NODE_BUDGET).
+    // Numeric = explicit override clamped to MAX_AI_NODE_BUDGET. Only
+    // emitted when is_custom is true.
+    let ai_budget_text = create_rw_signal(String::new());
     // Two independent advanced toggles — see the corresponding fields
     // on `LocalRulesParams` for the semantic split:
     //   - ai_show_hints → URL `hints=1` → in-game 🧠 toggle button,
@@ -105,16 +126,31 @@ fn XiangqiCard() -> impl IntoView {
     let mirror_black = create_rw_signal(false);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
-        let ai_depth =
-            ai_depth_text.with(|s| s.trim().parse::<u8>().ok().map(|d| d.clamp(1, MAX_AI_DEPTH)));
+        // Custom mode: parse depth + budget; preset modes: leave both None
+        // so the engine defers to Difficulty::default_depth() and the
+        // engine-internal node-budget policy.
+        let (ai_depth, ai_node_budget, effective_difficulty) = if is_custom.get() {
+            let depth = ai_depth_text
+                .with(|s| s.trim().parse::<u8>().ok().map(|d| d.clamp(1, MAX_AI_DEPTH)));
+            let budget = ai_budget_text
+                .with(|s| s.trim().parse::<u32>().ok().map(|b| b.clamp(1, MAX_AI_NODE_BUDGET)));
+            // Custom rides on top of `Difficulty::Hard` so the
+            // randomness fallback (when Variation = Default) lands on
+            // `Randomness::SUBTLE` — the power-user-appropriate
+            // default. See the comment on `difficulty` above.
+            (depth, budget, Difficulty::Hard)
+        } else {
+            (None, None, difficulty.get())
+        };
         let params = LocalRulesParams {
             strict: strict.get(),
             mode: mode.get(),
             ai_side,
-            ai_difficulty: difficulty.get(),
+            ai_difficulty: effective_difficulty,
             ai_strategy: ai_strategy.get(),
             ai_variation: ai_variation.get(),
             ai_depth,
+            ai_node_budget,
             ai_debug: ai_show_debug.get(),
             ai_hints: ai_show_hints.get(),
             mirror: mirror_black.get(),
@@ -188,8 +224,8 @@ fn XiangqiCard() -> impl IntoView {
                         <input
                             type="radio"
                             name="xiangqi-difficulty"
-                            prop:checked=move || difficulty.get() == Difficulty::Easy
-                            on:change=move |_| difficulty.set(Difficulty::Easy)
+                            prop:checked=move || !is_custom.get() && difficulty.get() == Difficulty::Easy
+                            on:change=move |_| { is_custom.set(false); difficulty.set(Difficulty::Easy); }
                         />
                         <span>"Easy — depth 1, picks at random from the top three replies."</span>
                     </label>
@@ -197,8 +233,8 @@ fn XiangqiCard() -> impl IntoView {
                         <input
                             type="radio"
                             name="xiangqi-difficulty"
-                            prop:checked=move || difficulty.get() == Difficulty::Normal
-                            on:change=move |_| difficulty.set(Difficulty::Normal)
+                            prop:checked=move || !is_custom.get() && difficulty.get() == Difficulty::Normal
+                            on:change=move |_| { is_custom.set(false); difficulty.set(Difficulty::Normal); }
                         />
                         <span>"Normal — depth 3, mostly plays the best line."</span>
                     </label>
@@ -206,28 +242,62 @@ fn XiangqiCard() -> impl IntoView {
                         <input
                             type="radio"
                             name="xiangqi-difficulty"
-                            prop:checked=move || difficulty.get() == Difficulty::Hard
-                            on:change=move |_| difficulty.set(Difficulty::Hard)
+                            prop:checked=move || !is_custom.get() && difficulty.get() == Difficulty::Hard
+                            on:change=move |_| { is_custom.set(false); difficulty.set(Difficulty::Hard); }
                         />
                         <span>"Hard — depth 4, may take a couple of seconds per move."</span>
                     </label>
-                </fieldset>
-                <fieldset class="card-fieldset">
-                    <legend>"Search depth (advanced)"</legend>
-                    <p class="hint">
-                        "Override the difficulty's default search depth (Easy=1, Normal=3, Hard=4). Higher = stronger but slower. Cap: "
-                        {MAX_AI_DEPTH.to_string()}". Leave blank to use the difficulty default."
-                    </p>
-                    <input
-                        type="number"
-                        inputmode="numeric"
-                        min="1"
-                        max=MAX_AI_DEPTH.to_string()
-                        placeholder="auto"
-                        class="text-input depth-input"
-                        prop:value=move || ai_depth_text.get()
-                        on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
-                    />
+                    // Custom is the 4th radio in the same Difficulty
+                    // group — selecting it reveals depth + node-budget
+                    // inputs below. Internally this rides on top of
+                    // Hard so the Variation fieldset's "Default" still
+                    // gets a sensible randomness fallback (SUBTLE).
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-difficulty"
+                            prop:checked=move || is_custom.get()
+                            on:change=move |_| is_custom.set(true)
+                        />
+                        <span>"Custom (advanced) — set search depth and node budget directly."</span>
+                    </label>
+                    <Show when=move || is_custom.get()>
+                        <div class="custom-difficulty-inputs">
+                            <p class="hint">
+                                "Search depth = how many plies the engine looks ahead. "
+                                "Node budget = the search bails when this many positions have been visited (lower = faster but shallower realized depth). "
+                                "Leave both blank to use the engine's depth-scaled defaults; the AI Debug panel reports both reached and target depth."
+                            </p>
+                            <label class="custom-input-row">
+                                <span class="custom-input-label">"Search depth"</span>
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="1"
+                                    max=MAX_AI_DEPTH.to_string()
+                                    placeholder="auto (Hard = 4)"
+                                    class="text-input depth-input"
+                                    prop:value=move || ai_depth_text.get()
+                                    on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
+                                />
+                                <span class="custom-input-cap">"max " {MAX_AI_DEPTH.to_string()}</span>
+                            </label>
+                            <label class="custom-input-row">
+                                <span class="custom-input-label">"Node budget"</span>
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="1"
+                                    max=MAX_AI_NODE_BUDGET.to_string()
+                                    placeholder="auto (depth-scaled)"
+                                    class="text-input depth-input"
+                                    prop:value=move || ai_budget_text.get()
+                                    on:input=move |ev| ai_budget_text.set(event_target_value(&ev))
+                                />
+                                <span class="custom-input-cap">"max " {MAX_AI_NODE_BUDGET.to_string()}</span>
+                            </label>
+                        </div>
+                    </Show>
                 </fieldset>
                 <fieldset class="card-fieldset">
                     <legend>"Engine"</legend>

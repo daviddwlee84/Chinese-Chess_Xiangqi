@@ -134,6 +134,14 @@ pub struct LocalRulesParams {
     /// = explicit. Capped at `MAX_AI_DEPTH` to keep the worst-case
     /// browser response under ~10 s. URL token: `&depth=N`.
     pub ai_depth: Option<u8>,
+    /// `VsAi` only — per-search node-count cap override. `None` = use
+    /// the engine's default (v5 scales with depth via
+    /// `chess_ai::search::node_budget_for_depth`; v1-v4 use the flat
+    /// `NODE_BUDGET = 250_000`). `Some(N)` forces the cap regardless
+    /// of strategy or depth. Capped at [`MAX_AI_NODE_BUDGET`] so a
+    /// typo'd 9-figure value can't lock the browser tab. URL token:
+    /// `&budget=N`.
+    pub ai_node_budget: Option<u32>,
     /// `VsAi` only — opens the AI debug panel showing the engine's full
     /// scored root-move list, hover-to-highlight on the board, and
     /// search metadata (depth, nodes, strategy, randomness). URL token:
@@ -163,6 +171,14 @@ pub struct LocalRulesParams {
 /// v5 roadmap entry, not a knob to twist.
 pub const MAX_AI_DEPTH: u8 = 10;
 
+/// Hard cap on user-supplied node budget. Picked so the worst-case v5
+/// search at MAX_AI_DEPTH stays under ~30 s on a typical 2024 laptop
+/// running WASM (the engine's own auto-scaled cap is 16M, so 64M
+/// gives the user 4× headroom for "go really deep on a big machine"
+/// scenarios but still bounds the worst case). The picker's number
+/// input clamps to this value at parse time.
+pub const MAX_AI_NODE_BUDGET: u32 = 64_000_000;
+
 impl Default for LocalRulesParams {
     fn default() -> Self {
         Self {
@@ -175,6 +191,7 @@ impl Default for LocalRulesParams {
             ai_strategy: Strategy::default(),
             ai_variation: None,
             ai_depth: None,
+            ai_node_budget: None,
             ai_debug: false,
             ai_hints: false,
             mirror: false,
@@ -209,6 +226,12 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     let ai_depth = get("depth")
         .and_then(|s| s.parse::<u32>().ok())
         .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
+    let ai_node_budget = get("budget").and_then(|s| s.parse::<u64>().ok()).map(|b| {
+        // Parse as u64 so a typo'd 11-digit value clamps to the cap
+        // rather than failing to parse and silently falling back to
+        // None (`u32::parse` overflows above ~4.29B).
+        b.clamp(1, MAX_AI_NODE_BUDGET as u64) as u32
+    });
     let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
     let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
     let mirror = matches!(get("mirror").as_deref(), Some("1") | Some("true") | Some("on"));
@@ -222,6 +245,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_strategy,
         ai_variation,
         ai_depth,
+        ai_node_budget,
         ai_debug,
         ai_hints,
         mirror,
@@ -263,6 +287,12 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 // recommended setup to stay short.
                 if let Some(d) = params.ai_depth {
                     parts.push(format!("depth={}", d));
+                }
+                // Only emit budget= when the user explicitly overrode
+                // the engine's default node-count cap. Keeps the
+                // canonical "I'm using a preset difficulty" URL short.
+                if let Some(b) = params.ai_node_budget {
+                    parts.push(format!("budget={}", b));
                 }
                 // Debug panel toggle (vs-AI only — debug shows the AI's
                 // own POV cached after each AI move; meaningless in PvP
@@ -648,6 +678,52 @@ mod tests {
     fn xiangqi_depth_garbage_falls_back_to_none() {
         let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "abc")]));
         assert_eq!(p.ai_depth, None);
+    }
+
+    #[test]
+    fn xiangqi_node_budget_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("budget", "2000000")]));
+        assert_eq!(p.ai_node_budget, Some(2_000_000));
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("budget=2000000"), "budget round-trip: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_node_budget_clamped_to_max() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("budget", "9999999999")]));
+        assert_eq!(p.ai_node_budget, Some(MAX_AI_NODE_BUDGET));
+    }
+
+    #[test]
+    fn xiangqi_node_budget_zero_clamped_to_one() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("budget", "0")]));
+        assert_eq!(p.ai_node_budget, Some(1));
+    }
+
+    #[test]
+    fn xiangqi_node_budget_omitted_when_default() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("budget="), "default (None) budget should not be emitted; got {}", q);
+    }
+
+    #[test]
+    fn xiangqi_node_budget_garbage_falls_back_to_none() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("budget", "lots")]));
+        assert_eq!(p.ai_node_budget, None);
+    }
+
+    /// Depth + budget together is the picker's "Custom" combo: both
+    /// must round-trip independently.
+    #[test]
+    fn xiangqi_depth_and_node_budget_round_trip_together() {
+        let p =
+            parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "8"), ("budget", "4000000")]));
+        assert_eq!(p.ai_depth, Some(8));
+        assert_eq!(p.ai_node_budget, Some(4_000_000));
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("depth=8"));
+        assert!(q.contains("budget=4000000"));
     }
 
     #[test]

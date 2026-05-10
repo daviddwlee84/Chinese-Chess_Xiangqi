@@ -7,8 +7,14 @@ depth 10 got 4, `?depth=10`, `MAX_AI_DEPTH`, NODE_BUDGET 250000,
 **First seen**: 2026-05-10
 **Affects**: `chess-ai` v5 (`Strategy::IterativeDeepeningTtV5`),
 chess-web vs-Computer mode, chess-tui `--ai-depth` flag
-**Status**: visibility fix shipped 2026-05-10 (target_depth + budget_hit
-surfaced on debug panel); root-cause budget tuning tracked in `TODO.md`
+**Status**: fixed end-to-end on 2026-05-10. (1) AI debug panel surfaces
+`target_depth` + `budget_hit` so truncation is no longer silent. (2)
+v5's per-search node budget now scales with `target_depth` so
+`?depth=10` actually reaches deeper. (3) Picker UX restructured: the
+formerly-confusing standalone "Search depth (advanced)" fieldset is
+now a 4th "Custom" radio inside the Difficulty group that reveals
+both depth + node-budget inputs together (matches the user's mental
+model — both knobs control the same effective behaviour).
 
 ## Symptom
 
