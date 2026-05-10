@@ -217,6 +217,23 @@ fn PlayConnected(
     let show_hint_button = Signal::derive(move || {
         hints_requested && !debug_enabled && hints_allowed.get().unwrap_or(false)
     });
+    // Dynamic panel header — match local mode's labeling so users
+    // recognize Hint vs Debug at a glance.
+    let panel_title = Signal::derive(move || match (debug_enabled, hints_requested) {
+        (true, true) => "🔍 AI Debug + 🧠 Hint".to_string(),
+        (true, false) => "🔍 AI Debug".to_string(),
+        (false, true) => "🧠 AI Hint".to_string(),
+        (false, false) => "AI insight".to_string(),
+    });
+    let panel_subtitle = Signal::derive(move || {
+        let stm = view_signal.with(|v| v.as_ref().map(|view| view.side_to_move));
+        match stm {
+            Some(Side::RED) => "Red 紅 to move".to_string(),
+            Some(Side::BLACK) => "Black 黑 to move".to_string(),
+            Some(_) => "Green 綠 to move".to_string(),
+            None => String::new(),
+        }
+    });
     if panel_requested {
         create_effect(move |_| {
             // Only run analysis when the panel is going to be shown —
@@ -324,6 +341,8 @@ fn PlayConnected(
                             analysis=analysis_signal
                             board=board
                             on_hover=on_debug_hover
+                            title=panel_title
+                            subtitle=panel_subtitle
                         />
                     }
                 }}

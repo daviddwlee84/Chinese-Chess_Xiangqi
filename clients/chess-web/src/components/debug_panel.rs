@@ -30,15 +30,29 @@ pub fn DebugPanel(
     /// arrows fading from bright (chosen) to dim (deepest PV move).
     #[prop(into)]
     on_hover: Callback<Vec<Move>>,
+    /// Header label — typically "🧠 AI Hint" (`?hints=1`) or "🔍 AI
+    /// Debug" (`?debug=1`). Reactive so the page can flip it based on
+    /// which mode is currently driving the panel.
+    #[prop(into, default = Signal::derive(|| "🔍 AI Debug".to_string()))]
+    title: Signal<String>,
+    /// Optional subtitle line under the header, typically describing
+    /// **whose POV** the analysis is from (e.g. "Red 紅 to move"). Empty
+    /// string omits the subtitle. Reactive.
+    #[prop(into, default = Signal::derive(|| String::new()))]
+    subtitle: Signal<String>,
 ) -> impl IntoView {
     let board = store_value(board);
+    let has_subtitle = move || !subtitle.with(|s| s.is_empty());
 
     view! {
         <section class="debug-panel" aria-label="AI debug panel">
-            <h4 class="debug-panel__title">"AI Debug 🔍"</h4>
+            <h4 class="debug-panel__title">{move || title.get()}</h4>
+            <Show when=has_subtitle>
+                <p class="debug-panel__subtitle">{move || subtitle.get()}</p>
+            </Show>
             <Show
                 when=move || analysis.with(|a| a.is_some())
-                fallback=|| view! { <p class="muted debug-panel__empty">"Waiting for AI move…"</p> }
+                fallback=|| view! { <p class="muted debug-panel__empty">"Waiting for analysis…"</p> }
             >
                 <DebugMeta analysis=analysis/>
                 <DebugTable analysis=analysis on_hover=on_hover board=board/>

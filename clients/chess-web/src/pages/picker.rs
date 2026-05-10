@@ -178,25 +178,6 @@ fn XiangqiCard() -> impl IntoView {
                     />
                 </fieldset>
                 <fieldset class="card-fieldset">
-                    <legend>"AI insight panels (advanced)"</legend>
-                    <label class="check-row">
-                        <input
-                            type="checkbox"
-                            prop:checked=move || ai_show_hints.get()
-                            on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
-                        />
-                        <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from your POV). Hidden by default; you stay in control."</span>
-                    </label>
-                    <label class="check-row">
-                        <input
-                            type="checkbox"
-                            prop:checked=move || ai_show_debug.get()
-                            on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
-                        />
-                        <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis from the bot's POV after each AI turn). For development / curiosity."</span>
-                    </label>
-                </fieldset>
-                <fieldset class="card-fieldset">
                     <legend>"Engine"</legend>
                     <label class="radio-row">
                         <input
@@ -293,6 +274,25 @@ fn XiangqiCard() -> impl IntoView {
                     </label>
                 </fieldset>
             </Show>
+            <fieldset class="card-fieldset">
+                <legend>"AI insight panels (advanced)"</legend>
+                <label class="check-row">
+                    <input
+                        type="checkbox"
+                        prop:checked=move || ai_show_hints.get()
+                        on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
+                    />
+                    <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from the side-to-move's POV). Hidden by default; you stay in control. Works in both vs-Computer and Pass-and-play."</span>
+                </label>
+                <label class="check-row">
+                    <input
+                        type="checkbox"
+                        prop:checked=move || ai_show_debug.get()
+                        on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
+                    />
+                    <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis cached from the bot's POV after each AI turn). For development / curiosity. vs-Computer mode only."</span>
+                </label>
+            </fieldset>
             <fieldset class="card-fieldset">
                 <legend>"Rules"</legend>
                 <label class="radio-row">

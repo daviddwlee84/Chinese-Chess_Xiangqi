@@ -29,16 +29,27 @@ struct VsAiConfig {
     randomness: Option<Randomness>,
     /// `None` = use difficulty default depth; `Some(N)` = explicit override.
     depth: Option<u8>,
-    /// `?debug=1` — sticky always-on AI debug panel. The AI move pump
-    /// uses `chess_ai::analyze` (full scored root list) instead of
-    /// `chess_ai::choose_move`. Pure UI feature — same search work
-    /// either way.
+}
+
+/// AI insight panel configuration — independent of `VsAiConfig` so
+/// pass-and-play (PvP, two humans) can also surface hint analyses.
+///
+/// `debug` and `hints` are decoupled URL flags:
+///
+/// - **Debug** (`?debug=1`): sticky always-on panel showing analysis
+///   for the current side-to-move. The label says "🔍 AI Debug" so
+///   the user knows they're peeking at the engine.
+/// - **Hint** (`?hints=1`): on-demand toggle button (default hidden)
+///   in the sidebar. Same analysis under the hood, but the panel
+///   labels itself "🧠 AI Hint" — phrased for a player asking the
+///   bot for advice on their move.
+///
+/// When BOTH flags are set, debug wins on layout (sticky panel, no
+/// toggle button) but the title shows both badges so the user knows
+/// they're seeing whatever the side-to-move would consider.
+#[derive(Clone, Copy, Debug, Default)]
+struct InsightConfig {
     debug: bool,
-    /// `?hints=1` — adds a "🧠 Show AI hint" toggle button in the
-    /// sidebar. Default state: hidden; the user clicks to expand /
-    /// collapse mid-game. Distinct from `debug`: debug = sticky panel
-    /// for power users; hints = on-demand panel for players who want
-    /// help on their turn.
     hints: bool,
 }
 
@@ -46,44 +57,46 @@ struct VsAiConfig {
 pub fn LocalPage() -> impl IntoView {
     let params = use_params_map();
     let query = use_query_map();
-    let resolved = move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>), String> {
-        let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
-        let variant =
-            parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
-        let parsed = query.with(|q| parse_local_rules(|k| q.get(k).cloned()));
-        let rules = build_rule_set(variant, &parsed);
-        // Three-kingdom: engine ships an empty 4×8 board. Render it but
-        // disable interaction and overlay a "WIP" banner — see
-        // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
-        let wip = matches!(variant, Variant::ThreeKingdomBanqi);
-        // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
-        // pass-and-play (the picker hides the toggle there too — see plan).
-        let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
-            Some(VsAiConfig {
-                ai_side: parsed.ai_side,
-                difficulty: parsed.ai_difficulty,
-                strategy: parsed.ai_strategy,
-                randomness: parsed.ai_variation,
-                depth: parsed.ai_depth,
-                // Decoupled flags:
-                // - `debug` (?debug=1) → sticky always-on panel
-                // - `hints` (?hints=1) → in-game toggle button, default hidden
-                // The picker writes ?hints=1 (user-friendly); ?debug=1
-                // remains for power-user URLs. Net mode (play.rs) adds
-                // a server-permission gate on top of these.
-                debug: parsed.ai_debug,
-                hints: parsed.ai_hints,
-            })
-        } else {
-            None
+    let resolved =
+        move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>, InsightConfig), String> {
+            let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
+            let variant =
+                parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
+            let parsed = query.with(|q| parse_local_rules(|k| q.get(k).cloned()));
+            let rules = build_rule_set(variant, &parsed);
+            // Three-kingdom: engine ships an empty 4×8 board. Render it but
+            // disable interaction and overlay a "WIP" banner — see
+            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
+            let wip = matches!(variant, Variant::ThreeKingdomBanqi);
+            // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
+            // pass-and-play (the picker hides the toggle there too — see plan).
+            let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
+                Some(VsAiConfig {
+                    ai_side: parsed.ai_side,
+                    difficulty: parsed.ai_difficulty,
+                    strategy: parsed.ai_strategy,
+                    randomness: parsed.ai_variation,
+                    depth: parsed.ai_depth,
+                })
+            } else {
+                None
+            };
+            // AI insight panel works for both vs-AI AND pass-and-play —
+            // it's just an on-demand bot analysis, no AI opponent required.
+            // Xiangqi-only because the chess-ai engine is xiangqi-scoped.
+            let insight = if matches!(variant, Variant::Xiangqi) {
+                InsightConfig { debug: parsed.ai_debug, hints: parsed.ai_hints }
+            } else {
+                InsightConfig::default()
+            };
+            Ok((variant, rules, wip, ai, insight))
         };
-        Ok((variant, rules, wip, ai))
-    };
 
     move || match resolved() {
-        Ok((variant, rules, wip, ai)) => {
-            view! { <LocalGame variant=variant rules=rules wip=wip ai=ai/> }.into_view()
+        Ok((variant, rules, wip, ai, insight)) => view! {
+            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight/>
         }
+        .into_view(),
         Err(msg) => view! {
             <section class="game-page game-page--single">
                 <div>
@@ -98,7 +111,13 @@ pub fn LocalPage() -> impl IntoView {
 }
 
 #[component]
-fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>) -> impl IntoView {
+fn LocalGame(
+    variant: Variant,
+    rules: RuleSet,
+    wip: bool,
+    ai: Option<VsAiConfig>,
+    insight: InsightConfig,
+) -> impl IntoView {
     let initial_rules = rules.clone();
     let state = create_rw_signal(GameState::new(rules));
     let selected = create_rw_signal::<Option<Square>>(None);
@@ -132,16 +151,42 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     //   POV — "if the bot were me, what would it play?". Closing the
     //   toggle stops new analyses from being computed (cached one
     //   stays so reopening is instant).
-    let debug_enabled = ai.map(|cfg| cfg.debug).unwrap_or(false);
-    let hints_enabled = ai.map(|cfg| cfg.hints).unwrap_or(false);
+    let debug_enabled = insight.debug;
+    let hints_enabled = insight.hints;
     let hints_open = create_rw_signal::<bool>(false);
     let panel_visible =
         Signal::derive(move || debug_enabled || (hints_enabled && hints_open.get()));
     // Sidebar gets the toggle ONLY when hints (not debug) is the
     // controlling flag — debug already shows the panel always-on, so
-    // an extra button would be redundant noise.
+    // an extra button would be redundant noise. Works for both vs-AI
+    // and pass-and-play (PvP).
     let sidebar_hint_toggle: Option<RwSignal<bool>> =
         if hints_enabled && !debug_enabled { Some(hints_open) } else { None };
+    // Dynamic panel header so the user always knows whether they're
+    // looking at the sticky debug feed or the on-demand hint feed.
+    // When BOTH flags are set, debug wins on layout (sticky panel) but
+    // we expose both badges so the user knows hints are also enabled.
+    let panel_title = Signal::derive(move || match (debug_enabled, hints_enabled) {
+        (true, true) => "🔍 AI Debug + 🧠 Hint".to_string(),
+        (true, false) => "🔍 AI Debug".to_string(),
+        (false, true) => "🧠 AI Hint".to_string(),
+        (false, false) => "AI insight".to_string(),
+    });
+    // Subtitle shows the perspective the analysis is for. The hint
+    // pump only runs on the side-to-move's turn (skipping AI's turn in
+    // vs-AI mode), so this matches the analyzed POV. Debug pump caches
+    // analysis from the AI's side at the moment AI moved — strictly
+    // speaking the subtitle here is "current" not "analyzed", which
+    // can drift by 1 ply in vs-AI debug mode. Acceptable for a header
+    // hint; the per-move scores in the table are unambiguous.
+    let panel_subtitle = Signal::derive(move || {
+        let stm = state.with(|s| s.side_to_move);
+        match stm {
+            Side::RED => "Red 紅 to move".to_string(),
+            Side::BLACK => "Black 黑 to move".to_string(),
+            _ => "Green 綠 to move".to_string(),
+        }
+    });
 
     // Render from the human player's POV when in vs-AI mode so the player's
     // pieces sit on the bottom; in pass-and-play the board is fixed Red-side.
@@ -392,7 +437,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     // separately for the human's POV — caching AI's
                     // POV here would clobber the human's hint with
                     // stale debug data on the very next AI turn.
-                    if cfg.debug {
+                    if insight.debug {
                         ai_analysis.set(Some(a));
                     }
                     state.update(|s| {
@@ -422,72 +467,95 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     // - panel not visible (saves the ~100-300 ms search cost)
     // - it's the AI's turn (the AI pump will run its own analyze)
     // - AI is mid-think (avoid racing the AI pump)
-    if let Some(cfg) = ai {
-        if cfg.hints && !cfg.debug {
-            create_effect(move |_| {
-                // All four reads are tracked so the effect re-fires when
-                // ANY of them change. Critical: `ai_thinking` flips
-                // false AFTER `state.update()` in the AI pump, so the
-                // first reactive fire (from state change) sees thinking
-                // still true and bails. We need the second fire (from
-                // ai_thinking → false) to actually run analyze.
-                let s = state.get();
-                let visible = panel_visible.get();
-                let thinking = ai_thinking.get();
-                if !visible {
+    // ---- Hint pump (player's POV analysis when the toggle is open) ----
+    //
+    // Distinct from the debug pump above: that one runs `analyze` from
+    // the AI's POV at the moment the AI picks a move, caching what the
+    // AI considered. THIS pump runs `analyze` from the **side-to-move's**
+    // POV — "what would the bot play if it were me?". Works for both
+    // vs-AI and pass-and-play (PvP, two humans).
+    //
+    // Skipped when:
+    // - hints disabled (no `?hints=1`)
+    // - debug enabled (debug pump already covers analysis; debug users
+    //   want the AI's POV, not side-to-move's)
+    // - panel not visible (saves the ~100-300 ms search cost — toggle
+    //   closed)
+    // - vs-AI mode AND it's the AI's turn (the AI pump will run its
+    //   own analyze; spawning a duplicate would race)
+    // - AI is mid-think (avoid racing the AI pump)
+    if hints_enabled && !debug_enabled {
+        // Difficulty/strategy/randomness for the hint search. For PvP we
+        // pick sensible defaults (Hard + STRICT) since there's no AI
+        // config to inherit. For vs-AI we mirror the AI's own knobs so
+        // the hint quality matches what the user is up against.
+        let hint_difficulty = ai.map(|c| c.difficulty).unwrap_or(Difficulty::Hard);
+        let hint_strategy = ai.map(|c| c.strategy).unwrap_or_else(Strategy::default);
+        let hint_depth = ai.and_then(|c| c.depth);
+        let hint_ai_side = ai.map(|c| c.ai_side);
+
+        create_effect(move |_| {
+            // All three reads are tracked so the effect re-fires when
+            // ANY of them change. Critical: `ai_thinking` flips false
+            // AFTER `state.update()` in the AI pump, so the first
+            // reactive fire (from state change) sees thinking still
+            // true and bails. We need the second fire (from
+            // ai_thinking → false) to actually run analyze.
+            let s = state.get();
+            let visible = panel_visible.get();
+            let thinking = ai_thinking.get();
+            if !visible {
+                return;
+            }
+            if !matches!(s.status, GameStatus::Ongoing) {
+                ai_analysis.set(None);
+                return;
+            }
+            // vs-AI mode: skip when it's the AI's turn — the AI pump
+            // is already searching the same position.
+            if let Some(ai_side) = hint_ai_side {
+                if s.side_to_move == ai_side {
                     return;
                 }
-                if !matches!(s.status, GameStatus::Ongoing) {
-                    ai_analysis.set(None);
+            }
+            if thinking {
+                // AI mid-think; will re-fire when ai_thinking → false.
+                return;
+            }
+            // Snapshot the position hash for invalidation. Using
+            // `position_hash` (from chess-core v5) lets us cancel
+            // stale tasks WITHOUT depending on `move_epoch` — which
+            // is bumped AFTER `state.update(...)` in the AI pump,
+            // racing any effect that captured the pre-bump value.
+            let snapshot = s;
+            let snapshot_hash = snapshot.position_hash;
+            let opts = AiOptions {
+                difficulty: hint_difficulty,
+                max_depth: hint_depth,
+                seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
+                strategy: hint_strategy,
+                randomness: Some(chess_ai::Randomness::STRICT),
+            };
+            wasm_bindgen_futures::spawn_local(async move {
+                // Yield a frame so the UI repaints (toggle button
+                // flips state visibly) before the search blocks.
+                gloo_timers::future::TimeoutFuture::new(40).await;
+                // Bail if state moved on while we yielded.
+                let current_hash = state.with_untracked(|cur| cur.position_hash);
+                if current_hash != snapshot_hash {
                     return;
                 }
-                if s.side_to_move == cfg.ai_side {
-                    // AI's turn — wait until AI moves and side flips.
+                let analysis = chess_ai::analyze(&snapshot, &opts);
+                // Bail if state moved on during the search itself.
+                let current_hash = state.with_untracked(|cur| cur.position_hash);
+                if current_hash != snapshot_hash {
                     return;
                 }
-                if thinking {
-                    // AI mid-think; will re-fire when ai_thinking → false.
-                    return;
+                if let Some(a) = analysis {
+                    ai_analysis.set(Some(a));
                 }
-                // Snapshot the position hash for invalidation. Using
-                // `position_hash` (from chess-core v5) lets us cancel
-                // stale tasks WITHOUT depending on `move_epoch` —
-                // which is bumped by the AI pump's
-                // `state.update(...) → move_epoch.update(...)` ordering
-                // race (the hint effect would fire from `state.update`
-                // BEFORE `move_epoch.update`, capturing the pre-bump
-                // epoch and then bailing 40ms later when it doesn't
-                // match).
-                let snapshot = s;
-                let snapshot_hash = snapshot.position_hash;
-                let opts = AiOptions {
-                    difficulty: cfg.difficulty,
-                    max_depth: cfg.depth,
-                    seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
-                    strategy: cfg.strategy,
-                    randomness: Some(chess_ai::Randomness::STRICT),
-                };
-                wasm_bindgen_futures::spawn_local(async move {
-                    // Yield a frame so the UI repaints (toggle button
-                    // flips state visibly) before the search blocks.
-                    gloo_timers::future::TimeoutFuture::new(40).await;
-                    // Bail if state moved on while we yielded.
-                    let current_hash = state.with_untracked(|cur| cur.position_hash);
-                    if current_hash != snapshot_hash {
-                        return;
-                    }
-                    let analysis = chess_ai::analyze(&snapshot, &opts);
-                    // Bail if state moved on during the search itself.
-                    let current_hash = state.with_untracked(|cur| cur.position_hash);
-                    if current_hash != snapshot_hash {
-                        return;
-                    }
-                    if let Some(a) = analysis {
-                        ai_analysis.set(Some(a));
-                    }
-                });
             });
-        }
+        });
     }
 
     let prefs = expect_context::<Prefs>();
@@ -581,6 +649,8 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     analysis=analysis_signal
                     board=board_for_debug.clone()
                     on_hover=on_debug_hover
+                    title=panel_title
+                    subtitle=panel_subtitle
                 />
             </Show>
         </section>
