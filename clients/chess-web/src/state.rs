@@ -442,4 +442,33 @@ mod tests {
         assert_eq!(CapturedSort::Time.toggled(), CapturedSort::Rank);
         assert_eq!(CapturedSort::Rank.toggled(), CapturedSort::Time);
     }
+
+    /// Hover-preview produces an empty list for an opening xiangqi
+    /// position regardless of which own piece is hovered: opening
+    /// has no piece in danger right now, AND removing any single own
+    /// piece doesn't expose anything else (the legality filter
+    /// already prevented every fragile setup). Confirms the helper
+    /// returns silently rather than e.g. listing every own piece.
+    #[test]
+    fn hover_preview_empty_in_opening() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let view = PlayerView::project(&state, state.side_to_move);
+        // Pick a corner chariot — surely defending nothing important.
+        let chariot_sq = Square(0);
+        let hover = hover_threat_squares(&view, Side::RED, chariot_sq);
+        assert!(hover.is_empty(), "opening hover should be empty, got {:?}", hover);
+    }
+
+    /// Hover-preview against an opponent piece returns empty —
+    /// hovering the wrong color is a no-op (saves the renderer from
+    /// painting bogus rings).
+    #[test]
+    fn hover_preview_empty_for_opponent_piece() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let view = PlayerView::project(&state, state.side_to_move);
+        // Black corner chariot — observer is RED, so this is opponent.
+        let black_chariot = Square(9 * 9); // file 0 rank 9
+        let hover = hover_threat_squares(&view, Side::RED, black_chariot);
+        assert!(hover.is_empty());
+    }
 }

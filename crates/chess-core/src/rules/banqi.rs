@@ -641,4 +641,56 @@ mod tests {
         // up to 3+7 = 10 moves along the long axis.
         assert!(moves.len() >= 5, "chariot rush should produce more slides");
     }
+
+    /// Hidden-piece policy regression: hidden opponent pieces never
+    /// count as attackers, even when they sit adjacent to a revealed
+    /// own piece. The banqi `attacked_pieces` walk must filter them
+    /// out (the public-information attack relation can't reason
+    /// about face-down identities).
+    #[test]
+    fn banqi_threat_ignores_hidden_attacker() {
+        let mut state = empty_banqi();
+        state.side_assignment = Some(crate::state::SideAssignment {
+            mapping: smallvec::smallvec![Side::RED, Side::BLACK],
+        });
+        let red_horse_sq = state.board.sq(crate::coord::File(0), crate::coord::Rank(0));
+        let hidden_neighbour = state.board.sq(crate::coord::File(0), crate::coord::Rank(1));
+        place(&mut state, red_horse_sq, Side::RED, PieceKind::Horse, true);
+        // Hidden Black chariot adjacent. In banqi the chariot
+        // outranks horse — would normally attack — but face-down
+        // shouldn't count.
+        place(&mut state, hidden_neighbour, Side::BLACK, PieceKind::Chariot, false);
+        let attacked = state.attacked_pieces(Side::RED);
+        assert!(
+            !attacked.contains(&red_horse_sq),
+            "hidden attacker must not flag defender as attacked, got {:?}",
+            attacked
+        );
+    }
+
+    /// Mirror of the regression above: the same chariot, REVEALED,
+    /// must flag the horse. Locks down that the gating is purely on
+    /// `revealed`, not some unrelated bug masking all banqi
+    /// attackers.
+    #[test]
+    fn banqi_threat_includes_revealed_attacker() {
+        let mut state = empty_banqi();
+        state.side_assignment = Some(crate::state::SideAssignment {
+            mapping: smallvec::smallvec![Side::RED, Side::BLACK],
+        });
+        let red_horse_sq = state.board.sq(crate::coord::File(0), crate::coord::Rank(0));
+        let attacker_sq = state.board.sq(crate::coord::File(0), crate::coord::Rank(1));
+        place(&mut state, red_horse_sq, Side::RED, PieceKind::Horse, true);
+        place(&mut state, attacker_sq, Side::BLACK, PieceKind::Chariot, true);
+        let attacked = state.attacked_pieces(Side::RED);
+        assert!(
+            attacked.contains(&red_horse_sq),
+            "revealed adjacent chariot must flag horse, got {:?}",
+            attacked
+        );
+        // And SEE confirms net loss (horse value 4 - cannot recapture
+        // because the horse is alone).
+        let net_loss = state.net_loss_pieces(Side::RED);
+        assert!(net_loss.contains(&red_horse_sq), "horse hangs to chariot, got {:?}", net_loss);
+    }
 }

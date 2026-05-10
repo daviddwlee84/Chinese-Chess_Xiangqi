@@ -138,3 +138,96 @@ fn pick_least_valuable_attacker(
     };
     attackers.into_iter().min_by_key(|(sq, piece)| piece_value(*piece, *sq, state))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rules::RuleSet;
+
+    /// Three-chariot mating-net fixture (also used in
+    /// `view::tests::xiangqi_in_check_view_flags_observer`). Black
+    /// general at e9 is attacked by Red rooks on d8/e8/f8; Red
+    /// general at e0. Black's only piece is the general — useful for
+    /// 'undefended target' SEE assertions.
+    fn three_chariot_mate() -> GameState {
+        let pos = "variant: xiangqi\nside_to_move: black\n\nboard:\n  . . . . k . . . .\n  . . . R R R . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . K . . . .\n";
+        GameState::from_pos_text(pos).expect("parse pos")
+    }
+
+    /// 'No-attacker' baseline: SEE returns 0 when nobody threatens
+    /// the target square (defender is safe — no exchange to model).
+    /// Trivially true for the opening position from any opponent
+    /// piece's vantage point — every piece is safely behind its line.
+    #[test]
+    fn see_returns_zero_when_no_attacker() {
+        let state = GameState::new(RuleSet::xiangqi());
+        // Red chariot at file 0 rank 0 — nothing attacks it in the
+        // opening position (the cannon at h2 / b2 doesn't have a
+        // screen yet).
+        let chariot_sq = state.board.sq(crate::coord::File(0), crate::coord::Rank(0));
+        assert_eq!(see(&state, chariot_sq, Side::BLACK), 0);
+    }
+
+    /// 'Free piece' baseline: an unprotected target returns its full
+    /// value to the attacker. Three-chariot fixture's Black general
+    /// is undefended (no Black pieces other than itself); SEE for
+    /// Red against the general returns the SEE_GENERAL_VALUE
+    /// sentinel.
+    #[test]
+    fn see_undefended_general_returns_general_value() {
+        let state = three_chariot_mate();
+        let king_sq = state.board.sq(crate::coord::File(4), crate::coord::Rank(9));
+        let gain = see(&state, king_sq, Side::RED);
+        assert_eq!(gain, SEE_GENERAL_VALUE);
+    }
+
+    /// Equal-trade baseline: chariot vs chariot with both sides
+    /// having one defender → SEE = 0 (attacker takes, defender
+    /// recaptures, net zero). Hand-built position avoids the noise
+    /// of the full opening.
+    #[test]
+    fn see_equal_trade_returns_zero() {
+        // Both files 4. Red chariot at e2 attacks Black chariot at
+        // e7; Black soldier at e8 defends e7. Soldier is rank-3 vs
+        // chariot value 9, so Red CAN profit if the defender is
+        // mis-modelled — the SEE must correctly retract once
+        // defender's recapture brings the trade back to zero.
+        let pos = "variant: xiangqi\nside_to_move: red\n\nboard:\n  . . . . k . . . .\n  . . . . p . . . .\n  . . . . r . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . R . . . .\n  . . . . . . . . .\n  . . . . K . . . .\n";
+        let state = GameState::from_pos_text(pos).expect("parse pos");
+        let target = state.board.sq(crate::coord::File(4), crate::coord::Rank(7));
+        // Red value: chariot (9) - chariot (9) = 0.
+        assert_eq!(see(&state, target, Side::RED), 0);
+    }
+
+    /// Soldier-attacks-chariot regression: a single past-river soldier
+    /// attacking an undefended chariot wins material (chariot 9 - 0
+    /// recapture = +9 for the attacker side). Confirms the SEE
+    /// considers the soldier as the cheapest attacker (it's also the
+    /// only one in this construction) and doesn't get confused by
+    /// the past-river value bump (which is for the soldier itself,
+    /// not the captured piece).
+    #[test]
+    fn see_soldier_takes_undefended_chariot() {
+        // Red soldier at e5 (past-river) attacks Black chariot at e6.
+        // No Black defender adjacent.
+        let pos = "variant: xiangqi\nside_to_move: red\n\nboard:\n  . . . . k . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . r . . . .\n  . . . . P . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . . . . . .\n  . . . . K . . . .\n";
+        let state = GameState::from_pos_text(pos).expect("parse pos");
+        let target = state.board.sq(crate::coord::File(4), crate::coord::Rank(6));
+        assert_eq!(see(&state, target, Side::RED), 9);
+    }
+
+    /// Past-river soldier value bump: the value table promotes a
+    /// soldier on the opponent's half of the board from 1 to 2.
+    /// Round-trip verifies both halves of the if-branch.
+    #[test]
+    fn soldier_value_bumps_after_river() {
+        let state = GameState::new(RuleSet::xiangqi());
+        // Red soldier at file 0 rank 3 (still on red's home half).
+        let home = state.board.sq(crate::coord::File(0), crate::coord::Rank(3));
+        let red_soldier = Piece::new(Side::RED, crate::piece::PieceKind::Soldier);
+        assert_eq!(piece_value(red_soldier, home, &state), 1);
+        // Same piece pretend-placed on file 0 rank 6 (past river for Red).
+        let past = state.board.sq(crate::coord::File(0), crate::coord::Rank(6));
+        assert_eq!(piece_value(red_soldier, past, &state), 2);
+    }
+}
