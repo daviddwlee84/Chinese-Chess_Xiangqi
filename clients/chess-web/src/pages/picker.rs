@@ -269,7 +269,9 @@ fn XiangqiCard() -> impl IntoView {
                                 "Leave both blank to use the engine's depth-scaled defaults; the AI Debug panel reports both reached and target depth."
                             </p>
                             <label class="custom-input-row">
-                                <span class="custom-input-label">"Search depth"</span>
+                                <span class="custom-input-label">
+                                    "Search depth (max " {MAX_AI_DEPTH.to_string()} ")"
+                                </span>
                                 <input
                                     type="number"
                                     inputmode="numeric"
@@ -280,10 +282,11 @@ fn XiangqiCard() -> impl IntoView {
                                     prop:value=move || ai_depth_text.get()
                                     on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
                                 />
-                                <span class="custom-input-cap">"max " {MAX_AI_DEPTH.to_string()}</span>
                             </label>
                             <label class="custom-input-row">
-                                <span class="custom-input-label">"Node budget"</span>
+                                <span class="custom-input-label">
+                                    "Node budget (max " {MAX_AI_NODE_BUDGET.to_string()} ")"
+                                </span>
                                 <input
                                     type="number"
                                     inputmode="numeric"
@@ -294,8 +297,62 @@ fn XiangqiCard() -> impl IntoView {
                                     prop:value=move || ai_budget_text.get()
                                     on:input=move |ev| ai_budget_text.set(event_target_value(&ev))
                                 />
-                                <span class="custom-input-cap">"max " {MAX_AI_NODE_BUDGET.to_string()}</span>
                             </label>
+                            // Variation lives inline here as well, so
+                            // Custom users get all three preset-equivalent
+                            // knobs in one place. The standalone
+                            // "Variation" fieldset below hides while
+                            // Custom is active (the same `ai_variation`
+                            // signal feeds both — choices persist when
+                            // toggling between Custom and a preset).
+                            <fieldset class="custom-variation">
+                                <legend>"Variation"</legend>
+                                <label class="radio-row">
+                                    <input
+                                        type="radio"
+                                        name="xiangqi-variation-custom"
+                                        prop:checked=move || ai_variation.get().is_none()
+                                        on:change=move |_| ai_variation.set(None)
+                                    />
+                                    <span>"Default — Hard's preset (Subtle, top-3 within ±20 cp)."</span>
+                                </label>
+                                <label class="radio-row">
+                                    <input
+                                        type="radio"
+                                        name="xiangqi-variation-custom"
+                                        prop:checked=move || ai_variation.get() == Some(Randomness::STRICT)
+                                        on:change=move |_| ai_variation.set(Some(Randomness::STRICT))
+                                    />
+                                    <span>"Strict — always the best move (deterministic)."</span>
+                                </label>
+                                <label class="radio-row">
+                                    <input
+                                        type="radio"
+                                        name="xiangqi-variation-custom"
+                                        prop:checked=move || ai_variation.get() == Some(Randomness::SUBTLE)
+                                        on:change=move |_| ai_variation.set(Some(Randomness::SUBTLE))
+                                    />
+                                    <span>"Subtle — top-3 within ±20 cp."</span>
+                                </label>
+                                <label class="radio-row">
+                                    <input
+                                        type="radio"
+                                        name="xiangqi-variation-custom"
+                                        prop:checked=move || ai_variation.get() == Some(Randomness::VARIED)
+                                        on:change=move |_| ai_variation.set(Some(Randomness::VARIED))
+                                    />
+                                    <span>"Varied — top-5 within ±60 cp."</span>
+                                </label>
+                                <label class="radio-row">
+                                    <input
+                                        type="radio"
+                                        name="xiangqi-variation-custom"
+                                        prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
+                                        on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
+                                    />
+                                    <span>"Chaotic — top-10 within ±150 cp."</span>
+                                </label>
+                            </fieldset>
                         </div>
                     </Show>
                 </fieldset>
@@ -347,54 +404,64 @@ fn XiangqiCard() -> impl IntoView {
                         <span>"v1 — material only (original MVP). Picks at random in the opening."</span>
                     </label>
                 </fieldset>
-                <fieldset class="card-fieldset">
-                    <legend>"Variation"</legend>
-                    <label class="radio-row">
-                        <input
-                            type="radio"
-                            name="xiangqi-variation"
-                            prop:checked=move || ai_variation.get().is_none()
-                            on:change=move |_| ai_variation.set(None)
-                        />
-                        <span>"Default — chosen by difficulty (Easy=Chaotic, Normal=Varied, Hard=Subtle)."</span>
-                    </label>
-                    <label class="radio-row">
-                        <input
-                            type="radio"
-                            name="xiangqi-variation"
-                            prop:checked=move || ai_variation.get() == Some(Randomness::STRICT)
-                            on:change=move |_| ai_variation.set(Some(Randomness::STRICT))
-                        />
-                        <span>"Strict — always the best move (deterministic, no variation)."</span>
-                    </label>
-                    <label class="radio-row">
-                        <input
-                            type="radio"
-                            name="xiangqi-variation"
-                            prop:checked=move || ai_variation.get() == Some(Randomness::SUBTLE)
-                            on:change=move |_| ai_variation.set(Some(Randomness::SUBTLE))
-                        />
-                        <span>"Subtle — top-3 within ±20 cp."</span>
-                    </label>
-                    <label class="radio-row">
-                        <input
-                            type="radio"
-                            name="xiangqi-variation"
-                            prop:checked=move || ai_variation.get() == Some(Randomness::VARIED)
-                            on:change=move |_| ai_variation.set(Some(Randomness::VARIED))
-                        />
-                        <span>"Varied — top-5 within ±60 cp."</span>
-                    </label>
-                    <label class="radio-row">
-                        <input
-                            type="radio"
-                            name="xiangqi-variation"
-                            prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
-                            on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
-                        />
-                        <span>"Chaotic — top-10 within ±150 cp (weak Hard, fun for learners)."</span>
-                    </label>
-                </fieldset>
+                // Standalone Variation fieldset is the override knob
+                // for preset Easy/Normal/Hard. When the user is in
+                // Custom mode, Variation lives inline inside the
+                // Custom block (see above) so all three preset-
+                // equivalent overrides (depth, budget, variation) sit
+                // in one place. Same `ai_variation` signal feeds both
+                // — flipping between Custom and a preset preserves the
+                // user's variation choice.
+                <Show when=move || !is_custom.get()>
+                    <fieldset class="card-fieldset">
+                        <legend>"Variation"</legend>
+                        <label class="radio-row">
+                            <input
+                                type="radio"
+                                name="xiangqi-variation"
+                                prop:checked=move || ai_variation.get().is_none()
+                                on:change=move |_| ai_variation.set(None)
+                            />
+                            <span>"Default — chosen by difficulty (Easy=Chaotic, Normal=Varied, Hard=Subtle)."</span>
+                        </label>
+                        <label class="radio-row">
+                            <input
+                                type="radio"
+                                name="xiangqi-variation"
+                                prop:checked=move || ai_variation.get() == Some(Randomness::STRICT)
+                                on:change=move |_| ai_variation.set(Some(Randomness::STRICT))
+                            />
+                            <span>"Strict — always the best move (deterministic, no variation)."</span>
+                        </label>
+                        <label class="radio-row">
+                            <input
+                                type="radio"
+                                name="xiangqi-variation"
+                                prop:checked=move || ai_variation.get() == Some(Randomness::SUBTLE)
+                                on:change=move |_| ai_variation.set(Some(Randomness::SUBTLE))
+                            />
+                            <span>"Subtle — top-3 within ±20 cp."</span>
+                        </label>
+                        <label class="radio-row">
+                            <input
+                                type="radio"
+                                name="xiangqi-variation"
+                                prop:checked=move || ai_variation.get() == Some(Randomness::VARIED)
+                                on:change=move |_| ai_variation.set(Some(Randomness::VARIED))
+                            />
+                            <span>"Varied — top-5 within ±60 cp."</span>
+                        </label>
+                        <label class="radio-row">
+                            <input
+                                type="radio"
+                                name="xiangqi-variation"
+                                prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
+                                on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
+                            />
+                            <span>"Chaotic — top-10 within ±150 cp (weak Hard, fun for learners)."</span>
+                        </label>
+                    </fieldset>
+                </Show>
             </Show>
             <fieldset class="card-fieldset">
                 <legend>"AI insight panels (advanced)"</legend>

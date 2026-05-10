@@ -692,32 +692,66 @@ body {
     box-sizing: border-box;
 }
 
-/* Custom-difficulty inline inputs (Search depth + Node budget). Mounted
- * below the Custom radio inside the Difficulty fieldset; same visual
- * weight as the radio rows so they read as part of the same group. */
+/* Custom-difficulty inline inputs (Search depth + Node budget +
+ * Variation). Mounted below the Custom radio inside the Difficulty
+ * fieldset. The variant card is as narrow as 220 px on multi-card
+ * layouts (iPad landscape), so this block must stay inside its
+ * parent's content width — `min-width: 0` defeats the default flex/
+ * grid intrinsic-min-content behaviour that would otherwise overflow.
+ *
+ * Layout: each row stacks the label above the input (1-column flex
+ * column) instead of a label-input-cap grid; the previous 3-column
+ * grid required ~6 rem for the input + however-much for the cap text
+ * + however-much for the label, which blew out at narrow widths and
+ * caused the inputs to overlap with each other (see screenshot
+ * report 2026-05-10). */
 .custom-difficulty-inputs {
-    display: grid;
-    gap: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
     margin-left: 1.6rem;          /* aligns with the radio's label text */
-    padding: 0.4rem 0.6rem;
+    padding: 0.5rem 0.6rem;
     border-left: 2px solid rgba(60, 80, 120, 0.18);
     background: rgba(60, 80, 120, 0.04);
     border-radius: 0 4px 4px 0;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .custom-input-row {
-    display: grid;
-    grid-template-columns: minmax(6rem, 1fr) minmax(0, 1.6fr) auto;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
 }
 .custom-input-label {
-    color: var(--muted, #666);
-}
-.custom-input-cap {
     color: var(--muted, #888);
-    font-size: 0.8rem;
-    white-space: nowrap;
+    font-size: 0.85rem;
+}
+.custom-input-row .text-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;                 /* allow shrinking inside narrow card */
+}
+/* Sub-fieldset that mirrors the standalone Variation fieldset's
+ * options when Custom is active. Tighter spacing than the top-level
+ * radio rows since it lives inside an already-indented block. */
+.custom-variation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0.2rem 0 0;
+    padding: 0;
+    border: 0;
+}
+.custom-variation legend {
+    padding: 0;
+    color: var(--muted, #888);
+    font-size: 0.85rem;
+}
+.custom-variation .radio-row {
+    font-size: 0.88rem;
+    line-height: 1.25;
 }
 
 .rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
