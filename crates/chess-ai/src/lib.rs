@@ -328,6 +328,95 @@ pub struct AiMoveResult {
 /// root-move list without depending on `chess_ai::search` internals.
 pub use crate::search::ScoredMove;
 
+// ---------------------------------------------------------------------
+// Centipawn → win-rate conversion (consumer helper).
+//
+// Used by chess-web's eval bar / sidebar badge / end-game trend chart
+// and chess-tui's ASCII eval display. Lives in chess-ai so both
+// frontends share one source of truth and both render identical
+// numbers from the same cp input.
+// ---------------------------------------------------------------------
+
+/// Centipawn → win-rate scaling constant for the logistic
+/// `1 / (1 + 10^(-cp / WIN_PCT_K))`.
+///
+/// `400` is the chess Elo convention (a 400 cp advantage ≈ 91 % win
+/// rate). Borrowed for the initial xiangqi implementation; the "right"
+/// K for xiangqi is unknown — chess and xiangqi have different material
+/// balances (no queens, fewer minor pieces, big chariot). Calibration
+/// is tracked as a P3/S TODO ("chess-ai: cp→win% calibration for
+/// xiangqi"). If this constant changes the win-rate display will
+/// swing more or less aggressively but no other behaviour changes.
+pub const WIN_PCT_K: f32 = 400.0;
+
+/// Centipawn threshold above which we treat the side as effectively
+/// winning regardless of the exact score. Anything beyond this clamps
+/// to the saturation values in [`cp_to_win_pct`].
+///
+/// Picked at half of
+/// [`crate::eval::material_king_safety_pst_v3::KING_VALUE`] (50_000) so
+/// the v3+ "general is about to be captured" eval (which adds ±50_000 cp
+/// in casual mode) reliably clamps to 99 % / 1 % rather than producing
+/// `1 / (1 + 10^(-125))` which underflows to literal 0.0 on f32 (the
+/// math still works but the chart line clips ugly when one endpoint
+/// is 0.0 vs the other endpoint of 0.01).
+const WIN_PCT_CLAMP_CP: i32 = 25_000;
+
+/// Convert a centipawn score (side-relative — positive favours the
+/// side-to-move at the analyzed position) to a win probability in the
+/// range `[0.01, 0.99]`.
+///
+/// Standard chess-engine logistic:
+///
+/// ```text
+/// win_pct = 1 / (1 + 10^(-cp / WIN_PCT_K))
+/// ```
+///
+/// With clamps for extreme values so the chart line doesn't flip
+/// between exactly 0.0 and 1.0:
+///
+/// - mate-in-N (`|cp| >= MATE - 1000`) → 0.99 / 0.01
+/// - "general about to be captured" (`|cp| >= WIN_PCT_CLAMP_CP`,
+///   v3+ casual mode) → 0.99 / 0.01
+/// - everything else → exact logistic
+///
+/// To get the "Red wins" probability (the chart's Y axis), call this
+/// with the cp from `analyze()` and then negate based on side-to-move:
+///
+/// ```ignore
+/// use chess_ai::cp_to_win_pct;
+/// use chess_core::piece::Side;
+///
+/// let cp_stm = 350;
+/// let stm = Side::BLACK;
+/// let stm_win_pct = cp_to_win_pct(cp_stm);
+/// let red_win_pct = match stm {
+///     Side::RED => stm_win_pct,
+///     _ => 1.0 - stm_win_pct,
+/// };
+/// ```
+pub fn cp_to_win_pct(cp: i32) -> f32 {
+    // Early-out at the extreme ends so mate-in-N and "general about to
+    // be captured" scores produce a clean 0.99 / 0.01 endpoint
+    // regardless of float behaviour. The logistic itself saturates
+    // well before WIN_PCT_CLAMP_CP (at ±400 cp it's already 91 % / 9 %;
+    // at ±2000 cp it's essentially 100 % / 0 %), but the explicit
+    // early-out keeps the boundary obvious in the code.
+    if cp >= crate::search::MATE - 1000 || cp >= WIN_PCT_CLAMP_CP {
+        return 0.99;
+    }
+    if cp <= -(crate::search::MATE - 1000) || cp <= -WIN_PCT_CLAMP_CP {
+        return 0.01;
+    }
+    let exponent = -(cp as f32) / WIN_PCT_K;
+    let raw = 1.0 / (1.0 + 10f32.powf(exponent));
+    // Final clamp catches the long tail between ±2000 cp and the
+    // ±25000 cp early-out threshold where the logistic underflows to
+    // 0.0 / overflows to 1.0 on f32. Without this the chart line can
+    // touch the literal floor / ceiling of the strip and disappear.
+    raw.clamp(0.01, 0.99)
+}
+
 /// Full search introspection — what `choose_move` produces internally
 /// before the randomness layer narrows the result down to one move.
 ///
@@ -1099,6 +1188,109 @@ mod tests {
                 fixture relies on the eval-score divergence asserted by \
                 strategy_dispatch_is_distinguishable + missing_general_swings_eval_by_king_value"
             );
+        }
+    }
+
+    // ---------- cp_to_win_pct (consumer helper, used by web eval bar / TUI). ----------
+
+    /// 0 cp = exactly even = 50 % win rate.
+    #[test]
+    fn cp_to_win_pct_zero_is_50_percent() {
+        let p = cp_to_win_pct(0);
+        assert!((p - 0.5).abs() < 1e-6, "0 cp should map to 0.5; got {}", p);
+    }
+
+    /// 400 cp ≈ 91 % per the chess Elo convention used by `WIN_PCT_K`.
+    /// Tolerance is generous because the formula `1 / (1 + 10^(-1))`
+    /// = 0.90909… so anywhere in [0.905, 0.915] is correct.
+    #[test]
+    fn cp_to_win_pct_400cp_is_about_91_percent() {
+        let p = cp_to_win_pct(400);
+        assert!(p > 0.905 && p < 0.915, "+400 cp should be ~91%; got {}", p);
+        // Symmetric: -400 cp ≈ 9 %.
+        let n = cp_to_win_pct(-400);
+        assert!(n > 0.085 && n < 0.095, "-400 cp should be ~9%; got {}", n);
+        // The two should sum to ~1.0 (logistic is symmetric around 50 %).
+        assert!((p + n - 1.0).abs() < 1e-6, "+x and -x should sum to 1; got {} + {}", p, n);
+    }
+
+    /// Mate scores from the search (`-MATE + depth`) clamp to 1 % so
+    /// the chart shows a clear cliff to "I'm losing" but doesn't go
+    /// to literal 0 (which would drop the line off the chart).
+    #[test]
+    fn cp_to_win_pct_mate_clamps_to_1_or_99() {
+        // MATE is 1_000_000; mate-in-1 from current side's POV = -999_999.
+        // mate-in-1 *for* current side = +999_999.
+        let losing = cp_to_win_pct(-(crate::search::MATE - 1));
+        assert!(
+            (losing - 0.01).abs() < 1e-6,
+            "near-MATE loss should clamp to 0.01; got {}",
+            losing
+        );
+        let winning = cp_to_win_pct(crate::search::MATE - 1);
+        assert!(
+            (winning - 0.99).abs() < 1e-6,
+            "near-MATE win should clamp to 0.99; got {}",
+            winning
+        );
+        // Even the very extreme (`-MATE`) returns the same clamp, no overflow.
+        let extreme = cp_to_win_pct(-crate::search::MATE);
+        assert!(
+            (extreme - 0.01).abs() < 1e-6,
+            "exactly -MATE should clamp to 0.01; got {}",
+            extreme
+        );
+    }
+
+    /// v3+ casual mode "general about to be captured" uses
+    /// `KING_VALUE = 50_000` cp swings. Anything above WIN_PCT_CLAMP_CP
+    /// (= 25_000) should be treated as a 99 % position even though it's
+    /// nowhere near MATE. (Note: the logistic itself already saturates
+    /// at ~±2000 cp due to f32 precision; this test pins the explicit
+    /// early-out behaviour at the documented threshold and beyond.)
+    #[test]
+    fn cp_to_win_pct_king_loss_clamps_to_1_or_99() {
+        // At the explicit clamp threshold — clamped to exactly 0.99.
+        let at_clamp = cp_to_win_pct(WIN_PCT_CLAMP_CP);
+        assert!((at_clamp - 0.99).abs() < 1e-6, "at clamp should be 0.99; got {}", at_clamp);
+        // 50_000 cp (one general's worth) — clamped.
+        let king_value = cp_to_win_pct(50_000);
+        assert!((king_value - 0.99).abs() < 1e-6, "+KING_VALUE should be 0.99; got {}", king_value);
+        let neg_king_value = cp_to_win_pct(-50_000);
+        assert!(
+            (neg_king_value - 0.01).abs() < 1e-6,
+            "-KING_VALUE should be 0.01; got {}",
+            neg_king_value
+        );
+        // Mid-range values (between the saturation point and the
+        // early-out) get caught by the final clamp, not the early-out.
+        // Check both: a value where the logistic underflows on f32 but
+        // is below the explicit threshold.
+        let mid = cp_to_win_pct(-10_000);
+        assert!((mid - 0.01).abs() < 1e-6, "mid-tail loss should clamp to 0.01; got {}", mid);
+    }
+
+    /// Logistic is monotonically non-decreasing. Sanity guard against
+    /// future refactors swapping a sign or a comparison.
+    #[test]
+    fn cp_to_win_pct_is_monotonic() {
+        let mut prev = cp_to_win_pct(-2000);
+        for cp in (-2000..=2000).step_by(50) {
+            let cur = cp_to_win_pct(cp);
+            assert!(cur >= prev, "non-monotonic at cp={}: prev={}, cur={}", cp, prev, cur);
+            prev = cur;
+        }
+    }
+
+    /// Range invariant: every output is in `[0.01, 0.99]`. Important
+    /// because the eval bar SVG uses these values for `y` percentages
+    /// and "0 %" / "100 %" makes the bar marker disappear off the
+    /// edge of the strip.
+    #[test]
+    fn cp_to_win_pct_stays_in_clamp_range() {
+        for cp in [-i32::MAX, -100_000, -10_000, 0, 10_000, 100_000, i32::MAX] {
+            let p = cp_to_win_pct(cp);
+            assert!((0.01..=0.99).contains(&p), "cp={} produced out-of-range {}", cp, p);
         }
     }
 }

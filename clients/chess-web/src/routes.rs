@@ -157,6 +157,21 @@ pub struct LocalRulesParams {
     /// `hints_allowed` (set at room creation by the first joiner's
     /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
     pub ai_hints: bool,
+    /// Enables the live AI win-rate display: vertical eval bar attached
+    /// to the right edge of the board, sidebar `紅 % • 黑 %` badge,
+    /// per-ply samples cached for the post-game trend chart. Works in
+    /// both vs-AI and pass-and-play (PvP).
+    ///
+    /// Reuses the `chess_ai::analyze` calls the AI move pump and hint
+    /// pump already make — when this flag is on, the hint pump runs
+    /// every turn (even without `?hints=1`) so each ply gets sampled.
+    /// Costs ~100-300 ms WASM per turn at default Hard depth, on top
+    /// of any existing AI/hint search work.
+    ///
+    /// URL token: `&evalbar=1`. Default off.
+    /// Net mode (`/play/`) currently ignores this flag — see TODO.md
+    /// "chess-net protocol v6" for the spectator-side broadcast follow-up.
+    pub ai_evalbar: bool,
     /// Xiangqi pass-and-play only. When `true`, Black's piece glyphs are
     /// rendered rotated 180° so a player sitting on the opposite side of
     /// the device reads their pieces upright. Coordinate system is
@@ -194,6 +209,7 @@ impl Default for LocalRulesParams {
             ai_node_budget: None,
             ai_debug: false,
             ai_hints: false,
+            ai_evalbar: false,
             mirror: false,
         }
     }
@@ -234,6 +250,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
     });
     let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
     let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
+    let ai_evalbar = matches!(get("evalbar").as_deref(), Some("1") | Some("true") | Some("on"));
     let mirror = matches!(get("mirror").as_deref(), Some("1") | Some("true") | Some("on"));
     LocalRulesParams {
         strict,
@@ -248,6 +265,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_node_budget,
         ai_debug,
         ai_hints,
+        ai_evalbar,
         mirror,
     }
 }
@@ -311,6 +329,13 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
             // would see no panel after clicking Start.
             if params.ai_hints {
                 parts.push("hints=1".to_string());
+            }
+            // Win-rate display flag — same reason as hints=1 above:
+            // works in both vs-AI and PvP, so emitted unconditionally
+            // (when set). The local mode pages then thread it through
+            // the same hint pump that powers `?hints=1`.
+            if params.ai_evalbar {
+                parts.push("evalbar=1".to_string());
             }
             // Mirror is pass-and-play only — vs-AI has no opponent on
             // the far side of the device, so it would just confuse the
@@ -812,6 +837,66 @@ mod tests {
             parse_local_rules(|k| pairs.iter().find(|(pk, _)| pk == k).map(|(_, v)| v.clone()));
         assert!(p2.ai_hints);
         assert_eq!(p2.mode, PlayMode::Pvp);
+    }
+
+    #[test]
+    fn xiangqi_evalbar_round_trips_in_vs_ai() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("evalbar", "1")]));
+        assert!(p.ai_evalbar);
+        // Independent of hints / debug — three flags, no aliasing.
+        assert!(!p.ai_hints);
+        assert!(!p.ai_debug);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("evalbar=1"), "evalbar= round-trip: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_pvp_evalbar_emitted_even_without_ai_mode() {
+        // Same shape as the PvP+hints regression — evalbar works in
+        // PvP (samples come from the hint pump that runs every turn
+        // when evalbar is on), so the flag must round-trip.
+        let p = LocalRulesParams { mode: PlayMode::Pvp, ai_evalbar: true, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("evalbar=1"), "PvP+evalbar must round-trip; got {:?}", q);
+        assert!(!q.contains("mode=ai"));
+    }
+
+    #[test]
+    fn xiangqi_evalbar_default_off_omitted() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        assert!(!p.ai_evalbar);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("evalbar="), "off should not be emitted; got {}", q);
+    }
+
+    #[test]
+    fn xiangqi_evalbar_truthy_aliases_parse() {
+        for token in ["1", "true", "on"] {
+            let p = parse_local_rules(from_pairs(&[("evalbar", token)]));
+            assert!(p.ai_evalbar, "token {:?} should enable evalbar", token);
+        }
+        for token in ["0", "false", "off", "garbage"] {
+            let p = parse_local_rules(from_pairs(&[("evalbar", token)]));
+            assert!(!p.ai_evalbar, "token {:?} should NOT enable evalbar", token);
+        }
+    }
+
+    #[test]
+    fn xiangqi_three_insight_flags_can_coexist() {
+        // hints + debug + evalbar all set → all three preserved.
+        let p = parse_local_rules(from_pairs(&[
+            ("mode", "ai"),
+            ("debug", "1"),
+            ("hints", "1"),
+            ("evalbar", "1"),
+        ]));
+        assert!(p.ai_debug && p.ai_hints && p.ai_evalbar);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(
+            q.contains("debug=1") && q.contains("hints=1") && q.contains("evalbar=1"),
+            "all three preserved: {}",
+            q
+        );
     }
 
     #[test]

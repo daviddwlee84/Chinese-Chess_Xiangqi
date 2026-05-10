@@ -326,6 +326,13 @@ pub struct GameView {
     /// produce the data and only render the panel when toggled.
     /// Cleared on undo / new game.
     pub last_analysis: Option<AiAnalysis>,
+    /// Per-ply win-rate samples, populated when the user enabled
+    /// `--evalbar` at startup. Empty otherwise. The sidebar's eval
+    /// headline + ASCII chart read from this. Sample at index `i`
+    /// represents the position **after** the `(i+1)`-th half-move
+    /// — `samples[0]` corresponds to history.len() == 1, etc.
+    /// Cleared on undo / new game alongside `last_analysis`.
+    pub eval_samples: Vec<crate::eval::EvalSample>,
 }
 
 /// Per-prompt state for coord-input mode (`:` instant or `m` live preview).
@@ -481,6 +488,18 @@ pub struct AppState {
     /// on the board. Reset to 0 (the chosen move) on every new analysis
     /// so the user starts on the AI's pick.
     pub debug_cursor: usize,
+    /// Set by main.rs from the `--evalbar` CLI flag. When `true`, the
+    /// app pushes a fresh win-rate sample after every move (running an
+    /// extra `chess_ai::analyze` in PvP mode where the AI pump
+    /// wouldn't otherwise fire), and the sidebar shows a live
+    /// `紅 % • 黑 %` headline. Press `E` to toggle the in-sidebar
+    /// ASCII trend chart on/off (`evalbar_open`). Off by default.
+    pub evalbar_enabled: bool,
+    /// User toggle: show the in-sidebar ASCII trend chart (Game mode,
+    /// requires `evalbar_enabled`). Default false; toggled by `E`.
+    /// The headline is shown regardless of this; only the chart is
+    /// gated.
+    pub evalbar_open: bool,
     /// True while the y/N quit-confirm dialog is shown. Set when the user
     /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
     /// at least one move played). Picker / game-over `q` skip the prompt.
@@ -657,6 +676,8 @@ impl AppState {
             history_open: false,
             debug_open: false,
             debug_cursor: 0,
+            evalbar_enabled: false,
+            evalbar_open: false,
             quit_confirm_open: false,
             resign_confirm_open: false,
             board_rect: None,
@@ -743,6 +764,7 @@ impl AppState {
                 coord_input: None,
                 ai,
                 last_analysis: None,
+                eval_samples: Vec::new(),
             })),
             style,
             use_color,
@@ -891,6 +913,8 @@ impl AppState {
         let captured_sort = self.captured_sort;
         let history_open = self.history_open;
         let debug_open = self.debug_open;
+        let evalbar_enabled = self.evalbar_enabled;
+        let evalbar_open = self.evalbar_open;
         let threat_mode = self.threat_mode;
         let threat_on_select = self.threat_on_select;
         *self = fresh;
@@ -899,6 +923,8 @@ impl AppState {
         self.captured_sort = captured_sort;
         self.history_open = history_open;
         self.debug_open = debug_open;
+        self.evalbar_enabled = evalbar_enabled;
+        self.evalbar_open = evalbar_open;
         self.threat_mode = threat_mode;
         self.threat_on_select = threat_on_select;
         // debug_cursor is NOT preserved — fresh game = different scored
@@ -1025,6 +1051,34 @@ impl AppState {
             Action::DebugCursorUp => {
                 if self.debug_open {
                     self.debug_cursor = self.debug_cursor.saturating_sub(1);
+                }
+            }
+            Action::EvalbarToggle => {
+                if !self.evalbar_enabled {
+                    let msg = "Win-rate panel: not enabled (relaunch with --evalbar)".to_string();
+                    match &mut self.screen {
+                        Screen::Game(g) => g.last_msg = Some(msg),
+                        Screen::Net(n) => n.last_msg = Some(msg),
+                        _ => {}
+                    }
+                } else {
+                    self.evalbar_open = !self.evalbar_open;
+                    let has_samples =
+                        matches!(&self.screen, Screen::Game(g) if !g.eval_samples.is_empty());
+                    let msg = match (self.evalbar_open, has_samples) {
+                        (false, _) => "Win-rate panel: chart hidden (headline still shown)".into(),
+                        (true, true) => {
+                            "Win-rate panel: chart shown — every recorded ply plotted".into()
+                        }
+                        (true, false) => {
+                            "Win-rate panel: chart shown — waiting for first sample".into()
+                        }
+                    };
+                    match &mut self.screen {
+                        Screen::Game(g) => g.last_msg = Some(msg),
+                        Screen::Net(n) => n.last_msg = Some(msg),
+                        _ => {}
+                    }
                 }
             }
             Action::DebugCursorDown => {
@@ -1645,7 +1699,8 @@ impl AppState {
             // Esc / Back closes (and Live mode restores the snapshot).
             Screen::Game(g) if g.coord_input.is_some() => {
                 let observer = self.observer;
-                Self::dispatch_coord_text_game(g, action, observer);
+                let evalbar_enabled = self.evalbar_enabled;
+                Self::dispatch_coord_text_game(g, action, observer, evalbar_enabled);
             }
             // Net mode: coord-input takes priority over chat-input (mutual
             // exclusion is enforced at start time), so check coord first.
@@ -1676,7 +1731,12 @@ impl AppState {
         }
     }
 
-    fn dispatch_coord_text_game(g: &mut GameView, action: Action, observer: Side) {
+    fn dispatch_coord_text_game(
+        g: &mut GameView,
+        action: Action,
+        observer: Side,
+        evalbar_enabled: bool,
+    ) {
         // Pull `kind` and the buf-edit decisions out before we re-borrow `g`
         // for the live-preview / submit path.
         let Some(ci) = g.coord_input.as_mut() else {
@@ -1701,7 +1761,7 @@ impl AppState {
                 match chess_core::notation::iccs::decode_move(&g.state, buf.trim()) {
                     Ok(mv) => {
                         g.coord_input = None;
-                        Self::apply_move(g, mv);
+                        Self::apply_move(g, mv, evalbar_enabled);
                     }
                     Err(e) => {
                         if let Some(ci) = g.coord_input.as_mut() {
@@ -1716,6 +1776,10 @@ impl AppState {
     }
 
     fn dispatch_game(&mut self, action: Action) {
+        // Snapshot AppState fields before borrowing self.screen so the
+        // helper calls below (apply_move, etc.) can dispatch on them
+        // without re-borrowing self.
+        let evalbar_enabled = self.evalbar_enabled;
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
@@ -1737,7 +1801,7 @@ impl AppState {
             Action::Cancel => {
                 if let Some(at) = g.state.chain_lock {
                     // Engine is in 連吃 mode — Esc ends the chain.
-                    Self::apply_move(g, Move::EndChain { at });
+                    Self::apply_move(g, Move::EndChain { at }, evalbar_enabled);
                 } else {
                     g.selected = None;
                     g.last_msg = None;
@@ -1745,7 +1809,7 @@ impl AppState {
             }
             Action::SelectOrCommit => {
                 let observer = self.observer;
-                Self::handle_select_or_commit(g, observer);
+                Self::handle_select_or_commit(g, observer, evalbar_enabled);
             }
             Action::Undo => {
                 // vs-AI: undo two plies so the human is back on move.
@@ -1773,6 +1837,10 @@ impl AppState {
                     // produced (the position changed). Clear so the
                     // debug panel doesn't show stale data.
                     g.last_analysis = None;
+                    // Same reasoning for the win-rate samples — drop
+                    // any sample whose ply > the new history length.
+                    let new_len = g.state.history.len();
+                    g.eval_samples.retain(|s| s.ply <= new_len);
                     g.last_msg =
                         Some(format!("Undone {} ply. {:?} to move.", undone, g.state.side_to_move));
                 } else if let Some(e) = last_err {
@@ -1793,14 +1861,14 @@ impl AppState {
                     return;
                 };
                 let m = Move::Reveal { at: sq, revealed: None };
-                Self::apply_move(g, m);
+                Self::apply_move(g, m, evalbar_enabled);
             }
             Action::Click { term_col, term_row } => {
                 if let Some(rect) = self.board_rect {
                     let observer = self.observer;
                     if let Some((row, col)) = hit_test(rect, term_col, term_row, rows, cols) {
                         g.cursor = (row, col);
-                        Self::handle_select_or_commit(g, observer);
+                        Self::handle_select_or_commit(g, observer, evalbar_enabled);
                     }
                 }
             }
@@ -1808,7 +1876,7 @@ impl AppState {
         }
     }
 
-    fn handle_select_or_commit(g: &mut GameView, observer: Side) {
+    fn handle_select_or_commit(g: &mut GameView, observer: Side, evalbar_enabled: bool) {
         if !matches!(g.state.status, chess_core::state::GameStatus::Ongoing) {
             g.last_msg =
                 Some("Game over. Press 'n' for new game, 'u' to take back, 'q' to quit.".into());
@@ -1826,7 +1894,7 @@ impl AppState {
         // only). Press Enter on the locked piece to end the chain.
         if let Some(locked) = view.chain_lock {
             if sq == locked {
-                Self::apply_move(g, Move::EndChain { at: locked });
+                Self::apply_move(g, Move::EndChain { at: locked }, evalbar_enabled);
                 return;
             }
             let candidate = view
@@ -1835,7 +1903,7 @@ impl AppState {
                 .find(|m| m.origin_square() == locked && m.to_square() == Some(sq))
                 .cloned();
             match candidate {
-                Some(m) => Self::apply_move(g, m),
+                Some(m) => Self::apply_move(g, m, evalbar_enabled),
                 None => {
                     g.last_msg = Some(
                         "連吃 active — capture from the locked piece, or press Enter on it to end."
@@ -1874,7 +1942,7 @@ impl AppState {
                     .find(|m| m.origin_square() == from && m.to_square() == Some(sq))
                     .cloned();
                 match candidate {
-                    Some(m) => Self::apply_move(g, m),
+                    Some(m) => Self::apply_move(g, m, evalbar_enabled),
                     None => {
                         g.last_msg = Some("Illegal move.".into());
                         g.selected = None;
@@ -1884,7 +1952,13 @@ impl AppState {
         }
     }
 
-    fn apply_move(g: &mut GameView, m: Move) {
+    /// Apply a human move and (in vs-AI mode) immediately reply with
+    /// the AI's move. When `evalbar_enabled` AND there's no AI in this
+    /// game (PvP), runs an extra `chess_ai::analyze` after the human's
+    /// move so the win-rate panel has fresh data — see
+    /// [`apply_move_with_pvp_eval`][Self::apply_move_with_pvp_eval] for
+    /// the cost discussion.
+    fn apply_move(g: &mut GameView, m: Move, evalbar_enabled: bool) {
         match g.state.make_move(&m) {
             Ok(()) => {
                 g.state.refresh_status();
@@ -1909,7 +1983,41 @@ impl AppState {
             {
                 Self::ai_reply(g, cfg);
             }
+        } else if evalbar_enabled && matches!(g.state.status, GameStatus::Ongoing) {
+            // PvP mode + evalbar on: run a side-effect-only analyze so
+            // the win-rate panel keeps growing every ply. vs-AI mode
+            // (`g.ai = Some`) gets samples for free from `ai_reply`'s
+            // own analysis output, so we skip the extra search there.
+            Self::run_pvp_eval(g);
         }
+    }
+
+    /// Side-effect-only analyze used by [`apply_move`] in PvP mode
+    /// when `--evalbar` is on. ~10–300 ms native at default Hard depth.
+    fn run_pvp_eval(g: &mut GameView) {
+        let opts = AiOptions {
+            difficulty: Difficulty::Hard,
+            max_depth: None,
+            seed: Some(g.state.position_hash ^ 0xEBA1_BAA1_u64),
+            strategy: Strategy::default(),
+            randomness: Some(chess_ai::Randomness::STRICT),
+            node_budget: None,
+        };
+        if let Some(analysis) = chess_ai::analyze(&g.state, &opts) {
+            Self::record_eval_sample(g, analysis.chosen.score);
+        }
+    }
+
+    /// Record a win-rate sample for the position currently in `g.state`
+    /// (i.e. AFTER the most recent move). Idempotent — checks if a
+    /// sample for this ply count already exists and skips if so.
+    fn record_eval_sample(g: &mut GameView, cp_stm_pov: i32) {
+        let ply = g.state.history.len();
+        if g.eval_samples.iter().any(|s| s.ply == ply) {
+            return;
+        }
+        let sample = crate::eval::EvalSample::new(ply, g.state.side_to_move, cp_stm_pov);
+        g.eval_samples.push(sample);
     }
 
     /// Run the configured engine once and apply its move. Surfaces the
@@ -1959,6 +2067,11 @@ impl AppState {
                     nodes,
                     score,
                 ));
+                // Record a win-rate sample. negamax's `score` is from
+                // the AI's POV after the move it just played; the new
+                // `side_to_move` is the opponent, so to express the
+                // sample in stm-relative cp we negate.
+                Self::record_eval_sample(g, -score);
             }
             Err(e) => {
                 g.last_msg = Some(format!("AI engine bug — rejected its own move: {e}"));

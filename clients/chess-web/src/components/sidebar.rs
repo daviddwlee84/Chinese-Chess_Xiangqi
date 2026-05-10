@@ -13,6 +13,7 @@ use leptos::*;
 
 use crate::components::move_history::{HistoryEntry, MoveHistory};
 use crate::components::pwa::PwaInstallButton;
+use crate::eval::EvalSample;
 use crate::glyph::{self, Style};
 use crate::prefs::Prefs;
 use crate::routes::app_href;
@@ -37,6 +38,17 @@ pub fn Sidebar(
     /// collapse mid-game), debug is sticky (mounts on page load).
     #[prop(default = None)]
     hint_toggle: Option<RwSignal<bool>>,
+    /// `Some(signal)` enables an in-sidebar `紅 % • 黑 %` win-rate
+    /// badge fed by the latest [`EvalSample`]. `None` (default) omits
+    /// it entirely. Wired by `pages/local.rs` only when the
+    /// `?evalbar=1` URL flag is set; net mode currently passes `None`
+    /// pending the v6 protocol broadcast (see TODO.md).
+    ///
+    /// The signal can carry `Some(None)` for "evalbar is on but no
+    /// analysis has landed yet" — the badge then renders `紅 — • 黑 —`
+    /// so the geometry stays consistent.
+    #[prop(default = None, into)]
+    eval_badge: Option<Signal<Option<EvalSample>>>,
 ) -> impl IntoView {
     let style = Style::Cjk;
     let variant_label = match variant {
@@ -115,6 +127,7 @@ pub fn Sidebar(
                     <span class="turn-prefix">"Turn: "</span>
                     <span class=turn_class>{turn_text}</span>
                 </div>
+                {eval_badge.map(|sig| view! { <EvalBadge sample=sig/> })}
                 {status_view}
                 <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
             </Show>
@@ -167,5 +180,60 @@ fn draw_reason_label(reason: DrawReason) -> &'static str {
         DrawReason::Repetition => "repetition",
         DrawReason::Agreed => "agreed",
         DrawReason::InsufficientMaterial => "insufficient material",
+    }
+}
+
+/// Compact `紅 52% • 黑 48%` win-rate row driven by the optional
+/// `eval_badge` prop. Internal: only rendered when the parent
+/// page passes a sample signal (i.e. `?evalbar=1` is on).
+#[component]
+fn EvalBadge(#[prop(into)] sample: Signal<Option<EvalSample>>) -> impl IntoView {
+    let red_text = move || {
+        sample.with(|s| match s {
+            Some(s) => format!("{}%", (s.red_win_pct * 100.0).round() as i32),
+            None => "—".to_string(),
+        })
+    };
+    let black_text = move || {
+        sample.with(|s| match s {
+            Some(s) => format!("{}%", (s.black_win_pct() * 100.0).round() as i32),
+            None => "—".to_string(),
+        })
+    };
+    let red_pct = move || {
+        sample.with(|s| match s {
+            Some(s) => (s.red_win_pct * 100.0).clamp(0.0, 100.0),
+            None => 50.0,
+        })
+    };
+    let red_width = move || format!("{:.1}%", red_pct());
+    let black_width = move || format!("{:.1}%", 100.0 - red_pct());
+    let cp_title = move || {
+        sample.with(|s| match s {
+            Some(s) => format!(
+                "Bot eval: {:+} cp from {} POV (latest analyzed ply {})",
+                s.cp_stm_pov,
+                match s.side_to_move_at_pos {
+                    Side::RED => "Red 紅",
+                    Side::BLACK => "Black 黑",
+                    _ => "Green 綠",
+                },
+                s.ply,
+            ),
+            None => "Win-rate display: waiting for first analysis…".to_string(),
+        })
+    };
+    view! {
+        <div class="eval-badge" title=cp_title>
+            <div class="eval-badge__row">
+                <span class="eval-badge__side eval-badge__side--red">"紅 " {red_text}</span>
+                <span class="eval-badge__sep">"•"</span>
+                <span class="eval-badge__side eval-badge__side--black">"黑 " {black_text}</span>
+            </div>
+            <div class="eval-badge__bar" aria-hidden="true">
+                <span class="eval-badge__fill eval-badge__fill--red" style:width=red_width/>
+                <span class="eval-badge__fill eval-badge__fill--black" style:width=black_width/>
+            </div>
+        </div>
     }
 }

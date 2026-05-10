@@ -167,6 +167,8 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     let history_open = app.history_open;
     let debug_open = app.debug_open;
     let debug_cursor = app.debug_cursor;
+    let evalbar_enabled = app.evalbar_enabled;
+    let evalbar_open = app.evalbar_open;
     draw_sidebar(
         frame,
         chunks[1],
@@ -179,6 +181,8 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         history_open,
         debug_open,
         debug_cursor,
+        evalbar_enabled,
+        evalbar_open,
     );
 
     // Confetti + endgame banner. The board area is `chunks[0]`. We do this
@@ -1415,6 +1419,144 @@ fn push_debug_lines(lines: &mut Vec<Line<'static>>, g: &GameView, cursor: usize)
     }
 }
 
+/// One-line `Eval: 紅 ████████░░░░ 黑 (52%)` summary of the most recent
+/// win-rate sample. Always shown when `--evalbar` is on, regardless of
+/// the press-`E` chart toggle. Empty-state line when no samples yet.
+fn push_eval_headline(lines: &mut Vec<Line<'static>>, g: &GameView) {
+    use chess_core::piece::Side;
+
+    lines.push(Line::from(""));
+    let Some(last) = g.eval_samples.last() else {
+        lines.push(Line::from(Span::styled(
+            "Win-rate: waiting for first sample…",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+        return;
+    };
+
+    // 12-char bar: each segment ≈ 8.3 % of the win-rate space. Fill
+    // from the left in red proportional to red_win_pct, the rest in
+    // black. Rounded to nearest segment.
+    const BAR_LEN: usize = 12;
+    let red_pct = last.red_win_pct.clamp(0.0, 1.0);
+    let red_segs = (red_pct * BAR_LEN as f32).round() as usize;
+    let red_segs = red_segs.min(BAR_LEN);
+    let black_segs = BAR_LEN - red_segs;
+    let red_bar: String = "█".repeat(red_segs);
+    let black_bar: String = "░".repeat(black_segs);
+    let red_pct_int = (red_pct * 100.0).round() as i32;
+    let blk_pct_int = 100 - red_pct_int;
+
+    let pov_label = match last.side_to_move_at_pos {
+        Side::RED => "Red",
+        Side::BLACK => "Black",
+        _ => "Green",
+    };
+    let cp_str = format!("{:+}", last.cp_stm_pov);
+
+    lines.push(Line::from(vec![
+        Span::styled("Eval: ", TuiStyle::default().fg(Color::DarkGray)),
+        Span::styled("紅 ", TuiStyle::default().fg(Color::Rgb(248, 113, 113))),
+        Span::styled(
+            format!("{}%", red_pct_int),
+            TuiStyle::default().fg(Color::Rgb(248, 113, 113)),
+        ),
+        Span::raw(" "),
+        Span::styled(red_bar, TuiStyle::default().fg(Color::Rgb(208, 90, 58))),
+        Span::styled(black_bar, TuiStyle::default().fg(Color::DarkGray)),
+        Span::raw(" "),
+        Span::styled(format!("{}%", blk_pct_int), TuiStyle::default().fg(Color::Gray)),
+        Span::styled(" 黑", TuiStyle::default().fg(Color::Gray)),
+    ]));
+    lines.push(Line::from(Span::styled(
+        format!("  ply {}: {} cp ({} POV) — press E for chart", last.ply, cp_str, pov_label),
+        TuiStyle::default().fg(Color::DarkGray),
+    )));
+}
+
+/// ASCII trend chart of every recorded `EvalSample`. Each row is one
+/// sample's win-rate cell expressed as a 30-char wide horizontal bar
+/// — left-aligned red fill from the centre for "Red advantage", black
+/// fill from the centre for "Black advantage". The chart auto-scrolls
+/// to show the latest 24 samples (full game replay = `H` history panel).
+fn push_eval_chart_lines(lines: &mut Vec<Line<'static>>, g: &GameView) {
+    use chess_core::piece::Side;
+
+    if g.eval_samples.is_empty() {
+        return;
+    }
+
+    const CHART_WIDTH: usize = 30; // one side of the centre line
+    const MAX_ROWS: usize = 24;
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Win-rate trend 勝率走勢:",
+        TuiStyle::default().fg(Color::Rgb(245, 166, 35)),
+    )));
+    lines.push(Line::from(Span::styled(
+        "  ply   黑 advantage  |  紅 advantage    %紅",
+        TuiStyle::default().fg(Color::DarkGray),
+    )));
+
+    let total = g.eval_samples.len();
+    let start = total.saturating_sub(MAX_ROWS);
+    if start > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("  … {} earlier samples elided", start),
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+
+    for s in &g.eval_samples[start..] {
+        // red_win_pct in [0,1]; we want signed advantage in [-1, 1]
+        // where +1 = full red, -1 = full black. The bar centres at
+        // CHART_WIDTH and extends right (red) or left (black) by
+        // `(advantage * CHART_WIDTH).round()`.
+        let advantage = s.red_win_pct.clamp(0.0, 1.0) * 2.0 - 1.0;
+        let abs_segs = (advantage.abs() * CHART_WIDTH as f32).round() as usize;
+        let abs_segs = abs_segs.min(CHART_WIDTH);
+        let (left_pad, left_fill, right_fill, right_pad);
+        if advantage >= 0.0 {
+            // Red side (right of centre).
+            left_pad = " ".repeat(CHART_WIDTH);
+            left_fill = String::new();
+            right_fill = "█".repeat(abs_segs);
+            right_pad = " ".repeat(CHART_WIDTH - abs_segs);
+        } else {
+            // Black side (left of centre).
+            left_pad = " ".repeat(CHART_WIDTH - abs_segs);
+            left_fill = "█".repeat(abs_segs);
+            right_fill = String::new();
+            right_pad = " ".repeat(CHART_WIDTH);
+        }
+
+        let pct = (s.red_win_pct * 100.0).round() as i32;
+        let mover_marker = match s.side_to_move_at_pos {
+            // Marker shows whose turn it just BECAME (i.e., who's next
+            // to move). Helps the user pair samples with `H` history rows.
+            Side::RED => "→紅",
+            Side::BLACK => "→黑",
+            _ => "→綠",
+        };
+
+        let bar_line = format!(
+            "  {:>3} {}{}|{}{} {:>3}% {}",
+            s.ply, left_pad, left_fill, right_fill, right_pad, pct, mover_marker
+        );
+
+        // Colour the entire row by which side is winning at that point.
+        let row_color = if s.red_win_pct >= 0.55 {
+            Color::Rgb(208, 90, 58)
+        } else if s.red_win_pct <= 0.45 {
+            Color::Gray
+        } else {
+            Color::DarkGray
+        };
+        lines.push(Line::from(Span::styled(bar_line, TuiStyle::default().fg(row_color))));
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_sidebar(
     frame: &mut Frame,
@@ -1428,6 +1570,8 @@ fn draw_sidebar(
     history_open: bool,
     debug_open: bool,
     debug_cursor: usize,
+    evalbar_enabled: bool,
+    evalbar_open: bool,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
@@ -1521,6 +1665,13 @@ fn draw_sidebar(
         push_debug_lines(&mut lines, g, debug_cursor);
     }
 
+    if evalbar_enabled {
+        push_eval_headline(&mut lines, g);
+        if evalbar_open {
+            push_eval_chart_lines(&mut lines, g);
+        }
+    }
+
     lines.push(Line::from(""));
     if let Some(msg) = &g.last_msg {
         lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
@@ -1549,9 +1700,9 @@ fn draw_sidebar(
             // nothing happens.
             let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
             let hint = if is_banqi {
-                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, n=new, q=quit"
+                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, E=eval, n=new, q=quit"
             } else {
-                "?=help, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, n=new, q=quit"
+                "?=help, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, E=eval, n=new, q=quit"
             };
             lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
 
@@ -2422,6 +2573,7 @@ const HELP_LINES: &[&str] = &[
     "H               toggle move-history panel (sidebar)",
     "D               toggle AI debug panel (vs-AI only)",
     ", / .           AI debug: prev / next scored move (PV on board)",
+    "E               toggle AI win-rate trend chart (requires --evalbar)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",

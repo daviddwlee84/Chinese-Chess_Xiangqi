@@ -52,5 +52,7 @@ Add new entries here as you create them. Keep alphabetical.
 |---|---|---|
 | ai-opening-book | spike-needed | chess-ai opening book |
 | ai-pondering | not-started | chess-ai v6 pondering |
+| ai-winrate-display | shipped | AI win-rate display + per-ply samples + end-game trend chart |
+| chess-net-evalbar | not-started | chess-net protocol v6 — broadcast win-rate samples |
 | threat-highlight-feature | shipped | Threat highlight (Display setting) |
 | web-wasm-download-progress | deferred | chess-web: real WASM download progress meter |

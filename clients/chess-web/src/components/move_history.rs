@@ -16,12 +16,32 @@ use chess_core::piece::Side;
 use leptos::*;
 
 /// Pre-encoded history entry: 1-based ply number + mover side + display string.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct HistoryEntry {
     pub ply: usize,
     pub side: Side,
     pub text: String,
+    /// Optional win-% delta from the mover's POV that this move
+    /// produced. Positive = the move improved the mover's position
+    /// (in win-% terms); negative = the move worsened it. `None` when
+    /// the producer doesn't have the paired before/after samples
+    /// available (e.g. `?evalbar=1` is off, or the analysis hasn't
+    /// landed yet for one of the two endpoints).
+    ///
+    /// Rendered as a small `+5%` / `-12%` annotation in the row.
+    /// Lichess-style move-quality glyphs (`?!` / `??` / `!`) are not
+    /// used — they're contentious in xiangqi where the bot's eval
+    /// isn't deeply calibrated for the variant.
+    pub eval_delta_pct: Option<f32>,
 }
+
+impl PartialEq for HistoryEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.ply == other.ply && self.side == other.side && self.text == other.text
+    }
+}
+
+impl Eq for HistoryEntry {}
 
 #[component]
 pub fn MoveHistory(
@@ -64,11 +84,27 @@ fn HistoryRow(entry: HistoryEntry) -> impl IntoView {
     };
     let num_text = format!("{:>3}.", entry.ply);
     let text = entry.text;
+    // Eval delta annotation: shown only when the producer (pages/local.rs)
+    // had paired before/after samples available — i.e. `?evalbar=1`
+    // was on AND the analysis had landed for both endpoints by the
+    // time this row was built.
+    let delta_view = entry.eval_delta_pct.map(|d| {
+        let pct = (d * 100.0).round() as i32;
+        let (cls, text) = if pct > 0 {
+            ("move-history__delta move-history__delta--up", format!("+{}%", pct))
+        } else if pct < 0 {
+            ("move-history__delta move-history__delta--down", format!("{}%", pct))
+        } else {
+            ("move-history__delta move-history__delta--flat", "±0%".to_string())
+        };
+        view! { <span class=cls title="Win-% change for this mover (bot's view)">{text}</span> }
+    });
     view! {
         <li class=class>
             <span class="move-history__num">{num_text}</span>
             <span class="move-history__side">{label}</span>
             <span class="move-history__text">{text}</span>
+            {delta_view}
         </li>
     }
 }

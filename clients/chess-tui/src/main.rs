@@ -13,6 +13,7 @@
 mod app;
 mod banner;
 mod confetti;
+mod eval;
 mod glyph;
 mod input;
 mod net;
@@ -181,6 +182,18 @@ enum Cmd {
         /// the engine's auto default.
         #[arg(long = "ai-budget", default_value_t = 0)]
         ai_budget: u32,
+        /// Enable the AI win-rate display: live `紅 % • 黑 %` headline
+        /// in the sidebar plus a press-`E`-to-toggle ASCII trend chart
+        /// of every recorded ply. Required for the chart at game end.
+        ///
+        /// In **vs-AI** mode (with `--ai`) samples come for free from
+        /// the analyze the AI runs each turn — no extra cost. In
+        /// **pass-and-play** (no `--ai`) the TUI synchronously
+        /// runs `chess_ai::analyze` after every player move (~10–300 ms
+        /// native at default Hard depth). Off by default; PvP users
+        /// who don't want the per-turn pause should leave it off.
+        #[arg(long)]
+        evalbar: bool,
     },
     /// Banqi (4×8 face-down).
     Banqi {
@@ -368,6 +381,7 @@ fn main() -> Result<()> {
                 ai_variation,
                 ai_depth,
                 ai_budget,
+                evalbar,
             }) => {
                 let rules = if *strict { RuleSet::xiangqi() } else { RuleSet::xiangqi_casual() };
                 if *ai {
@@ -382,9 +396,13 @@ fn main() -> Result<()> {
                         depth: if *ai_depth == 0 { None } else { Some((*ai_depth).min(12)) },
                         node_budget: if *ai_budget == 0 { None } else { Some(*ai_budget) },
                     };
-                    AppState::new_game_vs_ai(rules, style, use_color, cfg)
+                    let mut s = AppState::new_game_vs_ai(rules, style, use_color, cfg);
+                    s.evalbar_enabled = *evalbar;
+                    s
                 } else {
-                    AppState::new_game(rules, style, use_color, observer)
+                    let mut s = AppState::new_game(rules, style, use_color, observer);
+                    s.evalbar_enabled = *evalbar;
+                    s
                 }
             }
             Some(Cmd::Banqi { preset, house, seed }) => {

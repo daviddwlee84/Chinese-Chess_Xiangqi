@@ -156,6 +156,11 @@ fn XiangqiCard() -> impl IntoView {
     // `<DebugPanel>` and lets either source feed it.
     let ai_show_hints = create_rw_signal(false);
     let ai_show_debug = create_rw_signal(false);
+    // Win-rate display: separate URL flag (`?evalbar=1`). Independent
+    // of hints/debug — works in both vs-Computer and Pass-and-play
+    // (samples come from the same hint pump that powers `?hints=1`,
+    // which is unconditionally enabled when either flag is set).
+    let ai_show_evalbar = create_rw_signal(false);
     // Pass-and-play only: rotate Black piece glyphs 180° so the player
     // sitting on the opposite side of the device reads their own pieces
     // upright. Coordinate system unchanged.
@@ -189,6 +194,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_node_budget,
             ai_debug: ai_show_debug.get(),
             ai_hints: ai_show_hints.get(),
+            ai_evalbar: ai_show_evalbar.get(),
             mirror: mirror_black.get(),
             ..Default::default()
         };
@@ -508,6 +514,14 @@ fn XiangqiCard() -> impl IntoView {
                         on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
                     />
                     <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from the side-to-move's POV). Hidden by default; you stay in control. Works in both vs-Computer and Pass-and-play."</span>
+                </label>
+                <label class="check-row">
+                    <input
+                        type="checkbox"
+                        prop:checked=move || ai_show_evalbar.get()
+                        on:change=move |ev| ai_show_evalbar.set(event_target_checked(&ev))
+                    />
+                    <span>"📊 Win-rate display — adds a vertical eval bar to the right of the board, a 紅 % • 黑 % badge in the sidebar, and shows a trend chart of the whole game when it ends. Works in both vs-Computer and Pass-and-play. Costs ~100-300 ms per turn (the bot quietly analyzes the position behind the scenes)."</span>
                 </label>
                 // Debug checkbox is vs-Computer ONLY: it shows the AI's
                 // own POV cached after each AI move. In Pass-and-play

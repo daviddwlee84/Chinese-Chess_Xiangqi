@@ -218,7 +218,12 @@ body {
         min-height: 0;
         box-sizing: border-box;
     }
-    .board-pane > svg.board {
+    /* Descendant selector (not `>`) so the rule applies whether the
+     * SVG board is a direct child of `.board-pane` (net mode,
+     * pages/play.rs) or wrapped inside `.board-pane__row` next to a
+     * `.eval-bar` sibling (local mode with `?evalbar=1`,
+     * pages/local.rs). */
+    .board-pane svg.board {
         flex: 1 1 auto;
         width: 100%;
         height: 100%;
@@ -226,6 +231,24 @@ body {
         max-height: 100%;
         min-height: 0;
     }
+}
+
+/* Inner row container introduced by `pages/local.rs` so the eval bar
+ * (when `?evalbar=1` is on) can sit as a flex sibling to the right of
+ * the board SVG without disturbing the column-stacked siblings
+ * (banners, captured strips, end overlays) above and below. The row
+ * itself is a flex item of `.board-pane`, taking whatever vertical
+ * space remains via `flex: 1 1 auto`. Always present (even when the
+ * eval bar is hidden) — the row degenerates into a one-child flex
+ * box that behaves identically to the unwrapped pre-evalbar layout. */
+.board-pane__row {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-width: 0;
+    min-height: 0;
+    gap: 0.4rem;
 }
 
 /* Mirror mode (xiangqi pass-and-play with two players sitting opposite).
@@ -245,7 +268,7 @@ body {
 }
 /* Override the global `.board { height: auto; max-height: 80vh }` so the
  * SVG can shrink inside the flex column instead of forcing 80vh. */
-.board-pane--mirror > svg.board {
+.board-pane--mirror svg.board {
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
@@ -1062,10 +1085,11 @@ body {
 }
 .move-history__entry {
     display: grid;
-    grid-template-columns: 2.4rem 1.4rem 1fr;
+    grid-template-columns: 2.4rem 1.4rem 1fr auto;
     gap: 0.3rem;
     padding: 0.05rem 0.2rem;
     border-radius: 3px;
+    align-items: baseline;
 }
 .move-history__entry:hover {
     background: rgba(255, 255, 255, 0.04);
@@ -1471,3 +1495,211 @@ body {
     .pwa-banner { flex-direction: column; align-items: stretch; text-align: left; }
     .pwa-banner__actions { justify-content: flex-start; }
 }
+
+/* ============================================================
+ * AI win-rate display (?evalbar=1) — three pieces:
+ *   1. `.eval-bar`     — vertical SVG strip next to the board
+ *   2. `.eval-badge`   — sidebar `紅 % • 黑 %` pill
+ *   3. `.eval-chart`   — post-game SVG line chart (also visible mid-game)
+ * Plus per-row `.move-history__delta` annotations on history rows.
+ * ============================================================ */
+
+/* --- Vertical eval bar (chess.com / lichess style) --- */
+
+.eval-bar {
+    position: relative;
+    flex: 0 0 auto;
+    width: 28px;
+    min-width: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    border: 1px solid var(--grid);
+    border-radius: 0.3rem;
+    overflow: hidden;
+    background: var(--bg);
+}
+
+.eval-bar__svg {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.eval-bar__bg-black {
+    fill: #2b2624;
+}
+.eval-bar__fill-red {
+    fill: #b86b3d;
+    transition: y 0.4s ease, height 0.4s ease;
+}
+.eval-bar__boundary {
+    stroke: var(--accent);
+    stroke-width: 0.6;
+    transition: y1 0.4s ease, y2 0.4s ease;
+}
+
+.eval-bar__label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--fg);
+    text-shadow: 0 0 3px var(--bg);
+    pointer-events: none;
+}
+.eval-bar__label--top {
+    top: 2px;
+    color: #ddd2c4;
+}
+.eval-bar__label--bot {
+    bottom: 2px;
+    color: #f9c8a3;
+}
+
+/* --- Sidebar `紅 % • 黑 %` badge --- */
+
+.eval-badge {
+    margin: 0.2rem 0 0.5rem;
+    padding: 0.25rem 0.4rem 0.35rem;
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    background: rgba(244, 210, 163, 0.04);
+}
+.eval-badge__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+}
+.eval-badge__side {
+    font-variant-numeric: tabular-nums;
+}
+.eval-badge__side--red {
+    color: #f87171;
+    font-weight: 600;
+}
+.eval-badge__side--black {
+    color: #d8d4cc;
+    font-weight: 600;
+}
+.eval-badge__sep {
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+.eval-badge__bar {
+    display: flex;
+    height: 6px;
+    width: 100%;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #2b2624;
+}
+.eval-badge__fill {
+    height: 100%;
+    transition: width 0.4s ease;
+}
+.eval-badge__fill--red {
+    background: linear-gradient(90deg, #d05a3a, #b86b3d);
+}
+.eval-badge__fill--black {
+    background: linear-gradient(90deg, #4a4540, #2b2624);
+}
+
+/* --- End-of-game (or live) trend chart --- */
+
+.eval-chart {
+    border: 1px solid var(--grid);
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.7rem 0.5rem;
+    background: rgba(244, 210, 163, 0.04);
+    min-width: 16rem;
+    max-width: 22rem;
+    align-self: start;
+}
+.eval-chart__title {
+    margin: 0 0 0.4rem 0;
+    font-size: 0.92rem;
+    color: var(--accent);
+}
+.eval-chart__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+    background: transparent;
+}
+.eval-chart__bg-black {
+    fill: rgba(43, 38, 36, 0.7);
+}
+.eval-chart__bg-red {
+    fill: rgba(184, 107, 61, 0.18);
+}
+.eval-chart__gridline {
+    stroke: var(--accent);
+    stroke-width: 0.4;
+    stroke-dasharray: 2 2;
+    opacity: 0.5;
+}
+.eval-chart__axis-label {
+    fill: var(--muted);
+    font-size: 0.42rem; /* small relative to viewBox 260×140 */
+    font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.eval-chart__axis-label--ply {
+    font-size: 0.5rem;
+}
+.eval-chart__area {
+    fill: rgba(245, 166, 35, 0.16);
+    stroke: none;
+}
+.eval-chart__line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+.eval-chart__dot {
+    fill: var(--accent);
+    opacity: 0.6;
+}
+.eval-chart__dot:hover {
+    opacity: 1;
+    r: 3;
+}
+.eval-chart__summary {
+    margin: 0.3rem 0 0;
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+/* --- Per-row delta annotation in the move history list --- */
+
+.move-history__delta {
+    padding-left: 0.3rem;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+.move-history__delta--up {
+    color: #65bf65; /* gentle green */
+}
+.move-history__delta--down {
+    color: #d77a6a; /* muted red */
+}
+.move-history__delta--flat {
+    color: var(--muted);
+}
+
+/* The history row uses CSS grid (4 columns: number, side, text, delta).
+ * The 4th column is `auto`-sized so when a row has no delta annotation
+ * (typically the very first move before the initial-position sample
+ * lands), the column shrinks to 0 and the layout looks identical to
+ * the pre-evalbar version. */

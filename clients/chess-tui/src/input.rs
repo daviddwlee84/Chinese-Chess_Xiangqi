@@ -84,6 +84,11 @@ pub enum Action {
     /// scored root moves + highlighted PV on the board. Bound to
     /// uppercase `D`.
     DebugToggle,
+    /// Toggle the AI win-rate panel (Game mode, requires the
+    /// `--evalbar` CLI flag at startup). Shows the current
+    /// `紅 % • 黑 %` headline + an ASCII trend chart of the game.
+    /// Bound to uppercase `E`.
+    EvalbarToggle,
     /// Move the AI debug-panel cursor up (k) when debug is open.
     /// Selects which scored move's PV to highlight on the board.
     DebugCursorUp,
@@ -168,6 +173,7 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('t') => Action::ChatStart,
             KeyCode::Char('H') => Action::HistoryToggle,
             KeyCode::Char('D') => Action::DebugToggle,
+            KeyCode::Char('E') => Action::EvalbarToggle,
             // Debug panel navigation: ',' and '.' move the row cursor
             // (less invasive than overloading j/k which are vim-cursor
             // bindings for board navigation). The dispatcher ignores

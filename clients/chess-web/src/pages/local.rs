@@ -12,8 +12,11 @@ use crate::components::board::{Board, ThreatOverlay};
 use crate::components::captured::{CapturedSlot, CapturedStrip};
 use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::{EndOverlay, MirrorHalf};
+use crate::components::eval_bar::EvalBar;
+use crate::components::eval_chart::EvalChart;
 use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
+use crate::eval::EvalSample;
 use crate::prefs::{Prefs, ThreatMode};
 use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
 use crate::state::{end_chain_move, find_move, hover_threat_squares};
@@ -49,14 +52,21 @@ struct VsAiConfig {
 ///   in the sidebar. Same analysis under the hood, but the panel
 ///   labels itself "🧠 AI Hint" — phrased for a player asking the
 ///   bot for advice on their move.
+/// - **Evalbar** (`?evalbar=1`): vertical SVG eval bar next to the
+///   board + sidebar `紅 % • 黑 %` badge + post-game trend chart.
+///   Reuses the same hint pump that powers `?hints=1` for
+///   per-ply sampling — when this flag is on, the hint pump runs
+///   every turn even if `?hints=1` itself is not set.
 ///
-/// When BOTH flags are set, debug wins on layout (sticky panel, no
-/// toggle button) but the title shows both badges so the user knows
-/// they're seeing whatever the side-to-move would consider.
+/// When BOTH debug and hints are set, debug wins on layout (sticky
+/// panel, no toggle button) but the title shows both badges so the
+/// user knows they're seeing whatever the side-to-move would consider.
+/// Evalbar is independent of both — it always mounts when set.
 #[derive(Clone, Copy, Debug, Default)]
 struct InsightConfig {
     debug: bool,
     hints: bool,
+    evalbar: bool,
 }
 
 #[component]
@@ -94,7 +104,11 @@ pub fn LocalPage() -> impl IntoView {
             // it's just an on-demand bot analysis, no AI opponent required.
             // Xiangqi-only because the chess-ai engine is xiangqi-scoped.
             let insight = if matches!(variant, Variant::Xiangqi) {
-                InsightConfig { debug: parsed.ai_debug, hints: parsed.ai_hints }
+                InsightConfig {
+                    debug: parsed.ai_debug,
+                    hints: parsed.ai_hints,
+                    evalbar: parsed.ai_evalbar,
+                }
             } else {
                 InsightConfig::default()
             };
@@ -156,6 +170,14 @@ fn LocalGame(
     //   The hint pump rewrites it on every relevant state change.
     let debug_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
     let hint_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+    // Per-ply win-rate samples for the eval bar / sidebar badge / end-game
+    // chart. Populated by an effect (see below) that watches both
+    // analysis caches and pushes a fresh `EvalSample` whenever an
+    // analysis lands AND the history grew. Only meaningful when
+    // `evalbar_enabled` (the URL flag); when off, the vector stays
+    // empty and the components don't mount. Reset on undo / new game
+    // alongside the analysis caches so the chart starts fresh.
+    let eval_samples = create_rw_signal::<Vec<EvalSample>>(Vec::new());
     // Hover-driven PV chain for the AI debug panel: when the user
     // hovers a row, board renders a faded chain of from→to overlays.
     // Empty Vec = no highlight.
@@ -190,6 +212,7 @@ fn LocalGame(
     // user can flip between the two views without losing either.
     let debug_enabled = insight.debug;
     let hints_enabled = insight.hints;
+    let evalbar_enabled = insight.evalbar;
     let effective_debug = debug_enabled && ai.is_some();
     let hint_view_active = create_rw_signal::<bool>(false);
     let panel_visible =
@@ -457,6 +480,7 @@ fn LocalGame(
         ai_thinking.set(false);
         debug_analysis.set(None);
         hint_analysis.set(None);
+        eval_samples.set(Vec::new());
         highlighted_pv.set(Vec::new());
         move_epoch.update(|n| *n = n.wrapping_add(1));
     });
@@ -469,6 +493,7 @@ fn LocalGame(
             ai_thinking.set(false);
             debug_analysis.set(None);
             hint_analysis.set(None);
+            eval_samples.set(Vec::new());
             highlighted_pv.set(Vec::new());
             move_epoch.update(|n| *n = n.wrapping_add(1));
         }
@@ -575,18 +600,19 @@ fn LocalGame(
     // **side-to-move's** POV — "what would the bot play if it were
     // me?". Works for both vs-AI and pass-and-play (PvP, two humans).
     //
-    // Crucially this pump runs WHENEVER hints are enabled, including
-    // hints+debug "both" mode — keeping `hint_analysis` warm so the
-    // user can flip the sidebar button and instantly see fresh hint
-    // content without waiting for a re-search.
+    // Crucially this pump runs WHENEVER hints are enabled OR the
+    // win-rate eval bar is enabled — both consume the same analysis
+    // (hints surface it as the move list; evalbar surfaces only the
+    // top-move's score). Keeping a single pump for both flags avoids
+    // duplicate searches.
     //
     // Skipped when:
-    // - hints disabled (no `?hints=1`)
+    // - both hints AND evalbar disabled
     // - vs-AI mode AND it's the AI's turn (the AI pump will run its
     //   own analyze for the AI's POV; spawning a duplicate would race
     //   and the result wouldn't be the side-to-move's POV anyway)
     // - AI is mid-think (avoid racing the AI pump)
-    if hints_enabled {
+    if hints_enabled || evalbar_enabled {
         // Difficulty/strategy/randomness for the hint search. For PvP we
         // pick sensible defaults (Hard + STRICT) since there's no AI
         // config to inherit. For vs-AI we mirror the AI's own knobs so
@@ -678,6 +704,52 @@ fn LocalGame(
         });
     }
 
+    // ---- Eval-sample sync effect ----
+    //
+    // Watches both analysis caches + the history length. When a fresh
+    // analysis lands AND its position is the *current* state AND there
+    // are fewer recorded samples than plies played, push a new
+    // [`EvalSample`]. The `position_hash` check (via the snapshot the
+    // analysis was computed against, indirectly verified by checking
+    // that history.len() matches what we'd expect for this sample)
+    // protects against pushing samples for stale positions while
+    // search effects race.
+    //
+    // Sample at `samples[N]` is the AI's eval of the position **after**
+    // ply N was played (N=0 = initial, N=1 = after first move, …).
+    // We deduplicate by ply: if samples already contains an entry for
+    // history.len(), we skip — handles the common case where both AI
+    // pump and hint pump produce an analysis for the same position
+    // (in vs-AI mode, only one runs per turn; this guard is defensive).
+    if evalbar_enabled {
+        create_effect(move |_| {
+            // Track all three so the effect re-runs whenever any update.
+            let history_len = state.with(|s| s.history.len());
+            let stm = state.with(|s| s.side_to_move);
+            // Read analyses untracked? No — we want to fire on either
+            // landing. Tracked reads.
+            let dbg = debug_analysis.get();
+            let hnt = hint_analysis.get();
+            // Pick whichever analysis exists (prefer hint — it's the
+            // side-to-move's POV, which is the most recent for the
+            // current position; debug_analysis can be stale by one
+            // ply between the AI moving and the hint pump catching up).
+            let analysis = hnt.or(dbg);
+            let Some(a) = analysis else { return };
+            // Already have a sample for this position?
+            let next_ply = history_len;
+            let already_present = eval_samples.with(|v| v.iter().any(|s| s.ply == next_ply));
+            if already_present {
+                return;
+            }
+            // Push the new sample. The cp from `analyze` is
+            // side-to-move-relative; `EvalSample::new` does the
+            // Red-POV normalisation.
+            let sample = EvalSample::new(next_ply, stm, a.chosen.score);
+            eval_samples.update(|v| v.push(sample));
+        });
+    }
+
     let prefs = expect_context::<Prefs>();
     let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
     // Local pass-and-play: no `ClientRole`, so the overlay falls back to
@@ -691,15 +763,38 @@ fn LocalGame(
     // (user takes a screenshot, pastes the move list — much easier than
     // describing positions). Recomputes on every state change because
     // it depends on `state` directly, not just `view`.
+    //
+    // When the win-rate display is on (`?evalbar=1`), each row also
+    // gets an `eval_delta_pct` field showing the win-% change the move
+    // produced from the mover's POV. Computed by pairing
+    // `eval_samples[ply-1]` (before) with `eval_samples[ply]` (after),
+    // both Red-POV; flipped if the mover is Black so positive always
+    // means "this move improved my position". `None` when either
+    // sample is missing (typically the very first move before the
+    // initial-position sample lands).
     let history_signal: Signal<Vec<HistoryEntry>> = Signal::derive(move || {
+        let samples = eval_samples.get();
         state.with(|s| {
             s.history
                 .iter()
                 .enumerate()
-                .map(|(i, rec)| HistoryEntry {
-                    ply: i + 1,
-                    side: rec.mover,
-                    text: chess_core::notation::iccs::encode_move(&s.board, &rec.the_move),
+                .map(|(i, rec)| {
+                    let ply = i + 1;
+                    let before = samples.iter().find(|smp| smp.ply == ply - 1);
+                    let after = samples.iter().find(|smp| smp.ply == ply);
+                    let delta = before.zip(after).map(|(b, a)| {
+                        let red_delta = a.red_win_pct - b.red_win_pct;
+                        match rec.mover {
+                            Side::RED => red_delta,
+                            _ => -red_delta,
+                        }
+                    });
+                    HistoryEntry {
+                        ply,
+                        side: rec.mover,
+                        text: chess_core::notation::iccs::encode_move(&s.board, &rec.the_move),
+                        eval_delta_pct: delta,
+                    }
                 })
                 .collect()
         })
@@ -714,6 +809,17 @@ fn LocalGame(
     // `hint_analysis` (live cache) based on `hint_view_active`.
 
     let mirror_signal: Signal<bool> = Signal::derive(move || mirror);
+
+    // Eval-display derived signals — exposed to <EvalBar>, the
+    // sidebar's badge, and <EvalChart>. When `evalbar_enabled` is
+    // false, `eval_samples` stays empty so all three components see
+    // empty / None and either hide themselves or render placeholders.
+    let current_eval: Signal<Option<EvalSample>> =
+        Signal::derive(move || eval_samples.with(|v| v.last().copied()));
+    let eval_samples_signal: Signal<Vec<EvalSample>> = eval_samples.into();
+    let evalbar_show = move || evalbar_enabled;
+    let chart_show =
+        Signal::derive(move || evalbar_enabled && eval_samples.with(|v| !v.is_empty()));
 
     let game_over = move || !matches!(state.with(|s| s.status), GameStatus::Ongoing);
     let on_resign = move |side: Side| {
@@ -736,16 +842,21 @@ fn LocalGame(
                     </button>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
                 </Show>
-                <Board
-                    shape=shape
-                    observer=observer
-                    view=view
-                    selected=effective_selected
-                    on_click=on_click
-                    highlighted_pv=highlighted_pv_signal
-                    mirror_black=mirror_signal
-                    threats=threat_overlay
-                />
+                <div class="board-pane__row">
+                    <Board
+                        shape=shape
+                        observer=observer
+                        view=view
+                        selected=effective_selected
+                        on_click=on_click
+                        highlighted_pv=highlighted_pv_signal
+                        mirror_black=mirror_signal
+                        threats=threat_overlay
+                    />
+                    <Show when=evalbar_show>
+                        <EvalBar sample=current_eval/>
+                    </Show>
+                </div>
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">
                         <span>"連吃 — 繼續吃 or "</span>
@@ -802,6 +913,7 @@ fn LocalGame(
                 wip=wip
                 history=history_signal
                 hint_toggle=sidebar_hint_toggle
+                eval_badge=current_eval
             />
             <Show when=move || panel_visible.get()>
                 <DebugPanel
@@ -811,6 +923,9 @@ fn LocalGame(
                     title=panel_title
                     subtitle=panel_subtitle
                 />
+            </Show>
+            <Show when=move || chart_show.get()>
+                <EvalChart samples=eval_samples_signal/>
             </Show>
         </section>
     }

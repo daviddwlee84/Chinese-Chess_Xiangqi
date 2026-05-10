@@ -6,6 +6,7 @@
 //! browser with `trunk serve` (or `cargo build --target wasm32-unknown-unknown
 //! -p chess-web`).
 
+pub mod eval;
 pub mod glyph;
 pub mod orient;
 pub mod routes;
