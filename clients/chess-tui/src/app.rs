@@ -1895,9 +1895,17 @@ impl AppState {
         // panel reads `last_analysis` when toggled. No-debug TUIs pay
         // the small Vec<ScoredMove> alloc cost for nothing, but it's
         // negligible vs the ms-scale search itself.
-        let Some(analysis) = chess_ai::analyze(&g.state, &opts) else {
+        //
+        // Time the search so the debug header can show the wall-clock
+        // cost (matches the chess-web debug panel's "Time" row). chess-
+        // ai itself doesn't measure because `Instant::now()` panics on
+        // wasm32; native callers like this one wrap it.
+        let start = std::time::Instant::now();
+        let Some(mut analysis) = chess_ai::analyze(&g.state, &opts) else {
             return;
         };
+        let elapsed_ms = u32::try_from(start.elapsed().as_millis()).unwrap_or(u32::MAX);
+        analysis.elapsed_ms = Some(elapsed_ms);
         let mv = analysis.chosen.mv.clone();
         let nodes = analysis.chosen.nodes;
         let score = analysis.chosen.score;

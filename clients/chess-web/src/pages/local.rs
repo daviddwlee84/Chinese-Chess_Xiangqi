@@ -17,6 +17,7 @@ use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
 use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
 use crate::state::{end_chain_move, find_move};
+use crate::time::perf_now_ms;
 
 /// Resolved local-page configuration. `Some(VsAiConfig)` only when the URL
 /// asked for vs-AI on a supported variant (xiangqi).
@@ -482,7 +483,22 @@ fn LocalGame(
                 // `<DebugPanel>`. When hints is on we still cache the
                 // analysis so opening the toggle mid-game has data
                 // ready immediately.
-                let analysis = chess_ai::analyze(&snapshot, &opts);
+                //
+                // Time the search via `performance.now()` and patch
+                // the resulting wall-clock into `analysis.elapsed_ms`
+                // for the debug panel. Done here (caller-side) rather
+                // than inside chess-ai because `std::time::Instant`
+                // panics on `wasm32-unknown-unknown` — the platform
+                // boundary owns the clock.
+                let analysis = {
+                    let start = perf_now_ms();
+                    let mut a = chess_ai::analyze(&snapshot, &opts);
+                    let elapsed = perf_now_ms().saturating_sub(start);
+                    if let Some(ref mut a) = a {
+                        a.elapsed_ms = Some(elapsed);
+                    }
+                    a
+                };
                 if move_epoch.get_untracked() != cur_epoch {
                     ai_thinking.set(false);
                     return;
@@ -597,7 +613,18 @@ fn LocalGame(
                 if current_hash != snapshot_hash {
                     return;
                 }
-                let analysis = chess_ai::analyze(&snapshot, &opts);
+                // Time the search via performance.now() — see the
+                // matching pattern in the AI move pump above for why
+                // we measure caller-side rather than inside chess-ai.
+                let analysis = {
+                    let start = perf_now_ms();
+                    let mut a = chess_ai::analyze(&snapshot, &opts);
+                    let elapsed = perf_now_ms().saturating_sub(start);
+                    if let Some(ref mut a) = a {
+                        a.elapsed_ms = Some(elapsed);
+                    }
+                    a
+                };
                 // Bail if state moved on during the search itself.
                 let current_hash = state.with_untracked(|cur| cur.position_hash);
                 if current_hash != snapshot_hash {

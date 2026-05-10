@@ -230,6 +230,7 @@ pub(crate) fn analyze_v5(state: &GameState, opts: &AiOptions) -> Option<AiAnalys
         target_depth,
         nodes,
         budget_hit,
+        elapsed_ms: None,
         strategy: Strategy::IterativeDeepeningTtV5,
         randomness,
     })
@@ -303,6 +304,7 @@ fn build_analysis<E: Evaluator>(
         target_depth: depth,
         nodes,
         budget_hit,
+        elapsed_ms: None,
         strategy,
         randomness,
     })

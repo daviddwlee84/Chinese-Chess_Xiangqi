@@ -1075,6 +1075,19 @@ fn push_history_lines(lines: &mut Vec<Line<'static>>, g: &GameView, _style: Styl
     }
 }
 
+/// Format wall-clock elapsed time into the `, time=X ms` /
+/// `, time=Y.Z s` suffix used inside the AI Debug header line. Same
+/// conversion thresholds as chess-web's `crate::time::format_elapsed_ms`
+/// (integer ms below 1 s; one decimal of seconds above) so the two
+/// frontends agree on what a 1.4 s search looks like.
+fn format_elapsed_ms_for_header(ms: u32) -> String {
+    if ms < 1000 {
+        format!(", time={} ms", ms)
+    } else {
+        format!(", time={:.1} s", ms as f64 / 1000.0)
+    }
+}
+
 /// Render the AI debug panel: scored root moves with the cursor row
 /// highlighted (its PV is also overlaid on the board via
 /// `draw_board`'s `highlighted_pv`). Window of `MAX_DEBUG_LINES`
@@ -1102,12 +1115,18 @@ fn push_debug_lines(lines: &mut Vec<Line<'static>>, g: &GameView, cursor: usize)
     } else {
         analysis.depth.to_string()
     };
+    // Wall-clock time, when the caller measured it. chess-tui's
+    // `ai_reply` (clients/chess-tui/src/app.rs) wraps the analyze()
+    // call in `std::time::Instant`. None on screens/cases where the
+    // caller didn't time (no row added).
+    let time_str = analysis.elapsed_ms.map(format_elapsed_ms_for_header).unwrap_or_default();
     let header = format!(
-        "AI Debug ({}, depth {}, {} nodes, {} moves):",
+        "AI Debug ({}, depth {}, {} nodes, {} moves{}):",
         analysis.strategy.as_str(),
         depth_str,
         analysis.nodes,
         analysis.scored.len(),
+        time_str,
     );
     lines.push(Line::from(Span::styled(header, TuiStyle::default().fg(Color::Rgb(245, 166, 35)))));
     lines.push(Line::from(Span::styled(

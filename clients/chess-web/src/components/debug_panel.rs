@@ -90,6 +90,13 @@ fn DebugMeta(#[prop(into)] analysis: Signal<Option<AiAnalysis>>) -> impl IntoVie
         })
     };
     let nodes = move || analysis.with(|a| a.as_ref().map(|x| x.nodes).unwrap_or(0));
+    // "Time" row is omitted when the caller didn't measure
+    // (`elapsed_ms == None`). Format helper lives in `crate::time` so
+    // the chess-web → chess-tui consistency check (same numbers in
+    // both UIs) has one source of truth for the formatting.
+    let elapsed_text = move || {
+        analysis.with(|a| a.as_ref().and_then(|x| x.elapsed_ms).map(crate::time::format_elapsed_ms))
+    };
     let strategy = move || {
         analysis.with(|a| a.as_ref().map(|x| x.strategy.as_str()).unwrap_or("—").to_string())
     };
@@ -114,6 +121,18 @@ fn DebugMeta(#[prop(into)] analysis: Signal<Option<AiAnalysis>>) -> impl IntoVie
             <div><dt>"Engine"</dt><dd>{strategy}</dd></div>
             <div><dt>"Depth"</dt><dd title=depth_title>{depth_text}</dd></div>
             <div><dt>"Nodes"</dt><dd>{move || nodes().to_string()}</dd></div>
+            // "Time" only appears when caller measured (chess-web's
+            // pages do via `crate::time::perf_now_ms`; net mode also
+            // measures). Hidden when None — keeps the meta block from
+            // showing a misleading "0 ms" placeholder.
+            <Show when=move || elapsed_text().is_some()>
+                <div>
+                    <dt>"Time"</dt>
+                    <dd title="Wall-clock duration of the search; rises with target depth + node budget.">
+                        {move || elapsed_text().unwrap_or_default()}
+                    </dd>
+                </div>
+            </Show>
             <div><dt>"Randomness"</dt><dd>{randomness_label}</dd></div>
             <div><dt>"Best score"</dt><dd>{move || format!("{:+} cp", chosen_score())}</dd></div>
             <div><dt>"Moves scored"</dt><dd>{move || move_count().to_string()}</dd></div>

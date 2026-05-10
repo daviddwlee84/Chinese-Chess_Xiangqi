@@ -10,6 +10,7 @@ pub mod glyph;
 pub mod orient;
 pub mod routes;
 pub mod state;
+pub mod time;
 
 #[cfg(target_arch = "wasm32")]
 mod app;

@@ -276,7 +276,16 @@ fn PlayConnected(
             // snappy even if v5 Hard takes ~300 ms in WASM.
             wasm_bindgen_futures::spawn_local(async move {
                 gloo_timers::future::TimeoutFuture::new(40).await;
-                let analysis = chess_ai::analyze(&state, &opts);
+                // Time the search so the debug panel can show the
+                // wall-clock cost — chess-ai itself can't measure on
+                // wasm (Instant::now panics) so we patch the result
+                // in here. See `crate::time::perf_now_ms` doc.
+                let start = crate::time::perf_now_ms();
+                let mut analysis = chess_ai::analyze(&state, &opts);
+                let elapsed = crate::time::perf_now_ms().saturating_sub(start);
+                if let Some(ref mut a) = analysis {
+                    a.elapsed_ms = Some(elapsed);
+                }
                 ai_analysis.set(analysis);
             });
         });

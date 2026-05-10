@@ -374,6 +374,17 @@ pub struct AiAnalysis {
     /// The debug panel surfaces this so the displayed `Depth` value is
     /// honest about whether the user got what they asked for.
     pub budget_hit: bool,
+    /// Wall-clock milliseconds the search took, as measured by the
+    /// caller. `None` when the caller didn't measure (acceptable —
+    /// the field is optional so chess-ai stays platform-independent).
+    /// Filled by chess-web via `performance.now()` and by chess-tui
+    /// via `std::time::Instant`; can't be measured inside chess-ai
+    /// itself because `std::time::Instant::now()` panics on
+    /// `wasm32-unknown-unknown`.
+    ///
+    /// Debug panel renders this as "423 ms" or "2.3 s" so users
+    /// understand why bumping `target_depth` makes the AI feel slow.
+    pub elapsed_ms: Option<u32>,
     /// Strategy that produced this analysis.
     pub strategy: Strategy,
     /// Effective randomness policy that picked `chosen` from `scored`.
@@ -758,6 +769,35 @@ mod tests {
             // a specific value here (depends on engine + budget tuning)
             // but the field must exist and be readable.
             let _ = a.budget_hit;
+        }
+    }
+
+    /// `chess-ai` itself can't measure wall-clock time on
+    /// `wasm32-unknown-unknown` (where `std::time::Instant::now()`
+    /// panics), so `analyze()` returns `elapsed_ms: None`. Callers
+    /// (chess-web via `performance.now()`, chess-tui via
+    /// `std::time::Instant`) measure and patch the value back into
+    /// the analysis before handing it to a debug UI. Pin the default
+    /// here so a future "moved timing into chess-ai" change has to
+    /// touch this test deliberately.
+    #[test]
+    fn analyze_elapsed_ms_defaults_to_none_inside_chess_ai() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for strategy in Strategy::ALL {
+            let opts = AiOptions {
+                difficulty: Difficulty::Easy,
+                max_depth: Some(1),
+                seed: Some(0),
+                strategy,
+                randomness: Some(Randomness::STRICT),
+                node_budget: None,
+            };
+            let a = analyze(&state, &opts).expect("analyze");
+            assert!(
+                a.elapsed_ms.is_none(),
+                "{:?}: chess-ai must not populate elapsed_ms — caller's job",
+                strategy
+            );
         }
     }
 
