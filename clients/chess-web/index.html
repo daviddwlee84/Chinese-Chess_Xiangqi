@@ -7,6 +7,19 @@
     <meta name="description" content="Play Chinese chess (xiangqi 象棋), banqi 暗棋, and three-kingdom banqi 三國暗棋 in your browser. Local pass-and-play or online multiplayer rooms. Open source Rust + WASM client."/>
     <meta name="theme-color" content="#1a1614"/>
 
+    <!-- PWA install / standalone hints. The manifest is rendered at
+         build time by `scripts/build-pwa.sh` from
+         `public/manifest.webmanifest.tmpl` so `start_url` / `scope`
+         match the actual deployment base path (server root vs.
+         GitHub Pages subpath). -->
+    <link rel="manifest" href="manifest.webmanifest"/>
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg"/>
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="象棋"/>
+
     <!-- Open Graph (Facebook, LinkedIn, Discord, iMessage, …) -->
     <meta property="og:type" content="website"/>
     <meta property="og:site_name" content="Chinese Chess 中國象棋"/>
@@ -30,6 +43,14 @@
     <link data-trunk rel="rust"/>
     <link data-trunk rel="css" href="style.css"/>
     <link data-trunk rel="copy-file" href="og-image.png"/>
+
+    <!-- PWA assets — copied verbatim into dist/. The .tmpl files are
+         rewritten in place by the post-build hook (see Trunk.toml). -->
+    <link data-trunk rel="copy-file" href="public/sw.js.tmpl"/>
+    <link data-trunk rel="copy-file" href="public/manifest.webmanifest.tmpl"/>
+    <link data-trunk rel="copy-file" href="public/pwa.js"/>
+    <link data-trunk rel="copy-dir"  href="public/icons"/>
+    <script src="pwa.js" defer></script>
 </head>
 <body>
     <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">

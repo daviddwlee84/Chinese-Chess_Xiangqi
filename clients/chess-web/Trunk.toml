@@ -13,6 +13,15 @@
 target  = "index.html"
 release = false
 
+# Post-build hook: render `dist/sw.js` and `dist/manifest.webmanifest`
+# from the templates in `public/`. The hook scans dist/ for hashed
+# JS/WASM/CSS asset names and bakes them into the SW precache list.
+# See `scripts/build-pwa.sh` for the substitution rules.
+[[hooks]]
+stage = "post_build"
+command = "bash"
+command_arguments = ["scripts/build-pwa.sh"]
+
 [serve]
 addresses = ["127.0.0.1"]
 port      = 8080

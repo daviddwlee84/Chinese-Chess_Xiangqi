@@ -2901,14 +2901,19 @@ _**Agent (claude-opus-4-7 2026-05-10 04:59:02Z)**_
 ```
 </details></tool-use>
 
-_**Agent (claude-opus-4-7 2026-05-10 04:59:05Z)**_
+_**Agent (claude-opus-4-7 2026-05-10 07:58:33Z)**_
 
 <tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
 <summary>Tool use: **ExitPlanMode**</summary>
 
-**Input:**
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
 
-- plan: `# Wrap chess-web (Rust + Leptos + WASM) as an installable PWA
+Your plan has been saved to: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# Wrap chess-web (Rust + Leptos + WASM) as an installable PWA
 
 ## Context
 
@@ -3179,7 +3184,5218 @@ cargo build --target wasm32-unknown-unknown -p chess-web
 - iOS 16.4+ Web Push (要 manifest declarative_push,還要使用者先把
   app 加到主畫面才有訂閱權限)。
 - 在 chess-tui / chess-net 加 PWA 相關功能 (CLI/server 不適用)。
-`
-- planFilePath: `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md`
-
+```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:41Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:41Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `2`
+- query: `select:TaskCreate,TaskUpdate`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:45Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Create public/sw.js.tmpl, public/manifest.webmanifest.tmpl, public/pwa.js, public/icons/* placeholders
+
+```text
+Task #1 created successfully: Static PWA assets (templates, icons, pwa.js)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:49Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+scripts/build-pwa.sh that scans dist/ and substitutes template placeholders
+
+```text
+Task #2 created successfully: Post-build hook script
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:53Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add [[hooks]] in Trunk.toml, copy-file directives + manifest/apple-touch/script tags in index.html
+
+```text
+Task #3 created successfully: Wire Trunk + index.html
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:58:56Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+components/pwa.rs with PwaUpdateToast, PwaInstallBanner, PwaInstallButton, OfflineIndicator
+
+```text
+Task #4 created successfully: Leptos PWA components
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Mount components in AppShell, picker top, sidebar footer; add styles in style.css
+
+```text
+Task #5 created successfully: Wire components into app/picker/sidebar + CSS
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:04Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add serve-web-static target, document hook in CLAUDE.md, add P3 follow-ups in TODO.md
+
+```text
+Task #6 created successfully: Makefile, CLAUDE.md, TODO.md updates
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Comprehensive docs/pwa.md and pitfalls/pwa-base-path-and-stale-cache.md
+
+```text
+Task #7 created successfully: Docs takeaway: docs/pwa.md + pitfalls
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:12Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Run make build-web, make build-web-static, cargo fmt --check, clippy, wasm32 builds
+
+```text
+Task #8 created successfully: Verify: build, fmt, clippy, wasm
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:15Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #1 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect chess-web source layout
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && ls -la src/ src/components/ src/pages/ 2>&1 | head -80`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+src/:
+drwxr-xr-x@    - david  9 May 21:39  **components
+drwxr-xr-x@    - david  8 May 23:08  **pages
+.rw-r--r--@ 1.0k david  8 May 22:14  **app.rs
+.rw-r--r--@ 3.8k david 10 May 13:19  **config.rs
+.rw-r--r--@ 4.2k david  8 May 22:14  **glyph.rs
+.rw-r--r--@  927 david  8 May 22:14  **lib.rs
+.rw-r--r--@ 4.9k david  8 May 22:14  **orient.rs
+.rw-r--r--@ 3.5k david  8 May 22:14  **prefs.rs
+.rw-r--r--@  29k david 10 May 15:19  **routes.rs
+.rw-r--r--@  15k david 10 May 00:17  **state.rs
+.rw-r--r--@ 3.0k david  8 May 22:14  **ws.rs
+
+src/components/:
+.rw-r--r--@  18k david 10 May 15:36  **board.rs
+.rw-r--r--@ 3.4k david  8 May 22:14  **captured.rs
+.rw-r--r--@ 4.1k david  8 May 22:14  **chat_panel.rs
+.rw-r--r--@ 2.1k david  8 May 22:14  **confetti.rs
+.rw-r--r--@ 8.2k david 10 May 14:48  **debug_panel.rs
+.rw-r--r--@ 5.8k david  8 May 22:14  **end_overlay.rs
+.rw-r--r--@  170 david  9 May 21:40  **mod.rs
+.rw-r--r--@ 2.5k david  9 May 00:58  **move_history.rs
+.rw-r--r--@ 7.6k david 10 May 13:50  **sidebar.rs
+.rw-r--r--@ 2.8k david  8 May 22:14  **ws_setup.rs
+
+src/pages/:
+.rw-r--r--@ 11k david 10 May 13:21  **lobby.rs
+.rw-r--r--@ 30k david 10 May 15:19  **local.rs
+.rw-r--r--@  60 david  8 May 22:14  **mod.rs
+.rw-r--r--@ 23k david 10 May 15:13  **picker.rs
+.rw-r--r--@ 26k david 10 May 15:17  **play.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/mod.rs`
+
+```text
+1	pub mod board;
+2	pub mod captured;
+3	pub mod chat_panel;
+4	pub mod confetti;
+5	pub mod debug_panel;
+6	pub mod end_overlay;
+7	pub mod move_history;
+8	pub mod sidebar;
+9	pub mod ws_setup;
+10
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:26Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/app.rs`
+
+```text
+1	use leptos::*;
+2	use leptos_router::{Route, Router, Routes};
+3	
+4	use crate::pages::{lobby::LobbyPage, local::LocalPage, picker::Picker, play::PlayPage};
+5	use crate::prefs::Prefs;
+6	use crate::routes::base_path;
+7	
+8	#[component]
+9	pub fn App() -> impl IntoView {
+10	    // Hydrate FX prefs once at app boot and share via context. Pages
+11	    // and components grab the signals with `expect_context::<Prefs>()`.
+12	    let prefs = Prefs::hydrate();
+13	    provide_context(prefs);
+14	
+15	    view! {
+16	        <Router base=base_path()>
+17	            <AppShell/>
+18	        </Router>
+19	    }
+20	}
+21	
+22	#[component]
+23	fn AppShell() -> impl IntoView {
+24	    view! {
+25	        <main class="app-shell">
+26	            <Routes base=base_path().to_string()>
+27	                <Route path="/" view=Picker/>
+28	                <Route path="/local/:variant" view=LocalPage/>
+29	                <Route path="/lobby" view=LobbyPage/>
+30	                <Route path="/play/:room" view=PlayPage/>
+31	                <Route path="/*any" view=Picker/>
+32	            </Routes>
+33	        </main>
+34	    }
+35	}
+36
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:30Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/sidebar.rs`
+
+```text
+1	//! Sidebar: variant + turn + status + history-length + undo / new-game buttons.
+2	//!
+3	//! `wip=true` (three-kingdom banqi until the engine ships) hides turn /
+4	//! legal-move counts and disables the action buttons — the board overlay
+5	//! tells the user what's happening; the sidebar just stays out of the way.
+6	
+7	use chess_core::board::BoardShape;
+8	use chess_core::piece::Side;
+9	use chess_core::rules::Variant;
+10	use chess_core::state::{DrawReason, GameStatus, WinReason};
+11	use chess_core::view::PlayerView;
+12	use leptos::*;
+13	
+14	use crate::components::move_history::{HistoryEntry, MoveHistory};
+15	use crate::glyph::{self, Style};
+16	use crate::prefs::Prefs;
+17	use crate::routes::app_href;
+18	
+19	#[component]
+20	pub fn Sidebar(
+21	    variant: Variant,
+22	    #[prop(into)] view: Signal<PlayerView>,
+23	    #[prop(into)] on_new_game: Callback<()>,
+24	    #[prop(into)] on_undo: Callback<()>,
+25	    #[prop(default = false)] wip: bool,
+26	    /// Optional move history (local mode supplies this; net mode passes
+27	    /// `None` because `PlayerView` doesn't carry history yet — that's
+28	    /// a future protocol bump).
+29	    #[prop(optional, into)]
+30	    history: Option<Signal<Vec<HistoryEntry>>>,
+31	    /// `Some(signal)` enables an in-game "🧠 Show / Hide AI hint" toggle
+32	    /// button. Owner: the page (so the page also owns the show/hide
+33	    /// state for the actual `<DebugPanel>`). Pass `None` to omit the
+34	    /// button entirely. Distinct from the always-on `?debug=1` panel:
+35	    /// hints are user-driven (default hidden, click to expand /
+36	    /// collapse mid-game), debug is sticky (mounts on page load).
+37	    #[prop(default = None)]
+38	    hint_toggle: Option<RwSignal<bool>>,
+39	) -> impl IntoView {
+40	    let style = Style::Cjk;
+41	    let variant_label = match variant {
+42	        Variant::Xiangqi => "Xiangqi 象棋",
+43	        Variant::Banqi => "Banqi 暗棋",
+44	        Variant::ThreeKingdomBanqi => "Three-Kingdom 三國暗棋",
+45	    };
+46	
+47	    // Display the piece-colour to move, not the seat name. After a banqi
+48	    // first-flip the seat (`side_to_move`) and the colour the seat plays
+49	    // (`current_color`) diverge — players think in terms of colour.
+50	    let turn_text = move || {
+51	        let v = view.get();
+52	        glyph::side_name(v.current_color, style).to_string()
+53	    };
+54	    let turn_class = move || {
+55	        let v = view.get();
+56	        match v.current_color {
+57	            Side::RED => "turn-red",
+58	            Side::BLACK => "turn-black",
+59	            _ => "turn-green",
+60	        }
+61	    };
+62	
+63	    let status_view = move || -> View {
+64	        let v = view.get();
+65	        match v.status {
+66	            GameStatus::Ongoing => view! { <p class="status ongoing">"Ongoing"</p> }.into_view(),
+67	            GameStatus::Won { winner, reason } => {
+68	                let side = glyph::side_name(winner, style);
+69	                let reason = win_reason_label(reason);
+70	                view! {
+71	                    <p class="status won">
+72	                        {format!("{} wins — {}", side, reason)}
+73	                    </p>
+74	                }
+75	                .into_view()
+76	            }
+77	            GameStatus::Drawn { reason } => view! {
+78	                <p class="status drawn">
+79	                    {format!("Drawn — {}", draw_reason_label(reason))}
+80	                </p>
+81	            }
+82	            .into_view(),
+83	        }
+84	    };
+85	
+86	    let legal_count = move || view.with(|v| v.legal_moves.len());
+87	
+88	    // Pull FX prefs from context (provided by `app.rs::App`). Both signals
+89	    // default to true on first visit and persist via localStorage.
+90	    let prefs = expect_context::<Prefs>();
+91	    let fx_confetti = prefs.fx_confetti;
+92	    let fx_check_banner = prefs.fx_check_banner;
+93	
+94	    let show_check = move || {
+95	        let v = view.get();
+96	        // Check banner is xiangqi-only and gated by the user pref.
+97	        fx_check_banner.get()
+98	            && matches!(v.shape, BoardShape::Xiangqi9x10)
+99	            && v.in_check
+100	            && matches!(v.status, GameStatus::Ongoing)
+101	    };
+102	
+103	    view! {
+104	        <aside class="sidebar">
+105	            <h3 class="variant-label">{variant_label}</h3>
+106	            <Show when=move || !wip fallback=|| view! {
+107	                <p class="status drawn">"Engine WIP — board interaction disabled."</p>
+108	            }>
+109	                <Show when=show_check>
+110	                    <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+111	                </Show>
+112	                <div class="turn-row">
+113	                    <span class="turn-prefix">"Turn: "</span>
+114	                    <span class=turn_class>{turn_text}</span>
+115	                </div>
+116	                {status_view}
+117	                <p class="muted">{move || format!("{} legal moves", legal_count())}</p>
+118	            </Show>
+119	            <div class="sidebar-actions">
+120	                <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
+121	                <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
+122	            </div>
+123	            {hint_toggle.map(|sig| {
+124	                let label = move || if sig.get() {
+125	                    "🧠 Hide AI hint"
+126	                } else {
+127	                    "🧠 Show AI hint"
+128	                };
+129	                let cls = move || if sig.get() {
+130	                    "btn btn-hint btn-hint--on"
+131	                } else {
+132	                    "btn btn-hint"
+133	                };
+134	                view! {
+135	                    <button
+136	                        class=cls
+137	                        title="Toggle the AI hint panel — runs the bot and shows the top scored moves from your perspective. You stay in control of the game."
+138	                        on:click=move |_| sig.update(|b| *b = !*b)
+139	                    >
+140	                        {label}
+141	                    </button>
+142	                }
+143	            })}
+144	            {history.map(|h| view! { <MoveHistory entries=h/> })}
+145	            <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
+146	            <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
+147	        </aside>
+148	    }
+149	}
+150	
+151	#[component]
+152	fn FxToggles(fx_confetti: RwSignal<bool>, fx_check_banner: RwSignal<bool>) -> impl IntoView {
+153	    view! {
+154	        <div class="fx-toggles">
+155	            <label>
+156	                <input
+157	                    type="checkbox"
+158	                    prop:checked=move || fx_confetti.get()
+159	                    on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+160	                />
+161	                <span>"Victory effects (confetti + banner)"</span>
+162	            </label>
+163	            <label>
+164	                <input
+165	                    type="checkbox"
+166	                    prop:checked=move || fx_check_banner.get()
+167	                    on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
+168	                />
+169	                <span>"將軍 / CHECK warning"</span>
+170	            </label>
+171	        </div>
+172	    }
+173	}
+174	
+175	fn win_reason_label(reason: WinReason) -> &'static str {
+176	    match reason {
+177	        WinReason::Checkmate => "checkmate 將死",
+178	        WinReason::Stalemate => "stalemate 困死",
+179	        WinReason::Resignation => "resignation",
+180	        WinReason::OnlyOneSideHasPieces => "only one side has pieces",
+181	        WinReason::Timeout => "timeout",
+182	        WinReason::GeneralCaptured => "general captured",
+183	    }
+184	}
+185	
+186	fn draw_reason_label(reason: DrawReason) -> &'static str {
+187	    match reason {
+188	        DrawReason::NoProgress => "no progress",
+189	        DrawReason::Repetition => "repetition",
+190	        DrawReason::Agreed => "agreed",
+191	        DrawReason::InsufficientMaterial => "insufficient material",
+192	    }
+193	}
+194
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:33Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/picker.rs`
+
+```text
+1	use chess_ai::{Difficulty, Randomness, Strategy};
+2	use chess_core::piece::Side;
+3	use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+4	use leptos::*;
+5	
+6	use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
+7	
+8	#[component]
+9	pub fn Picker() -> impl IntoView {
+10	    view! {
+11	        <section class="picker">
+12	            <header class="picker-hero">
+13	                <div class="picker-hero__glyph" aria-hidden="true">"帥"</div>
+14	                <div class="picker-hero__copy">
+15	                    <h1>"Chinese Chess 中國象棋"</h1>
+16	                    <p>
+17	                        "Pick a variant for local pass-and-play, or join the online lobby. "
+18	                        "Rule choices encode into the URL — bookmark to share a configuration."
+19	                    </p>
+20	                </div>
+21	                <a
+22	                    class="picker-hero__source"
+23	                    href="https://github.com/daviddwlee84/Chinese-Chess_Xiangqi"
+24	                    target="_blank"
+25	                    rel="noopener noreferrer"
+26	                    aria-label="View source on GitHub"
+27	                    title="View source on GitHub"
+28	                >
+29	                    <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true">
+30	                        <path fill="currentColor" fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+31	                    </svg>
+32	                </a>
+33	            </header>
+34	            <div class="picker-grid">
+35	                <XiangqiCard/>
+36	                <BanqiCard/>
+37	                <ThreeKingdomCard/>
+38	                <OnlineCard/>
+39	            </div>
+40	        </section>
+41	    }
+42	}
+43	
+44	#[component]
+45	fn XiangqiCard() -> impl IntoView {
+46	    let strict = create_rw_signal(false);
+47	    let mode = create_rw_signal(PlayMode::Pvp);
+48	    let player_red = create_rw_signal(true);
+49	    let difficulty = create_rw_signal(Difficulty::Normal);
+50	    let ai_strategy = create_rw_signal(Strategy::default());
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:37Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:38Z)**_
+
+Now I have enough context. Let me create the static PWA assets.
+
+_**Agent (claude-opus-4-7 2026-05-10 07:59:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Create public/icons and scripts dirs
+
+`mkdir -p /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/icons /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:00:07Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```tmpl
+// Service worker for Chinese Chess (Rust + WASM PWA).
+//
+// This file is a TEMPLATE — the post-build hook
+// `clients/chess-web/scripts/build-pwa.sh` substitutes:
+//   __APP_VERSION__       — short content hash, bumps every rebuild
+//   __BASE_PATH__         — public URL base, e.g. "" (server) or
+//                           "/Chinese-Chess_Xiangqi" (GitHub Pages).
+//                           No trailing slash.
+//   __PRECACHE_MANIFEST__ — JSON array of absolute URLs (already
+//                           prefixed with __BASE_PATH__) to precache.
+//
+// Strategy:
+//   - navigations  -> network-first, fall back to cached index.html
+//   - hashed assets -> cache-first (Trunk hashes JS/WASM/CSS by content)
+//   - manifest / pwa.js / icons -> precached + cache-first
+//   - chess-net runtime endpoints -> bypass entirely (online play)
+//   - other same-origin GETs -> stale-while-revalidate
+//
+// The `SKIP_WAITING` postMessage is the trigger the in-page toast uses
+// to let the user reload into a freshly fetched build on demand.
+
+const APP_VERSION = "__APP_VERSION__";
+const BASE_PATH = "__BASE_PATH__";
+const CACHE_NAME = `chinese-chess-pwa-${APP_VERSION}`;
+const SHELL_INDEX = `${BASE_PATH}/index.html`;
+const PRECACHE_URLS = __PRECACHE_MANIFEST__;
+
+// Endpoints the SW must NOT touch — they belong to chess-net, online-only,
+// and intercepting them just makes offline error handling weirder.
+const BYPASS_PREFIXES = [
+  `${BASE_PATH}/ws`,
+  `${BASE_PATH}/lobby`,
+  `${BASE_PATH}/rooms`,
+  `${BASE_PATH}/api/`,
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // Use individual put() calls so a single 404 doesn't abort the
+      // whole install — we'd rather precache 95% than 0%.
+      await Promise.all(
+        PRECACHE_URLS.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: "no-cache" });
+            if (response.ok) {
+              await cache.put(url, response);
+            }
+          } catch (err) {
+            console.warn("[sw] precache failed", url, err);
+          }
+        }),
+      );
+    })(),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("chinese-chess-pwa-") && key !== CACHE_NAME)
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+function isBypassed(url) {
+  if (url.origin !== self.location.origin) return true;
+  return BYPASS_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
+}
+
+function isHashedAsset(url) {
+  // Trunk inlines content hashes into filenames like:
+  //   app-9f3ac8b1c2.js, app-9f3ac8b1c2_bg.wasm, style-abc123.css
+  // Treat any path with a -[hex8+] segment before the extension as
+  // immutable. Cache-first is safe because the hash changes on rebuild.
+  return /-[0-9a-f]{8,}(?:_bg)?\.(js|wasm|css)$/i.test(url.pathname);
+}
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (isBypassed(url)) return;
+
+  // Navigation: network-first, fall back to the cached SPA shell so the
+  // Leptos router can take over offline (works for /local/xiangqi etc.).
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          // Cache fresh shell on success (handles index.html updates).
+          if (response.ok && url.pathname.endsWith("/")) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(SHELL_INDEX, response.clone()).catch(() => {});
+          }
+          return response;
+        } catch (_err) {
+          const cache = await caches.open(CACHE_NAME);
+          const cached =
+            (await cache.match(SHELL_INDEX)) ||
+            (await cache.match(`${BASE_PATH}/`));
+          if (cached) return cached;
+          return new Response("Offline and no cached shell available.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Hashed JS/WASM/CSS: cache-first (immutable by filename).
+  if (isHashedAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.ok) cache.put(request, response.clone()).catch(() => {});
+        return response;
+      })(),
+    );
+    return;
+  }
+
+  // Everything else same-origin: stale-while-revalidate.
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(request, response.clone()).catch(() => {});
+          return response;
+        })
+        .catch(() => null);
+      return cached || (await network) || new Response("", { status: 504 });
+    })(),
+  );
+});
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/sw.js.tmpl (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:00:18Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```tmpl
+{
+  "name": "Chinese Chess 中國象棋",
+  "short_name": "象棋",
+  "description": "Play xiangqi 象棋, banqi 暗棋, and three-kingdom banqi 三國暗棋. Local pass-and-play works offline once installed.",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": "__BASE_PATH__/",
+  "scope": "__BASE_PATH__/",
+  "id": "__BASE_PATH__/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "theme_color": "#1a1614",
+  "background_color": "#1a1614",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "__BASE_PATH__/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "__BASE_PATH__/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "__BASE_PATH__/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "__BASE_PATH__/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Xiangqi 象棋",
+      "short_name": "Xiangqi",
+      "url": "__BASE_PATH__/local/xiangqi",
+      "description": "Local pass-and-play xiangqi (casual rules)."
+    },
+    {
+      "name": "Banqi 暗棋",
+      "short_name": "Banqi",
+      "url": "__BASE_PATH__/local/banqi",
+      "description": "Local pass-and-play banqi (Taiwan preset)."
+    }
+  ]
+}
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/manifest.webmanifest.tmpl (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:00:49Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```javascript
+// PWA glue. Loaded with `<script defer>` from index.html, runs before
+// the WASM bundle finishes booting so we never miss `beforeinstallprompt`
+// (Chrome fires it once, very early — Leptos is too late).
+//
+// This file deliberately knows nothing about Leptos or Rust: it talks
+// to the page via CustomEvent + a small `window.__pwa` namespace, and
+// the Leptos `pwa.rs` component subscribes from there. That keeps SW
+// registration off the WASM critical path.
+
+(function () {
+  "use strict";
+
+  if (typeof window === "undefined") return;
+
+  // Resolve "./sw.js" against the document URL — works under both
+  // domain-root deploys (chess-net --static-dir) and subpath deploys
+  // (GitHub Pages /Chinese-Chess_Xiangqi/). The trailing-segment hack
+  // strips the current document filename if any.
+  function resolveBase() {
+    var path = window.location.pathname;
+    var lastSlash = path.lastIndexOf("/");
+    return lastSlash >= 0 ? path.slice(0, lastSlash + 1) : "/";
+  }
+
+  var BASE = resolveBase();
+  // The `<base href>` injected by Trunk via --public-url tells us the
+  // canonical app root; prefer it when present (more reliable for
+  // sub-routes like /play/<room>).
+  var baseEl = document.querySelector("base[href]");
+  if (baseEl) {
+    try {
+      var u = new URL(baseEl.getAttribute("href"), window.location.origin);
+      BASE = u.pathname.endsWith("/") ? u.pathname : u.pathname + "/";
+    } catch (_e) {
+      // ignore — fall through to resolveBase()
+    }
+  }
+
+  var deferredPrompt = null;
+  var pendingUpdate = null; // ServiceWorkerRegistration with .waiting
+
+  function dispatch(name, detail) {
+    window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+  }
+
+  function isStandalone() {
+    return (
+      (window.matchMedia &&
+        window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIos() {
+    var ua = window.navigator.userAgent || "";
+    var iosUa = /iPad|iPhone|iPod/.test(ua);
+    // iPadOS 13+ reports as Mac with touch — sniff that too.
+    var iPadOs =
+      window.navigator.platform === "MacIntel" &&
+      typeof window.navigator.maxTouchPoints === "number" &&
+      window.navigator.maxTouchPoints > 1;
+    return iosUa || iPadOs;
+  }
+
+  function isMobile() {
+    var ua = window.navigator.userAgent || "";
+    return /Mobi|Android|iPad|iPhone|iPod/i.test(ua) || isIos();
+  }
+
+  // ---- Service worker registration ------------------------------------
+
+  function registerSw() {
+    if (!("serviceWorker" in navigator)) return;
+    var swUrl = BASE + "sw.js";
+
+    navigator.serviceWorker
+      .register(swUrl, {
+        scope: BASE,
+        // Don't let HTTP cache hold a stale sw.js for days — force a
+        // fresh check on every registration.
+        updateViaCache: "none",
+      })
+      .then(function (reg) {
+        // Already-waiting worker on a hard reload.
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          pendingUpdate = reg;
+          dispatch("pwa:update-ready");
+        }
+
+        reg.addEventListener("updatefound", function () {
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", function () {
+            if (
+              nw.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              // We have an old controlling SW + a new installed one —
+              // that's exactly the "new version available" condition.
+              pendingUpdate = reg;
+              dispatch("pwa:update-ready");
+            }
+          });
+        });
+
+        // Foregrounding the tab — opportunistically check for new SW.
+        window.addEventListener("focus", function () {
+          reg.update().catch(function () {});
+        });
+      })
+      .catch(function (err) {
+        console.warn("[pwa] service worker registration failed:", err);
+      });
+
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
+
+  // ---- Install prompt -------------------------------------------------
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferredPrompt = event;
+    dispatch("pwa:install-available");
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferredPrompt = null;
+    dispatch("pwa:installed");
+  });
+
+  // ---- Public API for Leptos -----------------------------------------
+
+  window.__pwa = {
+    base: BASE,
+    canInstall: function () {
+      return !!deferredPrompt;
+    },
+    isStandalone: isStandalone,
+    isIos: isIos,
+    isMobile: isMobile,
+    install: function () {
+      if (!deferredPrompt) return Promise.resolve("unavailable");
+      var p = deferredPrompt;
+      deferredPrompt = null;
+      return p
+        .prompt()
+        .then(function () {
+          return p.userChoice;
+        })
+        .then(function (choice) {
+          return choice && choice.outcome ? choice.outcome : "dismissed";
+        });
+    },
+    applyUpdate: function () {
+      if (pendingUpdate && pendingUpdate.waiting) {
+        pendingUpdate.waiting.postMessage({ type: "SKIP_WAITING" });
+        return true;
+      }
+      // No waiting worker — just reload as a best-effort fallback.
+      window.location.reload();
+      return false;
+    },
+  };
+
+  // Replay current state on subscribe — Leptos mounts after we run, so
+  // late subscribers can still ask `window.__pwa.canInstall()` and we
+  // re-fire `pwa:installed` if the user is already in standalone.
+  if (isStandalone()) {
+    // Defer so listeners attached during `TrunkApplicationStarted` see it.
+    setTimeout(function () {
+      dispatch("pwa:installed");
+    }, 0);
+  }
+
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", registerSw);
+  } else {
+    registerSw();
+  }
+})();
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/pwa.js (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:00:51Z)**_
+
+Now icons. Let me create a clean SVG and rasterize for placeholders.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:00:55Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Chinese Chess 中國象棋</title>
+  <rect width="512" height="512" rx="96" ry="96" fill="#1a1614"/>
+  <circle cx="256" cy="256" r="180" fill="#f4e0b9" stroke="#3a2a1f" stroke-width="10"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#c0392b" stroke-width="6"/>
+  <text x="256" y="256"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Noto Serif TC','Noto Serif SC','Songti SC','PingFang SC',serif"
+        font-weight="900"
+        font-size="240"
+        fill="#c0392b">帥</text>
+</svg>
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/icons/icon.svg (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" ry="12" fill="#1a1614"/>
+  <circle cx="32" cy="32" r="22" fill="#f4e0b9" stroke="#c0392b" stroke-width="2"/>
+  <text x="32" y="32"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Noto Serif TC','Songti SC',serif"
+        font-weight="900"
+        font-size="30"
+        fill="#c0392b">帥</text>
+</svg>
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/icons/favicon.svg (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:08Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Chinese Chess (maskable)</title>
+  <!-- Maskable variant: bleed the bg full-edge, keep the disc inside the
+       safe zone (inner ~80%). Android adaptive icons crop up to 10% off
+       each side, so artwork must stay within a 410×410 centred area. -->
+  <rect width="512" height="512" fill="#1a1614"/>
+  <circle cx="256" cy="256" r="160" fill="#f4e0b9" stroke="#3a2a1f" stroke-width="8"/>
+  <circle cx="256" cy="256" r="142" fill="none" stroke="#c0392b" stroke-width="5"/>
+  <text x="256" y="256"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Noto Serif TC','Noto Serif SC','Songti SC','PingFang SC',serif"
+        font-weight="900"
+        font-size="200"
+        fill="#c0392b">帥</text>
+</svg>
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/public/icons/icon-maskable.svg (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:10Z)**_
+
+Now I need PNG placeholders. Let me check what rasterizer is available.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check available rasterizers
+
+`command -v rsvg-convert; command -v magick; command -v convert; command -v qlmanage; command -v sips; command -v inkscape; echo done`
+
+```text
+/usr/local/bin/rsvg-convert
+/usr/local/bin/magick
+/usr/local/bin/convert
+/usr/bin/qlmanage
+/usr/bin/sips
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:22Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```sh
+#!/usr/bin/env bash
+# Re-rasterize the placeholder PWA icons from the committed SVG sources.
+# Run this when you change `public/icons/icon.svg` or replace the
+# placeholder design with your own.
+#
+# Requires `rsvg-convert` (preferred — sharper text antialias) or
+# `magick` / `convert` from ImageMagick as a fallback.
+#
+# Output:
+#   public/icons/icon-192.png            (any-purpose, 192x192)
+#   public/icons/icon-512.png            (any-purpose, 512x512)
+#   public/icons/icon-maskable-512.png   (maskable variant, 512x512)
+#   public/icons/apple-touch-icon-180.png (iOS home-screen, 180x180)
+#
+# These are baked-in placeholders. The real .svg sources are the source
+# of truth and are also referenced directly by the manifest (modern
+# browsers handle SVG icons), so even without re-running this script
+# Chrome / Edge will pick up SVG changes immediately.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+ICONS_DIR="public/icons"
+ANY_SVG="${ICONS_DIR}/icon.svg"
+MASK_SVG="${ICONS_DIR}/icon-maskable.svg"
+
+render() {
+  local src=$1 size=$2 dst=$3
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w "$size" -h "$size" "$src" -o "$dst"
+  elif command -v magick >/dev/null 2>&1; then
+    magick -background none -density 384 "$src" -resize "${size}x${size}" "$dst"
+  elif command -v convert >/dev/null 2>&1; then
+    convert -background none -density 384 "$src" -resize "${size}x${size}" "$dst"
+  else
+    echo "error: need rsvg-convert or ImageMagick to rasterize icons" >&2
+    exit 1
+  fi
+  echo "wrote ${dst} (${size}x${size})"
+}
+
+render "$ANY_SVG"  192 "${ICONS_DIR}/icon-192.png"
+render "$ANY_SVG"  512 "${ICONS_DIR}/icon-512.png"
+render "$MASK_SVG" 512 "${ICONS_DIR}/icon-maskable-512.png"
+render "$ANY_SVG"  180 "${ICONS_DIR}/apple-touch-icon-180.png"
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/regenerate-placeholder-icons.sh (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Generate placeholder PNG icons
+
+`chmod +x scripts/regenerate-placeholder-icons.sh && ./scripts/regenerate-placeholder-icons.sh && ls -la public/icons/`
+
+```text
+wrote public/icons/icon-192.png (192x192)
+wrote public/icons/icon-512.png (512x512)
+wrote public/icons/icon-maskable-512.png (512x512)
+wrote public/icons/apple-touch-icon-180.png (180x180)
+.rw-r--r--@ 12k david 10 May 16:01  apple-touch-icon-180.png
+.rw-r--r--@ 504 david 10 May 16:01 󰕙 favicon.svg
+.rw-r--r--@ 13k david 10 May 16:01  icon-192.png
+.rw-r--r--@ 35k david 10 May 16:01  icon-512.png
+.rw-r--r--@ 26k david 10 May 16:01  icon-maskable-512.png
+.rw-r--r--@ 878 david 10 May 16:01 󰕙 icon-maskable.svg
+.rw-r--r--@ 675 david 10 May 16:00 󰕙 icon.svg
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:33Z)**_
+
+Icons rendered. Task 1 done; now the build hook.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:33Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #1 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:01:36Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #2 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:08Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```sh
+#!/usr/bin/env bash
+# Trunk post-build hook: generate `dist/sw.js` and
+# `dist/manifest.webmanifest` from the templates in `public/`.
+#
+# Trunk passes:
+#   TRUNK_STAGING_DIR  — absolute path to the dist directory
+#   TRUNK_PUBLIC_URL   — public URL prefix from `--public-url`
+#                        (defaults to "/" when not set; for GitHub
+#                        Pages we run with --public-url "/<repo>/").
+#
+# Why a post-build step?
+#   - Trunk hashes JS/WASM/CSS for cache busting; we want those exact
+#     hashed filenames in the SW precache list, so we can only know
+#     them after the build runs.
+#   - The manifest needs `start_url` / `scope` baked at build-time to
+#     match the deployment base path (server vs. GitHub Pages subpath).
+#
+# This script intentionally avoids any external deps beyond bash + sed
+# + find + shasum — all default on macOS / Linux dev machines.
+
+set -euo pipefail
+
+STAGING="${TRUNK_STAGING_DIR:-clients/chess-web/dist}"
+PUBLIC_URL="${TRUNK_PUBLIC_URL:-/}"
+
+# Normalize PUBLIC_URL → BASE_PATH:
+#   "/"                           -> ""
+#   "/Chinese-Chess_Xiangqi/"     -> "/Chinese-Chess_Xiangqi"
+#   "/sub/"                       -> "/sub"
+BASE_PATH="${PUBLIC_URL%/}"
+
+if [[ ! -d "${STAGING}" ]]; then
+  echo "[build-pwa] staging dir missing: ${STAGING}" >&2
+  exit 1
+fi
+
+# Locate the template sources. Trunk copies them into dist via the
+# index.html `<link data-trunk rel="copy-file" …>` directives, so the
+# real source-of-truth is the project tree.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "${HOOK_DIR}/.." && pwd)"
+SW_TMPL="${PROJECT_DIR}/public/sw.js.tmpl"
+MF_TMPL="${PROJECT_DIR}/public/manifest.webmanifest.tmpl"
+
+if [[ ! -f "${SW_TMPL}" || ! -f "${MF_TMPL}" ]]; then
+  echo "[build-pwa] template files missing under ${PROJECT_DIR}/public/" >&2
+  exit 1
+fi
+
+# ---- Build the precache URL list ------------------------------------
+#
+# Walk dist/ and collect every shipping asset. Skip anything that
+# (a) the SW would refuse to fetch anyway (sw.js itself, sw.js.tmpl /
+# manifest.webmanifest.tmpl leftovers from the copy-file step), or
+# (b) is purely social-card metadata not needed offline (og-image.png,
+# 404.html — GitHub Pages uses 404.html only on real not-founds, and
+# the SW handles SPA fallback navigation independently).
+
+cd "${STAGING}"
+
+# Collect relative paths, prefix with BASE_PATH/, sort for determinism.
+mapfile -t PRECACHE_REL < <(
+  find . -type f \
+    \( -name "*.js" -o -name "*.wasm" -o -name "*.css" \
+       -o -name "*.html" -o -name "*.svg" -o -name "*.png" \
+       -o -name "*.webp" -o -name "*.webmanifest" \) \
+    ! -name "sw.js" \
+    ! -name "sw.js.tmpl" \
+    ! -name "manifest.webmanifest.tmpl" \
+    ! -name "og-image.png" \
+    ! -name "404.html" \
+    | sed 's|^\./||' | sort
+)
+
+if [[ ${#PRECACHE_REL[@]} -eq 0 ]]; then
+  echo "[build-pwa] no assets found under ${STAGING}" >&2
+  exit 1
+fi
+
+# Build a JS array literal: ["${BASE}/index.html", "${BASE}/foo-abc.js", …]
+PRECACHE_JSON="["
+first=1
+for rel in "${PRECACHE_REL[@]}"; do
+  if [[ ${first} -eq 1 ]]; then
+    first=0
+  else
+    PRECACHE_JSON+=","
+  fi
+  PRECACHE_JSON+="\"${BASE_PATH}/${rel}\""
+done
+PRECACHE_JSON+="]"
+
+# Always force "/" (== BASE_PATH/) into the precache so navigation
+# fallback can find a cached shell at the root URL too.
+if ! printf '%s\n' "${PRECACHE_REL[@]}" | grep -q '^index\.html$'; then
+  echo "[build-pwa] warning: index.html not produced by Trunk?" >&2
+fi
+
+# ---- Compute APP_VERSION (content hash) -----------------------------
+#
+# Concatenate per-file sha256s, then sha256 the result; keep the first
+# 12 hex chars. Stable across runs as long as the dist contents are
+# byte-identical, which is what we want for Cache-Storage versioning.
+
+VERSION_RAW="$(
+  for rel in "${PRECACHE_REL[@]}"; do
+    shasum -a 256 "${rel}"
+  done | shasum -a 256 | awk '{print $1}'
+)"
+APP_VERSION="${VERSION_RAW:0:12}"
+
+cd "${PROJECT_DIR}"
+
+# ---- Render templates -----------------------------------------------
+#
+# Use `awk` for the substitution because the precache JSON contains
+# characters (slashes, quotes) that play badly with sed delimiters.
+
+render_template() {
+  local src=$1 dst=$2
+  awk -v ver="${APP_VERSION}" -v base="${BASE_PATH}" -v list="${PRECACHE_JSON}" '
+    {
+      gsub(/__APP_VERSION__/, ver)
+      gsub(/__BASE_PATH__/, base)
+      gsub(/__PRECACHE_MANIFEST__/, list)
+      print
+    }
+  ' "${src}" > "${dst}"
+}
+
+render_template "${SW_TMPL}" "${STAGING}/sw.js"
+render_template "${MF_TMPL}" "${STAGING}/manifest.webmanifest"
+
+# Drop the leftover *.tmpl files Trunk copy-file dropped into dist.
+rm -f "${STAGING}/sw.js.tmpl" "${STAGING}/manifest.webmanifest.tmpl"
+
+echo "[build-pwa] version=${APP_VERSION} base='${BASE_PATH}' files=${#PRECACHE_REL[@]}"
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/build-pwa.sh (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Make build-pwa.sh executable
+
+`chmod +x /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/build-pwa.sh`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:12Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #2 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:15Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #3 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/Trunk.toml has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:24Z)**_
+
+Now update index.html — add manifest link, copy-file directives, pwa.js script, PWA meta tags.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:28Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/index.html has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/index.html has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:42Z)**_
+
+Let me try a build to see if Trunk + the hook work end to end before going further.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify trunk available
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi && command -v trunk && trunk --version`
+
+```text
+Exit code 1
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find trunk
+
+`which trunk 2>&1; ls ~/.cargo/bin/trunk 2>&1; trunk --version 2>&1 || echo "trunk not found"`
+
+```text
+trunk not found
+"/Users/david/.cargo/bin/trunk": No such file or directory (os error 2)
+zsh: command not found: trunk
+trunk not found
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:50Z)**_
+
+Trunk isn't installed; I'll verify by simulating the hook output against a fake dist later. Continuing with the Leptos components.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:51Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #3 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #4 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:02:56Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/Cargo.toml`
+
+```text
+1	[package]
+2	name        = "chess-web"
+3	description = "Leptos + WASM frontend for chess-core. SPA — local pass-and-play and online play via chess-net."
+4	version.workspace      = true
+5	edition.workspace      = true
+6	rust-version.workspace = true
+7	license.workspace      = true
+8	repository.workspace   = true
+9	authors.workspace      = true
+10	
+11	[lib]
+12	crate-type = ["cdylib", "rlib"]
+13	
+14	# Native (cargo check --workspace) sees a tiny lib + the pure-logic modules
+15	# (orient, glyph, routes, state). Leptos and the browser-only deps are
+16	# wasm32-gated so the workspace check passes. chess-net is pulled in with
+17	# `default-features = false` so axum/tokio do NOT end up in the WASM bundle.
+18	[dependencies]
+19	chess-core = { path = "../../crates/chess-core" }
+20	chess-ai   = { path = "../../crates/chess-ai" }
+21	serde      = { workspace = true }
+22	serde_json = { workspace = true }
+23	chess-net  = { path = "../../crates/chess-net", default-features = false }
+24	
+25	[dev-dependencies]
+26	smallvec = { workspace = true }
+27	
+28	[target.'cfg(target_arch = "wasm32")'.dependencies]
+29	leptos        = { version = "0.6", features = ["csr"] }
+30	leptos_router = { version = "0.6", features = ["csr"] }
+31	console_error_panic_hook = "0.1.7"
+32	wasm-bindgen  = "0.2"
+33	wasm-bindgen-futures = "0.4"
+34	web-sys       = { version = "0.3", features = ["Window", "Location", "Storage", "KeyboardEvent"] }
+35	js-sys        = "0.3"
+36	gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+37	gloo-timers   = { version = "0.3", features = ["futures"] }
+38	futures-util  = { workspace = true }
+39	futures       = "0.3"
+40
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:03:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:03:06Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/Cargo.toml has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:03:09Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/prefs.rs`
+
+```text
+1	//! User-facing FX preferences, persisted in `localStorage`.
+2	//!
+3	//! Two switches, both default ON:
+4	//! * `fx_confetti` — show end-of-game confetti + VICTORY/DEFEAT/DRAW overlay.
+5	//! * `fx_check_banner` — show the "將軍 / CHECK" badge in the sidebar when
+6	//!   the side-to-move is in check (xiangqi only).
+7	//!
+8	//! Storage keys are stable (`chess.fx.confetti`, `chess.fx.checkBanner`)
+9	//! so a user toggling once carries the choice across sessions. Missing
+10	//! values read as `true`. We persist `"1"` / `"0"` rather than booleans
+11	//! so future debugging via DevTools is obvious.
+12	//!
+13	//! All `web_sys` calls are wrapped in `Option`/`Result` chains so a
+14	//! sandboxed context with no `window` (or storage disabled) silently
+15	//! falls back to in-memory defaults — no panics.
+16	//!
+17	//! This module is wasm32-only; the workspace native check skips it.
+18	
+19	use leptos::*;
+20	
+21	use crate::state::CapturedSort;
+22	
+23	const KEY_CONFETTI: &str = "chess.fx.confetti";
+24	const KEY_CHECK_BANNER: &str = "chess.fx.checkBanner";
+25	const KEY_CAPTURED_SORT: &str = "chess.ui.capturedSort";
+26	
+27	#[derive(Copy, Clone)]
+28	pub struct Prefs {
+29	    pub fx_confetti: RwSignal<bool>,
+30	    pub fx_check_banner: RwSignal<bool>,
+31	    /// Sort order for the sidebar captured-pieces panel. Persists
+32	    /// across sessions; toggled via the panel header button.
+33	    pub captured_sort: RwSignal<CapturedSort>,
+34	}
+35	
+36	impl Prefs {
+37	    /// Hydrate from `localStorage` and arm `create_effect` watchers that
+38	    /// persist any future change. Designed to be called once at app
+39	    /// boot and `provide_context`-shared with all routes.
+40	    pub fn hydrate() -> Self {
+41	        let fx_confetti = create_rw_signal(read_bool(KEY_CONFETTI, true));
+42	        let fx_check_banner = create_rw_signal(read_bool(KEY_CHECK_BANNER, true));
+43	        let captured_sort = create_rw_signal(read_captured_sort());
+44	
+45	        // Persist on change. The closures only run inside the browser, so
+46	        // calling `localStorage` on every flip is safe and cheap.
+47	        create_effect(move |_| {
+48	            let v = fx_confetti.get();
+49	            write_bool(KEY_CONFETTI, v);
+50	        });
+51	        create_effect(move |_| {
+52	            let v = fx_check_banner.get();
+53	            write_bool(KEY_CHECK_BANNER, v);
+54	        });
+55	        create_effect(move |_| {
+56	            let v = captured_sort.get();
+57	            write_captured_sort(v);
+58	        });
+59	
+60	        Self { fx_confetti, fx_check_banner, captured_sort }
+61	    }
+62	}
+63	
+64	fn local_storage() -> Option<web_sys::Storage> {
+65	    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+66	}
+67	
+68	fn read_bool(key: &str, default_value: bool) -> bool {
+69	    let Some(storage) = local_storage() else { return default_value };
+70	    match storage.get_item(key) {
+71	        Ok(Some(s)) => s != "0",
+72	        _ => default_value,
+73	    }
+74	}
+75	
+76	fn write_bool(key: &str, value: bool) {
+77	    if let Some(storage) = local_storage() {
+78	        let _ = storage.set_item(key, if value { "1" } else { "0" });
+79	    }
+80	}
+81	
+82	fn read_captured_sort() -> CapturedSort {
+83	    let Some(storage) = local_storage() else { return CapturedSort::default() };
+84	    match storage.get_item(KEY_CAPTURED_SORT) {
+85	        Ok(Some(s)) if s == "rank" => CapturedSort::Rank,
+86	        _ => CapturedSort::Time,
+87	    }
+88	}
+89	
+90	fn write_captured_sort(value: CapturedSort) {
+91	    if let Some(storage) = local_storage() {
+92	        let s = match value {
+93	            CapturedSort::Time => "time",
+94	            CapturedSort::Rank => "rank",
+95	        };
+96	        let _ = storage.set_item(KEY_CAPTURED_SORT, s);
+97	    }
+98	}
+99
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:03:21Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:03:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/lib.rs`
+
+```text
+1	//! `chess-web` — Leptos + WASM frontend for chess-core.
+2	//!
+3	//! Native (`cargo check --workspace`) compiles only the pure-logic modules
+4	//! (orient, glyph, routes, state); the leptos UI and the WS layer are
+5	//! wasm32-gated so the workspace target check stays clean. Build for the
+6	//! browser with `trunk serve` (or `cargo build --target wasm32-unknown-unknown
+7	//! -p chess-web`).
+8	
+9	pub mod glyph;
+10	pub mod orient;
+11	pub mod routes;
+12	pub mod state;
+13	
+14	#[cfg(target_arch = "wasm32")]
+15	mod app;
+16	#[cfg(target_arch = "wasm32")]
+17	mod components;
+18	#[cfg(target_arch = "wasm32")]
+19	mod config;
+20	#[cfg(target_arch = "wasm32")]
+21	mod pages;
+22	#[cfg(target_arch = "wasm32")]
+23	mod prefs;
+24	#[cfg(target_arch = "wasm32")]
+25	mod ws;
+26	
+27	#[cfg(target_arch = "wasm32")]
+28	use wasm_bindgen::prelude::wasm_bindgen;
+29	
+30	#[cfg(target_arch = "wasm32")]
+31	#[wasm_bindgen(start)]
+32	pub fn start() {
+33	    console_error_panic_hook::set_once();
+34	    leptos::mount_to_body(app::App);
+35	}
+36
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:07Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! PWA UI: install banner / button, update toast, offline indicator.
+//!
+//! All the platform plumbing (service worker registration, capturing
+//! `beforeinstallprompt`, posting `SKIP_WAITING`) lives in
+//! `public/pwa.js` and exposes a tiny bridge on `window.__pwa`. This
+//! module subscribes to the bridge's CustomEvents and renders Leptos
+//! UI on top.
+//!
+//! Why JS for the bridge? `beforeinstallprompt` fires very early —
+//! before the WASM bundle finishes loading — and missing it makes the
+//! install button impossible to wire up. Doing the listener in JS at
+//! `<script defer>` time guarantees we catch it.
+//!
+//! The signals returned by `use_pwa_state()` are global to the app —
+//! call it once near the root and pass via context.
+
+use leptos::*;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::{JsCast, JsValue};
+
+#[derive(Copy, Clone, Default)]
+pub struct PwaState {
+    /// `beforeinstallprompt` was captured and the in-page prompt is
+    /// available. False on iOS Safari (which has no such event) and
+    /// after the user already accepts / dismisses.
+    pub install_available: RwSignal<bool>,
+    /// Currently running as a standalone PWA (display-mode standalone
+    /// or iOS `navigator.standalone`).
+    pub standalone: RwSignal<bool>,
+    /// Best-effort iOS detection. Drives the manual "Add to Home
+    /// Screen" hint since iOS won't fire the install event.
+    pub ios: RwSignal<bool>,
+    /// Best-effort mobile detection (any touch device); we suppress
+    /// the desktop-only banner copy on these.
+    pub mobile: RwSignal<bool>,
+    /// New service worker is waiting to take over — show the toast.
+    pub update_ready: RwSignal<bool>,
+    /// `navigator.onLine` mirror. Updates on `online` / `offline`
+    /// window events. `true` is the optimistic default — browsers
+    /// only fire `offline` when truly disconnected.
+    pub online: RwSignal<bool>,
+}
+
+impl PwaState {
+    /// Initialise signals from `window.__pwa` and wire CustomEvent
+    /// listeners. Idempotent: safe to call once at app boot.
+    pub fn hydrate() -> Self {
+        let state = PwaState {
+            install_available: create_rw_signal(false),
+            standalone: create_rw_signal(false),
+            ios: create_rw_signal(false),
+            mobile: create_rw_signal(false),
+            update_ready: create_rw_signal(false),
+            online: create_rw_signal(true),
+        };
+
+        let Some(win) = web_sys::window() else {
+            return state;
+        };
+
+        // Pull initial state via the `window.__pwa` bridge. If pwa.js
+        // hasn't loaded yet (script defer + WASM start order varies by
+        // browser), the field reads return false / true as defaults
+        // and the listeners below correct them when events fire.
+        if let Ok(pwa) = js_sys::Reflect::get(&win, &JsValue::from_str("__pwa")) {
+            state.install_available.set(call_bool(&pwa, "canInstall"));
+            state.standalone.set(call_bool(&pwa, "isStandalone"));
+            state.ios.set(call_bool(&pwa, "isIos"));
+            state.mobile.set(call_bool(&pwa, "isMobile"));
+        }
+
+        // Initial online — read navigator.onLine.
+        state.online.set(win.navigator().on_line());
+
+        let target: &web_sys::EventTarget = win.as_ref();
+
+        attach(target, "pwa:install-available", {
+            let sig = state.install_available;
+            move || sig.set(true)
+        });
+        attach(target, "pwa:installed", {
+            let installed = state.install_available;
+            let standalone = state.standalone;
+            move || {
+                installed.set(false);
+                standalone.set(true);
+            }
+        });
+        attach(target, "pwa:update-ready", {
+            let sig = state.update_ready;
+            move || sig.set(true)
+        });
+        attach(target, "online", {
+            let sig = state.online;
+            move || sig.set(true)
+        });
+        attach(target, "offline", {
+            let sig = state.online;
+            move || sig.set(false)
+        });
+
+        state
+    }
+}
+
+fn call_bool(pwa: &JsValue, method: &str) -> bool {
+    let Ok(f) = js_sys::Reflect::get(pwa, &JsValue::from_str(method)) else {
+        return false;
+    };
+    let Ok(func) = f.dyn_into::<js_sys::Function>() else {
+        return false;
+    };
+    func.call0(pwa)
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+fn attach<F>(target: &web_sys::EventTarget, event: &str, mut f: F)
+where
+    F: FnMut() + 'static,
+{
+    let cb = Closure::<dyn FnMut()>::new(move || f());
+    let _ = target
+        .add_event_listener_with_callback(event, cb.as_ref().unchecked_ref());
+    // Leak so the closure outlives the call. These are app-lifetime
+    // listeners — we never detach them.
+    cb.forget();
+}
+
+fn call_install() {
+    if let Some(win) = web_sys::window() {
+        if let Ok(pwa) = js_sys::Reflect::get(&win, &JsValue::from_str("__pwa")) {
+            if let Ok(f) = js_sys::Reflect::get(&pwa, &JsValue::from_str("install")) {
+                if let Ok(func) = f.dyn_into::<js_sys::Function>() {
+                    let _ = func.call0(&pwa);
+                }
+            }
+        }
+    }
+}
+
+fn call_apply_update() {
+    if let Some(win) = web_sys::window() {
+        if let Ok(pwa) = js_sys::Reflect::get(&win, &JsValue::from_str("__pwa")) {
+            if let Ok(f) = js_sys::Reflect::get(&pwa, &JsValue::from_str("applyUpdate")) {
+                if let Ok(func) = f.dyn_into::<js_sys::Function>() {
+                    let _ = func.call0(&pwa);
+                }
+            }
+        }
+    }
+}
+
+// ---- Components ------------------------------------------------------
+
+/// Bottom-corner toast that appears when a new build is precached and
+/// waiting. Click to skipWaiting + reload.
+#[component]
+pub fn PwaUpdateToast() -> impl IntoView {
+    let pwa = expect_context::<PwaState>();
+    let visible = pwa.update_ready;
+
+    view! {
+        <Show when=move || visible.get()>
+            <div class="pwa-toast" role="status" aria-live="polite">
+                <span class="pwa-toast__msg">"有新版本 — New version available"</span>
+                <button
+                    class="pwa-toast__btn"
+                    on:click=move |_| {
+                        call_apply_update();
+                    }
+                >
+                    "重新整理 / Reload"
+                </button>
+                <button
+                    class="pwa-toast__close"
+                    aria-label="Dismiss"
+                    on:click=move |_| visible.set(false)
+                >
+                    "✕"
+                </button>
+            </div>
+        </Show>
+    }
+}
+
+/// Big banner shown above the picker hero. Hidden once installed or
+/// after the user dismisses.
+#[component]
+pub fn PwaInstallBanner() -> impl IntoView {
+    let pwa = expect_context::<PwaState>();
+    let dismissed = create_rw_signal(false);
+
+    let show_native = move || {
+        !dismissed.get() && !pwa.standalone.get() && pwa.install_available.get()
+    };
+    let show_ios_hint = move || {
+        !dismissed.get() && !pwa.standalone.get() && pwa.ios.get()
+            && !pwa.install_available.get()
+    };
+
+    view! {
+        <Show when=show_native>
+            <aside class="pwa-banner" role="region" aria-label="Install app">
+                <div class="pwa-banner__icon" aria-hidden="true">"帥"</div>
+                <div class="pwa-banner__copy">
+                    <strong>"安裝到桌面 / Install app"</strong>
+                    <p>"安裝後不開瀏覽器也能玩本地對局,連網會自動檢查更新。"</p>
+                </div>
+                <div class="pwa-banner__actions">
+                    <button
+                        class="btn btn-primary"
+                        on:click=move |_| {
+                            call_install();
+                            dismissed.set(true);
+                        }
+                    >"安裝 / Install"</button>
+                    <button
+                        class="pwa-banner__dismiss"
+                        aria-label="Dismiss"
+                        on:click=move |_| dismissed.set(true)
+                    >"✕"</button>
+                </div>
+            </aside>
+        </Show>
+        <Show when=show_ios_hint>
+            <aside class="pwa-banner pwa-banner--ios" role="region" aria-label="Install on iOS">
+                <div class="pwa-banner__icon" aria-hidden="true">"帥"</div>
+                <div class="pwa-banner__copy">
+                    <strong>"加到主畫面 / Add to Home Screen"</strong>
+                    <p>
+                        "在 Safari 點下方分享按鈕 "
+                        <span class="pwa-banner__share" aria-hidden="true">"⬆"</span>
+                        " → 選『加入主畫面』,即可離線使用本地對局。"
+                    </p>
+                </div>
+                <button
+                    class="pwa-banner__dismiss"
+                    aria-label="Dismiss"
+                    on:click=move |_| dismissed.set(true)
+                >"✕"</button>
+            </aside>
+        </Show>
+    }
+}
+
+/// Compact button — hides itself unless a native install prompt is
+/// available. Designed for the sidebar footer.
+#[component]
+pub fn PwaInstallButton() -> impl IntoView {
+    let pwa = expect_context::<PwaState>();
+    let visible = move || !pwa.standalone.get() && pwa.install_available.get();
+
+    view! {
+        <Show when=visible>
+            <button
+                class="btn pwa-install-btn"
+                title="Install Chinese Chess as an app on this device"
+                on:click=move |_| call_install()
+            >
+                "📲 安裝到桌面 / Install"
+            </button>
+        </Show>
+    }
+}
+
+/// Tiny dot in the corner. Green when online, dim red when offline.
+/// Tooltip explains that online play needs a connection.
+#[component]
+pub fn OfflineIndicator() -> impl IntoView {
+    let pwa = expect_context::<PwaState>();
+    let online = pwa.online;
+    let cls = move || if online.get() { "pwa-online-dot pwa-online-dot--on" } else { "pwa-online-dot pwa-online-dot--off" };
+    let title = move || if online.get() {
+        "Online — multiplayer available"
+    } else {
+        "Offline — local play still works; lobby/online disabled"
+    };
+
+    view! {
+        <div class=cls title=title aria-live="polite">
+            <span class="pwa-online-dot__pip" aria-hidden="true"></span>
+            <span class="pwa-online-dot__label">
+                {move || if online.get() { "Online" } else { "Offline" }}
+            </span>
+        </div>
+    }
+}
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/pwa.rs (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/mod.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:13Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #4 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:15Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #5 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:19Z)**_
+
+Wire into AppShell, picker, sidebar:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/app.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:35Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:38Z)**_
+
+Now sidebar — add the install button next to the FX toggles:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/sidebar.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:44Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/sidebar.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:47Z)**_
+
+Now CSS. Let me check the existing stylesheet to fit in:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check existing CSS variables
+
+`grep -n "^:root\|--accent\|--bg-elev\|--bg\|--fg\|--muted\|--surface\|--danger" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head -30`
+
+```text
+1::root {
+2:    --bg: #1a1614;
+3:    --fg: #f4d2a3;
+10:    --accent: #d4a55c;
+11:    --muted: #7a6c5a;
+24:    background: var(--bg);
+25:    color: var(--fg);
+68:    color: var(--accent);
+82:    color: var(--muted);
+97:    background: linear-gradient(90deg, var(--red), var(--accent), var(--tile-disc));
+123:.subtitle { color: var(--muted); margin: 0 0 2rem; }
+141:.variant-card:hover { background: rgba(244, 210, 163, 0.12); border-color: var(--accent); }
+143:.variant-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+161:    color: var(--accent);
+179:    color: var(--fg);
+183:.btn-ghost:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.08); }
+186:    color: var(--muted);
+236:    color: var(--muted);
+242:.chat-line .from-black { color: var(--fg); font-weight: 600; }
+244:.chat-line .text { color: var(--fg); }
+245:.chat-empty { color: var(--muted); margin: 0.4rem 0; font-size: 0.85rem; }
+256:    color: var(--fg);
+262:.chat-input input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+264:.spectator-badge { color: var(--accent); font-weight: 600; }
+272:    color: var(--muted);
+275:.back-link:hover { color: var(--accent); }
+306:    color: var(--muted);
+323:    color: var(--muted);
+354:.captured-empty { color: var(--muted); font-size: 0.85rem; }
+367:    background: var(--bg);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:51Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+1	:root {
+2	    --bg: #1a1614;
+3	    --fg: #f4d2a3;
+4	    --board: #f0c98c;
+5	    --board-edge: #6b4a1f;
+6	    --grid: #5a3b1c;
+7	    --red: #b22222;
+8	    --black: #1a1a1a;
+9	    --green: #228b22;
+10	    --accent: #d4a55c;
+11	    --muted: #7a6c5a;
+12	    --select-bg: rgba(80, 60, 20, 0.85);
+13	    --legal-bg: rgba(40, 80, 40, 0.65);
+14	    --tile-back: #d8a96b;
+15	    --tile-disc: #fffbe6;
+16	    --river: #5a8fbf;
+17	    font-family: ui-sans-serif, "Noto Sans CJK SC", "Noto Sans CJK TC", system-ui, sans-serif;
+18	}
+19	
+20	* { box-sizing: border-box; }
+21	
+22	body {
+23	    margin: 0;
+24	    background: var(--bg);
+25	    color: var(--fg);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:04:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check end of style.css
+
+`tail -5 /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`
+
+```text
+    color: var(--accent);
+    background: rgba(212, 165, 92, 0.18);
+    transform: translateY(-1px);
+}
+.picker-hero__source svg { display: block; }
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Append PWA CSS
+
+```bash
+cat >> /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css <<'CSSEOF'
+
+/* ---- PWA install / update / offline UI -------------------------- */
+
+/* Install banner — shown above the picker hero on devices that can
+   install (Chrome/Edge fired beforeinstallprompt, or iOS Safari needs
+   the manual instruction variant). */
+.pwa-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin: 0 0 1.4rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(212, 165, 92, 0.35);
+    background: linear-gradient(135deg, rgba(178, 34, 34, 0.18), rgba(212, 165, 92, 0.10));
+    color: var(--fg);
+}
+.pwa-banner__icon {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--tile-back);
+    color: var(--red);
+    font-weight: 900;
+    font-size: 1.6rem;
+    font-family: "Noto Serif TC", "Songti SC", serif;
+}
+.pwa-banner__copy {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.pwa-banner__copy strong {
+    display: block;
+    color: var(--accent);
+    font-size: 1rem;
+    margin-bottom: 0.15rem;
+}
+.pwa-banner__copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+.pwa-banner__share {
+    display: inline-block;
+    padding: 0 0.3rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 0.85rem;
+}
+.pwa-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.pwa-banner__dismiss {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+.pwa-banner__dismiss:hover { color: var(--fg); }
+.pwa-banner--ios { background: linear-gradient(135deg, rgba(34, 139, 34, 0.18), rgba(212, 165, 92, 0.10)); }
+
+/* Sidebar install button — match other .btn styles, just with a
+   primary tint when the prompt is hot. */
+.pwa-install-btn {
+    margin-top: 0.4rem;
+    border-color: rgba(178, 34, 34, 0.55);
+    color: var(--fg);
+    background: rgba(178, 34, 34, 0.18);
+}
+.pwa-install-btn:hover {
+    background: rgba(178, 34, 34, 0.32);
+    border-color: var(--red);
+}
+
+/* Update toast — fixed bottom-centre. The whole strip is clickable
+   for a fat-finger-friendly hit target on mobile. */
+.pwa-toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem 0.6rem 1rem;
+    border-radius: 999px;
+    background: rgba(26, 22, 20, 0.96);
+    border: 1px solid var(--accent);
+    color: var(--fg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    font-size: 0.9rem;
+    max-width: calc(100vw - 2rem);
+}
+.pwa-toast__msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pwa-toast__btn {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #1a1614;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.pwa-toast__btn:hover { background: #e7bd72; }
+.pwa-toast__close {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 0.25rem 0.4rem;
+}
+.pwa-toast__close:hover { color: var(--fg); }
+
+/* Online / offline indicator — tucked into a corner of the shell so
+   it's visible from any route but not in the way. The label is hidden
+   when online (a green pip is enough); offline expands to text. */
+.pwa-online-dot {
+    position: fixed;
+    right: 0.8rem;
+    bottom: 0.8rem;
+    z-index: 900;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: rgba(26, 22, 20, 0.7);
+    border: 1px solid rgba(122, 108, 90, 0.35);
+    pointer-events: auto;
+}
+.pwa-online-dot__pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.18);
+}
+.pwa-online-dot--off .pwa-online-dot__pip {
+    background: var(--red);
+    box-shadow: 0 0 0 3px rgba(178, 34, 34, 0.22);
+}
+.pwa-online-dot--on .pwa-online-dot__label { display: none; }
+.pwa-online-dot--off { color: var(--fg); border-color: rgba(178, 34, 34, 0.5); }
+
+@media (max-width: 480px) {
+    .pwa-banner { flex-direction: column; align-items: stretch; text-align: left; }
+    .pwa-banner__actions { justify-content: flex-start; }
+}
+CSSEOF
+echo "appended"
+```
+
+```text
+appended
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #5 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:26Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #6 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:29Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./Makefile`
+
+```text
+55	
+56	play-web:
+57		@scripts/play-web.sh chess-web $(PORT) $(VARIANT)
+58	
+59	play-spectator:
+60		@scripts/play-spectator.sh chess-spec $(PORT) main $(VARIANT)
+61	
+62	build-web:
+63		cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+64	
+65	build-web-server: build-web
+66	
+67	build-web-static:
+68		cd clients/chess-web && base="$(WEB_BASE)"; base="$${base%/}"; if [ -z "$$base" ]; then base="/"; fi; public_url="$$base/"; if [ "$$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$$base" trunk build --release --public-url "$$public_url" --dist dist-static
+69		cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+70	
+71	serve-web-prod: build-web
+72		cargo run -p chess-net -- --addr $(ADDR) --static-dir clients/chess-web/dist $(VARIANT) $(SERVER_ARGS)
+73	
+74	stop-local:
+75		-tmux kill-session -t $(SESSION) 2>/dev/null
+76	
+77	stop-lobby:
+78		-tmux kill-session -t chess-lobby 2>/dev/null
+79	
+80	stop-web:
+81		-tmux kill-session -t chess-web 2>/dev/null
+82	
+83	stop-spectator:
+84		-tmux kill-session -t chess-spec 2>/dev/null
+85	
+86	# Pre-push gates (mirrors CLAUDE.md / .github/workflows/ci.yml).
+87	check: fmt clippy test wasm
+88	
+89	fmt:
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/Makefile has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:39Z)**_
+
+Now CLAUDE.md and TODO.md:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find anchor in CLAUDE.md
+
+`grep -n "chess-web routing is path-based\|chess-web duplicates" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md`
+
+```text
+154:- **chess-web duplicates `orient.rs` and `glyph.rs` from chess-tui verbatim.** This is intentional — promoting them into chess-core would violate ADR-0001 (presentation lives client-side). A shared crate (`clients/chess-client-shared`) is premature for two consumers; the duplicated tests catch drift in CI. See `backlog/promote-client-shared.md` for the trigger and recipe. If you edit one copy, edit the other.
+156:- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:05:44Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+156	- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
+157	
+158	- **Rules are configured via URL query string on `/local/:variant`.** The picker page (`pages/picker.rs`) builds these from a reactive form; manually-typed URLs are also valid. Encoding lives in `routes.rs::{parse_local_rules, build_local_query, build_rule_set}` (pure-logic, native-tested): `?strict=1` for strict xiangqi (default = casual), `?house=chain,rush&seed=42` for banqi house rules + deterministic shuffle, `?preset=taiwan|aggressive|purist` as an alt to `house=`. Tokens: `chain`/`dark`/`rush`/`horse`/`cannon` map 1:1 to `HouseRules` flags (only `chain` + `rush` are wired in move-gen — see banqi gotcha above). Unknown tokens are dropped silently. Three-kingdom ignores all params. In-game rule editing (gear icon) is a P2 follow-up — see `backlog/web-ingame-rules-modal.md`.
+159	
+160	- **End-game FX (confetti + VICTORY/DEFEAT/DRAW banner) and the 將軍/CHECK warning are user-toggleable, default ON.** Wire change: `PlayerView` gains `pub in_check: bool` (`#[serde(default)]`, ADR-0007, protocol v4). chess-tui CLI: `--no-confetti` and `--no-check-banner` (preserved across screen transitions via `AppState::replace_preserving_prefs`). chess-tui hand-rolled ASCII art lives in `clients/chess-tui/src/banner.rs` (`BannerKind::{Victory,Defeat,Draw,Outcome,AppTitle}`, two glyph styles); particle physics in `confetti.rs` (xorshift32, no `rand` dep). chess-web localStorage keys are `chess.fx.confetti` and `chess.fx.checkBanner`, hydrated by `Prefs::hydrate()` in `clients/chess-web/src/prefs.rs` and `provide_context`-shared with all routes; sidebar footer ships two checkboxes. Spectators (and Local pass-and-play, which has no `ClientRole`) always see neutral "Red Wins" / "Black Wins" copy — never `VICTORY` / `DEFEAT`. Banqi never shows the check badge (no general → `is_in_check` returns false). The TUI confetti animation runs at ~20 fps via `poll_ms = 50` while `confetti_anim.is_some() || confetti_pending` (otherwise the existing 60 ms Net / 200 ms Local rates apply). Big TUI banner is skipped when the board area is narrower than the ASCII art + 2 cols of padding; confetti still plays.
+161	
+162	## Where to put new work
+163	
+164	| Kind | Where |
+165	|---|---|
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:00Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find build-web command lines in CLAUDE.md
+
+`grep -n "make play-web\|make build-web" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md | head -5`
+
+```text
+71:make play-web                                             # 1 server + Trunk dev-server (SPA on :8080)
+80:make play-web                                             # full dev loop (server + Trunk hot-reload)
+81:make build-web                                            # trunk build --release → clients/chess-web/dist
+160:- **chess-web is also a PWA — `dist/sw.js` and `dist/manifest.webmanifest` are *generated* by `clients/chess-web/scripts/build-pwa.sh`, not committed.** Trunk runs the script as a `[[hooks]] stage = "post_build"` step (see `clients/chess-web/Trunk.toml`); it scans the just-built dist, writes the precache list (every hashed JS/WASM/CSS/HTML/icon), computes a content-hash `APP_VERSION`, and substitutes `__BASE_PATH__` from `TRUNK_PUBLIC_URL` so the manifest's `start_url` / `scope` match the deploy target (server root via `make build-web`, GitHub Pages subpath like `/Chinese-Chess_Xiangqi/` via `make build-web-static WEB_BASE=...`). **Do not edit dist/sw.js by hand** — the hook overwrites it on every build. The templates live under `clients/chess-web/public/{sw.js.tmpl,manifest.webmanifest.tmpl}`. PWA glue (install prompt capture, SW lifecycle messaging, online detection) is in `clients/chess-web/public/pwa.js`; the Leptos UI on top is in `clients/chess-web/src/components/pwa.rs` (`PwaState`, `PwaInstallBanner`, `PwaInstallButton`, `PwaUpdateToast`, `OfflineIndicator`). Update UX is opt-in: a new SW is precached but won't activate until the user clicks the "Reload" toast (skipWaiting → controllerchange → reload) — chosen so an in-progress 對局 isn't reloaded out from under the player. SW deliberately bypasses `/ws*`, `/lobby`, `/rooms`, `/api/*` so online play retains its existing failure surface. Full takeaway in [`docs/pwa.md`](docs/pwa.md); common traps in [`pitfalls/pwa-base-path-and-stale-cache.md`](pitfalls/pwa-base-path-and-stale-cache.md).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:09Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:11Z)**_
+
+Now TODO.md:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:12Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check TODO.md format
+
+`head -30 /Users/david/Documents/Program/Chinese-Chess_Xiangqi/TODO.md`
+
+```text
+# TODO
+
+Long-term backlog for Chinese Chess. See AGENTS.md
+for the maintenance workflow that agents should follow.
+
+> **For agents**: when the user surfaces an idea explicitly **not** being
+> implemented this session (signals: "maybe later", "nice to have",
+> "工程量太大需要再評估", "先記下來"), add it here with priority + effort tags.
+> Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files —
+> `TODO.md` is the single backlog index. Long-form research goes in
+> [`backlog/<slug>.md`](backlog/).
+
+<!-- Use the exact section order: P1, P2, P3, P?, Done.
+     The bundled scripts/todo-kanban.sh validator only inspects top-level
+     `- [ ]` and `- ✅` items inside these sections. Prose paragraphs,
+     blockquotes, indented sub-bullets, HTML comments, and `---` rules are
+     ignored — feel free to add inline guidance like this without breaking
+     machine readability. -->
+
+## P1
+
+Likely next batch — items you'd reach for if you sat down to work today.
+
+- [ ] **[M] Three Kingdoms Banqi (三國暗棋) implementation** — Build BoardShape::ThreeKingdom mask + rules/three_kingdom.rs with 3-side capture rules. Architecture supports it (TurnOrder, Side, BoardShape variant exist); rules logic and home-zone layout need spec from canonical source. → [research](backlog/three-kingdoms-banqi.md)
+- [ ] **[M] Phase 2 — chains-with-dark-hops (`暗連`)** — DARK_CAPTURE single-hop ships; chains still stop at face-down tiles. Extend `ChainHop` to `captured: Option<Piece>` (None = dark hop), thread through `sanitize_for_observer`, and let `extend_recursive` continue past hidden tiles when both DARK_CAPTURE + CHAIN_CAPTURE are set. Bumps `Move::ChainCapture` wire shape → network protocol bump.
+- [ ] **[M] Chain-builder UI for incremental 連吃** — Engine emits atomic `Move::ChainCapture { path }` today. Add a chain-builder state to GameView/NetView (TUI) and the play page (web): click first capture → highlight next-hop options → click again to extend OR Enter to commit. Today the user has to click the *final* hop to commit the full chain; this gives step-by-step visual feedback.
+- [ ] **[S] Wire CANNON_FAST_MOVE house rule** — Banqi cannon non-capturing slide goes any number of squares (capture still requires the one-piece jump). Reuse the ray walk from rules/banqi.rs::gen_chariot_rush.
+- [ ] **[S] Threefold repetition draw detection** — v5 (2026-05-10) shipped Zobrist hashing on `GameState.position_hash`; this TODO is just the consumer: add `position_history: Vec<u64>` (or count map) maintained in `make_move`/`unmake_move`, and trigger `GameStatus::Drawn { reason: Repetition }` in `refresh_status` when the count hits `rules.draw_policy.repetition_threshold`. See `state/repetition.rs` (currently a stub).
+
+## P2
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find P3 section
+
+`grep -n "^## P3\|^## P?\|^## Done" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/TODO.md`
+
+```text
+55:## P3
+74:## P?
+85:## Done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+55	## P3
+56	
+57	Someday / nice-to-have.
+58	
+59	- [ ] **[L] chess-engine + chess-ai: search and evaluation** — Alpha-beta + iterative deepening + Zobrist transposition for xiangqi. Banqi needs ISMCTS (information-set MCTS) to handle hidden info — research-heavy and a separate problem from xiangqi search. → [research](backlog/chess-ai-search.md)
+60	- [ ] **[S] chess-ai v5.1 — aspiration windows + TT depth-preferred replacement** — Two follow-up search refinements after v5 ID+TT. Aspiration windows narrow the root window around the previous depth's score (re-search on fail-high/low); recovers most of the alpha-beta savings the full-window-at-root fix gave up. Depth-preferred TT replacement keeps high-depth entries longer than always-replace. Both well-known Stockfish/Crafty patterns. v5 was scoped to "minimum viable ID + TT" so each addition is independently reviewable.
+61	- [ ] **[S] chess-tui: net-mode AI hint panel** — v5 protocol carries `hints_allowed` per room; TUI net mode tracks it and surfaces 🧠 in the sidebar but the actual analysis panel is web-only for now. To match the web UX: reconstruct GameState from PlayerView (move `state::reconstruct_xiangqi_state_for_analysis` from chess-web to chess-core), call `chess_ai::analyze` on every Update, render the existing scored-moves panel + PV overlay in the Net sidebar. The infrastructure exists (NetView already has `last_analysis: Option<AiAnalysis>`); just needs wiring + the move helper.
+62	- [ ] **[S] chess-web: move animations** — CSS transitions on piece translate-translate as a `<g transform>` interpolation. Cheap visual polish; doesn't change protocol. Care needed: the SVG renders pieces by display row/col, so animation needs to track piece identity across renders (key-by-square is wrong for moves).
+63	- [ ] **[S] chess-web: history scrubber + undo via UI** — Engine already has `unmake_move` and `Replay::play_to`. Need a sidebar timeline that replays positions visually without committing to engine state. Reuse `Replay::from_game` so server replays + client scrubbing share one path.
+64	- [ ] **[S] chess-web: mobile layout** — Sidebar collapses below the board on narrow viewports; piece tap target enlarged. Touch input already works via SVG `on:click`; this is purely CSS + viewport meta.
+65	- [ ] **[S] chess-web: PWA / offline cache** — Service worker caches `dist/` so local pass-and-play works offline. Online play needs the server, so PWA only helps the local-only flows.
+66	- [ ] **[S] chess-web: i18n strings table** — All copy is currently inline English+CJK. Pull into a strings module keyed by locale, switch via `?lang=zh-Hant` or browser locale.
+67	- [ ] **[S] chess-web + chess-tui: persisted post-game card with share link** — End-of-game overlay auto-fades after 3 s today; a "save / share this result" affordance would let players link to a replay (engine has `Replay::from_game` ready; need a URL scheme like `/replay/<base64>`). Pure follow-up to the FX overlay shipped 2026-05-07. Web-only first; chess-tui can mirror with a clipboard copy of the same URL.
+68	- [ ] **[S] chess-tui + chess-web: picker redesign (rules/style preview panel)** — Current picker shows a hero block + variant cards; a richer flow would let users live-preview the board with selected rules + glyph style before starting. Out-of-scope of the 2026-05-07 polish PR (kept minimal). Worth doing once the rule-editing modal (`backlog/web-ingame-rules-modal.md`) lands so we can share components.
+69	- [ ] **[S] Replay format (PGN-equivalent)** — Once notation is full (WXF + ICCS + banqi), the history Vec<MoveRecord> already contains everything. Add a serializer to text format + import. Unblocks observers / spectators / training data.
+70	- [ ] **[S] insta snapshot tests for initial positions** — Lock in the visual rendering of fresh xiangqi/banqi positions. Catches regressions in setup.rs that pass type-checks but place pieces wrong. Plan flagged this; deferred from PR 1 because unit tests in setup.rs already cover key invariants.
+71	- [ ] **[S] chess-web: hint button "thinking…" indicator** — Clicking 🧠 Show AI hint kicks off a ~100-300 ms `chess_ai::analyze` search; the panel stays empty until the result lands, with no visual feedback during the gap. Add a spinner / "Analyzing…" line inside the empty panel state (DebugPanel currently shows `<p class="muted">"Waiting for analysis…"</p>` as fallback — upgrade to an animated indicator). Same fix benefits the first-load case in vs-AI mode where the panel mounts before the first analyze completes. Pure CSS animation; no logic change.
+72	- [ ] **[S] chess-web + chess-tui: sound effects (move + capture + check)** — Move click, capture thud, 將軍/CHECK chime via the Web Audio API (web) and `bell` ASCII codes / a small bundled WAV (TUI). Wire into existing FX prefs alongside `fx_confetti` and `fx_check_banner` — three new toggles (`fx_sound_move`, `fx_sound_capture`, `fx_sound_check`). Default OFF (audio is the most opinionated polish; users may be in libraries / streams). Source files: short royalty-free CC0 from freesound.org or hand-synthesized via Web Audio oscillator nodes (smaller bundle, less personality). No protocol change; client-only.
+73	
+74	## P?
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:25Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:26Z)**_
+
+There's already a `chess-web: PWA / offline cache` line. Let me move it to Done and add follow-ups:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check promote-todo helper
+
+`grep -n "promote-todo" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md | head -3; ls /Users/david/Documents/Program/Chinese-Chess_Xiangqi/scripts/promote-todo.sh 2>&1`
+
+```text
+Exit code 2
+182:scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+"/Users/david/Documents/Program/Chinese-Chess_Xiangqi/scripts/promote-todo.sh": No such file or directory (os error 2)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:31Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./TODO.md`
+
+```text
+85	## Done
+86	
+87	- ✅ [2026-05-10] [P3/M] Hint mode UX overhaul: button-toggled debug↔hint, PvP-emit fix, board coordinates, picker mode-aware checkboxes — Three issues raised by user testing the previous hint-mode commits. **(1) PvP+`?hints=1` from picker showed no panel.** Root cause: `routes.rs::build_local_query` had `hints=1` emission inside the `if mode == VsAi` block (alongside `debug=1`, `engine=`, etc.), so the picker's PvP-mode + checked hints box silently dropped the URL flag. Fix: move `hints=1` emission out of the VsAi block (kept `debug=1` inside since debug is meaningless in PvP — no AI move pump to fill the cache). Added two regression tests (`xiangqi_pvp_hints_emitted_even_without_ai_mode`, `xiangqi_pvp_hints_round_trips`). **(2) Both-mode (`?debug=1&hints=1`) clobbered debug content.** AI pump and hint pump shared one `ai_analysis` signal; AI move triggered the hint pump ~100ms later, overwriting the AI's POV cache before the user could read it ("AI下棋很快, 內容稍縱即逝"). Fix: split into two distinct caches — `debug_analysis` (AI pump writes only) + `hint_analysis` (hint pump writes only). Panel reads via `Signal::derive` toggling on `hint_view_active` (the sidebar button). New behavior: button OFF in both-mode → shows debug content (sticky); button ON → shows hint content (live). User can flip back and forth without losing either. Hint pump now runs whenever hints enabled (drops the previous `&& !debug_enabled` gate) so cache stays warm. Title reflects current view ("🧠 AI Hint" or "🔍 AI Debug"), not flag combination — drops the misleading "🔍 + 🧠" combined label. **(3) Picker debug checkbox visible in PvP.** PvP has no AI to debug, so the checkbox doesn't apply. Wrapped in `<Show when=mode == VsAi>` — PvP picker shows only "🧠 Allow AI hints"; vs-Computer picker shows both. **(4) Board lacked coordinate labels.** Hint table moves like "h2g2" had no on-board reference. Added `.coord-layer` to the SVG board with file labels (a-i) on top + bottom edges and rank labels (0-9) on left + right edges, observer-aware (Red sees a..i left-to-right; Black sees i..a). New `.board-coord` CSS (faded monospace, 11px, opacity 0.55). Net mode (`play.rs`) got the title cleanup too — single pump there means the "+" combined label was always wrong; now uses `🧠 AI Hint` when hints requested else `🔍 AI Debug`. All 30 chess-ai + 89 chess-core + 60 chess-web + 32 chess-net + clippy + wasm32 green; 2 new regression tests for the PvP-hints emit fix.
+88	
+89	- ✅ [2026-05-10] [P3/S] Hint mode: dynamic panel title + PvP support — User feedback on the previous decoupling commit identified two more issues. **(1) Panel title was always "AI Debug 🔍" regardless of which mode was active.** Confusing in `?hints=1`-only mode where the user is asking for help, not debugging. Fixed: `<DebugPanel>` now takes `title: Signal<String>` and `subtitle: Signal<String>` props. `pages/local.rs` and `pages/play.rs` derive: "🧠 AI Hint" / "🔍 AI Debug" / "🔍 AI Debug + 🧠 Hint" based on which flags are active. Subtitle shows current side-to-move ("Red 紅 to move" / "Black 黑 to move") so the user knows whose POV the analysis is from. **(2) Pass-and-play (PvP, no AI) couldn't access the hint panel.** The hint pump was gated on `if let Some(cfg) = ai`, and the picker hid the AI insight checkbox inside the `<Show when=VsAi>` block. Refactored: split `VsAiConfig` (AI opponent knobs) from new `InsightConfig { debug, hints }` (panel knobs); hint pump is now driven by `InsightConfig` not `VsAiConfig`. For PvP, hint search uses sensible defaults (Hard difficulty, default Strategy v5, STRICT randomness). Picker fieldset moved outside the VsAi-only Show so both modes get the checkboxes. The hint button now appears in the sidebar for PvP+`?hints=1` so two humans sharing a device can ask the bot for advice. All 30 chess-ai + 89 chess-core + 58 chess-web + 32 chess-net + clippy + wasm32 green.
+90	
+91	- ✅ [2026-05-10] [P3/S] Hint mode: separate Debug + Hint picker checkboxes + fix POV clobber bug — Two follow-up fixes after the user tested the previous decoupling commit. **(1) Picker now has TWO independent checkboxes** instead of one: "🧠 Allow AI hints" (writes `?hints=1`, on-demand toggle button, default hidden) and "🔍 AI debug panel" (writes `?debug=1`, sticky always-on panel for development). Both can be enabled together; user wanted to enable each independently. Fieldset legend renamed "AI insight panels (advanced)". **(2) Bug fix**: in `?hints=1` mode (without `?debug=1`), the hint table was getting clobbered with AI-POV data right after each AI move, so only the very first hint showed correctly and subsequent ones looked like debug output. Two compounding causes: (a) AI pump was caching its own POV `ai_analysis` on `cfg.debug || cfg.hints` (should have been just `cfg.debug`), (b) hint pump bailed out on epoch mismatch — `state.update(...)` triggers the hint pump's reactive effect BEFORE `move_epoch.update(...)` lands, so the captured `cur_epoch` was stale by the time the spawned task awaited 40ms and re-checked. Both fixed: AI pump now only caches when `cfg.debug`; hint pump uses `position_hash` (from chess-core v5 Zobrist) for staleness check instead of move_epoch, and tracks `ai_thinking` reactively so it re-fires when the AI finishes (state.update fires effect with thinking=true → bail; ai_thinking.set(false) fires effect again → runs). All 30 chess-ai + 89 chess-core + 58 chess-web + 32 chess-net + clippy + wasm32 green.
+92	
+93	- ✅ [2026-05-10] [P3/S] Hint mode UX: decouple from debug mode (toggle button + on-demand player POV) — Follow-up to the earlier hint-mode ship after user feedback. Original implementation had `?hints=1` aliased to `?debug=1` (always-on panel showing AI's POV), but the user clarified the semantic split: **debug** = post-AI analysis ("why did the bot pick this?", sticky panel), **hints** = pre-user analysis ("if the bot were me, what would it play?", on-demand toggle, default hidden). Now properly separated. Sidebar gains an optional `hint_toggle: Option<RwSignal<bool>>` prop (local) / `show_hint_button: Signal<bool> + hint_open: RwSignal<bool>` (net) — when present, renders a "🧠 Show / Hide AI hint" button. Default closed; click to expand/collapse mid-game. New `hint_pump` effect in `pages/local.rs` runs `chess_ai::analyze` from the **human's** POV whenever the toggle is open AND it's the human's turn AND game is ongoing AND AI isn't mid-think (skips when AI pump is doing its own analysis). Net mode (`pages/play.rs`) reuses the same effect, gated on server's `hints_allowed` (still server-permission-required for fairness). Both modes use the same `<DebugPanel>` mount but `panel_visible = debug || (hints && hints_open)`. Picker checkbox label updated: "Allow AI hints — adds a 🧠 toggle button in the sidebar during play." (was: "Show AI hints — open a side panel..."). New `.btn-hint` / `.btn-hint--on` CSS (muted blue, full-width sidebar button). All 30 chess-ai + 89 chess-core + 58 chess-web + 32 chess-net tests + clippy + wasm32 green.
+94	
+95	- ✅ [2026-05-10] [P3/M] Hint mode (web + TUI + chess-net protocol v5) — Anti-cheat-friendly opt-in for the AI debug/analysis panel in net play. **Local mode (incl. GitHub Pages standalone)** keeps `?debug=1` and the new `?hints=1` URL flags working freely — no server, no permission needed; both flags are functionally equivalent and trigger the same DebugPanel mount. Picker checkbox renamed "Show AI hints" and writes the canonical `?hints=1` URL token. **Net mode** gates the panel on the room's server-side `hints_allowed` flag (PROTOCOL_VERSION 4→5, additive `#[serde(default)]`): first joiner's `?hints=1` query param (or web lobby's "🧠 Allow AI hints" checkbox) sets `RoomState.hints_allowed = true` for the room's lifetime, frozen like password. Server echoes the flag in `Hello`, `Spectating`, and `RoomSummary`. Closes the previous client-only `?debug=1` cheat hole — net mode now refuses to mount the panel unless the room sanctioned it (toast warns the user). Banner "🧠 AI hints enabled in this room" mounts when allowed; lobby shows 🧠 badge next to 🔒 password badge. **TUI**: `--hints` CLI flag on root command (works with `--connect` and `--lobby`), threads through to URL; sidebar shows "AI hints: enabled (🧠)" / "disabled" once welcome arrives; `D` key in net mode shows context-aware message ("waiting for welcome" / "this room has hints disabled" / "use the web client for the full panel" since TUI net analysis UI is deferred — see new P3 TODO). All 30 chess-ai + 89 chess-core + 58 chess-web tests + 32 chess-net tests + clippy + wasm32 green.
+96	
+97	- ✅ [2026-05-10] [P3/L] chess-ai v5: iterative deepening + Zobrist transposition table — Two big wins ship together. **(1) Zobrist hashing** lands in chess-core (`state/zobrist.rs`): compile-time SplitMix64-seeded table (~21 KB static, deterministic across native/WASM), new `GameState.position_hash: u64` field with `#[serde(default)]` + `recompute_position_hash()` for back-compat snapshot loads, incremental updates wired into `apply_inner`/`unapply_inner`/side-toggle for all move kinds (Step/Capture/CannonJump/ChainCapture/DarkCapture). 11 new tests cover round-trip-after-make/unmake, 20-ply incremental matches full-recompute, 44 distinct opening hashes for 44 opening moves. Naturally unblocks the P1 threefold-rep TODO (no longer "needs Zobrist", just consumes it). **(2) v5 search** (`crates/chess-ai/src/search/{tt.rs,v5.rs}`): TranspositionTable with always-replace policy + 2^17 = 131k slots (~5 MB, WASM-safe); `negamax_v5` does TT probe at entry, TT-best-move ordering bonus, mate-corrected score storage; `score_root_moves_v5` runs **iterative deepening** d=1..target reusing TT across iterations, returns last-completed depth (may be < target when 250k node budget hits mid-iteration). Default engine flipped to `Strategy::IterativeDeepeningTtV5`. Endgame Hard: 35k nodes/21ms vs v4's 65k/34ms (-46% nodes, -38% wall-clock). Opening Hard: hits node budget at depth 3 (vs v4's truncated d4) — depth lower but quality strictly better (every root move scored consistently). Easy mode +2ms TT alloc overhead, imperceptible. v5 picker label "(recommended)"; aliases `v5`/`id-tt`/`iterative-deepening`/`iterative-deepening-tt` parsed in URL. Full design: `docs/ai/v5-id-tt.md`. Updated perf table: `docs/ai/perf.md`. README + Strategy::ALL list `[v5, v4, v3, v2, v1]` newest-first. 41 chess-ai tests + 89 chess-core tests + 15 chess-web tests + clippy + wasm32 all green.
+98	
+99	- ✅ [2026-05-09] [P3/L] chess-ai: Principal Variation + TUI debug mode + Net debug — Three follow-ups to the AI debug panel from earlier. (1) **PV (principal variation)**: `negamax`/`negamax_qmvv`/`score_root_moves[_qmvv]` now return `(score, Vec<Move>)` tracking the best-line continuation per root move. `ScoredMove` gains `pv: Vec<Move>` field. v4's quiescence still returns empty PV (its captures are exploratory, not committed line). Web `<DebugPanel>` shows PV inline next to each move (truncated to 3 plies in table, full chain on board); board's `highlighted_move` prop replaced by `highlighted_pv: Signal<Vec<Move>>` rendering a chain of from→to arrows fading from bright (chosen) to dim (deepest predicted move). Distinct CSS classes (orange for chosen, blue for PV continuation). New test `analyze_chosen_move_has_pv_at_depth_2_and_above` asserts PV is non-empty + chains correctly. (2) **TUI debug mode**: new `D` key toggles `debug_open` panel in sidebar showing scored root moves with `,`/`.` cursor navigation. Cursor row's PV chain is highlighted on the board via bg-color tints (yellow=from, blue=to). `last_analysis: Option<AiAnalysis>` field added to `GameView`; `ai_reply` always calls `analyze` (same cost as `choose_move`). HELP_LINES + hint string updated. Cleared on undo. (3) **Net mode debug**: `?debug=1` URL param on `/play/<room>` runs `chess_ai::analyze` client-side on every PlayerView update. New `state::reconstruct_xiangqi_state_for_analysis(view) -> Option<GameState>` helper rebuilds a search-compatible GameState from PlayerView (xiangqi only — banqi/three-kingdom return None due to hidden info). Pure client-side, no protocol changes; both players and spectators can use it. Mounts the same `<DebugPanel>` component as local mode. PlayConnected gains a `debug_enabled: bool` prop. 30 chess-ai tests, 55 chess-web tests, all clippy + wasm32 green.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:46Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/TODO.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:06:49Z)**_
+
+Add a Done entry. Find end of Done list to insert at top:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:07:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/TODO.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:07:08Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #6 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:07:10Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #7 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:07:13Z)**_
+
+Now the docs takeaway.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:08:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Rust + WASM as a PWA — chess-web takeaway
+
+This is the long-form companion to the brief `CLAUDE.md` gotcha.
+It captures the architecture decisions, the build flow, the
+update lifecycle, and every trap we hit while turning the Rust +
+Leptos + Trunk SPA into an installable, offline-capable PWA on
+two hosting targets.
+
+It is meant to be the document you re-read in a year when you
+have to debug something here, and as a transferable recipe if
+you build another Rust/WASM app and want a PWA on top.
+
+---
+
+## TL;DR
+
+- **A PWA is the website + 3 extras**: a manifest, a service
+  worker, and an icon set. The Rust/WASM bundle stays unchanged.
+- **The service worker is plain JS** — written by hand, no
+  Workbox, no npm. Templated and rendered by a Trunk post-build
+  hook so the precache list is always in sync with the hashed
+  filenames Trunk just emitted.
+- **Single template, two deploy targets**. The same hook runs
+  for `make build-web` (chess-net `--static-dir`, base = `/`) and
+  `make build-web-static WEB_BASE=Chinese-Chess_Xiangqi` (GitHub
+  Pages, base = `/Chinese-Chess_Xiangqi`). It reads
+  `TRUNK_PUBLIC_URL` and substitutes `__BASE_PATH__` so the
+  manifest's `start_url` / `scope` and every precached URL are
+  correct for that deployment.
+- **Update UX is "prompt then reload", not auto-reload**. A
+  fresh build precaches but the old SW keeps controlling the
+  page; the new one stays in `waiting` until the user clicks the
+  toast we render. We do not auto-reload because that would
+  interrupt 對局.
+- **Online endpoints are bypassed by the SW.** The `/ws*` /
+  `/lobby` / `/rooms` / `/api/*` routes flow straight to the
+  network; the existing failure surface is intact.
+
+---
+
+## File layout
+
+\```
+clients/chess-web/
+  index.html                    # adds <link rel="manifest">,
+                                # <link rel="apple-touch-icon">,
+                                # <script defer src="pwa.js">,
+                                # and Trunk copy-file directives
+                                # for the public/ assets.
+  Trunk.toml                    # adds [[hooks]] stage = "post_build"
+  Cargo.toml                    # adds web-sys features Event,
+                                # EventTarget, Navigator, CustomEvent
+  build.rs                      # unchanged — already injects
+                                # CHESS_WEB_BASE_PATH for routes.rs
+  scripts/
+    build-pwa.sh                # Trunk post-build hook
+    regenerate-placeholder-icons.sh
+  public/
+    sw.js.tmpl                  # service worker template
+    manifest.webmanifest.tmpl   # web app manifest template
+    pwa.js                      # JS bridge: SW register, install
+                                # prompt capture, update lifecycle,
+                                # online detection
+    icons/
+      icon.svg                  # source-of-truth design
+      icon-maskable.svg         # variant cropped for adaptive icons
+      favicon.svg               # small SVG favicon
+      icon-192.png              # rasterized placeholder
+      icon-512.png              # rasterized placeholder
+      icon-maskable-512.png     # rasterized placeholder
+      apple-touch-icon-180.png  # iOS home-screen icon
+  src/
+    components/pwa.rs           # Leptos UI: PwaState, banner,
+                                # button, toast, offline indicator
+    components/mod.rs           # pub mod pwa;
+    app.rs                      # PwaState::hydrate() + provide_context
+                                # PwaUpdateToast + OfflineIndicator
+                                # mounted globally in AppShell
+    pages/picker.rs             # PwaInstallBanner above the hero
+    components/sidebar.rs       # PwaInstallButton next to FX toggles
+  style.css                     # .pwa-banner / .pwa-toast /
+                                # .pwa-online-dot styles
+\```
+
+The PWA glue is intentionally split: anything that needs to fire
+*before* WASM finishes booting (capturing `beforeinstallprompt`,
+registering the SW) is in `public/pwa.js`. Everything that needs
+to render UI is in Rust/Leptos.
+
+---
+
+## Build flow
+
+\```
+trunk build
+  └─ Rust → app-[hash].js + app-[hash]_bg.wasm
+  └─ CSS  → style-[hash].css
+  └─ copy-file (data-trunk rel="copy-file"):
+       og-image.png
+       public/sw.js.tmpl       → dist/sw.js.tmpl
+       public/manifest.webmanifest.tmpl → dist/manifest.webmanifest.tmpl
+       public/pwa.js           → dist/pwa.js
+  └─ copy-dir:
+       public/icons            → dist/icons/
+
+post_build hook (scripts/build-pwa.sh):
+  1. find dist/ for .js/.wasm/.css/.html/.svg/.png/.webmanifest
+     (skip og-image.png, 404.html, sw.js, *.tmpl)
+  2. prefix each with TRUNK_PUBLIC_URL → PRECACHE_MANIFEST JSON
+  3. shasum -a 256 of concatenated file hashes → APP_VERSION
+  4. awk substitute __APP_VERSION__ / __BASE_PATH__ /
+     __PRECACHE_MANIFEST__ in templates
+  5. write dist/sw.js + dist/manifest.webmanifest
+  6. rm dist/sw.js.tmpl + dist/manifest.webmanifest.tmpl
+\```
+
+`TRUNK_PUBLIC_URL` is set by Trunk's `--public-url` flag:
+
+| Make target            | `--public-url`               | `BASE_PATH` (in templates) |
+| ---------------------- | ---------------------------- | -------------------------- |
+| `make build-web`       | (default `/`)                | `""` (empty)               |
+| `make build-web-static`| `/$WEB_BASE/`                | `/$WEB_BASE`               |
+
+The empty string for the server case is intentional — manifest
+`start_url: "/"` and `scope: "/"` are written verbatim. For the
+GitHub Pages case `start_url: "/Chinese-Chess_Xiangqi/"` and
+every precache URL becomes `/Chinese-Chess_Xiangqi/...`.
+
+---
+
+## Service worker strategy
+
+\```
+fetch event:
+  same origin? └ no  → ignore (let browser fetch)
+  is /ws, /lobby, /rooms, /api/*? → bypass
+  navigation? → network-first, fall back to cached index.html
+  hashed asset (-[8+hex].(js|wasm|css))? → cache-first
+  other same-origin GET → stale-while-revalidate
+\```
+
+**Why network-first for navigations.** SPA route changes (Leptos
+router) are intercepted at the document level only on the
+initial load. With network-first we always get a fresh
+`index.html` when online, and an `index.html`-from-cache when
+offline → the Leptos router still takes over and renders the
+right page client-side.
+
+**Why cache-first for hashed assets.** Trunk hashes JS/WASM/CSS
+by content; the filename is its own integrity check. If the
+filename matches, the bytes are correct, and we can serve from
+Cache Storage forever. The next build emits a different filename
+which will miss the cache and be fetched fresh.
+
+**Why bypass online endpoints.** chess-net needs to handle
+disconnection itself; we don't want the SW second-guessing or
+caching `/lobby` Server-Sent updates.
+
+---
+
+## Update lifecycle
+
+\```
+user has the app open (controlled by SW v1)
+  ↓
+trunk build emits new bundle, new sw.js (different APP_VERSION)
+  ↓
+deploy
+  ↓
+user reloads (or focuses tab → pwa.js calls registration.update())
+  ↓
+browser fetches new sw.js (updateViaCache: "none" guarantees no HTTP cache hit)
+  ↓
+new SW installs (precaches new bundle into chinese-chess-pwa-<new-hash>)
+  ↓
+new SW state: "installed" + navigator.serviceWorker.controller exists
+  ↓
+pwa.js fires CustomEvent("pwa:update-ready")
+  ↓
+Leptos PwaUpdateToast shows up
+  ↓
+user clicks "Reload"
+  ↓
+window.__pwa.applyUpdate() posts {type: "SKIP_WAITING"} to waiting SW
+  ↓
+SW calls self.skipWaiting() — becomes the active worker
+  ↓
+controllerchange fires on window
+  ↓
+pwa.js reloads the page, new bundle takes over.
+\```
+
+**Explicit non-features**: we do *not* call `clients.claim()` in
+the SW, and we do *not* auto-reload. Both would bypass the user's
+consent and risk reloading the page mid-game.
+
+---
+
+## Install lifecycle
+
+### Chromium (Chrome / Edge / Brave / Samsung Internet / Vivaldi)
+
+\```
+user visits site
+  ↓
+manifest + SW pass installability checks (HTTPS / localhost,
+  manifest with name + icons + start_url + display, scope match)
+  ↓
+browser fires beforeinstallprompt on window
+  ↓
+pwa.js: event.preventDefault() + stash
+  ↓
+pwa.js fires CustomEvent("pwa:install-available")
+  ↓
+PwaInstallBanner / PwaInstallButton appear
+  ↓
+user clicks → window.__pwa.install() → deferredPrompt.prompt()
+  ↓
+browser shows native install dialog
+  ↓
+user accepts → appinstalled fires → CustomEvent("pwa:installed")
+  ↓
+banner / button hide, PwaState.standalone flips true
+\```
+
+### iOS Safari (16+)
+
+There is **no `beforeinstallprompt`** on iOS. The user has to
+tap Share → "Add to Home Screen" themselves. We detect iOS via
+UA + iPadOS-as-Mac-with-touch heuristic and render
+`PwaInstallBanner` in its `--ios` variant — text + a hint icon
+rather than a button.
+
+### Firefox (desktop)
+
+No install prompt at all on desktop Firefox. The banner stays
+hidden (no `beforeinstallprompt`, not iOS, not standalone).
+Firefox Android does install via menu → "Install" but doesn't
+fire `beforeinstallprompt` either; Android Chrome users get the
+nice flow.
+
+### Already installed
+
+If `display-mode: standalone` matches at boot, `PwaState.standalone`
+is `true` and the banner / button stay hidden for the lifetime
+of that session.
+
+---
+
+## Local verification recipes
+
+### 1. Server mode end-to-end
+
+\```
+make build-web
+cargo run -p chess-net -- --port 7878 \
+  --static-dir clients/chess-web/dist xiangqi
+# open http://127.0.0.1:7878/
+\```
+
+DevTools checks:
+
+- **Application → Manifest**: should be parsed (no errors).
+  `start_url` = `/`, `scope` = `/`, icons all 200.
+- **Application → Service Workers**: one registration, source
+  `http://127.0.0.1:7878/sw.js`, status "activated and is
+  running". Click "Update on reload" while developing.
+- **Application → Cache Storage**: one cache named
+  `chinese-chess-pwa-<12hex>` containing every dist asset.
+- **Lighthouse PWA audit**: run with "Mobile" emulation. Target
+  score ≥ 90. Common deductions: missing maskable icon (we
+  ship one), no offline page (we use the SPA shell fallback,
+  Lighthouse accepts that).
+
+### 2. GitHub Pages mode end-to-end
+
+\```
+make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi
+# open http://localhost:4173/Chinese-Chess_Xiangqi/
+\```
+
+This is the most important verification because the base path
+is the most error-prone surface. Inspect:
+
+\```
+grep start_url clients/chess-web/dist-static/manifest.webmanifest
+# expect: "start_url": "/Chinese-Chess_Xiangqi/",
+
+grep -o '"/Chinese-Chess_Xiangqi/[^"]*"' clients/chess-web/dist-static/sw.js | head -5
+# expect every precache URL prefixed with /Chinese-Chess_Xiangqi/
+\```
+
+### 3. Offline test
+
+\```
+DevTools → Application → Service Workers → check "Offline"
+Reload the page.
+Navigate to /local/xiangqi
+Play 5 moves.
+\```
+
+Expected: full functionality. The page loads from cache, the
+WASM bundle runs, no network requests succeed but the local
+engine handles everything.
+
+If you also wanted online play: DevTools shows the WS connection
+fails (`/ws/main` cannot reach the server). The lobby page
+shows the existing "connection failed" UI. Our `OfflineIndicator`
+in the corner has flipped from green to dim red.
+
+### 4. Update test
+
+\```
+# Tab open on the previous build.
+# Edit any file in clients/chess-web/src/
+make build-web                # or build-web-static
+# Switch back to the open tab. Reload (Cmd-R).
+\```
+
+Expected: **PwaUpdateToast appears**. It does so because:
+
+1. The reload triggers `navigator.serviceWorker.register("./sw.js")`
+   again, which respects `updateViaCache: "none"` and bypasses
+   HTTP cache to fetch the freshly written `sw.js`.
+2. The new SW byte-differs from the old (different
+   `APP_VERSION`), so it installs.
+3. The new SW enters `waiting` because the old one is still
+   controlling the page.
+4. `pwa.js` sees `state === "installed"` plus
+   `navigator.serviceWorker.controller` non-null and dispatches
+   `pwa:update-ready`.
+5. `PwaUpdateToast` subscribed to that event renders.
+
+Click the toast. Expected: 1 second later the page reloads
+running the new bundle.
+
+### 5. Mobile install (Android Chrome)
+
+\```
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi
+\```
+
+In another terminal find the LAN IP (`ifconfig | grep inet`),
+then on the phone visit `http://<lan-ip>:4173/Chinese-Chess_Xiangqi/`.
+Wait for the picker — `PwaInstallBanner` should appear at the
+top. Tap "Install"; the OS-level install dialog confirms; the
+app drawer now has a 帥 icon.
+
+> Service workers technically need a secure context, but
+> `localhost` and (on Android) LAN IPs over plain HTTP are
+> usually treated as secure for development. For production
+> you need HTTPS — GitHub Pages provides this automatically.
+
+### 6. Mobile install (iOS Safari)
+
+Same URL, but the banner shows the iOS variant ("加到主畫面 /
+Add to Home Screen"). Tap the share icon at the bottom of
+Safari, scroll to "Add to Home Screen", confirm.
+
+---
+
+## Replacing the placeholder icons
+
+\```
+# Edit clients/chess-web/public/icons/icon.svg          (any-purpose)
+# Edit clients/chess-web/public/icons/icon-maskable.svg (maskable safe area)
+clients/chess-web/scripts/regenerate-placeholder-icons.sh
+# commit the new SVGs + regenerated PNGs
+\```
+
+The script uses `rsvg-convert` if available (sharper text), and
+falls back to ImageMagick. Modern Chrome / Edge / Firefox happily
+use the SVG entries from the manifest, but iOS Safari only
+accepts PNG for the apple-touch-icon — that's why the script
+also rasterizes a 180×180 PNG.
+
+**Maskable variant**: Android's adaptive icon system crops up
+to ~10% off each edge to mask into circles, squircles, etc.
+Keep all important artwork inside the inner ~80% (a 410×410
+centred safe area for a 512×512 icon). The committed
+`icon-maskable.svg` shrinks the disc + glyph relative to the
+full-bleed background to demonstrate the safe zone.
+
+---
+
+## How to clear all caches (debugging stale state)
+
+DevTools approach:
+
+\```
+Application → Storage → "Clear site data" (untick Cookies if
+you want to keep local prefs).
+\```
+
+Manual approach — paste in the console:
+
+\```js
+caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+navigator.serviceWorker.getRegistrations()
+  .then(rs => Promise.all(rs.map(r => r.unregister())));
+\```
+
+After running, hard reload (Cmd-Shift-R / Ctrl-Shift-R).
+
+---
+
+## Future work
+
+Tracked in `TODO.md`:
+
+- IndexedDB / OPFS persistence for in-progress games (so
+  closing the tab doesn't lose state).
+- Web Share API for FEN/PGN of the current position.
+- Replace placeholder icons with proper artwork.
+
+Worth considering if traffic / install count grows:
+
+- **Workbox**. We avoided it because hand-written 200-line
+  `sw.js` is auditable and has zero npm footprint, but Workbox
+  brings well-tested precaching, navigation routes, expirations,
+  background sync — worth migrating to if the SW grows past
+  ~500 lines.
+- **Background Sync**. Save completed games to a server when
+  connectivity returns. Requires a server endpoint chess-net
+  doesn't have today.
+- **Push Notifications**. Notify when an opponent moves in your
+  asynchronous correspondence game. Needs Web Push subscription
+  storage on chess-net. iOS 16.4+ supports this *only* for
+  installed PWAs.
+- **Periodic Background Sync**. Useful for prefetching daily
+  puzzles. Chrome-only, low priority.
+- **File System Access API**. Save / load PGN files locally
+  without round-tripping through the server.
+
+---
+
+## Cross-references
+
+- `pitfalls/pwa-base-path-and-stale-cache.md` — the symptoms-
+  first list of every trap we hit while wiring this up.
+- `docs/architecture.md` — high-level chess-web architecture;
+  ADR-0001 explains why presentation lives client-side rather
+  than in chess-core, which is what makes the SPA installable
+  in the first place.
+- `docs/trunk-leptos-wasm.md` — Trunk + Leptos quirks. The
+  `[[hooks]]` mechanism we use here is documented in the Trunk
+  manual; see also the existing notes about `data-trunk
+  rel="copy-file"` not honouring `--public-url` (the post-build
+  hook side-steps this).
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/docs/pwa.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:09:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check pitfalls dir
+
+`ls /Users/david/Documents/Program/Chinese-Chess_Xiangqi/pitfalls/ | head -10`
+
+```text
+ alpha-beta-root-score-pollution.md
+ casual-xiangqi-king-blindness.md
+ clippy-version-drift-local-vs-ci.md
+ github-actions-floating-major-tag-missing.md
+ ios-safari-svg-click-no-tap.md
+ leptos-effect-tracking-stale-epoch.md
+ leptos-router-base-trailing-slash.md
+󰂺 README.md
+ trunk-proxy-route-conflict.md
+ wasm-getrandom-unresolved-imp.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:09:06Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./pitfalls/wasm-getrandom-unresolved-imp.md`
+
+```text
+1	# `chess-core` fails to build for `wasm32-unknown-unknown`: getrandom `unresolved module imp`
+2	
+3	**Symptom**
+4	
+5	```
+6	$ cargo build --target wasm32-unknown-unknown -p chess-core
+7	...
+8	error[E0433]: failed to resolve: use of unresolved module or unlinked crate `imp`
+9	   --> .../getrandom-0.2.17/src/lib.rs:402:9
+10	    |
+11	402 |         imp::getrandom_inner(dest)?;
+12	    |         ^^^ use of unresolved module or unlinked crate `imp`
+13	error: could not compile `getrandom`
+14	```
+15	
+16	Triggered when adding `rand` (transitively pulling in `getrandom 0.2`) to a workspace that builds for `wasm32-unknown-unknown` (the bare WASM target with no host backend, used by browser frameworks like Leptos / Yew).
+17	
+18	## Root cause
+19	
+20	`getrandom 0.2` ships several backends (`linux`, `darwin`, `windows`, `wasi`, …). For `wasm32-unknown-unknown` it has no default backend — that target is "unknown" by definition. The user must opt into a backend by enabling a feature on `getrandom` directly:
+21	
+22	- `js` — bridges to Web Crypto API via `wasm-bindgen` (browser only)
+23	- `custom` — caller provides a `register_custom_getrandom!` shim (manual)
+24	
+25	Since `getrandom` is a transitive dep, you can't enable the feature on it from the using crate's `[dependencies]` block — Cargo features merge across the dep graph but only when the feature is named directly. You must declare `getrandom` as a direct dep with the desired feature.
+26	
+27	## Fix
+28	
+29	In `crates/chess-core/Cargo.toml`, add a target-specific dep:
+30
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:09:59Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# PWA on GitHub Pages subpath: install fails or app shows stale code
+
+**Symptoms** (any of):
+
+\```
+Chrome DevTools → Application → Manifest:
+  Error: "Page does not work offline" / "Site cannot be installed"
+  start_url is not in scope
+\```
+
+\```
+Installed PWA opens to a blank page or "Offline and no cached
+shell available."
+\```
+
+\```
+After deploying a new build, users keep seeing the old version
+for hours / days. Hard reload (Cmd-Shift-R) "fixes" it but a
+normal reload does not.
+\```
+
+\```
+sw.js: Failed to fetch / 404
+manifest.webmanifest: Failed to fetch / 404
+\```
+
+These are three different traps that all happen when a Rust/WASM
+PWA is deployed under a non-root path (e.g. GitHub Pages at
+`/Chinese-Chess_Xiangqi/`). They are easy to misdiagnose because
+the dev-server flow (Trunk on `localhost:8080/`) works fine.
+
+---
+
+## Trap 1 — manifest `start_url` / `scope` written without the base path
+
+**Symptom**: Chrome refuses to install ("start_url is not in scope")
+or installs but the launched app loads a blank page.
+
+**Root cause**: A static `manifest.webmanifest` baked at compile
+time with `"start_url": "/"` is wrong on GitHub Pages, where the
+app actually lives at `/Chinese-Chess_Xiangqi/`. The manifest's
+URL fields must include the deploy subpath, *and* the `scope`
+must encompass `start_url`, *and* `start_url` must resolve to a
+real document on the server.
+
+**Fix**: Treat the manifest as a build artifact, not source. We
+keep `public/manifest.webmanifest.tmpl` with `__BASE_PATH__`
+placeholders and the post-build hook (`scripts/build-pwa.sh`)
+substitutes `TRUNK_PUBLIC_URL` (minus its trailing slash) before
+writing `dist/manifest.webmanifest`. For the GitHub Pages target
+that produces:
+
+\```json
+"start_url": "/Chinese-Chess_Xiangqi/",
+"scope":     "/Chinese-Chess_Xiangqi/",
+"id":        "/Chinese-Chess_Xiangqi/"
+\```
+
+The `id` field stabilises the install identity across deploys
+that change the start URL (e.g. moving from a subpath to the
+root domain) — useful for analytics, harmless to set to the same
+value as `start_url`.
+
+The same hook also rewrites every `icons[].src` to start with
+the base path. Hard-coded `/icons/icon-512.png` breaks; use
+`__BASE_PATH__/icons/icon-512.png`.
+
+**Verification**:
+
+\```
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+grep -E '"(start_url|scope|src)"' clients/chess-web/dist-static/manifest.webmanifest
+\```
+
+Every URL should start with `/Chinese-Chess_Xiangqi/`.
+
+---
+
+## Trap 2 — `sw.js` cached by HTTP, new builds invisible for hours
+
+**Symptom**: You ship a new version. The user reloads the page.
+The PWA update toast doesn't appear and `console.log`s show the
+old build is still running. After 24 hours (or after a
+"force-reload") the new version finally surfaces.
+
+**Root cause**: Browsers, by default, treat `sw.js` like any
+other static asset and apply normal HTTP cache rules. GitHub
+Pages serves with `Cache-Control: max-age=600` for everything,
+so the browser will not re-fetch `sw.js` for 10 minutes — and on
+a hot CDN cache it can be hours. Some hosting providers go
+further, serving JS with weeks-long caching.
+
+The service worker lifecycle only kicks in when the browser
+actually fetches `sw.js` and finds it byte-different. If the
+fetch is satisfied from HTTP cache, *the lifecycle never runs*.
+
+**Fix**: Two-pronged.
+
+1. In `pwa.js`, register with `updateViaCache: "none"`:
+
+   \```js
+   navigator.serviceWorker.register(swUrl, {
+     scope: BASE,
+     updateViaCache: "none",
+   });
+   \```
+
+   This tells the browser to bypass HTTP cache when checking for
+   SW updates. It applies to `sw.js` and any `importScripts()`
+   it pulls in, but not to other assets.
+
+2. In `pwa.js`, opportunistically call `registration.update()`
+   on `window.focus`. This catches the case where the user
+   leaves the tab open for a long time, switches to it, and
+   triggers a check.
+
+If you control the server, you can also add `Cache-Control:
+no-cache` on `sw.js` itself; on GitHub Pages you can't, so
+`updateViaCache: "none"` is the only lever and it's enough.
+
+**Verification**:
+
+\```
+# After making a code change:
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi
+# Tab open from previous build → reload (regular Cmd-R, not
+# Cmd-Shift-R). PwaUpdateToast should appear within ~1 second.
+\```
+
+---
+
+## Trap 3 — first run online works, second run offline shows a white page
+
+**Symptom**: User installs the PWA online, plays a game,
+everything is fine. User opens the app the next day with the
+phone on airplane mode → blank white page or "ERR_FAILED" in
+the corner. Investigation shows Cache Storage has only a couple
+of small files, missing the JS / WASM bundle.
+
+**Root cause**: Service worker registration is async and runs
+*concurrently* with the initial page load. By the time the SW
+finishes installing and would intercept fetches, the page has
+already loaded its JS / WASM via the regular browser HTTP
+fetch — those bytes never went through the SW, so they never
+got a chance to be cached.
+
+If your SW relies on **runtime cache only** (cache-on-fetch),
+the first online visit will load the bundle without populating
+the cache. The second visit (offline) finds an empty cache and
+fails.
+
+**Fix**: **Build-time precache list**. The post-build hook
+walks `dist/` after the build finishes, lists every shipping
+asset, and bakes the URLs into the SW's `install` handler:
+
+\```js
+const PRECACHE_URLS = [
+  "/Chinese-Chess_Xiangqi/index.html",
+  "/Chinese-Chess_Xiangqi/app-9f3ac8b1c2.js",
+  "/Chinese-Chess_Xiangqi/app-9f3ac8b1c2_bg.wasm",
+  "/Chinese-Chess_Xiangqi/style-abc123def.css",
+  "/Chinese-Chess_Xiangqi/manifest.webmanifest",
+  "/Chinese-Chess_Xiangqi/icons/icon-192.png",
+  // ...
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(PRECACHE_URLS.map(u => cache.add(u))),
+    )
+  );
+});
+\```
+
+Now the SW's install step actively fetches every asset into the
+cache, regardless of what the page itself has loaded. The
+second visit (offline) finds a fully populated cache.
+
+We use individual `cache.put()` calls instead of `cache.addAll`
+because `addAll` is atomic — one 404 fails the whole install,
+which is unfortunate during deployment races. With per-URL
+puts wrapped in `try/catch`, a single missed asset doesn't
+brick the install.
+
+**Verification**:
+
+\```
+# DevTools → Application → Cache Storage → expand
+#   chinese-chess-pwa-<hash>:
+# Should list every JS/WASM/CSS file Trunk emitted, plus
+# the manifest, plus every icon.
+\```
+
+If the list is short or missing the hashed JS/WASM, the
+post-build hook didn't run or the precache list ended up
+empty. Check `clients/chess-web/scripts/build-pwa.sh` against
+the `find` filter (mismatched extensions silently exclude
+files).
+
+---
+
+## Bonus: don't precache `og-image.png`
+
+`og-image.png` is the social-card image used by Facebook /
+LinkedIn / Discord crawlers. It's not part of the runtime
+shell — caching it eats space for no benefit, and worse, if
+you ever swap it for a new design, the SW will keep serving
+the old one to crawlers that re-fetch through the same origin.
+
+The `find` filter in `build-pwa.sh` explicitly excludes
+`og-image.png`. If you add other social / SEO assets, exclude
+them too unless they are needed offline.
+
+---
+
+## Bonus: 404.html is a GitHub Pages quirk, not a precache target
+
+`make build-web-static` copies `index.html` to `404.html` so
+GitHub Pages serves the SPA shell on unknown URLs (so direct
+links to `/Chinese-Chess_Xiangqi/play/myroom` work). The SW
+also has its own SPA fallback (network-first navigation →
+cached `index.html`), so we deliberately exclude `404.html`
+from precache — caching both would just waste a slot.
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/pitfalls/pwa-base-path-and-stale-cache.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:05Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #7 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:07Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #8 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:10Z)**_
+
+Now verify. Run fmt, clippy, and wasm build:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run cargo fmt check
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi && cargo fmt --check 2>&1 | tail -30`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+-            && !pwa.install_available.get()
++        !dismissed.get() && !pwa.standalone.get() && pwa.ios.get() && !pwa.install_available.get()
+     };
+ 
+     view! {
+Diff in /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/pwa.rs:271:
+ pub fn OfflineIndicator() -> impl IntoView {
+     let pwa = expect_context::<PwaState>();
+     let online = pwa.online;
+-    let cls = move || if online.get() { "pwa-online-dot pwa-online-dot--on" } else { "pwa-online-dot pwa-online-dot--off" };
+-    let title = move || if online.get() {
+-        "Online — multiplayer available"
+-    } else {
+-        "Offline — local play still works; lobby/online disabled"
++    let cls = move || {
++        if online.get() {
++            "pwa-online-dot pwa-online-dot--on"
++        } else {
++            "pwa-online-dot pwa-online-dot--off"
++        }
++    };
++    let title = move || {
++        if online.get() {
++            "Online — multiplayer available"
++        } else {
++            "Offline — local play still works; lobby/online disabled"
++        }
+     };
+ 
+     view! {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply rustfmt
+
+`cargo fmt 2>&1 | tail -5`
+
+```text
+[This command modified 1 file you've previously read: clients/chess-web/src/components/pwa.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:20Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:10:21Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/pwa.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:11:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Build chess-web for wasm32
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -50`
+
+```text
+   Compiling web-sys v0.3.95
+   Compiling chess-core v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-core)
+   Compiling chess-net v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-net)
+   Compiling chess-ai v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-ai)
+   Compiling gloo-utils v0.2.0
+   Compiling leptos_reactive v0.6.15
+   Compiling gloo-net v0.6.0
+   Compiling wasm-streams v0.4.2
+   Compiling server_fn v0.6.15
+   Compiling leptos_server v0.6.15
+   Compiling leptos_dom v0.6.15
+   Compiling leptos v0.6.15
+   Compiling leptos_router v0.6.15
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 05s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:11:33Z)**_
+
+WASM build clean. Now clippy + native check:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:11:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run clippy
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.66s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clippy chess-web wasm
+
+`cargo clippy -p chess-web --target wasm32-unknown-unknown --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+564 |                 seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
+    |                                            ^^^^^^^^^^^^^^^^^ help: consider: `0x00C0_FFEE_BABE_u64`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#unusual_byte_groupings
+    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
+
+error: redundant closure
+   --> clients/chess-web/src/components/pwa.rs:120:42
+    |
+120 |     let cb = Closure::<dyn FnMut()>::new(move || f());
+    |                                          ^^^^^^^^^^^ help: replace the closure with the function itself: `f`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#redundant_closure
+    = note: `-D clippy::redundant-closure` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
+error: use of `unwrap_or_else` to construct default value
+   --> clients/chess-web/src/pages/local.rs:517:52
+    |
+517 |         let hint_strategy = ai.map(|c| c.strategy).unwrap_or_else(Strategy::default);
+    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#unwrap_or_default
+    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
+
+error: could not compile `chess-web` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `chess-web` (lib test) due to 3 previous errors
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:33Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:34Z)**_
+
+The workspace clippy passes; only wasm-only clippy surfaces my one issue and two pre-existing ones. Fixing mine:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:38Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/pwa.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Re-run fmt + wasm builds
+
+`cargo fmt --check 2>&1 | tail -10; echo "---"; cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3; echo "---"; cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+---
+   Compiling chess-core v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.77s
+---
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.73s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:12:53Z)**_
+
+Now run tests + the workspace clippy gate:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Workspace clippy + tests
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10; echo "---"; cargo test --workspace --quiet 2>&1 | tail -20`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s
+---
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test summary
+
+`cargo test --workspace 2>&1 | grep -E "test result:|FAILED" | tail -25`
+
+```text
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 60 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:25Z)**_
+
+All tests pass. Now let me simulate the post-build hook against a fake dist to verify the templates substitute correctly:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Simulate the hook for GitHub Pages base path
+
+```bash
+cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && \
+mkdir -p /tmp/pwa-fake-dist/icons && \
+cp index.html /tmp/pwa-fake-dist/index.html && \
+cp style.css /tmp/pwa-fake-dist/style-abc123def456.css && \
+echo "// fake js" > /tmp/pwa-fake-dist/app-9f3ac8b1c2.js && \
+echo "fake wasm" > /tmp/pwa-fake-dist/app-9f3ac8b1c2_bg.wasm && \
+cp public/sw.js.tmpl /tmp/pwa-fake-dist/sw.js.tmpl && \
+cp public/manifest.webmanifest.tmpl /tmp/pwa-fake-dist/manifest.webmanifest.tmpl && \
+cp public/pwa.js /tmp/pwa-fake-dist/pwa.js && \
+cp public/icons/* /tmp/pwa-fake-dist/icons/ && \
+TRUNK_STAGING_DIR=/tmp/pwa-fake-dist TRUNK_PUBLIC_URL="/Chinese-Chess_Xiangqi/" sh scripts/build-pwa.sh && \
+echo "===== sw.js head =====" && head -25 /tmp/pwa-fake-dist/sw.js && \
+echo "===== manifest =====" && cat /tmp/pwa-fake-dist/manifest.webmanifest && \
+echo "===== precache list =====" && grep -o 'PRECACHE_URLS = \[[^]]*\]' /tmp/pwa-fake-dist/sw.js
+```
+
+```text
+Exit code 2
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+scripts/build-pwa.sh: line 62: syntax error near unexpected token `<'
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:39Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/Trunk.toml has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Simulate hook with bash
+
+```bash
+cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && \
+TRUNK_STAGING_DIR=/tmp/pwa-fake-dist TRUNK_PUBLIC_URL="/Chinese-Chess_Xiangqi/" bash scripts/build-pwa.sh && \
+echo "===== sw.js head =====" && head -22 /tmp/pwa-fake-dist/sw.js && \
+echo "===== manifest =====" && cat /tmp/pwa-fake-dist/manifest.webmanifest && \
+echo "===== leftover tmpl files =====" && ls /tmp/pwa-fake-dist/*.tmpl 2>&1
+```
+
+```text
+Exit code 1
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+[build-pwa] version=d7df3125bd4e base='/Chinese-Chess_Xiangqi' files=12
+===== sw.js head =====
+// Service worker for Chinese Chess (Rust + WASM PWA).
+//
+// This file is a TEMPLATE — the post-build hook
+// `clients/chess-web/scripts/build-pwa.sh` substitutes:
+//   d7df3125bd4e       — short content hash, bumps every rebuild
+//   /Chinese-Chess_Xiangqi         — public URL base, e.g. "" (server) or
+//                           "/Chinese-Chess_Xiangqi" (GitHub Pages).
+//                           No trailing slash.
+//   ["/Chinese-Chess_Xiangqi/app-9f3ac8b1c2_bg.wasm","/Chinese-Chess_Xiangqi/app-9f3ac8b1c2.js","/Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png","/Chinese-Chess_Xiangqi/icons/favicon.svg","/Chinese-Chess_Xiangqi/icons/icon-192.png","/Chinese-Chess_Xiangqi/icons/icon-512.png","/Chinese-Chess_Xiangqi/icons/icon-maskable-512.png","/Chinese-Chess_Xiangqi/icons/icon-maskable.svg","/Chinese-Chess_Xiangqi/icons/icon.svg","/Chinese-Chess_Xiangqi/index.html","/Chinese-Chess_Xiangqi/pwa.js","/Chinese-Chess_Xiangqi/style-abc123def456.css"] — JSON array of absolute URLs (already
+//                           prefixed with /Chinese-Chess_Xiangqi) to precache.
+//
+// Strategy:
+//   - navigations  -> network-first, fall back to cached index.html
+//   - hashed assets -> cache-first (Trunk hashes JS/WASM/CSS by content)
+//   - manifest / pwa.js / icons -> precached + cache-first
+//   - chess-net runtime endpoints -> bypass entirely (online play)
+//   - other same-origin GETs -> stale-while-revalidate
+//
+// The `SKIP_WAITING` postMessage is the trigger the in-page toast uses
+// to let the user reload into a freshly fetched build on demand.
+
+const APP_VERSION = "d7df3125bd4e";
+===== manifest =====
+{
+  "name": "Chinese Chess 中國象棋",
+  "short_name": "象棋",
+  "description": "Play xiangqi 象棋, banqi 暗棋, and three-kingdom banqi 三國暗棋. Local pass-and-play works offline once installed.",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": "/Chinese-Chess_Xiangqi/",
+  "scope": "/Chinese-Chess_Xiangqi/",
+  "id": "/Chinese-Chess_Xiangqi/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "theme_color": "#1a1614",
+  "background_color": "#1a1614",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/Chinese-Chess_Xiangqi/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Xiangqi 象棋",
+      "short_name": "Xiangqi",
+      "url": "/Chinese-Chess_Xiangqi/local/xiangqi",
+      "description": "Local pass-and-play xiangqi (casual rules)."
+    },
+    {
+      "name": "Banqi 暗棋",
+      "short_name": "Banqi",
+      "url": "/Chinese-Chess_Xiangqi/local/banqi",
+      "description": "Local pass-and-play banqi (Taiwan preset)."
+    }
+  ]
+}
+===== leftover tmpl files =====
+(eval):5: no matches found: /tmp/pwa-fake-dist/*.tmpl
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:13:56Z)**_
+
+Hook substitutes correctly for GitHub Pages. Test the server-mode (empty base) case:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:01Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test server-mode (empty base path)
+
+```bash
+cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && \
+rm -rf /tmp/pwa-fake-dist2 && mkdir -p /tmp/pwa-fake-dist2/icons && \
+cp index.html /tmp/pwa-fake-dist2/index.html && \
+echo "// fake js" > /tmp/pwa-fake-dist2/app-abc.js && \
+cp public/sw.js.tmpl /tmp/pwa-fake-dist2/sw.js.tmpl && \
+cp public/manifest.webmanifest.tmpl /tmp/pwa-fake-dist2/manifest.webmanifest.tmpl && \
+cp public/icons/* /tmp/pwa-fake-dist2/icons/ && \
+TRUNK_STAGING_DIR=/tmp/pwa-fake-dist2 TRUNK_PUBLIC_URL="/" bash scripts/build-pwa.sh && \
+echo "===== server-mode start_url =====" && grep '"start_url"' /tmp/pwa-fake-dist2/manifest.webmanifest && \
+echo "===== server-mode precache sample =====" && grep -o '"/[^"]*"' /tmp/pwa-fake-dist2/sw.js | head -3
+```
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+[build-pwa] version=2f22a938f69d base='' files=9
+===== server-mode start_url =====
+  "start_url": "/",
+===== server-mode precache sample =====
+"/Chinese-Chess_Xiangqi"
+"/app-abc.js"
+"/icons/apple-touch-icon-180.png"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:08Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:08Z)**_
+
+Hook produces correct output for both deploy targets. Let me clean up and check the final task:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clean up test dirs
+
+`rm -rf /tmp/pwa-fake-dist /tmp/pwa-fake-dist2`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final git status
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi && git status --short 2>&1 | head -40`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+ M .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+ M CLAUDE.md
+ M Makefile
+ M TODO.md
+ M clients/chess-web/Cargo.toml
+ M clients/chess-web/Trunk.toml
+ M clients/chess-web/index.html
+ M clients/chess-web/src/app.rs
+ M clients/chess-web/src/components/mod.rs
+ M clients/chess-web/src/components/sidebar.rs
+ M clients/chess-web/src/pages/picker.rs
+ M clients/chess-web/style.css
+?? clients/chess-web/public/
+?? clients/chess-web/scripts/
+?? clients/chess-web/src/components/pwa.rs
+?? docs/pwa.md
+?? pitfalls/pwa-base-path-and-stale-cache.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:17Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:17Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #8 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:14:38Z)**_
+
+PWA shipped. Summary of what landed:
+
+**Build pipeline**
+- `clients/chess-web/scripts/build-pwa.sh` — Trunk post-build hook. Scans `dist/`, builds the precache list with the right base-path prefix from `TRUNK_PUBLIC_URL`, computes a content-hash `APP_VERSION`, and substitutes `__APP_VERSION__` / `__BASE_PATH__` / `__PRECACHE_MANIFEST__` into the templates. Verified working for both server (`/`) and GitHub Pages (`/Chinese-Chess_Xiangqi/`) cases.
+- `clients/chess-web/Trunk.toml` — `[[hooks]] stage = "post_build"` invokes the script.
+
+**Static assets**
+- `public/sw.js.tmpl` — hand-written SW: navigation network-first → SPA shell fallback, hashed assets cache-first, `/ws*` `/lobby` `/rooms` `/api/*` bypassed, `SKIP_WAITING` message handler.
+- `public/manifest.webmanifest.tmpl` — name, icons, scope, shortcuts (Xiangqi / Banqi quick-launch), maskable variant.
+- `public/pwa.js` — JS bridge: SW registration with `updateViaCache: "none"`, `beforeinstallprompt` capture, lifecycle events on `window.__pwa`.
+- `public/icons/` — placeholder SVGs + rasterized PNGs (re-runnable via `scripts/regenerate-placeholder-icons.sh`).
+
+**Leptos UI**
+- `src/components/pwa.rs` — `PwaState` (signals hydrated from the JS bridge + window events), `PwaInstallBanner` (picker hero), `PwaInstallButton` (sidebar footer), `PwaUpdateToast` (global), `OfflineIndicator` (corner pip). iOS Safari fallback variant of the banner with manual instructions.
+- Wired into `app.rs`, `pages/picker.rs`, `components/sidebar.rs`. Styles appended to `style.css`.
+
+**Docs**
+- `docs/pwa.md` — full takeaway: architecture, build flow, lifecycle diagrams, verification recipes for desktop / Android / iOS, future-work list.
+- `pitfalls/pwa-base-path-and-stale-cache.md` — three traps: subpath manifest, HTTP-cached `sw.js`, runtime-cache-only first-visit white page.
+- `CLAUDE.md` gotcha + new make targets in Common commands.
+- `TODO.md`: ship entry in Done; three follow-ups (IndexedDB persistence, Web Share API, real icon design).
+
+**Verification**
+- `cargo fmt --check` ✓
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓
+- `cargo build --target wasm32-unknown-unknown -p chess-core` ✓ and `-p chess-web` ✓
+- Hook end-to-end simulated against fake `dist/` for both server and GitHub-Pages base paths — manifest `start_url`/`scope`/`icons` and precache URLs all correctly prefixed.
+
+To actually run it on your machine, install Trunk (`cargo install trunk`) then `make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi` opens `http://localhost:4173/Chinese-Chess_Xiangqi/` for the full PWA flow.
+
+---
+
+_**User (2026-05-10 08:17:22Z)**_
+
+Just installed trunk `~/.cargo/bin/trunk` how about you verify for me?
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:17:26Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run make build-web
+
+`export PATH="$HOME/.cargo/bin:$PATH" && trunk --version && make build-web 2>&1 | tail -25`
+
+```text
+Command running in background with ID: bpuok4pog. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:29Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:Monitor`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:32Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait for build to finish
+
+`until [ -f clients/chess-web/dist/sw.js ] || ! pgrep -f "trunk build" >/dev/null; do sleep 2; done; echo "build phase ended"; tail -30 /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output 2>/dev/null`
+
+```text
+Command running in background with ID: bh4divszf. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bh4divszf.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Read build output
+
+`sleep 180 && cat /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output 2>/dev/null | tail -40`
+
+```text
+<tool_use_error>Blocked: sleep 180 followed by: cat /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output tail -40. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:44Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Monitor"><details>
+<summary>Tool use: **Monitor**</summary>
+trunk build completion or failure
+
+```text
+Monitor started (task bcz9bf2qm, timeout 300000ms). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check dist contents during build
+
+`ls -la /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/dist/ 2>&1 | head -20`
+
+```text
+drwxr-xr-x@ - david 10 May 16:17  **.stage
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:50Z)**_
+
+Build still going. Let me wait for the monitor.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+noop
+
+`echo waiting`
+
+```text
+waiting
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check dist + processes
+
+`ls /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/dist/ 2>&1 | head -30; echo "---"; ps aux | grep -E "trunk|cargo" | grep -v grep | head -5`
+
+```text
+---
+david            51867   0.0  0.2 35278680  76152   ??  S     4:17PM   0:03.05 /Users/david/.rustup/toolchains/1.93.0-x86_64-apple-darwin/bin/cargo build --target=wasm32-unknown-unknown --manifest-path /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/Cargo.toml --release
+david            51798   0.0  0.1 35315060  30144   ??  S     4:17PM   0:00.35 trunk build --release
+david            51797   0.0  0.0 34263040   1108   ??  S     4:17PM   0:00.01 /bin/sh -c cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+david            51792   0.0  0.0 34318648   2244   ??  Ss    4:17PM   0:00.04 /bin/zsh -c source /Users/david/.claude/shell-snapshots/snapshot-zsh-1778388315493-2jogmc.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB 2>/dev/null || true && eval 'export PATH="$HOME/.cargo/bin:$PATH" && trunk --version && make build-web 2>&1 | tail -25' < /dev/null && pwd -P >| /tmp/claude-2f1c-cwd
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:58Z)**_
+
+Cargo release build still compiling. The monitor will notify me — continuing to wait.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:19:58Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+noop
+
+`echo "waiting for monitor"`
+
+```text
+waiting for monitor
+```
+</details></tool-use>
+
+---
+
+_**User (2026-05-10 08:20:27Z)**_
+
+<task-notification>
+<task-id>bpuok4pog</task-id>
+<tool-use-id>toolu_01A3Csf8hVVwG6TUG21fmETU</tool-use-id>
+<output-file>/private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output</output-file>
+<status>completed</status>
+<summary>Background command "Run make build-web" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Read build output
+
+`cat /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/bpuok4pog.output | tail -40`
+
+```text
+trunk 0.21.14
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+   Compiling gloo-timers v0.3.0
+   Compiling console_error_panic_hook v0.1.7
+   Compiling chess-ai v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-ai)
+   Compiling chess-net v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-net)
+   Compiling gloo-utils v0.2.0
+   Compiling leptos_reactive v0.6.15
+   Compiling gloo-net v0.6.0
+   Compiling wasm-streams v0.4.2
+   Compiling server_fn v0.6.15
+   Compiling leptos_dom v0.6.15
+   Compiling leptos_server v0.6.15
+   Compiling leptos v0.6.15
+   Compiling leptos_router v0.6.15
+    Finished `release` profile [optimized] target(s) in 2m 19s
+2026-05-10T08:20:07.020287Z  INFO downloading wasm-bindgen version="0.2.118"
+2026-05-10T08:20:14.178705Z  INFO installing wasm-bindgen
+2026-05-10T08:20:15.374683Z  INFO downloading wasm-opt version="version_123"
+2026-05-10T08:20:22.395462Z  INFO installing wasm-opt
+2026-05-10T08:20:27.001570Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:20:27.001596Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=a8b0c06b1656 base='' files=12
+2026-05-10T08:20:27.389483Z  INFO finished hook bash
+2026-05-10T08:20:27.389636Z  INFO applying new distribution
+2026-05-10T08:20:27.391835Z  INFO ✅ success
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:38Z)**_
+
+Build succeeded. Hook ran (`[build-pwa] version=a8b0c06b1656 base='' files=12`). Let me inspect dist:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:40Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect dist contents
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && ls dist/ && echo "---tmpl leftover?" && ls dist/*.tmpl 2>&1 && echo "---manifest" && grep -E '"(start_url|scope|src)"' dist/manifest.webmanifest && echo "---sw header" && head -30 dist/sw.js | tail -8`
+
+```text
+Exit code 1
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+ **icons
+ **chess-web-9fb52efd56d5937b.js
+ chess-web-9fb52efd56d5937b_bg.wasm
+ index.html
+ manifest.webmanifest
+ og-image.png
+ **pwa.js
+ **style-e743eee30df8775.css
+ **sw.js
+---tmpl leftover?
+(eval):1: no matches found: dist/*.tmpl
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify substitutions
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web && grep -E '"(start_url|scope|src)"' dist/manifest.webmanifest; echo "---"; grep -E "APP_VERSION|BASE_PATH|PRECACHE_URLS = " dist/sw.js | head -5`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+  "start_url": "/",
+  "scope": "/",
+      "src": "/icons/icon.svg",
+      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-maskable-512.png",
+---
+const APP_VERSION = "a8b0c06b1656";
+const BASE_PATH = "";
+const CACHE_NAME = `chinese-chess-pwa-${APP_VERSION}`;
+const SHELL_INDEX = `${BASE_PATH}/index.html`;
+const PRECACHE_URLS = ["/chess-web-9fb52efd56d5937b_bg.wasm","/chess-web-9fb52efd56d5937b.js","/icons/apple-touch-icon-180.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/icons/icon-maskable.svg","/icons/icon.svg","/index.html","/pwa.js","/style-e743eee30df8775.css"];
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:50Z)**_
+
+Server-mode build is correct. Now GitHub Pages mode:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:20:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run build-web-static
+
+`export PATH="$HOME/.cargo/bin:$PATH" && cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi && make build-web-static WEB_BASE=Chinese-Chess_Xiangqi 2>&1 | tail -20`
+
+```text
+Command running in background with ID: buih5mz48. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/buih5mz48.output
+```
+</details></tool-use>
+
+---
+
+_**User (2026-05-10 08:21:23Z)**_
+
+<task-notification>
+<task-id>buih5mz48</task-id>
+<tool-use-id>toolu_01QcrPGDyVtu4pc7RxHdahuG</tool-use-id>
+<output-file>/private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/buih5mz48.output</output-file>
+<status>completed</status>
+<summary>Background command "Run build-web-static" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:21:31Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check static dist
+
+`cd /Users/david/Documents/Program/Chinese-Chess_Xiangqi && tail -10 /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/buih5mz48.output && echo "---static manifest---" && grep -E '"(start_url|scope|src)"' clients/chess-web/dist-static/manifest.webmanifest && echo "---static sw---" && grep -E "APP_VERSION|BASE_PATH|PRECACHE_URLS = " clients/chess-web/dist-static/sw.js | head -5`
+
+```text
+zoxide: detected a possible configuration issue.
+Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).
+
+If the issue persists, consider filing an issue at:
+https://github.com/ajeetdsouza/zoxide/issues
+
+Disable this message by setting _ZO_DOCTOR=0.
+
+2026-05-10T08:20:51.019740Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `release` profile [optimized] target(s) in 27.18s
+2026-05-10T08:21:22.458569Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:21:22.458619Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=7a8d0920e30e base='Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:21:22.915675Z  INFO finished hook bash
+2026-05-10T08:21:22.915726Z  INFO applying new distribution
+2026-05-10T08:21:22.918372Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+---static manifest---
+  "start_url": "Chinese-Chess_Xiangqi/",
+  "scope": "Chinese-Chess_Xiangqi/",
+      "src": "Chinese-Chess_Xiangqi/icons/icon.svg",
+      "src": "Chinese-Chess_Xiangqi/icons/icon-192.png",
+      "src": "Chinese-Chess_Xiangqi/icons/icon-512.png",
+      "src": "Chinese-Chess_Xiangqi/icons/icon-maskable-512.png",
+---static sw---
+const APP_VERSION = "7a8d0920e30e";
+const BASE_PATH = "Chinese-Chess_Xiangqi";
+const CACHE_NAME = `chinese-chess-pwa-${APP_VERSION}`;
+const SHELL_INDEX = `${BASE_PATH}/index.html`;
+const PRECACHE_URLS = ["Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm","Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js","Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png","Chinese-Chess_Xiangqi/icons/favicon.svg","Chinese-Chess_Xiangqi/icons/icon-192.png","Chinese-Chess_Xiangqi/icons/icon-512.png","Chinese-Chess_Xiangqi/icons/icon-maskable-512.png","Chinese-Chess_Xiangqi/icons/icon-maskable.svg","Chinese-Chess_Xiangqi/icons/icon.svg","Chinese-Chess_Xiangqi/index.html","Chinese-Chess_Xiangqi/pwa.js","Chinese-Chess_Xiangqi/style-e743eee30df8775.css"];
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:21:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:21:43Z)**_
+
+Bug — when `WEB_BASE` lacks a leading slash, the BASE_PATH ends up relative. Let me fix the hook to normalize:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:21:47Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/build-pwa.sh has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:22:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:22:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Rebuild static with absolute base
+
+`export PATH="$HOME/.cargo/bin:$PATH" && rm -rf clients/chess-web/dist-static && make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi 2>&1 | tail -8 && echo "---" && grep -E '"(start_url|scope)"' clients/chess-web/dist-static/manifest.webmanifest && echo "---" && grep -E "BASE_PATH|PRECACHE" clients/chess-web/dist-static/sw.js | head -3`
+
+```text
+Command running in background with ID: ba0lsnnzn. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/ba0lsnnzn.output
+```
+</details></tool-use>
+
+---
+
+_**User (2026-05-10 08:22:31Z)**_
+
+<task-notification>
+<task-id>ba0lsnnzn</task-id>
+<tool-use-id>toolu_01L38AUMUeQJNjw2bPsyJbLG</tool-use-id>
+<output-file>/private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/ba0lsnnzn.output</output-file>
+<status>completed</status>
+<summary>Background command "Rebuild static with absolute base" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:22:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Read output
+
+`tail -15 /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/ba0lsnnzn.output`
+
+```text
+    Finished `release` profile [optimized] target(s) in 24.33s
+2026-05-10T08:22:31.181060Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:22:31.181089Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=614e1099bd36 base='/Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:22:31.577932Z  INFO finished hook bash
+2026-05-10T08:22:31.578038Z  INFO applying new distribution
+2026-05-10T08:22:31.579975Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+---
+  "start_url": "/Chinese-Chess_Xiangqi/",
+  "scope": "/Chinese-Chess_Xiangqi/",
+---
+const BASE_PATH = "/Chinese-Chess_Xiangqi";
+const SHELL_INDEX = `${BASE_PATH}/index.html`;
+const PRECACHE_URLS = ["/Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm","/Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js","/Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png","/Chinese-Chess_Xiangqi/icons/favicon.svg","/Chinese-Chess_Xiangqi/icons/icon-192.png","/Chinese-Chess_Xiangqi/icons/icon-512.png","/Chinese-Chess_Xiangqi/icons/icon-maskable-512.png","/Chinese-Chess_Xiangqi/icons/icon-maskable.svg","/Chinese-Chess_Xiangqi/icons/icon.svg","/Chinese-Chess_Xiangqi/index.html","/Chinese-Chess_Xiangqi/pwa.js","/Chinese-Chess_Xiangqi/style-e743eee30df8775.css"];
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:22:45Z)**_
+
+Both builds verified end-to-end:
+
+| Target | `start_url` | `BASE_PATH` | Precache URLs |
+|---|---|---|---|
+| `make build-web` (server) | `/` | `""` | `/chess-web-...wasm`, `/index.html`, ... |
+| `make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi` | `/Chinese-Chess_Xiangqi/` | `/Chinese-Chess_Xiangqi` | `/Chinese-Chess_Xiangqi/...` |
+
+Hook ran cleanly in both, no leftover `.tmpl` files, all 12 assets precached, content-hashed `APP_VERSION` (`a8b0c06b1656` / `614e1099bd36`). I also added a normalization fix so `WEB_BASE=Chinese-Chess_Xiangqi` (no leading slash) now produces `/Chinese-Chess_Xiangqi` correctly.
+
+To exercise the install / update / offline UX:
+
+```bash
+make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi
+# open http://localhost:4173/Chinese-Chess_Xiangqi/
+# DevTools → Application: manifest valid, SW activated, cache populated
+# DevTools → Network → Offline → reload, /local/xiangqi still plays
+# Edit any .rs, rebuild, reload — PwaUpdateToast should appear
+```
+
+---
+
+_**User (2026-05-10 08:27:45Z)**_
+
+[Image #1]
+
+```
+Chinese-Chess_Xiangqi on  main [!?] via  v1.93.0
+❯ make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi
+cd clients/chess-web && base="/Chinese-Chess_Xiangqi"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-10T08:24:56.735042Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-10T08:24:56.736165Z  INFO 📦 starting build
+    Finished `release` profile [optimized] target(s) in 0.33s
+2026-05-10T08:25:00.900661Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:25:00.900693Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=614e1099bd36 base='/Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:25:01.371394Z  INFO finished hook bash
+2026-05-10T08:25:01.371498Z  INFO applying new distribution
+2026-05-10T08:25:01.380848Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+Serving clients/chess-web/dist-static on http://localhost:4173//Chinese-Chess_Xiangqi/
+cd clients/chess-web/dist-static && python3 -m http.server 4173
+Serving HTTP on :: port 4173 (http://[::]:4173/) ...
+::1 - - [10/May/2026 16:25:09] "GET / HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] "GET /pwa.js HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] "GET /sw.js HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:25:10] "GET /icons/favicon.svg HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/favicon.svg HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/icon-192.png HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/icon-512.png HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable-512.png HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable.svg HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/icons/icon.svg HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/index.html HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/pwa.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:10] code 404, message File not found
+::1 - - [10/May/2026 16:25:10] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:11] "GET / HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:11] code 404, message File not found
+::1 - - [10/May/2026 16:25:11] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:11] code 404, message File not found
+::1 - - [10/May/2026 16:25:11] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:11] code 404, message File not found
+::1 - - [10/May/2026 16:25:11] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:12] "GET /sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:17] "GET /sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:29] "GET / HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:30] code 404, message File not found
+::1 - - [10/May/2026 16:25:30] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:30] code 404, message File not found
+::1 - - [10/May/2026 16:25:30] code 404, message File not found
+::1 - - [10/May/2026 16:25:30] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:30] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:25:30] "GET /pwa.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:31] "GET /sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:25:41] "GET /sw.js HTTP/1.1" 304 -
+
+```
+
+[Image #3] [Image #4] [Image #5]
+Seems super buggy
+
+_**User (2026-05-10 08:27:45Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/1.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/3.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/4.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/5.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:28:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:28:34Z)**_
+
+Two real bugs here:
+
+1. **Cosmetic**: `http://localhost:4173//Chinese-Chess_Xiangqi/` (double slash) — my echo string concatenated `/` to a `WEB_BASE` that already starts with `/`.
+2. **Real**: `python3 -m http.server` in `dist-static/` serves the build at `/`, but every URL in the build (manifest, sw.js precache list, `<base href>`) expects `/Chinese-Chess_Xiangqi/...`. Opening `localhost:4173/` shows the loader (it's `dist-static/index.html`) but every asset 404s, and SPA routes like `/local/xiangqi` are outside the SW scope so they fall back to the python server's "Error response" page.
+
+The fix is to stage `dist-static/` *under* the base subpath so the local layout mirrors GitHub Pages.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:28:43Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/Makefile has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:28:50Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify serve-web-static layout
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH" && make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi 2>&1 &
+SERVE_PID=$!
+sleep 8
+echo "===== / (should 404 / dir listing) ====="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/
+echo "===== /Chinese-Chess_Xiangqi/ (should 200) ====="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/
+echo "===== /Chinese-Chess_Xiangqi/sw.js (should 200) ====="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/sw.js
+echo "===== /Chinese-Chess_Xiangqi/manifest.webmanifest (should 200) ====="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/manifest.webmanifest
+echo "===== /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js (should 200) ====="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js
+kill $SERVE_PID 2>/dev/null
+pkill -f "http.server 4173" 2>/dev/null
+echo "done"
+```
+
+```text
+cd clients/chess-web && base="/Chinese-Chess_Xiangqi"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-10T08:28:56.307904Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-10T08:28:56.309316Z  INFO 📦 starting build
+    Finished `release` profile [optimized] target(s) in 0.25s
+2026-05-10T08:29:00.714236Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:29:00.714316Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=614e1099bd36 base='/Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:29:01.206183Z  INFO finished hook bash
+2026-05-10T08:29:01.206305Z  INFO applying new distribution
+2026-05-10T08:29:01.212151Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+Staged dist-static under /var/folders/dq/zbxks7r975j049mj8jk19wtw0000gp/T/chess-web-pwa-serve.uaVjWjGZzv/Chinese-Chess_Xiangqi
+Serving on http://localhost:4173/Chinese-Chess_Xiangqi/
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/server.py", line 1432, in <module>
+    test(
+    ~~~~^
+        HandlerClass=handler_class,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        tls_password=tls_key_password,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/server.py", line 1348, in test
+    server = ServerClass(addr, HandlerClass)
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/server.py", line 1419, in server_bind
+    return super().server_bind()
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/local/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 48] Address already in use
+make: *** [serve-web-static] Error 1
+===== / (should 404 / dir listing) =====
+HTTP 200
+===== /Chinese-Chess_Xiangqi/ (should 200) =====
+HTTP 404
+===== /Chinese-Chess_Xiangqi/sw.js (should 200) =====
+HTTP 404
+===== /Chinese-Chess_Xiangqi/manifest.webmanifest (should 200) =====
+HTTP 404
+===== /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js (should 200) =====
+HTTP 404
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:09Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Free port 4173
+
+`pkill -9 -f "http.server 4173" 2>&1; sleep 1; lsof -ti :4173 | xargs -r kill -9 2>&1; sleep 1; echo "port clear"; lsof -ti :4173 || echo "no listeners"`
+
+```text
+port clear
+no listeners
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test new serve-web-static
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH" && (make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi >/tmp/serve.log 2>&1 &)
+sleep 6
+echo "===== serve log =====" && tail -10 /tmp/serve.log
+echo "===== / =====" && curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/
+echo "===== /Chinese-Chess_Xiangqi/ =====" && curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/
+echo "===== /Chinese-Chess_Xiangqi/sw.js =====" && curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/sw.js
+echo "===== /Chinese-Chess_Xiangqi/manifest.webmanifest =====" && curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/manifest.webmanifest
+echo "===== JS asset =====" && curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js
+pkill -9 -f "http.server 4173" 2>&1
+echo done
+```
+
+```text
+===== serve log =====
+    Finished `release` profile [optimized] target(s) in 0.30s
+2026-05-10T08:29:25.748969Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:29:25.749000Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=614e1099bd36 base='/Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:29:26.259600Z  INFO finished hook bash
+2026-05-10T08:29:26.259721Z  INFO applying new distribution
+2026-05-10T08:29:26.266478Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+Staged dist-static under /var/folders/dq/zbxks7r975j049mj8jk19wtw0000gp/T/chess-web-pwa-serve.PNYBSBJ5Y7/Chinese-Chess_Xiangqi
+Serving on http://localhost:4173/Chinese-Chess_Xiangqi/
+===== / =====
+HTTP 200
+===== /Chinese-Chess_Xiangqi/ =====
+HTTP 200
+===== /Chinese-Chess_Xiangqi/sw.js =====
+HTTP 200
+===== /Chinese-Chess_Xiangqi/manifest.webmanifest =====
+HTTP 200
+===== JS asset =====
+HTTP 200
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:41Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:29:49Z)**_
+
+Fixed. Now staged correctly:
+
+```
+/Chinese-Chess_Xiangqi/         → 200
+/Chinese-Chess_Xiangqi/sw.js    → 200
+/Chinese-Chess_Xiangqi/manifest.webmanifest → 200
+/Chinese-Chess_Xiangqi/chess-web-...js → 200
+```
+
+**Important — clear the broken SW from your browser before retrying.** Your previous run registered a service worker at scope `/` which is still controlling `localhost:4173`. Until you flush it, navigation to anything outside `/Chinese-Chess_Xiangqi/` will be intercepted by the old SW (that's the "Error response" page you saw on `/local/xiangqi`).
+
+In Chrome:
+
+1. DevTools → Application → Storage → **Clear site data** (tick "Service workers" and "Cache storage" at minimum)
+2. Or paste in console:
+   ```js
+   navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister())));
+   caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))));
+   ```
+3. Close the tab, then re-run:
+   ```bash
+   make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi
+   ```
+4. Open exactly `http://localhost:4173/Chinese-Chess_Xiangqi/` (the URL my fixed Makefile now prints) — **not** `http://localhost:4173/`.
+
+After that the picker should render, the manifest panel should populate (Application → Manifest), Service Workers should show "activated", and Cache Storage should have `chinese-chess-pwa-614e1099bd36` with all 12 assets.
+
+For server-mode you don't have this problem — `make serve-web-prod` already serves at `/`:
+
+```bash
+make serve-web-prod
+# open http://127.0.0.1:7878/
+```
+
+---
+
+_**User (2026-05-10 08:38:01Z)**_
+
+[Image #6] [Image #7]
+
+```
+Chinese-Chess_Xiangqi on  main [!?] via  v1.93.0 took 4m7s
+❯ make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi
+cd clients/chess-web && base="/Chinese-Chess_Xiangqi"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-10T08:33:46.551009Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-10T08:33:46.560148Z  INFO 📦 starting build
+    Finished `release` profile [optimized] target(s) in 0.46s
+2026-05-10T08:33:51.805203Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:33:51.805877Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=614e1099bd36 base='/Chinese-Chess_Xiangqi' files=12
+2026-05-10T08:33:52.387753Z  INFO finished hook bash
+2026-05-10T08:33:52.387810Z  INFO applying new distribution
+2026-05-10T08:33:52.393742Z  INFO ✅ success
+cp clients/chess-web/dist-static/index.html clients/chess-web/dist-static/404.html
+Staged dist-static under /var/folders/dq/zbxks7r975j049mj8jk19wtw0000gp/T/chess-web-pwa-serve.jAyqPR60Ao/Chinese-Chess_Xiangqi
+Serving on http://localhost:4173/Chinese-Chess_Xiangqi/
+Serving HTTP on :: port 4173 (http://[::]:4173/) ...
+::1 - - [10/May/2026 16:33:53] code 404, message File not found
+::1 - - [10/May/2026 16:33:53] "GET /local/xiangqi HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:33:53] code 404, message File not found
+::1 - - [10/May/2026 16:33:53] "GET /local/manifest.webmanifest HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:33:53] code 404, message File not found
+::1 - - [10/May/2026 16:33:53] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:33:55] code 404, message File not found
+::1 - - [10/May/2026 16:33:55] "GET /sw.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:34:02] "GET / HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:04] code 404, message File not found
+::1 - - [10/May/2026 16:34:04] "GET /sw.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/ HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/pwa.js HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:06] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/favicon.svg HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/icon-512.png HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/icon-192.png HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable-512.png HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable.svg HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/icons/icon.svg HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/index.html HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/pwa.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:07] "GET /Chinese-Chess_Xiangqi/ HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:08] code 404, message File not found
+::1 - - [10/May/2026 16:34:08] "GET /sw.js HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:34:09] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:12] code 404, message File not found
+::1 - - [10/May/2026 16:34:12] "GET /Chinese-Chess_Xiangqi/local/xiangqi?hints=1 HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:34:14] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:25] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:52] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:57] code 404, message File not found
+::1 - - [10/May/2026 16:34:57] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:34:57] "GET /Chinese-Chess_Xiangqi/manifest.webmanifest HTTP/1.1" 200 -
+::1 - - [10/May/2026 16:34:59] "GET /Chinese-Chess_Xiangqi/icons/icon.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:59] "GET /Chinese-Chess_Xiangqi/icons/icon-192.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:59] "GET /Chinese-Chess_Xiangqi/icons/icon-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:34:59] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/ HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/icons/icon.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] code 404, message File not found
+::1 - - [10/May/2026 16:35:08] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/manifest.webmanifest HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/pwa.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/icons/icon-192.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/icons/icon-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:08] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/favicon.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8_bg.wasm HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/chess-web-10f5bd385e126eb8.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/apple-touch-icon-180.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/favicon.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/icon-192.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/icon-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable-512.png HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/icon-maskable.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/icons/icon.svg HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/pwa.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/index.html HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/style-e743eee30df8775.css HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] "GET /Chinese-Chess_Xiangqi/ HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:09] code 404, message File not found
+::1 - - [10/May/2026 16:35:09] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:35:11] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:17] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+::1 - - [10/May/2026 16:35:19] code 404, message File not found
+::1 - - [10/May/2026 16:35:19] "GET /Chinese-Chess_Xiangqi/local/xiangqi HTTP/1.1" 404 -
+::1 - - [10/May/2026 16:35:21] "GET /Chinese-Chess_Xiangqi/sw.js HTTP/1.1" 304 -
+
+```
+
+http://localhost:4173/Chinese-Chess_Xiangqi/ works but click indside game Still got 404
+
+
+---
+
+The port 7878 version works fine..?
+
+```
+Chinese-Chess_Xiangqi on  main [!?] via  v1.93.0
+❯ make serve-web-prod
+cd clients/chess-web && env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=server CHESS_WEB_BASE_PATH= trunk build --release
+2026-05-10T08:36:37.968383Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-10T08:36:37.979217Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `release` profile [optimized] target(s) in 31.53s
+2026-05-10T08:37:13.982779Z  INFO spawned hook bash command_arguments=["scripts/build-pwa.sh"]
+2026-05-10T08:37:13.983647Z  INFO spawning hook stage=PostBuild command=bash
+[build-pwa] version=a8b0c06b1656 base='' files=12
+2026-05-10T08:37:14.453139Z  INFO finished hook bash
+2026-05-10T08:37:14.454464Z  INFO applying new distribution
+2026-05-10T08:37:14.466585Z  INFO ✅ success
+cargo run -p chess-net -- --addr 127.0.0.1:7878 --static-dir clients/chess-web/dist xiangqi
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.37s
+     Running `target/debug/chess-net-server --addr '127.0.0.1:7878' --static-dir clients/chess-web/dist xiangqi`
+[server] listening on ws://127.0.0.1:7878
+[server] serving static dir at /
+```
+
+_**User (2026-05-10 08:38:01Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/6.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/7.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:38:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:38:37Z)**_
+
+This is the SPA fallback problem — `python3 -m http.server` doesn't know to serve `index.html` for unknown routes like `/Chinese-Chess_Xiangqi/local/xiangqi`. GitHub Pages does this via the `404.html` trick (already wired in `build-web-static`); chess-net's static-dir mode does it via `tower_http` fallback (which is why `serve-web-prod` works fine). Plain python http.server does neither.
+
+Fix: ship a tiny SPA-aware server wrapper and use it in `serve-web-static`.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:38:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```python
+#!/usr/bin/env python3
+"""Tiny SPA-aware static server for local PWA verification.
+
+GitHub Pages serves the dist with a `404.html` fallback that's a copy of
+`index.html`, so direct links to client-side routes like
+`/Chinese-Chess_Xiangqi/local/xiangqi` work. Plain `python3 -m
+http.server` does not — it returns its own error page on a missing
+file, which is why `make serve-web-static` was 404'ing on every SPA
+route.
+
+This handler mirrors the GH Pages behaviour: any GET inside the base
+scope that doesn't resolve to a file falls back to `<base>/index.html`.
+Outside the scope (or for paths with extensions like .js / .wasm),
+return the normal 404 so a real missing asset is still surfaced.
+
+Usage:
+    serve-spa.py <serve-dir> <port> <base-prefix>
+    # e.g. serve-spa.py /tmp/staging 4173 /Chinese-Chess_Xiangqi/
+    # base-prefix may be "/" or empty for root-served deployments.
+
+No external deps — stdlib only, runs on the bundled python3 of any
+modern macOS / Linux dev box.
+"""
+from __future__ import annotations
+
+import os
+import sys
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+if len(sys.argv) != 4:
+    print(__doc__, file=sys.stderr)
+    sys.exit(2)
+
+SERVE_DIR = os.path.abspath(sys.argv[1])
+PORT = int(sys.argv[2])
+BASE = "/" + sys.argv[3].strip("/")  # always leading slash, no trailing
+if BASE == "/":
+    BASE = ""  # treat as root-served
+
+# A path is "asset-like" if it has a file extension we precache or
+# explicitly want to 404 on. Anything else (no extension) is treated
+# as an SPA route and falls back to index.html.
+ASSET_EXTS = {
+    ".js",
+    ".wasm",
+    ".css",
+    ".html",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".ico",
+    ".webmanifest",
+    ".json",
+    ".map",
+    ".txt",
+    ".woff",
+    ".woff2",
+}
+
+
+class SpaHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=SERVE_DIR, **kwargs)
+
+    def do_GET(self):  # noqa: N802 (stdlib name)
+        # Strip query string for the file lookup.
+        raw = self.path.split("?", 1)[0]
+
+        # Inside the SPA scope?
+        in_scope = raw == BASE or raw == BASE + "/" or raw.startswith(BASE + "/") or BASE == ""
+        if not in_scope:
+            return super().do_GET()
+
+        # Resolve to a real file inside SERVE_DIR.
+        rel = raw.lstrip("/")
+        full = os.path.normpath(os.path.join(SERVE_DIR, rel))
+        # Sanity: don't escape SERVE_DIR.
+        if not full.startswith(SERVE_DIR):
+            self.send_error(403)
+            return
+
+        # File exists and is a regular file → normal handling.
+        if os.path.isfile(full):
+            return super().do_GET()
+
+        # Directory request → serve index.html if present, else fall through.
+        if os.path.isdir(full):
+            idx = os.path.join(full, "index.html")
+            if os.path.isfile(idx):
+                return super().do_GET()
+
+        # Asset-shaped path that doesn't exist → real 404.
+        ext = os.path.splitext(rel)[1].lower()
+        if ext in ASSET_EXTS:
+            return super().do_GET()
+
+        # SPA route → rewrite to {BASE}/index.html so the Leptos router
+        # can take over.
+        target_index = (BASE + "/index.html") if BASE else "/index.html"
+        self.path = target_index
+        return super().do_GET()
+
+    def log_message(self, fmt, *args):
+        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+
+
+if __name__ == "__main__":
+    HTTPServer.allow_reuse_address = True
+    httpd = HTTPServer(("", PORT), SpaHandler)
+    base_disp = (BASE + "/") if BASE else "/"
+    print(f"SPA server: dir={SERVE_DIR} base={base_disp} port={PORT}")
+    print(f"Open http://localhost:{PORT}{base_disp}")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        httpd.server_close()
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/serve-spa.py (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+chmod +x serve-spa.py
+
+`chmod +x /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/scripts/serve-spa.py`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:12Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/Makefile has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:17Z)**_
+
+Test:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify SPA fallback
+
+```bash
+pkill -9 -f "http.server\|serve-spa" 2>/dev/null; lsof -ti :4173 | xargs -r kill -9 2>/dev/null; sleep 1; export PATH="$HOME/.cargo/bin:$PATH" && (make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi >/tmp/serve.log 2>&1 &)
+sleep 6
+echo "===== log =====" && tail -5 /tmp/serve.log
+echo "===== /Chinese-Chess_Xiangqi/ =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/
+echo "===== /Chinese-Chess_Xiangqi/local/xiangqi (SPA route, should 200 with index.html) ====="
+curl -s -o /tmp/spa-resp.html -w "%{http_code}\n" "http://localhost:4173/Chinese-Chess_Xiangqi/local/xiangqi?hints=1"
+head -3 /tmp/spa-resp.html
+echo "===== /Chinese-Chess_Xiangqi/local/xiangqi (no query) ====="
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:4173/Chinese-Chess_Xiangqi/local/xiangqi"
+echo "===== /Chinese-Chess_Xiangqi/play/myroom ====="
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:4173/Chinese-Chess_Xiangqi/play/myroom"
+echo "===== sw.js =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/sw.js
+echo "===== missing asset (real 404) =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/no-such-file.js
+echo "===== outside scope =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/local/xiangqi
+pkill -9 -f "serve-spa" 2>/dev/null
+echo done
+```
+
+```text
+===== log =====
+cd clients/chess-web && base="/Chinese-Chess_Xiangqi"; base="${base%/}"; if [ -z "$base" ]; then base="/"; fi; public_url="$base/"; if [ "$base" = "/" ]; then public_url="/"; fi; env -u NO_COLOR TRUNK_COLOR=never CHESS_WEB_HOSTING=static CHESS_WEB_BASE_PATH="$base" trunk build --release --public-url "$public_url" --dist dist-static
+2026-05-10T08:39:26.546491Z  INFO 🚀 Starting trunk 0.21.14
+2026-05-10T08:39:26.552481Z  INFO 📦 starting build
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+===== /Chinese-Chess_Xiangqi/ =====
+000
+===== /Chinese-Chess_Xiangqi/local/xiangqi (SPA route, should 200 with index.html) =====
+000
+head: /tmp/spa-resp.html: No such file or directory
+===== /Chinese-Chess_Xiangqi/local/xiangqi (no query) =====
+000
+===== /Chinese-Chess_Xiangqi/play/myroom =====
+000
+===== sw.js =====
+000
+===== missing asset (real 404) =====
+000
+===== outside scope =====
+000
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:37Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:37Z)**_
+
+Trunk hadn't finished compiling. Wait for it:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:39:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait until server up
+
+`until curl -sf -o /dev/null http://localhost:4173/Chinese-Chess_Xiangqi/ 2>/dev/null; do sleep 2; done; echo ready`
+
+```text
+Command running in background with ID: b7fmg94c5. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/b7fmg94c5.output
+```
+</details></tool-use>
+
+---
+
+_**User (2026-05-10 08:39:56Z)**_
+
+<task-notification>
+<task-id>b7fmg94c5</task-id>
+<tool-use-id>toolu_01LiGSbn9pqFBUNqGE6JJhLo</tool-use-id>
+<output-file>/private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/b7fmg94c5.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait until server up" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:40:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test SPA fallback
+
+```bash
+echo "===== /Chinese-Chess_Xiangqi/ =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/
+echo "===== SPA route /local/xiangqi?hints=1 =====" && curl -s -o /tmp/spa-resp.html -w "%{http_code}\n" "http://localhost:4173/Chinese-Chess_Xiangqi/local/xiangqi?hints=1" && head -2 /tmp/spa-resp.html
+echo "===== /Chinese-Chess_Xiangqi/play/myroom =====" && curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:4173/Chinese-Chess_Xiangqi/play/myroom"
+echo "===== sw.js =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/sw.js
+echo "===== missing asset (real 404) =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/Chinese-Chess_Xiangqi/no-such-file.js
+echo "===== outside scope =====" && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/local/xiangqi
+pkill -9 -f "serve-spa" 2>/dev/null; echo done
+```
+
+```text
+===== /Chinese-Chess_Xiangqi/ =====
+200
+===== SPA route /local/xiangqi?hints=1 =====
+200
+<!DOCTYPE html>
+<html lang="en">
+===== /Chinese-Chess_Xiangqi/play/myroom =====
+200
+===== sw.js =====
+200
+===== missing asset (real 404) =====
+404
+===== outside scope =====
+404
+done
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:40:17Z)**_
+
+All correct now:
+
+- `/Chinese-Chess_Xiangqi/` → 200 (picker)
+- `/Chinese-Chess_Xiangqi/local/xiangqi?hints=1` → 200 with `index.html` (SPA fallback works, Leptos router takes over)
+- `/Chinese-Chess_Xiangqi/play/myroom` → 200 (any in-scope route)
+- `/Chinese-Chess_Xiangqi/sw.js` → 200 (real asset)
+- `/Chinese-Chess_Xiangqi/no-such-file.js` → 404 (asset-shaped paths get a real 404)
+- `/local/xiangqi` → 404 (outside scope, not rewritten)
+
+`make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi` now mirrors GitHub Pages behavior end-to-end. Reload your tab and the in-game clicks should work.
+
+Quick recap of fixes this round:
+- `serve-web-static` stages `dist-static/` under `$tmp/Chinese-Chess_Xiangqi/` (matches GH Pages layout) and runs the new SPA-aware server.
+- New `clients/chess-web/scripts/serve-spa.py` — stdlib-only, falls back to `index.html` for in-scope routes without an extension, returns real 404 for missing assets and out-of-scope paths.

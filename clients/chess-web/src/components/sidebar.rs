@@ -12,6 +12,7 @@ use chess_core::view::PlayerView;
 use leptos::*;
 
 use crate::components::move_history::{HistoryEntry, MoveHistory};
+use crate::components::pwa::PwaInstallButton;
 use crate::glyph::{self, Style};
 use crate::prefs::Prefs;
 use crate::routes::app_href;
@@ -143,6 +144,7 @@ pub fn Sidebar(
             })}
             {history.map(|h| view! { <MoveHistory entries=h/> })}
             <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
+            <PwaInstallButton/>
             <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
         </aside>
     }

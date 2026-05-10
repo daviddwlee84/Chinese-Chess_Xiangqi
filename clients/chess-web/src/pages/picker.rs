@@ -3,12 +3,14 @@ use chess_core::piece::Side;
 use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
 use leptos::*;
 
+use crate::components::pwa::PwaInstallBanner;
 use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
 
 #[component]
 pub fn Picker() -> impl IntoView {
     view! {
         <section class="picker">
+            <PwaInstallBanner/>
             <header class="picker-hero">
                 <div class="picker-hero__glyph" aria-hidden="true">"帥"</div>
                 <div class="picker-hero__copy">

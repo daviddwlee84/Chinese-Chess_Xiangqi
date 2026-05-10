@@ -1,0 +1,157 @@
+// Service worker for Chinese Chess (Rust + WASM PWA).
+//
+// This file is a TEMPLATE — the post-build hook
+// `clients/chess-web/scripts/build-pwa.sh` substitutes:
+//   __APP_VERSION__       — short content hash, bumps every rebuild
+//   __BASE_PATH__         — public URL base, e.g. "" (server) or
+//                           "/Chinese-Chess_Xiangqi" (GitHub Pages).
+//                           No trailing slash.
+//   __PRECACHE_MANIFEST__ — JSON array of absolute URLs (already
+//                           prefixed with __BASE_PATH__) to precache.
+//
+// Strategy:
+//   - navigations  -> network-first, fall back to cached index.html
+//   - hashed assets -> cache-first (Trunk hashes JS/WASM/CSS by content)
+//   - manifest / pwa.js / icons -> precached + cache-first
+//   - chess-net runtime endpoints -> bypass entirely (online play)
+//   - other same-origin GETs -> stale-while-revalidate
+//
+// The `SKIP_WAITING` postMessage is the trigger the in-page toast uses
+// to let the user reload into a freshly fetched build on demand.
+
+const APP_VERSION = "__APP_VERSION__";
+const BASE_PATH = "__BASE_PATH__";
+const CACHE_NAME = `chinese-chess-pwa-${APP_VERSION}`;
+const SHELL_INDEX = `${BASE_PATH}/index.html`;
+const PRECACHE_URLS = __PRECACHE_MANIFEST__;
+
+// Endpoints the SW must NOT touch — they belong to chess-net, online-only,
+// and intercepting them just makes offline error handling weirder.
+const BYPASS_PREFIXES = [
+  `${BASE_PATH}/ws`,
+  `${BASE_PATH}/lobby`,
+  `${BASE_PATH}/rooms`,
+  `${BASE_PATH}/api/`,
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // Use individual put() calls so a single 404 doesn't abort the
+      // whole install — we'd rather precache 95% than 0%.
+      await Promise.all(
+        PRECACHE_URLS.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: "no-cache" });
+            if (response.ok) {
+              await cache.put(url, response);
+            }
+          } catch (err) {
+            console.warn("[sw] precache failed", url, err);
+          }
+        }),
+      );
+    })(),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("chinese-chess-pwa-") && key !== CACHE_NAME)
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+function isBypassed(url) {
+  if (url.origin !== self.location.origin) return true;
+  return BYPASS_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
+}
+
+function isHashedAsset(url) {
+  // Trunk inlines content hashes into filenames like:
+  //   app-9f3ac8b1c2.js, app-9f3ac8b1c2_bg.wasm, style-abc123.css
+  // Treat any path with a -[hex8+] segment before the extension as
+  // immutable. Cache-first is safe because the hash changes on rebuild.
+  return /-[0-9a-f]{8,}(?:_bg)?\.(js|wasm|css)$/i.test(url.pathname);
+}
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (isBypassed(url)) return;
+
+  // Navigation: network-first, fall back to the cached SPA shell so the
+  // Leptos router can take over offline (works for /local/xiangqi etc.).
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          // Cache fresh shell on success (handles index.html updates).
+          if (response.ok && url.pathname.endsWith("/")) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(SHELL_INDEX, response.clone()).catch(() => {});
+          }
+          return response;
+        } catch (_err) {
+          const cache = await caches.open(CACHE_NAME);
+          const cached =
+            (await cache.match(SHELL_INDEX)) ||
+            (await cache.match(`${BASE_PATH}/`));
+          if (cached) return cached;
+          return new Response("Offline and no cached shell available.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Hashed JS/WASM/CSS: cache-first (immutable by filename).
+  if (isHashedAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.ok) cache.put(request, response.clone()).catch(() => {});
+        return response;
+      })(),
+    );
+    return;
+  }
+
+  // Everything else same-origin: stale-while-revalidate.
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(request, response.clone()).catch(() => {});
+          return response;
+        })
+        .catch(() => null);
+      return cached || (await network) || new Response("", { status: 504 });
+    })(),
+  );
+});

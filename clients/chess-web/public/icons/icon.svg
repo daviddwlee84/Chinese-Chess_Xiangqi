@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Chinese Chess 中國象棋</title>
+  <rect width="512" height="512" rx="96" ry="96" fill="#1a1614"/>
+  <circle cx="256" cy="256" r="180" fill="#f4e0b9" stroke="#3a2a1f" stroke-width="10"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#c0392b" stroke-width="6"/>
+  <text x="256" y="256"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Noto Serif TC','Noto Serif SC','Songti SC','PingFang SC',serif"
+        font-weight="900"
+        font-size="240"
+        fill="#c0392b">帥</text>
+</svg>

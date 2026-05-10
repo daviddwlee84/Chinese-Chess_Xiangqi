@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" ry="12" fill="#1a1614"/>
+  <circle cx="32" cy="32" r="22" fill="#f4e0b9" stroke="#c0392b" stroke-width="2"/>
+  <text x="32" y="32"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Noto Serif TC','Songti SC',serif"
+        font-weight="900"
+        font-size="30"
+        fill="#c0392b">帥</text>
+</svg>
