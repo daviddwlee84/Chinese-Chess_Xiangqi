@@ -507,6 +507,31 @@ body {
 }
 .btn-primary:hover { background: rgba(178, 34, 34, 0.78); }
 
+/* AI hint toggle button (sidebar). Distinguishable from generic .btn
+   so the user spots the on-demand affordance immediately, but visually
+   subordinate to .btn-primary. The "on" state shifts to a muted blue
+   matching the .hints-banner net-mode banner. */
+.btn-hint {
+    margin-top: 0.5rem;
+    width: 100%;
+    background: rgba(80, 130, 200, 0.1);
+    border-color: rgba(80, 130, 200, 0.45);
+    color: #d6e3f3;
+    font-weight: 500;
+}
+.btn-hint:hover {
+    background: rgba(80, 130, 200, 0.22);
+    border-color: rgba(80, 130, 200, 0.7);
+}
+.btn-hint--on {
+    background: rgba(80, 130, 200, 0.32);
+    border-color: rgba(120, 170, 230, 0.85);
+    color: #ffffff;
+}
+.btn-hint--on:hover {
+    background: rgba(80, 130, 200, 0.45);
+}
+
 /* Lobby. */
 .lobby { display: grid; gap: 1rem; }
 .lobby h2 { margin: 0; }

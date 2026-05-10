@@ -29,11 +29,17 @@ struct VsAiConfig {
     randomness: Option<Randomness>,
     /// `None` = use difficulty default depth; `Some(N)` = explicit override.
     depth: Option<u8>,
-    /// When true, the AI move pump uses `chess_ai::analyze` (returns
-    /// the full scored root list) instead of `chess_ai::choose_move`,
-    /// and the local page mounts the `<DebugPanel>`. Pure UI feature
-    /// — same search work either way.
+    /// `?debug=1` — sticky always-on AI debug panel. The AI move pump
+    /// uses `chess_ai::analyze` (full scored root list) instead of
+    /// `chess_ai::choose_move`. Pure UI feature — same search work
+    /// either way.
     debug: bool,
+    /// `?hints=1` — adds a "🧠 Show AI hint" toggle button in the
+    /// sidebar. Default state: hidden; the user clicks to expand /
+    /// collapse mid-game. Distinct from `debug`: debug = sticky panel
+    /// for power users; hints = on-demand panel for players who want
+    /// help on their turn.
+    hints: bool,
 }
 
 #[component]
@@ -59,12 +65,14 @@ pub fn LocalPage() -> impl IntoView {
                 strategy: parsed.ai_strategy,
                 randomness: parsed.ai_variation,
                 depth: parsed.ai_depth,
-                // Local mode: hints and debug are functionally
-                // equivalent — both mount the AI panel. The picker's
-                // "Show AI hints" checkbox writes `hints=1`; legacy
-                // `debug=1` URLs continue to work. Net mode (play.rs)
-                // adds a server-permission gate on top of these.
-                debug: parsed.ai_debug || parsed.ai_hints,
+                // Decoupled flags:
+                // - `debug` (?debug=1) → sticky always-on panel
+                // - `hints` (?hints=1) → in-game toggle button, default hidden
+                // The picker writes ?hints=1 (user-friendly); ?debug=1
+                // remains for power-user URLs. Net mode (play.rs) adds
+                // a server-permission gate on top of these.
+                debug: parsed.ai_debug,
+                hints: parsed.ai_hints,
             })
         } else {
             None
@@ -107,6 +115,33 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     // if the epoch has changed by the time it returns — prevents stale AI
     // moves landing after the player undid or restarted.
     let move_epoch = create_rw_signal::<u32>(0);
+
+    // ---- Debug vs Hint panel state ----
+    //
+    // Two distinct UX modes share one `<DebugPanel>` mount, but with
+    // different semantics:
+    //
+    // - `?debug=1` (sticky / power-user): panel is always visible.
+    //   The AI move pump caches its own POV analysis after picking
+    //   each move — the panel shows "why did the bot play this?".
+    //
+    // - `?hints=1` (on-demand / player-friendly): a "🧠 Show AI hint"
+    //   toggle button appears in the sidebar. Default hidden so the
+    //   user has to actively ask for help. When opened on the human's
+    //   turn, a separate "hint pump" runs `analyze` from the human's
+    //   POV — "if the bot were me, what would it play?". Closing the
+    //   toggle stops new analyses from being computed (cached one
+    //   stays so reopening is instant).
+    let debug_enabled = ai.map(|cfg| cfg.debug).unwrap_or(false);
+    let hints_enabled = ai.map(|cfg| cfg.hints).unwrap_or(false);
+    let hints_open = create_rw_signal::<bool>(false);
+    let panel_visible =
+        Signal::derive(move || debug_enabled || (hints_enabled && hints_open.get()));
+    // Sidebar gets the toggle ONLY when hints (not debug) is the
+    // controlling flag — debug already shows the panel always-on, so
+    // an extra button would be redundant noise.
+    let sidebar_hint_toggle: Option<RwSignal<bool>> =
+        if hints_enabled && !debug_enabled { Some(hints_open) } else { None };
 
     // Render from the human player's POV when in vs-AI mode so the player's
     // pieces sit on the bottom; in pass-and-play the board is fixed Red-side.
@@ -340,7 +375,10 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 // surface the full scored list. The cost is the same —
                 // `choose_move` internally calls `analyze` and discards
                 // everything but the chosen move. When `cfg.debug` is
-                // off we just don't mount the `<DebugPanel>`.
+                // off and `cfg.hints` is off we just don't mount the
+                // `<DebugPanel>`. When hints is on we still cache the
+                // analysis so opening the toggle mid-game has data
+                // ready immediately.
                 let analysis = chess_ai::analyze(&snapshot, &opts);
                 if move_epoch.get_untracked() != cur_epoch {
                     ai_thinking.set(false);
@@ -348,7 +386,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 }
                 if let Some(a) = analysis {
                     let chosen_mv = a.chosen.mv.clone();
-                    if cfg.debug {
+                    if cfg.debug || cfg.hints {
                         ai_analysis.set(Some(a));
                     }
                     state.update(|s| {
@@ -361,6 +399,69 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 ai_thinking.set(false);
             });
         });
+    }
+
+    // ---- Hint pump (player's POV analysis when the toggle is open) ----
+    //
+    // Distinct from the debug pump above: that one runs `analyze` from
+    // the AI's POV at the moment the AI picks a move, caching what the
+    // AI considered. THIS pump runs `analyze` from the human's POV —
+    // "what would the bot play if it were me?". Fires whenever the
+    // toggle is on AND it's the human's turn AND the game is ongoing.
+    //
+    // Skipped when:
+    // - hints disabled (no `?hints=1`)
+    // - debug enabled (debug pump already covers analysis; AI's POV is
+    //   what debug users want anyway)
+    // - panel not visible (saves the ~100-300 ms search cost)
+    // - it's the AI's turn (the AI pump will run its own analyze)
+    // - AI is mid-think (avoid racing the AI pump)
+    if let Some(cfg) = ai {
+        if cfg.hints && !cfg.debug {
+            create_effect(move |_| {
+                let s = state.get();
+                let visible = panel_visible.get();
+                if !visible {
+                    return;
+                }
+                if !matches!(s.status, GameStatus::Ongoing) {
+                    ai_analysis.set(None);
+                    return;
+                }
+                if s.side_to_move == cfg.ai_side {
+                    // AI's turn — the AI pump handles analysis (and
+                    // its result lives until the human plays back).
+                    return;
+                }
+                if ai_thinking.get_untracked() {
+                    return;
+                }
+                let cur_epoch = move_epoch.get_untracked();
+                let opts = AiOptions {
+                    difficulty: cfg.difficulty,
+                    max_depth: cfg.depth,
+                    seed: Some(cur_epoch as u64 ^ 0xC0FFEE_BABE_u64),
+                    strategy: cfg.strategy,
+                    randomness: Some(chess_ai::Randomness::STRICT),
+                };
+                let snapshot = s;
+                wasm_bindgen_futures::spawn_local(async move {
+                    // Yield a frame so the UI repaints (toggle button
+                    // flips state visibly) before the search blocks.
+                    gloo_timers::future::TimeoutFuture::new(40).await;
+                    if move_epoch.get_untracked() != cur_epoch {
+                        return;
+                    }
+                    let analysis = chess_ai::analyze(&snapshot, &opts);
+                    if move_epoch.get_untracked() != cur_epoch {
+                        return;
+                    }
+                    if let Some(a) = analysis {
+                        ai_analysis.set(Some(a));
+                    }
+                });
+            });
+        }
     }
 
     let prefs = expect_context::<Prefs>();
@@ -393,7 +494,6 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     let highlighted_pv_signal: Signal<Vec<Move>> = highlighted_pv.into();
     let on_debug_hover: Callback<Vec<Move>> =
         Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
-    let debug_enabled = ai.map(|cfg| cfg.debug).unwrap_or(false);
     let board_for_debug = state.with_untracked(|s| s.board.clone());
     let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
 
@@ -448,8 +548,9 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 on_undo=on_undo
                 wip=wip
                 history=history_signal
+                hint_toggle=sidebar_hint_toggle
             />
-            <Show when=move || debug_enabled>
+            <Show when=move || panel_visible.get()>
                 <DebugPanel
                     analysis=analysis_signal
                     board=board_for_debug.clone()

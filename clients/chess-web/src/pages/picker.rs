@@ -177,7 +177,7 @@ fn XiangqiCard() -> impl IntoView {
                             prop:checked=move || ai_debug.get()
                             on:change=move |ev| ai_debug.set(event_target_checked(&ev))
                         />
-                        <span>"Show AI hints — open a side panel with all scored root moves, principal variation, and hover-to-highlight on the board. Helps you understand the AI's reasoning and find the best move yourself."</span>
+                        <span>"Allow AI hints — adds a 🧠 toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (top scored moves + principal variation overlay). Hidden by default; you stay in control."</span>
                     </label>
                 </fieldset>
                 <fieldset class="card-fieldset">

@@ -28,6 +28,14 @@ pub fn Sidebar(
     /// a future protocol bump).
     #[prop(optional, into)]
     history: Option<Signal<Vec<HistoryEntry>>>,
+    /// `Some(signal)` enables an in-game "🧠 Show / Hide AI hint" toggle
+    /// button. Owner: the page (so the page also owns the show/hide
+    /// state for the actual `<DebugPanel>`). Pass `None` to omit the
+    /// button entirely. Distinct from the always-on `?debug=1` panel:
+    /// hints are user-driven (default hidden, click to expand /
+    /// collapse mid-game), debug is sticky (mounts on page load).
+    #[prop(default = None)]
+    hint_toggle: Option<RwSignal<bool>>,
 ) -> impl IntoView {
     let style = Style::Cjk;
     let variant_label = match variant {
@@ -112,6 +120,27 @@ pub fn Sidebar(
                 <button class="btn" on:click=move |_| on_undo.call(()) disabled=move || wip>"Undo"</button>
                 <button class="btn" on:click=move |_| on_new_game.call(()) disabled=move || wip>"New game"</button>
             </div>
+            {hint_toggle.map(|sig| {
+                let label = move || if sig.get() {
+                    "🧠 Hide AI hint"
+                } else {
+                    "🧠 Show AI hint"
+                };
+                let cls = move || if sig.get() {
+                    "btn btn-hint btn-hint--on"
+                } else {
+                    "btn btn-hint"
+                };
+                view! {
+                    <button
+                        class=cls
+                        title="Toggle the AI hint panel — runs the bot and shows the top scored moves from your perspective. You stay in control of the game."
+                        on:click=move |_| sig.update(|b| *b = !*b)
+                    >
+                        {label}
+                    </button>
+                }
+            })}
             {history.map(|h| view! { <MoveHistory entries=h/> })}
             <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
             <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>

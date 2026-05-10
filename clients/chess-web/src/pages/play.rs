@@ -188,17 +188,41 @@ fn PlayConnected(
     // mounts when the room sanctioned it. Local mode (offline /
     // GitHub Pages standalone) skips this gate entirely; see
     // `pages/local.rs`.
+    //
+    // Two distinct UX modes share the same `<DebugPanel>` mount:
+    //
+    // - `?debug=1` (sticky / power-user): panel always visible once
+    //   `hints_allowed` arrives. Shows the AI's analysis of the side-
+    //   to-move's options after every PlayerView update.
+    //
+    // - `?hints=1` (on-demand / player-friendly): a "🧠 Show AI hint"
+    //   toggle appears in the sidebar. Default hidden so the player
+    //   actively asks for help. When opened, the same analysis fires.
+    //
+    // Both still require server permission (`hints_allowed = true`).
     let panel_requested = debug_enabled || hints_requested;
     let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
     let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
-    let panel_visible =
-        Signal::derive(move || panel_requested && hints_allowed.get().unwrap_or(false));
+    let hints_open = create_rw_signal::<bool>(false);
+    let panel_visible = Signal::derive(move || {
+        if !hints_allowed.get().unwrap_or(false) {
+            return false;
+        }
+        // ?debug=1 → sticky; ?hints=1 → user-controlled toggle.
+        debug_enabled || (hints_requested && hints_open.get())
+    });
+    // Sidebar toggle button visibility: only when hints (not debug) is
+    // the controlling flag AND the server sanctioned it. Debug-mode
+    // users get a sticky always-on panel instead — no extra button.
+    let show_hint_button = Signal::derive(move || {
+        hints_requested && !debug_enabled && hints_allowed.get().unwrap_or(false)
+    });
     if panel_requested {
         create_effect(move |_| {
             // Only run analysis when the panel is going to be shown —
-            // server-denied requests skip the search work entirely.
+            // server-denied requests AND closed-toggle requests skip
+            // the search work entirely.
             if !panel_visible.get() {
-                ai_analysis.set(None);
                 return;
             }
             let Some(v) = view_signal.get() else {
@@ -279,6 +303,8 @@ fn PlayConnected(
                     conn=conn
                     handle=handle_for_sidebar
                     ws_base=ws_base.clone()
+                    show_hint_button=show_hint_button
+                    hint_open=hints_open
                 />
                 <ChatPanel
                     role=role.into()
@@ -453,6 +479,16 @@ fn OnlineSidebar(
     conn: ReadSignal<ConnState>,
     handle: WsHandle,
     ws_base: WsBase,
+    /// Reactive predicate: when true, mounts the "🧠 Show / Hide AI
+    /// hint" toggle button. Net-mode-specific because the gating depends
+    /// on the server's `hints_allowed`, which arrives async via Hello.
+    /// Pass `Signal::derive(|| false)` to disable entirely.
+    #[prop(into)]
+    show_hint_button: Signal<bool>,
+    /// Toggle state for the hint button. Owner is the page so it can
+    /// gate the `<DebugPanel>` mount on the same value. Always
+    /// allocated; only consumed when `show_hint_button.get() == true`.
+    hint_open: RwSignal<bool>,
 ) -> impl IntoView {
     let role_label = move || match role.get() {
         Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
@@ -536,6 +572,29 @@ fn OnlineSidebar(
                 <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
                 <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
             </div>
+            <Show when=move || show_hint_button.get()>
+                {
+                    let label = move || if hint_open.get() {
+                        "🧠 Hide AI hint"
+                    } else {
+                        "🧠 Show AI hint"
+                    };
+                    let cls = move || if hint_open.get() {
+                        "btn btn-hint btn-hint--on"
+                    } else {
+                        "btn btn-hint"
+                    };
+                    view! {
+                        <button
+                            class=cls
+                            title="Toggle the AI hint panel — runs the bot from the side-to-move's perspective. Visible to the room (server-sanctioned)."
+                            on:click=move |_| hint_open.update(|b| *b = !*b)
+                        >
+                            {label}
+                        </button>
+                    }
+                }
+            </Show>
             <div class="fx-toggles">
                 <label>
                     <input
