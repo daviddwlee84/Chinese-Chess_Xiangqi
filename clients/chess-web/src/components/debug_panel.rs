@@ -63,7 +63,32 @@ pub fn DebugPanel(
 
 #[component]
 fn DebugMeta(#[prop(into)] analysis: Signal<Option<AiAnalysis>>) -> impl IntoView {
-    let depth = move || analysis.with(|a| a.as_ref().map(|x| x.depth).unwrap_or(0));
+    // The "Depth" cell now reports BOTH reached and target depths so
+    // users who set Search depth = 10 can see immediately when the
+    // node-budget cap truncated the search to a smaller reached depth.
+    // Format:
+    //   - "4"            when reached == target  (no truncation)
+    //   - "4 / 10 (cap)" when reached <  target  (budget bit; tooltip explains)
+    // The previous version just showed "4" with no indication that the
+    // user's request had been silently clipped — see
+    // `pitfalls/ai-search-depth-setting-shows-depth-4.md`.
+    let depth_text = move || {
+        analysis.with(|a| match a.as_ref() {
+            None => "0".to_string(),
+            Some(x) if x.depth >= x.target_depth => x.depth.to_string(),
+            Some(x) => format!("{} / {} (cap)", x.depth, x.target_depth),
+        })
+    };
+    let depth_title = move || {
+        analysis.with(|a| match a.as_ref() {
+            Some(x) if x.budget_hit => format!(
+                "Iterative deepening reached depth {} of {} requested before the per-search node \
+                 budget (250k) was exhausted. Lower Search depth or accept the truncation.",
+                x.depth, x.target_depth,
+            ),
+            _ => "Reached search depth (== requested target).".to_string(),
+        })
+    };
     let nodes = move || analysis.with(|a| a.as_ref().map(|x| x.nodes).unwrap_or(0));
     let strategy = move || {
         analysis.with(|a| a.as_ref().map(|x| x.strategy.as_str()).unwrap_or("—").to_string())
@@ -87,7 +112,7 @@ fn DebugMeta(#[prop(into)] analysis: Signal<Option<AiAnalysis>>) -> impl IntoVie
     view! {
         <dl class="debug-panel__meta">
             <div><dt>"Engine"</dt><dd>{strategy}</dd></div>
-            <div><dt>"Depth"</dt><dd>{move || depth().to_string()}</dd></div>
+            <div><dt>"Depth"</dt><dd title=depth_title>{depth_text}</dd></div>
             <div><dt>"Nodes"</dt><dd>{move || nodes().to_string()}</dd></div>
             <div><dt>"Randomness"</dt><dd>{randomness_label}</dd></div>
             <div><dt>"Best score"</dt><dd>{move || format!("{:+} cp", chosen_score())}</dd></div>

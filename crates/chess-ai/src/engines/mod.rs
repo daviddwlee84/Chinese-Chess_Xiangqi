@@ -21,7 +21,7 @@ use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
 use crate::search::v5::score_root_moves_v5;
-use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove};
+use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove, NODE_BUDGET};
 use crate::{AiAnalysis, AiMoveResult, AiOptions, Randomness, Strategy};
 
 /// A search engine: picks a move for the side to move in `state`.
@@ -209,11 +209,19 @@ pub(crate) fn analyze_v5(state: &GameState, opts: &AiOptions) -> Option<AiAnalys
 
     scored.sort_by_key(|sm| std::cmp::Reverse(sm.score));
 
+    // budget_hit semantics for v5: the iterative-deepening loop didn't
+    // complete the requested target. The user-meaningful signal is
+    // "you asked for N but got M < N", which the panel can frame as
+    // "depth M / N (budget hit)" so the truncation isn't silent.
+    let budget_hit = reached_depth < target_depth;
+
     Some(AiAnalysis {
         chosen: chosen_result,
         scored,
         depth: reached_depth,
+        target_depth,
         nodes,
+        budget_hit,
         strategy: Strategy::IterativeDeepeningTtV5,
         randomness,
     })
@@ -243,6 +251,7 @@ fn build_analysis<E: Evaluator>(
     let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
+    let legal_count = state.legal_moves().len();
     let (mut scored, nodes) = if qmvv {
         score_root_moves_qmvv(state, depth, eval)
     } else {
@@ -266,8 +275,25 @@ fn build_analysis<E: Evaluator>(
     // occurrence wins" semantics from the picker.
     scored.sort_by_key(|sm| std::cmp::Reverse(sm.score));
 
+    // budget_hit for v1-v4: every scored move was searched at the full
+    // requested depth, but the search may have run out of nodes before
+    // reaching every legal root move. Detect by comparing scored.len()
+    // against legal_count, with NODE_BUDGET as a confirming signal.
+    // (Either condition alone could false-positive in degenerate cases
+    // — both together are tight.)
+    let budget_hit = scored.len() < legal_count && nodes >= NODE_BUDGET;
+
     let _ = engine_label; // hook for future logging.
-    Some(AiAnalysis { chosen: chosen_result, scored, depth, nodes, strategy, randomness })
+    Some(AiAnalysis {
+        chosen: chosen_result,
+        scored,
+        depth,
+        target_depth: depth,
+        nodes,
+        budget_hit,
+        strategy,
+        randomness,
+    })
 }
 
 /// Apply the [`Randomness`] policy to a list of scored root moves and

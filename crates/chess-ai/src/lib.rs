@@ -333,11 +333,34 @@ pub struct AiAnalysis {
     /// Scores are side-relative to the side to move — positive favours
     /// the AI.
     pub scored: Vec<ScoredMove>,
-    /// Effective depth used (after `Difficulty::default_depth` /
-    /// `AiOptions::max_depth` resolution).
+    /// **Actually-reached depth** (the deepest iteration v5 finished
+    /// under the node budget; for v1–v4 always equals `target_depth`
+    /// because they don't iterate). May be **less than**
+    /// [`Self::target_depth`] when the search bailed mid-iteration —
+    /// see [`Self::budget_hit`].
     pub depth: u8,
+    /// **Requested depth** that the caller asked for, after resolving
+    /// `AiOptions::max_depth` against `Difficulty::default_depth`. The
+    /// debug UI compares this against [`Self::depth`] so users can see
+    /// when the engine truncated. Always `>= depth`.
+    ///
+    /// Added 2026-05-10 to fix the silent-truncation UX where users
+    /// who set Search depth = 10 would see Depth = 4 on the panel with
+    /// no indication that the budget cap (250 k nodes) had cut the
+    /// iteration short — see
+    /// `pitfalls/ai-search-depth-setting-shows-depth-4.md`.
+    pub target_depth: u8,
     /// Total nodes the search visited.
     pub nodes: u32,
+    /// `true` when the engine stopped before completing the requested
+    /// `target_depth`. For v5 this means the iterative-deepening loop
+    /// gave up partway through some iteration; for v1–v4 it means the
+    /// node budget tripped before every root move could be scored
+    /// (some legal moves are absent from [`Self::scored`]).
+    ///
+    /// The debug panel surfaces this so the displayed `Depth` value is
+    /// honest about whether the user got what they asked for.
+    pub budget_hit: bool,
     /// Strategy that produced this analysis.
     pub strategy: Strategy,
     /// Effective randomness policy that picked `chosen` from `scored`.
@@ -665,6 +688,81 @@ mod tests {
             let found =
                 analysis.scored.iter().any(|sm| sm.mv == chosen.mv && sm.score == chosen.score);
             assert!(found, "chosen move should appear in scored list for {:?}", strategy);
+        }
+    }
+
+    /// `target_depth` always equals the requested override (after
+    /// `Difficulty::default_depth` resolution + `.max(1)` clamp), and
+    /// `depth <= target_depth`. `budget_hit` is `true` iff `depth <
+    /// target_depth` for v5, or some legal moves were left unscored
+    /// for v1-v4.
+    ///
+    /// Regression for `pitfalls/ai-search-depth-setting-shows-depth-4.md`:
+    /// users setting `Search depth = N` need a way to tell, in the debug
+    /// panel, whether N was actually reached or got truncated by the
+    /// node budget. Surfaces the `target_depth` / `depth` distinction
+    /// rather than silently displaying the truncated value.
+    #[test]
+    fn analyze_reports_target_and_reached_depth() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for strategy in Strategy::ALL {
+            // Modest depth — every engine should reach it without
+            // hitting the budget on the opening position.
+            let opts = AiOptions {
+                difficulty: Difficulty::Hard,
+                max_depth: Some(2),
+                seed: Some(0),
+                strategy,
+                randomness: Some(Randomness::STRICT),
+            };
+            let a = analyze(&state, &opts).expect("analyze");
+            assert_eq!(a.target_depth, 2, "target_depth should echo max_depth for {:?}", strategy);
+            assert!(
+                a.depth <= a.target_depth,
+                "{:?}: reached depth {} should be <= target {}",
+                strategy,
+                a.depth,
+                a.target_depth,
+            );
+            assert!(
+                a.depth >= 1,
+                "{:?}: reached depth {} should be at least 1 in opening",
+                strategy,
+                a.depth
+            );
+            // budget_hit semantics: for v5 it's depth < target; for
+            // v1-v4 it's "some legal moves left unscored". Either way
+            // the panel should be able to surface it. We don't assert
+            // a specific value here (depends on engine + budget tuning)
+            // but the field must exist and be readable.
+            let _ = a.budget_hit;
+        }
+    }
+
+    /// `Difficulty::default_depth()` falls through to `target_depth`
+    /// when the caller passes `max_depth: None`. Without this, the
+    /// "auto" path in the picker (blank Search-depth field) would
+    /// surface `target_depth: 0` and the panel would render
+    /// "Depth: M / 0" — wrong.
+    #[test]
+    fn analyze_target_depth_falls_back_to_difficulty_default() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for (diff, expected_default) in
+            [(Difficulty::Easy, 1u8), (Difficulty::Normal, 3u8), (Difficulty::Hard, 4u8)]
+        {
+            let opts = AiOptions {
+                difficulty: diff,
+                max_depth: None,
+                seed: Some(0),
+                strategy: Strategy::default(),
+                randomness: Some(Randomness::STRICT),
+            };
+            let a = analyze(&state, &opts).expect("analyze");
+            assert_eq!(
+                a.target_depth, expected_default,
+                "{:?} should fall back to default_depth {}",
+                diff, expected_default
+            );
         }
     }
 

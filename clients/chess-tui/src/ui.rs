@@ -1093,10 +1093,19 @@ fn push_debug_lines(lines: &mut Vec<Line<'static>>, g: &GameView, cursor: usize)
         return;
     };
 
+    // Honest depth display: when the iterative-deepening loop bailed
+    // before completing the requested target (NODE_BUDGET cap), show
+    // both reached and target so the user knows their --ai-depth=N was
+    // truncated. See `pitfalls/ai-search-depth-setting-shows-depth-4.md`.
+    let depth_str = if analysis.budget_hit && analysis.target_depth > analysis.depth {
+        format!("{} / {} (cap)", analysis.depth, analysis.target_depth)
+    } else {
+        analysis.depth.to_string()
+    };
     let header = format!(
         "AI Debug ({}, depth {}, {} nodes, {} moves):",
         analysis.strategy.as_str(),
-        analysis.depth,
+        depth_str,
         analysis.nodes,
         analysis.scored.len(),
     );
