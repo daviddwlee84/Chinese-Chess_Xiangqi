@@ -637,7 +637,6 @@ fn LocalGame(
     // `hint_analysis` (live cache) based on `hint_view_active`.
 
     let mirror_signal: Signal<bool> = Signal::derive(move || mirror);
-    let game_page_class = if mirror { "game-page game-page--mirror" } else { "game-page" };
 
     let game_over = move || !matches!(state.with(|s| s.status), GameStatus::Ongoing);
     let on_resign = move |side: Side| {
@@ -647,9 +646,17 @@ fn LocalGame(
         });
     };
     view! {
-        <section class=game_page_class>
+        <section class="game-page">
             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
                 <Show when=move || mirror && !wip>
+                    <button
+                        class="resign-btn resign-btn--top"
+                        title="Black resigns"
+                        disabled=game_over
+                        on:click=move |_| on_resign(Side::BLACK)
+                    >
+                        "投降 Resign"
+                    </button>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
                 </Show>
                 <Board
@@ -699,14 +706,6 @@ fn LocalGame(
                 </Show>
                 <Show when=move || !wip && mirror>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredBelow}/>
-                    <button
-                        class="resign-btn resign-btn--top"
-                        title="Black resigns"
-                        disabled=game_over
-                        on:click=move |_| on_resign(Side::BLACK)
-                    >
-                        "投降 Resign"
-                    </button>
                     <button
                         class="resign-btn resign-btn--bottom"
                         title="Red resigns"

@@ -9282,13 +9282,13 @@ _**User (2026-05-10 09:09:03Z)**_
 
 _**User (2026-05-10 09:09:32Z)**_
 
-[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/11.png]
-
-_**User (2026-05-10 09:09:32Z)**_
-
 感覺不錯 目前美中不足是 [Image #11] Banqi seed 那邊 UI 有點超出去
 另外 也許可以給 Xangqi Pass-and-play 加上一個mirror的選項 這樣黑方的字都反著印 （這樣如果玩家用手機坐在對面玩 則可以看自己的棋子都是正的,
 此外在這個模式之下可以把己方死亡的棋子列在對手那方 （原本是統一列在棋盤下方）
+
+_**User (2026-05-10 09:09:32Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/11.png]
 
 ---
 
@@ -23424,3 +23424,765 @@ All checks green. Summary of what shipped:
 - **Per-seat resign buttons**: `.resign-btn--top` (rotated) + `.resign-btn--bottom` inside `.board-pane--mirror`, calling `state.resign(side)` then `refresh_status()`. Disabled once the game ends.
 
 Tests: 41+89+all crate tests pass; clippy clean; wasm build clean.
+
+---
+
+_**User (2026-05-10 09:53:08Z)**_
+
+git commit and push and check gh CI
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Survey repo state
+
+`git status && echo "---DIFF STAT---" && git diff --stat && echo "---LOG---" && git log -3 --oneline`
+
+```text
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .claude/plans/rust-wasm-pwa-mobile-streamed-wall.md
+	modified:   .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+	modified:   clients/chess-web/src/components/captured.rs
+	modified:   clients/chess-web/src/components/end_overlay.rs
+	modified:   clients/chess-web/src/components/sidebar.rs
+	modified:   clients/chess-web/src/pages/local.rs
+	modified:   clients/chess-web/src/pages/picker.rs
+	modified:   clients/chess-web/src/pages/play.rs
+	modified:   clients/chess-web/style.css
+	modified:   crates/chess-core/src/state/mod.rs
+	modified:   crates/chess-core/tests/end_conditions.rs
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+
+---DIFF STAT---
+ .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+---LOG---
+60cf1fc Backup chat history
+057d792 feat(chess-web): pass-and-play mirror mode + banqi seed input fix
+a67907c docs(pitfalls): three local-serve traps from the PWA shake-down
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:19Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Show staged file stats
+
+`git diff --cached --stat | tail -15`
+
+```text
+ .../plans/rust-wasm-pwa-mobile-streamed-wall.md    |  339 +-
+ .../2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md   | 6091 +++++++++++++++++++-
+ clients/chess-web/src/components/captured.rs       |   73 +-
+ clients/chess-web/src/components/end_overlay.rs    |   33 +-
+ clients/chess-web/src/components/sidebar.rs        |   30 +-
+ clients/chess-web/src/pages/local.rs               |   35 +-
+ clients/chess-web/src/pages/picker.rs              |   32 +
+ clients/chess-web/src/pages/play.rs                |   19 -
+ clients/chess-web/style.css                        |   91 +-
+ crates/chess-core/src/state/mod.rs                 |   13 +
+ crates/chess-core/tests/end_conditions.rs          |   20 +
+ 11 files changed, 6550 insertions(+), 226 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit feature changes
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-seat resign
+
+- Cap mirror layout to viewport height (`.game-page--mirror` +
+  `.board-pane--mirror` 3-row grid) so iPad pass-and-play fits one
+  screen. SVG sizes to remaining row.
+- Render two end-game overlays in mirror mode: top rotated 180°
+  facing Black, bottom upright facing Red. Each gets personalised
+  VICTORY/DEFEAT copy via a synthetic seat role; two confetti bursts.
+  New `EndOverlay::half: Option<MirrorHalf>` prop.
+- Reserve captured-strip space from move 0 (drop `<Show when=any_captured>`)
+  so the board no longer jumps when the first piece dies.
+- Move FX toggles ("Victory effects" / "將軍 / CHECK warning") out of
+  the in-game sidebar into a collapsed `<details class="picker-settings">`
+  on the picker. Same `Prefs` signals; in-game only reads them.
+- Add per-seat resign buttons inside `.board-pane--mirror`. New
+  `GameState::resign(loser)` helper sets `Won { winner: opposite,
+  reason: Resignation }` (no-op if already over). Paired
+  positive/no-op tests in `tests/end_conditions.rs`.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -15
+```
+
+```text
+[main 6bcf9d9] feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-seat resign
+ 11 files changed, 6550 insertions(+), 226 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Push to origin/main
+
+`git push origin main 2>&1 | tail -10`
+
+```text
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   057d792..6bcf9d9  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:53:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List recent CI runs
+
+`sleep 5 && gh run list --branch main --limit 4`
+
+```text
+queued		feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-…	ci	main	push	25625702597	6s	2026-05-10T09:53:41Z
+in_progress		feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-…	pages	main	push	25625702602	6s	2026-05-10T09:53:41Z
+completed	success	feat(chess-web): pass-and-play mirror mode + banqi seed input fix	pages	main	push	25625123787	1m0s	2026-05-10T09:23:58Z
+completed	success	feat(chess-web): pass-and-play mirror mode + banqi seed input fix	ci	main	push	25625123786	1m22s	2026-05-10T09:23:58Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:55:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Watch CI + pages
+
+`gh run watch 25625702597 --exit-status 2>&1 | tail -10 ; echo "---PAGES---" ; gh run watch 25625702602 --exit-status 2>&1 | tail -10`
+
+```text
+  ✓ Complete job
+✓ wasm-cleanliness in 22s (ID 75220351429)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run dtolnay/rust-toolchain@stable
+  ✓ Run Swatinem/rust-cache@v2
+  ✓ Build chess-core for wasm32
+  ✓ Post Run Swatinem/rust-cache@v2
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+---PAGES---
+Run pages (25625702602) has already completed with 'success'
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:55:14Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm both green
+
+`gh run list --branch main --limit 2`
+
+```text
+completed	success	feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-…	ci	main	push	25625702597	1m20s	2026-05-10T09:53:41Z
+completed	success	feat(chess-web): mirror-mode polish — viewport fit, dual banner, per-…	pages	main	push	25625702602	1m3s	2026-05-10T09:53:41Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:55:17Z)**_
+
+Both green ✅ — `ci` 1m20s, `pages` 1m03s. Pushed as `6bcf9d9` on `origin/main`. The Pages deploy should propagate to https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/ shortly.
+
+---
+
+_**User (2026-05-10 10:09:16Z)**_
+
+目前情況好像更糟了 畫面仍然超出邊界觸發滾動 [Image #16]
+然後死亡紅黑標誌與投降按鈕重疊
+
+另外當選擇棋子的時候 棋盤會莫名奇妙被放大（之前都不會的）
+[Image #15]
+電腦網頁版 [Image #17] 這個問題是沒有（但還是有上下畫面超出邊界的問題）
+然後sidebar原本資訊緊湊還算好看 現在UI變得挺奇怪的
+
+_**User (2026-05-10 10:09:16Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/15.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/16.png]
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/17.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:04Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:05Z)**_
+
+Let me investigate the issues. The core bug is my `width: auto; height: auto` SVG override — that causes the SVG to render at its viewBox intrinsic pixel size, ignoring the container.
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find existing svg.board rules
+
+`grep -n "svg.board\b\|svg\.board," /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head`
+
+```text
+220:.board-pane--mirror > svg.board {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find page wrapper
+
+`grep -n "main\|<App>\|app-root\|padding\|max-width" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head -25`
+
+```text
+34:    padding: 2rem 1rem;
+45:    padding: clamp(1.5rem, 6vw, 2.4rem);
+80:    max-width: 30rem;
+101:    max-width: 34rem;
+103:    padding: 1rem;
+119:    padding: 2rem 1rem;
+133:    padding: 1.25rem;
+157:    padding: 0.5rem 0.75rem;
+163:    padding: 0 0.35rem;
+171:    padding: 0.15rem 0;
+180:    padding: 0.25rem 0.6rem;
+192:    padding: 0.05rem 0.25rem;
+204:@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+221:    max-width: 100%;
+240:    padding: 0.3rem 0.7rem;
+280:    padding: 0.5rem 0.75rem;
+305:    padding: 0.4rem 0.5rem;
+315:    padding: 0.35rem 0.55rem;
+339:    padding: 0.5rem;
+348:    padding: 0.55rem 0.75rem 0.65rem;
+369:    padding: 0.1rem 0.55rem;
+443:    padding: 1.25rem 1.5rem;
+444:    max-width: 80%;
+452:    padding: 0.05rem 0.3rem;
+532:    padding: 0.4rem 0.8rem;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See main wrapper css
+
+`sed -n '30,50p' /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`
+
+```text
+.boot-loader {
+    width: min(100%, 760px);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: grid;
+    place-items: center;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.boot-loader--done {
+    opacity: 0;
+    transform: translateY(-0.35rem);
+}
+.boot-card {
+    width: min(100%, 32rem);
+    padding: clamp(1.5rem, 6vw, 2.4rem);
+    border: 1px solid rgba(212, 165, 92, 0.45);
+    border-radius: 1rem;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(178, 34, 34, 0.22), transparent 36%),
+        linear-gradient(145deg, rgba(244, 210, 163, 0.09), rgba(0, 0, 0, 0.2));
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find existing .board rules
+
+`grep -n "\.board\b\|class=\"board\"" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head`
+
+```text
+215:.board-pane--mirror {
+220:.board-pane--mirror > svg.board {
+334:.board-pane {
+343:/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+456:.board {
+466:.board-bg { fill: var(--board); }
+483:.board-coord {
+727: * is `position: absolute` so it lives inside `.board-pane`'s positioning
+1030:.board .debug-from {
+1037:.board .debug-to {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:18Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+456	.board {
+457	    display: block;
+458	    width: 100%;
+459	    height: auto;
+460	    max-height: 80vh;
+461	    user-select: none;
+462	    -webkit-user-select: none;
+463	    -webkit-touch-callout: none;
+464	    touch-action: manipulation;
+465	}
+466	.board-bg { fill: var(--board); }
+467	.grid { stroke: var(--grid); stroke-width: 1.5; }
+468	.palace { stroke: var(--grid); stroke-width: 1.2; opacity: 0.85; }
+469	.river-text {
+470	    fill: var(--river);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find sidebar CSS
+
+`grep -n "\.sidebar\b\|\.sidebar-actions\|\.move-history\|aside" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head`
+
+```text
+558:.sidebar {
+577:.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+874:.move-history {
+879:.move-history__title {
+885:.move-history__empty {
+889:.move-history__list {
+899:.move-history__entry {
+906:.move-history__entry:hover {
+909:.move-history__entry--red .move-history__side {
+912:.move-history__entry--black .move-history__side {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:12:53Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+555	}
+556	
+557	/* Sidebar. */
+558	.sidebar {
+559	    background: rgba(244, 210, 163, 0.04);
+560	    border: 1px solid var(--grid);
+561	    border-radius: 0.5rem;
+562	    padding: 1rem 1.25rem;
+563	    display: grid;
+564	    gap: 0.65rem;
+565	}
+566	.variant-label { margin: 0; font-size: 1.1rem; }
+567	.turn-row { display: flex; align-items: baseline; gap: 0.4rem; }
+568	.turn-prefix { color: var(--muted); }
+569	.turn-red { color: var(--red); font-weight: 700; }
+570	.turn-black { color: var(--fg); font-weight: 700; }
+571	.turn-green { color: var(--green); font-weight: 700; }
+572	.status { margin: 0; font-weight: 600; }
+573	.status.ongoing { color: var(--muted); font-weight: 400; }
+574	.status.won { color: var(--accent); }
+575	.status.drawn { color: var(--muted); }
+576	.muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+577	.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+578	.btn {
+579	    background: rgba(244, 210, 163, 0.08);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:16Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find page wrapper CSS
+
+`grep -n "app-shell\|main\|body \|html \|app-root" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head`
+
+```text
+22:body {
+117:.app-shell {
+1072:/* PV continuation rendered inline next to each row's main move. */
+1073:.debug-panel__mv-main {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+CSS root reset
+
+`head -30 /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`
+
+```text
+:root {
+    --bg: #1a1614;
+    --fg: #f4d2a3;
+    --board: #f0c98c;
+    --board-edge: #6b4a1f;
+    --grid: #5a3b1c;
+    --red: #b22222;
+    --black: #1a1a1a;
+    --green: #228b22;
+    --accent: #d4a55c;
+    --muted: #7a6c5a;
+    --select-bg: rgba(80, 60, 20, 0.85);
+    --legal-bg: rgba(40, 80, 40, 0.65);
+    --tile-back: #d8a96b;
+    --tile-disc: #fffbe6;
+    --river: #5a8fbf;
+    font-family: ui-sans-serif, "Noto Sans CJK SC", "Noto Sans CJK TC", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    display: grid;
+    place-items: start center;
+}
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+115	}
+116	
+117	.app-shell {
+118	    width: min(1100px, 100%);
+119	    padding: 2rem 1rem;
+120	}
+121	
+122	.picker h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 0.5rem; }
+123	.subtitle { color: var(--muted); margin: 0 0 2rem; }
+124
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:28Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:29Z)**_
+
+Now fixing all CSS issues:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:41Z)**_
+
+Now fix resign button positioning (remove absolute):
+
+_**Agent (claude-opus-4-7 2026-05-10 10:13:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:05Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:07Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+645	            s.resign(side);
+646	            s.refresh_status();
+647	        });
+648	    };
+649	    view! {
+650	        <section class=game_page_class>
+651	            <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
+652	                <Show when=move || mirror && !wip>
+653	                    <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
+654	                </Show>
+655	                <Board
+656	                    shape=shape
+657	                    observer=observer
+658	                    view=view
+659	                    selected=effective_selected
+660	                    on_click=on_click
+661	                    highlighted_pv=highlighted_pv_signal
+662	                    mirror_black=mirror_signal
+663	                />
+664	                <Show when=move || chain_active.get()>
+665	                    <div class="chain-banner">
+666	                        <span>"連吃 — 繼續吃 or "</span>
+667	                        <button class="btn btn-ghost btn-sm" on:click=move |_| on_end_chain.call(())>
+668	                            "End chain"
+669	                        </button>
+670	                    </div>
+671	                </Show>
+672	                <Show when=move || ai_thinking.get()>
+673	                    <div class="chain-banner ai-thinking-banner">
+674	                        <span>"⏳ AI thinking…"</span>
+675	                    </div>
+676	                </Show>
+677	                <Show when=move || wip>
+678	                    <div class="wip-overlay">
+679	                        <div class="wip-banner">
+680	                            <h3>"Three-Kingdom Banqi 三國暗棋"</h3>
+681	                            <p>
+682	                                "Engine still WIP — pieces, rules, and 3-seat turn order land in PR-2. "
+683	                                "See "
+684	                                <code>"backlog/three-kingdoms-banqi.md"</code>
+685	                                "."
+686	                            </p>
+687	                        </div>
+688	                    </div>
+689	                </Show>
+690	                <Show when=move || !wip && !mirror>
+691	                    <EndOverlay view=view role=role_signal enabled=fx_confetti/>
+692	                </Show>
+693	                <Show when=move || !wip && mirror>
+694	                    <EndOverlay view=view role=role_signal enabled=fx_confetti half=Some(MirrorHalf::Top)/>
+695	                    <EndOverlay view=view role=role_signal enabled=fx_confetti half=Some(MirrorHalf::Bottom)/>
+696	                </Show>
+697	                <Show when=move || !wip && !mirror>
+698	                    <CapturedStrip view=view/>
+699	                </Show>
+700	                <Show when=move || !wip && mirror>
+701	                    <CapturedStrip view=view placement={CapturedSlot::MirroredBelow}/>
+702	                    <button
+703	                        class="resign-btn resign-btn--top"
+704	                        title="Black resigns"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:15Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:23Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File does not exist. Note: your current working directory is /Users/david/Documents/Program/Chinese-Chess_Xiangqi.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:33Z)**_
+
+Also drop the now-unused `game-page--mirror` class on the section since we removed its CSS:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+<tool_use_error>File does not exist. Note: your current working directory is /Users/david/Documents/Program/Chinese-Chess_Xiangqi.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:44Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:47Z)**_
+
+Build + lint check:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Format + clippy + wasm build
+
+`cargo fmt && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -8 && cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -5`
+
+```text
+    Blocking waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.57s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:14:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Force re-check
+
+`touch /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10 && cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -5`
+
+```text
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.69s
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on artifact directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.78s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:15:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Targeted clippy on chess-web wasm
+
+`touch /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs && cargo clippy -p chess-web --target wasm32-unknown-unknown --all-targets -- -D warnings 2>&1 | tail -12`
+
+```text
+   --> clients/chess-web/src/pages/local.rs:531:52
+    |
+531 |         let hint_strategy = ai.map(|c| c.strategy).unwrap_or_else(Strategy::default);
+    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#unwrap_or_default
+    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
+
+error: could not compile `chess-web` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `chess-web` (lib test) due to 3 previous errors
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:15:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Get all errors
+
+`cargo clippy -p chess-web --target wasm32-unknown-unknown --all-targets -- -D warnings 2>&1 | grep "error\[\|warning:" | head -10`
+
+```text
+warning: build failed, waiting for other jobs to finish...
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:15:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Look for actual errors
+
+`cargo clippy -p chess-web --target wasm32-unknown-unknown --all-targets 2>&1 | grep -E "^error|^warning:" | head -15`
+
+```text
+warning: digits of hex, binary or octal literal not in groups of equal size
+warning: very complex type used. Consider factoring parts into `type` definitions
+warning: use of `unwrap_or_else` to construct default value
+warning: `chess-web` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p chess-web` to apply 1 suggestion)
+warning: `chess-web` (lib test) generated 3 warnings (3 duplicates)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 10:15:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 10:15:57Z)**_
+
+Those clippy warnings only fire on the wasm target, not the native build. CI uses native clippy + wasm build (no clippy), so they're not blocking. Verify both pass:
+
+_**Agent (claude-opus-4-7 2026-05-10 10:16:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+CI-equivalent checks
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 && cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -5`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.63s
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.65s
+```
+</details></tool-use>

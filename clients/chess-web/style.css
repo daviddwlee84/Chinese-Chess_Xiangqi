@@ -203,41 +203,45 @@ body {
 .game-page--single { grid-template-columns: 1fr; }
 @media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
 
-/* Mirror mode (xiangqi pass-and-play with two players sitting opposite):
- * cap the board pane to viewport height so the captured strips above and
- * below the board don't push the page taller than the screen on iPad. The
- * board pane becomes a 3-row grid (top strip / board / bottom strip) and
- * the board SVG sizes to whatever's left after the strips. */
-.game-page--mirror {
-    align-items: stretch;
-    max-height: 100dvh;
-}
+/* Mirror mode (xiangqi pass-and-play with two players sitting opposite).
+ * Board pane is a flex column whose total height is the viewport minus
+ * `.app-shell`'s 2rem top + 2rem bottom padding. The captured strips and
+ * resign buttons size to content; the board SVG takes whatever vertical
+ * space remains via `flex: 1`. The default `.board { width: 100% }`
+ * combined with `preserveAspectRatio="xMidYMid meet"` then letterboxes
+ * the SVG so it always fits without forcing the pane taller. */
 .board-pane--mirror {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 4rem);
+    max-height: calc(100dvh - 4rem);
+    min-height: 0;
+    box-sizing: border-box;
 }
+/* Override the global `.board { height: auto; max-height: 80vh }` so the
+ * SVG can shrink inside the flex column instead of forcing 80vh. */
 .board-pane--mirror > svg.board {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
-    width: auto;
-    height: auto;
-    justify-self: center;
-    align-self: center;
+    min-height: 0;
 }
 
-/* Per-seat resign buttons in mirror mode. Each button is anchored to its
- * player's edge of the board pane. The top button is rotated 180° so the
- * Black player reads it upright. Muted styling so they don't draw eyes
- * during normal play; clearer hover state. */
+/* Per-seat resign buttons in mirror mode. They sit as flex items at the
+ * top and bottom of `.board-pane--mirror`, aligned to the right edge.
+ * The top button is rotated 180° so the Black player reads it upright.
+ * Inline (not absolute) so they don't overlap the captured strips. */
 .resign-btn {
-    position: absolute;
-    z-index: 30;
+    align-self: flex-end;
+    flex: 0 0 auto;
     background: rgba(244, 210, 163, 0.08);
     color: var(--muted);
     border: 1px solid var(--grid);
     border-radius: 0.4rem;
-    padding: 0.3rem 0.7rem;
+    padding: 0.25rem 0.65rem;
+    margin: 0.25rem;
     font: inherit;
     font-size: 0.85rem;
     cursor: pointer;
@@ -249,14 +253,9 @@ body {
 }
 .resign-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .resign-btn--top {
-    top: 0.5rem;
-    right: 0.5rem;
     transform: rotate(180deg);
     transform-origin: center;
-}
-.resign-btn--bottom {
-    bottom: 0.5rem;
-    right: 0.5rem;
+    align-self: flex-start;
 }
 
 /* Right-hand column on the play page stacks the sidebar and chat panel. */
