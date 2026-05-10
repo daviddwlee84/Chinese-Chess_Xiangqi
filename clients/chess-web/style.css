@@ -403,14 +403,16 @@ body {
     pointer-events: none;
 }
 
-/* ICCS-style coordinate labels around the board. Faded so they
-   don't compete with pieces but visible enough to map "h2g2" style
-   notation in the AI hint table back to actual squares. */
+/* ICCS-style coordinate labels around the board. Live in the
+   LABEL_MARGIN strip OUTSIDE the playing area (board.rs extends the
+   viewBox + bg into negative coords) so they never overlap pieces.
+   Slightly higher opacity than before since they now sit on the
+   wood frame, not on the grid where they competed visually. */
 .board-coord {
     fill: var(--river);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    opacity: 0.55;
+    opacity: 0.7;
     user-select: none;
     pointer-events: none;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

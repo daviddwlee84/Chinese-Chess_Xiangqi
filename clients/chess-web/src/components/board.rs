@@ -18,6 +18,13 @@ pub const PAD: i32 = 30;
 const RIVER_TOP_ROW: u8 = 4;
 const RIVER_BOT_ROW: u8 = 5;
 const TILE_RADIUS: i32 = 24;
+/// Extra space reserved OUTSIDE the existing PAD for ICCS-style coord
+/// labels (a..i / 0..9). Lives in negative-coord territory so we don't
+/// shrink the playing area or change piece geometry. Without this, an
+/// edge-rank piece (e.g. 俥 on a0) overlaps the label — PAD=30 vs
+/// piece radius=24 only leaves 6 px of clearance, not enough to fit a
+/// readable label outside the disc.
+const LABEL_MARGIN: i32 = 18;
 
 #[component]
 pub fn Board(
@@ -39,14 +46,27 @@ pub fn Board(
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
     let view_h = (rows as i32 - 1) * CELL + PAD * 2;
-    let viewbox = format!("0 0 {} {}", view_w, view_h);
+    // Extend the viewBox into negative space on all sides for coord
+    // labels. Pieces still live at their original positive-coord
+    // centers — only the SVG canvas grows. Bg rect grows to match so
+    // the labels render on the wood-tone board frame, not on the dark
+    // page background.
+    let total_w = view_w + LABEL_MARGIN * 2;
+    let total_h = view_h + LABEL_MARGIN * 2;
+    let viewbox = format!("{} {} {} {}", -LABEL_MARGIN, -LABEL_MARGIN, total_w, total_h);
     let style = Style::Cjk;
     let highlighted_pv: Signal<Vec<Move>> =
         highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
-            <rect class="board-bg" x="0" y="0" width="100%" height="100%"/>
+            <rect
+                class="board-bg"
+                x=-LABEL_MARGIN
+                y=-LABEL_MARGIN
+                width=total_w
+                height=total_h
+            />
             <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
             <g class="coord-layer">{coord_labels(shape, rows, cols, observer)}</g>
             <g class="river-layer">{river_text(shape, cols)}</g>
@@ -131,58 +151,82 @@ fn river_text(shape: BoardShape, cols: u8) -> View {
 /// labels respect Red-at-bottom vs Black-at-bottom orientation
 /// automatically (Red sees `a..i` left-to-right, Black sees `i..a`).
 ///
+/// Labels live in the LABEL_MARGIN strip OUTSIDE the original PAD
+/// area (negative coords for top/left, beyond view_w/view_h for
+/// bottom/right). The previous version put them at PAD-16, which
+/// landed *inside* the disc of any edge-rank/edge-file piece (PAD=30
+/// vs piece radius=24 → only 6 px clearance) so the corner labels
+/// were invisible whenever a 俥/車 sat on a0/i0/a9/i9. Negative-coord
+/// placement keeps them clear of all piece geometry.
+///
 /// Xiangqi only — banqi has no algebraic-style notation in this codebase.
 fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
     if !matches!(shape, BoardShape::Xiangqi9x10) {
         return ().into_view();
     }
-    // Need a Board reference for file_rank() — cheap to construct, no
-    // pieces, just the shape. Done here rather than threading through
-    // from the page because the labels are static for a given shape.
     let board = chess_core::board::Board::new(shape);
     let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
 
     // File labels (a..i) — read the file from the bottom-edge cell of
-    // each column, then mirror at the top edge.
+    // each column (any row would do; bottom-edge avoids needing to
+    // worry about non-rectangular shapes), then mirror at the top edge.
     let bottom_row = rows - 1;
-    let label_y_top = PAD - 10;
-    let label_y_bot = PAD + (rows as i32 - 1) * CELL + 18;
+    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+    // Halfway up the top margin (negative coords): well clear of
+    // top-edge piece discs (whose top edge is at y = PAD - TILE_RADIUS = 6).
+    let label_y_top = -LABEL_MARGIN / 2;
+    // Halfway down the bottom margin (beyond view_h): clear of
+    // bottom-edge piece discs (whose bottom edge is at y = view_h - PAD + TILE_RADIUS).
+    let label_y_bot = view_h + LABEL_MARGIN / 2;
     for col in 0..cols {
         let Some(sq) = square_at_display(bottom_row, col, observer, shape) else { continue };
         let (f, _) = board.file_rank(sq);
         let ch = (b'a' + f.0) as char;
         let x = PAD + col as i32 * CELL;
-        out.push(view! {
-            <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
-                {ch.to_string()}
-            </text>
-        }.into_view());
-        out.push(view! {
-            <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
-                {ch.to_string()}
-            </text>
-        }.into_view());
+        out.push(
+            view! {
+                <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+                    {ch.to_string()}
+                </text>
+            }
+            .into_view(),
+        );
+        out.push(
+            view! {
+                <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
+                    {ch.to_string()}
+                </text>
+            }
+            .into_view(),
+        );
     }
 
     // Rank labels (0..9) — read the rank from the left-edge cell of
     // each row, then mirror at the right edge.
-    let label_x_left = PAD - 16;
-    let label_x_right = PAD + (cols as i32 - 1) * CELL + 16;
+    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+    let label_x_left = -LABEL_MARGIN / 2; // ≈ -9
+    let label_x_right = view_w + LABEL_MARGIN / 2; // ≈ view_w + 9
     for row in 0..rows {
         let Some(sq) = square_at_display(row, 0, observer, shape) else { continue };
         let (_, r) = board.file_rank(sq);
         let digit = r.0;
         let y = PAD + row as i32 * CELL;
-        out.push(view! {
-            <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
-                {digit.to_string()}
-            </text>
-        }.into_view());
-        out.push(view! {
-            <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
-                {digit.to_string()}
-            </text>
-        }.into_view());
+        out.push(
+            view! {
+                <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
+                    {digit.to_string()}
+                </text>
+            }
+            .into_view(),
+        );
+        out.push(
+            view! {
+                <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+                    {digit.to_string()}
+                </text>
+            }
+            .into_view(),
+        );
     }
     out.into_view()
 }
