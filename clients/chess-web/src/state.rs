@@ -1,10 +1,13 @@
 //! Pure-logic helpers for the client's view of a game. Native-testable —
 //! no Leptos signals or browser deps live here.
 
+use chess_core::board::{Board, BoardShape};
 use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::{Piece, PieceKind, Side};
-use chess_core::view::PlayerView;
+use chess_core::rules::RuleSet;
+use chess_core::state::{GameState, GameStatus};
+use chess_core::view::{PlayerView, VisibleCell};
 
 /// Role assigned by the server on `Hello` (player) or `Spectating`
 /// (read-only). Drives whether the play page renders move/resign/rematch
@@ -137,6 +140,50 @@ pub fn split_and_sort_captured(pieces: &[Piece], sort: CapturedSort) -> (Vec<Pie
         black.sort_by_key(|p| std::cmp::Reverse(piece_rank_value(p.kind)));
     }
     (red, black)
+}
+
+/// Reconstruct a (best-effort) `GameState` from a `PlayerView` for the
+/// sole purpose of running `chess_ai::analyze` client-side in Net mode
+/// (debug overlay).
+///
+/// **Xiangqi only** — banqi has hidden tiles which we can't reveal
+/// without cheating, so we refuse to reconstruct (returns `None`).
+/// Three-Kingdom too.
+///
+/// The reconstructed state is good enough for `chess_ai::analyze` (the
+/// search reads `board`, `side_to_move`, `legal_moves`, `make_move`,
+/// `unmake_move`) but is NOT a faithful replay — `history` is empty,
+/// `no_progress_plies` is 0, `chain_lock` mirrors the view, etc. Don't
+/// try to roundtrip this back to a server.
+pub fn reconstruct_xiangqi_state_for_analysis(view: &PlayerView) -> Option<GameState> {
+    if !matches!(view.shape, BoardShape::Xiangqi9x10) {
+        // Banqi / three-kingdom: hidden info or unsupported. The chess-ai
+        // engine is xiangqi-only anyway.
+        return None;
+    }
+    if !matches!(view.status, GameStatus::Ongoing) {
+        // analyze() returns None on terminated games anyway.
+        return None;
+    }
+    // Build a fresh xiangqi-casual state and overwrite its board.
+    // Xiangqi rules don't mutate per-game; only the board + side-to-move
+    // matter for search.
+    let mut state = GameState::new(RuleSet::xiangqi_casual());
+    let mut board = Board::new(view.shape);
+    for (idx, cell) in view.cells.iter().enumerate() {
+        let sq = Square(idx as u16);
+        let pos = match cell {
+            VisibleCell::Empty => None,
+            VisibleCell::Hidden => return None, // shouldn't happen for xiangqi
+            VisibleCell::Revealed(p) => Some(*p),
+        };
+        board.set(sq, pos);
+    }
+    state.board = board;
+    state.side_to_move = view.side_to_move;
+    state.status = view.status;
+    state.chain_lock = view.chain_lock;
+    Some(state)
 }
 
 #[cfg(test)]

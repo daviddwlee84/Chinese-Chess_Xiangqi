@@ -880,6 +880,38 @@ body {
     stroke-dasharray: 6 4;
     pointer-events: none;
 }
+/* PV continuation chain: thinner + bluish so it visually subordinates
+ * to the chosen move. Opacity is set per-element from the search
+ * depth so the predicted line fades as it gets deeper. */
+.board .debug-pv-from {
+    fill: none;
+    stroke: rgba(116, 184, 255, 0.7);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 2;
+    pointer-events: none;
+}
+.board .debug-pv-to {
+    fill: rgba(116, 184, 255, 0.14);
+    stroke: rgba(116, 184, 255, 0.7);
+    stroke-width: 1.5;
+    pointer-events: none;
+}
+.board .debug-pv-line {
+    stroke: rgba(116, 184, 255, 0.55);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    pointer-events: none;
+}
+
+/* PV continuation rendered inline next to each row's main move. */
+.debug-panel__mv-main {
+    font-weight: 600;
+}
+.debug-panel__mv-pv {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 400;
+}
 
 /* Game-page layout already grid-positions board + sidebar. When the
  * debug panel mounts, it becomes a third grid column. The page falls

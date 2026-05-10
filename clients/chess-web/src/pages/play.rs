@@ -1,5 +1,7 @@
+use chess_ai::{AiAnalysis, AiOptions, Difficulty, Strategy};
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
+use chess_core::moves::Move;
 use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
 use chess_core::state::GameStatus;
@@ -11,6 +13,7 @@ use leptos_router::{use_params_map, use_query_map};
 use crate::components::board::Board;
 use crate::components::captured::CapturedStrip;
 use crate::components::chat_panel::ChatPanel;
+use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::ws_setup::WsSetup;
 use crate::config::{
@@ -19,7 +22,9 @@ use crate::config::{
 };
 use crate::prefs::Prefs;
 use crate::routes::{app_href, variant_slug, WsBaseError};
-use crate::state::{end_chain_move, find_move, truncate_front, ClientRole};
+use crate::state::{
+    end_chain_move, find_move, reconstruct_xiangqi_state_for_analysis, truncate_front, ClientRole,
+};
 use crate::ws::{connect, ConnState, WsHandle};
 
 const CHAT_HISTORY_CAP: usize = 50;
@@ -33,6 +38,9 @@ pub fn PlayPage() -> impl IntoView {
     let watch_only = move || {
         query.with(|q| q.get("role").map(|r| r.eq_ignore_ascii_case("spectator")).unwrap_or(false))
     };
+    let debug_enabled = query.with(|q| {
+        matches!(q.get("debug").map(|s| s.as_str()), Some("1") | Some("true") | Some("on"))
+    });
     let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
 
     let room_now = room();
@@ -66,6 +74,7 @@ pub fn PlayPage() -> impl IntoView {
             room=room_now
             password=password()
             watch_only=watch_only()
+            debug_enabled=debug_enabled
         />
     }
     .into_view()
@@ -77,6 +86,7 @@ fn PlayConnected(
     room: String,
     password: Option<String>,
     watch_only: bool,
+    debug_enabled: bool,
 ) -> impl IntoView {
     // Open the WS once on mount. Spectator opt-in propagates into the URL.
     let url = room_url(&ws_base, &room, password.as_deref(), watch_only);
@@ -136,6 +146,53 @@ fn PlayConnected(
     let view_for_overlay = Signal::derive(move || view_signal.get());
     let role_for_overlay: Signal<Option<ClientRole>> = role.into();
 
+    // Net debug overlay: when ?debug=1, run chess_ai::analyze on every
+    // PlayerView update (xiangqi only — banqi has hidden info we can't
+    // analyze without cheating). Pure client-side; no server / protocol
+    // changes. Spectators and players both see the panel; whether to
+    // surface it to opponents-via-screenshare is a UX call left to the
+    // user. Analysis happens lazily — if the URL doesn't have ?debug=1
+    // we skip the work entirely.
+    let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+    let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
+    if debug_enabled {
+        create_effect(move |_| {
+            let Some(v) = view_signal.get() else {
+                ai_analysis.set(None);
+                return;
+            };
+            // Reconstruct best-effort GameState; bail (None) for non-
+            // xiangqi or terminated games.
+            let Some(state) = reconstruct_xiangqi_state_for_analysis(&v) else {
+                ai_analysis.set(None);
+                return;
+            };
+            // Analyze with the side-to-move's POV. Use a stable seed
+            // tied to the position (no UI-driven RNG) so subsequent
+            // hovers don't redo work — analyze() is deterministic
+            // given (state, opts).
+            let opts = AiOptions {
+                difficulty: Difficulty::Hard,
+                max_depth: None,
+                seed: Some(0xDEBA9_u64),
+                strategy: Strategy::default(),
+                randomness: Some(chess_ai::Randomness::STRICT),
+            };
+            // Yield a frame so the board re-paints first; keeps the UI
+            // snappy even if v4 Hard takes ~300 ms in WASM.
+            wasm_bindgen_futures::spawn_local(async move {
+                gloo_timers::future::TimeoutFuture::new(40).await;
+                let analysis = chess_ai::analyze(&state, &opts);
+                ai_analysis.set(analysis);
+            });
+        });
+    }
+
+    let highlighted_pv_signal: Signal<Vec<Move>> = highlighted_pv.into();
+    let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
+    let on_debug_hover: Callback<Vec<Move>> =
+        Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
+
     view! {
         <section class="game-page">
             <div class="board-pane">
@@ -147,6 +204,7 @@ fn PlayConnected(
                         view_signal=view_signal
                         role=role
                         handle=handle_for_board.clone()
+                        highlighted_pv=highlighted_pv_signal
                     />
                     <EndOverlay
                         view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
@@ -179,6 +237,22 @@ fn PlayConnected(
                     on_send=on_chat_send
                 />
             </div>
+            <Show when=move || debug_enabled>
+                {move || {
+                    // Pre-build a fresh xiangqi board for ICCS encoding.
+                    // Net mode doesn't have a fixed Board reference; the
+                    // debug panel only uses it for `iccs::encode_move`
+                    // which only needs board dimensions, not positions.
+                    let board = chess_core::board::Board::new(BoardShape::Xiangqi9x10);
+                    view! {
+                        <DebugPanel
+                            analysis=analysis_signal
+                            board=board
+                            on_hover=on_debug_hover
+                        />
+                    }
+                }}
+            </Show>
         </section>
     }
 }
@@ -204,6 +278,10 @@ fn BoardWrapper(
     view_signal: ReadSignal<Option<PlayerView>>,
     role: ReadSignal<Option<ClientRole>>,
     handle: WsHandle,
+    /// Optional debug PV chain to highlight on the board (no-op in
+    /// non-debug mode). Always-empty signal in normal play.
+    #[prop(into)]
+    highlighted_pv: Signal<Vec<Move>>,
 ) -> impl IntoView {
     let view = Signal::derive(move || view_signal.get().expect("guarded by Show"));
     let resolved_role = role.get_untracked().expect("guarded by Show");
@@ -304,6 +382,7 @@ fn BoardWrapper(
             view=view
             selected=effective_selected
             on_click=on_click
+            highlighted_pv=highlighted_pv
         />
         <Show when=move || chain_active.get() && !is_spectator>
             <div class="chain-banner">

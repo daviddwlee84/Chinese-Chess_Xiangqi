@@ -255,7 +255,7 @@ mod tests {
 
     fn fake_step(score: i32) -> ScoredMove {
         // Construct a fake move; coords don't matter for the picker test.
-        ScoredMove { mv: Move::Step { from: Square(0), to: Square(1) }, score }
+        ScoredMove { mv: Move::Step { from: Square(0), to: Square(1) }, score, pv: Vec::new() }
     }
 
     fn pool() -> Vec<ScoredMove> {

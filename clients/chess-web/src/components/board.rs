@@ -26,22 +26,23 @@ pub fn Board(
     #[prop(into)] view: Signal<PlayerView>,
     #[prop(into)] selected: Signal<Option<Square>>,
     #[prop(into)] on_click: Callback<Square>,
-    /// Optional debug-overlay highlight for an arbitrary move (no
-    /// commitment — purely visual). Used by the AI debug panel to
-    /// render hover-to-show: which from/to squares the AI is considering.
-    /// `None` (default) renders nothing.
+    /// Optional debug-overlay highlight for an arbitrary move chain
+    /// (no commitment — purely visual). Used by the AI debug panel:
+    /// element 0 is the AI's chosen move, elements 1..N are the
+    /// principal variation continuation. Renders as a sequence of
+    /// from→to arrows with the first move bright and later moves
+    /// progressively faded so the user can trace the AI's predicted
+    /// line. Empty Vec = no highlight.
     #[prop(optional, into)]
-    highlighted_move: Option<Signal<Option<Move>>>,
+    highlighted_pv: Option<Signal<Vec<Move>>>,
 ) -> impl IntoView {
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
     let view_h = (rows as i32 - 1) * CELL + PAD * 2;
     let viewbox = format!("0 0 {} {}", view_w, view_h);
     let style = Style::Cjk;
-    // `Signal<Option<Move>>` is Copy; default to a dead signal that's
-    // always None when the prop is omitted.
-    let highlighted_move: Signal<Option<Move>> =
-        highlighted_move.unwrap_or_else(|| Signal::derive(|| None));
+    let highlighted_pv: Signal<Vec<Move>> =
+        highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
@@ -58,7 +59,7 @@ pub fn Board(
             <g class="overlay-top-layer">
                 {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
                 {move || selection_marker(selected.get(), observer, shape)}
-                {move || debug_highlight_marker(highlighted_move.get(), observer, shape)}
+                {move || debug_pv_marker(highlighted_pv.get(), observer, shape)}
             </g>
             <g class="cells-layer">
                 {hit_cells(rows, cols, observer, shape, on_click)}
@@ -194,42 +195,60 @@ fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape)
     ().into_view()
 }
 
-/// Debug overlay: render a dashed `from → to` line + ringed dots at
-/// both endpoints, when the AI debug panel hovers a row. Purely
-/// visual; does not affect input. `None` renders nothing.
-fn debug_highlight_marker(mv: Option<Move>, observer: Side, shape: BoardShape) -> View {
-    let Some(m) = mv else { return ().into_view() };
-    let from_sq = m.origin_square();
-    let to_sq = m.to_square();
+/// Debug overlay: render a sequence of `from→to` arrows for an entire
+/// principal variation, with the first move bright (the AI's chosen
+/// move) and later moves progressively faded (the predicted line).
+/// Used by the AI debug panel's hover-to-highlight. Empty Vec renders
+/// nothing.
+fn debug_pv_marker(pv: Vec<Move>, observer: Side, shape: BoardShape) -> View {
+    if pv.is_empty() {
+        return ().into_view();
+    }
     let (rows, cols) = display_dims(shape);
+    let mut out: Vec<View> = Vec::with_capacity(pv.len() * 3);
+    let total = pv.len();
+    for (i, mv) in pv.iter().enumerate() {
+        // Opacity fades from 1.0 (chosen) to ~0.35 (deepest PV move).
+        let alpha = 1.0 - (i as f32 / total.max(2) as f32) * 0.65;
+        let alpha_str = format!("{:.2}", alpha);
+        // Step 0 (the AI's chosen move) gets the "from" / "to" classes;
+        // PV continuations get the "pv" variant which is dashed-thinner.
+        let from_class = if i == 0 { "debug-from" } else { "debug-pv-from" };
+        let to_class = if i == 0 { "debug-to" } else { "debug-pv-to" };
+        let line_class = if i == 0 { "debug-line" } else { "debug-pv-line" };
 
-    let mut from_xy: Option<(i32, i32)> = None;
-    let mut to_xy: Option<(i32, i32)> = None;
-    for row in 0..rows {
-        for col in 0..cols {
-            if square_at_display(row, col, observer, shape) == Some(from_sq) {
-                from_xy = Some(intersection(row, col));
-            }
-            if let Some(t) = to_sq {
-                if square_at_display(row, col, observer, shape) == Some(t) {
-                    to_xy = Some(intersection(row, col));
+        let from_sq = mv.origin_square();
+        let to_sq = mv.to_square();
+        let mut from_xy: Option<(i32, i32)> = None;
+        let mut to_xy: Option<(i32, i32)> = None;
+        for row in 0..rows {
+            for col in 0..cols {
+                if square_at_display(row, col, observer, shape) == Some(from_sq) {
+                    from_xy = Some(intersection(row, col));
+                }
+                if let Some(t) = to_sq {
+                    if square_at_display(row, col, observer, shape) == Some(t) {
+                        to_xy = Some(intersection(row, col));
+                    }
                 }
             }
         }
-    }
-    let Some((fx, fy)) = from_xy else { return ().into_view() };
-    let mut out: Vec<View> = Vec::with_capacity(3);
-    // Origin ring (always rendered).
-    out.push(view! { <circle class="debug-from" cx=fx cy=fy r="32"/> }.into_view());
-    if let Some((tx, ty)) = to_xy {
-        // Dashed connector + destination ring.
+        let Some((fx, fy)) = from_xy else { continue };
         out.push(
-            view! {
-                <line class="debug-line" x1=fx y1=fy x2=tx y2=ty/>
-            }
-            .into_view(),
+            view! { <circle class=from_class cx=fx cy=fy r="32" opacity=alpha_str.clone()/> }
+                .into_view(),
         );
-        out.push(view! { <circle class="debug-to" cx=tx cy=ty r="32"/> }.into_view());
+        if let Some((tx, ty)) = to_xy {
+            out.push(
+                view! {
+                    <line class=line_class x1=fx y1=fy x2=tx y2=ty opacity=alpha_str.clone()/>
+                }
+                .into_view(),
+            );
+            out.push(
+                view! { <circle class=to_class cx=tx cy=ty r="32" opacity=alpha_str/> }.into_view(),
+            );
+        }
     }
     out.into_view()
 }

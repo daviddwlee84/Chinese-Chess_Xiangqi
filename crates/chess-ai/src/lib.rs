@@ -653,6 +653,63 @@ mod tests {
         }
     }
 
+    /// PV (principal variation) is populated for the chosen move when
+    /// the search has at least 2 plies of look-ahead. Length should be
+    /// `<= depth - 1`. The first PV element is the opponent's best
+    /// reply to the chosen move; applying both should be legal.
+    #[test]
+    fn analyze_chosen_move_has_pv_at_depth_2_and_above() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for strategy in Strategy::ALL {
+            for depth in [2u8, 3, 4] {
+                let opts = AiOptions {
+                    difficulty: Difficulty::Hard,
+                    max_depth: Some(depth),
+                    seed: Some(0),
+                    strategy,
+                    randomness: Some(Randomness::STRICT),
+                };
+                let analysis = analyze(&state, &opts).expect("analyze");
+                // Find the chosen move's ScoredMove entry.
+                let chosen_sm = analysis
+                    .scored
+                    .iter()
+                    .find(|sm| sm.mv == analysis.chosen.mv)
+                    .expect("chosen present");
+                assert!(
+                    chosen_sm.pv.len() < depth as usize,
+                    "PV length {} must be < depth {} for {:?}",
+                    chosen_sm.pv.len(),
+                    depth,
+                    strategy,
+                );
+                // For depth >= 2, PV should contain at least one move
+                // (the opponent's best reply). v4 doesn't track PV
+                // through quiescence so depth=1 has empty PV — but
+                // depth >= 2 has at least the opponent's reply.
+                assert!(
+                    !chosen_sm.pv.is_empty(),
+                    "PV at depth {} should be non-empty for {:?}",
+                    depth,
+                    strategy,
+                );
+
+                // Apply chosen move + first PV move; both should be legal.
+                let mut work = state.clone();
+                work.make_move(&analysis.chosen.mv).expect("chosen legal");
+                work.refresh_status();
+                let opp_reply = &chosen_sm.pv[0];
+                assert!(
+                    work.legal_moves().iter().any(|m| m == opp_reply),
+                    "first PV move {:?} should be legal after chosen for {:?}",
+                    opp_reply,
+                    strategy,
+                );
+                work.make_move(opp_reply).expect("PV[0] legal");
+            }
+        }
+    }
+
     /// Reproduces the exact game from the user's 2026-05-09 bug report
     /// (image 1). Black AI played 象 c9e7 (move 2) which screened Red's
     /// cannon, then after Red captured the central soldier (move 3

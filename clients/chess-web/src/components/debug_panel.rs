@@ -1,17 +1,13 @@
 //! AI debug panel — shows the engine's full scored root-move list +
-//! search metadata, with hover-to-highlight on the board.
+//! search metadata, with hover-to-highlight (full PV chain) on the board.
 //!
-//! Mounted by `pages/local.rs` only when `?debug=1` is in the URL.
-//! Consumes a `Signal<Option<AiAnalysis>>` produced by the AI move
-//! pump (the pump now calls `chess_ai::analyze` instead of
-//! `choose_move` when debug is on, then takes `chosen` for the actual
-//! move). Sets a `highlighted_move: RwSignal<Option<Move>>` on hover
-//! so the board can render the move's from/to overlay.
-//!
-//! No PV (principal variation) yet — the search returns one score per
-//! root move but doesn't track best-line. Adding PV is moderate effort
-//! and slated for a future iteration; for v1 of the debug panel,
-//! single-ply hover highlights are already a big debugging win.
+//! Mounted by `pages/local.rs` (and `pages/play.rs` for net debug)
+//! only when `?debug=1` is in the URL. Consumes a
+//! `Signal<Option<AiAnalysis>>` produced by the AI move pump (the
+//! pump now calls `chess_ai::analyze` instead of `choose_move` when
+//! debug is on, then takes `chosen` for the actual move). Sets a
+//! `highlighted_pv: RwSignal<Vec<Move>>` on hover so the board can
+//! render the full predicted line as a chain of from→to arrows.
 
 use chess_ai::{AiAnalysis, ScoredMove};
 use chess_core::board::Board;
@@ -28,10 +24,12 @@ pub fn DebugPanel(
     /// Board reference for ICCS encoding. Captured by closures —
     /// shouldn't change during a game (the board shape stays constant).
     board: Board,
-    /// Set to `Some(move)` while the user hovers a row, `None` otherwise.
-    /// The board component reads this to render a temporary highlight.
+    /// Set to the row's full PV (chosen move + opponent's predicted
+    /// replies) while the user hovers a row, empty `Vec` otherwise.
+    /// The board component reads this to render a chain of from→to
+    /// arrows fading from bright (chosen) to dim (deepest PV move).
     #[prop(into)]
-    on_hover: Callback<Option<Move>>,
+    on_hover: Callback<Vec<Move>>,
 ) -> impl IntoView {
     let board = store_value(board);
 
@@ -87,7 +85,7 @@ fn DebugMeta(#[prop(into)] analysis: Signal<Option<AiAnalysis>>) -> impl IntoVie
 #[component]
 fn DebugTable(
     #[prop(into)] analysis: Signal<Option<AiAnalysis>>,
-    #[prop(into)] on_hover: Callback<Option<Move>>,
+    #[prop(into)] on_hover: Callback<Vec<Move>>,
     board: StoredValue<Board>,
 ) -> impl IntoView {
     let chosen_mv =
@@ -96,7 +94,7 @@ fn DebugTable(
     view! {
         <table class="debug-panel__table">
             <thead>
-                <tr><th>"#"</th><th>"Move"</th><th>"Score (cp)"</th></tr>
+                <tr><th>"#"</th><th>"Move (PV)"</th><th>"Score (cp)"</th></tr>
             </thead>
             <tbody>
                 <For
@@ -128,13 +126,27 @@ fn DebugRow(
     rank: usize,
     sm: ScoredMove,
     #[prop(into)] chosen_mv: Signal<Option<Move>>,
-    #[prop(into)] on_hover: Callback<Option<Move>>,
+    #[prop(into)] on_hover: Callback<Vec<Move>>,
     board: StoredValue<Board>,
 ) -> impl IntoView {
-    let mv_for_hover = sm.mv.clone();
-    let mv_for_leave = sm.mv.clone();
+    // Build the full PV chain (chosen move + continuation) for the hover.
+    let full_chain: Vec<Move> =
+        std::iter::once(sm.mv.clone()).chain(sm.pv.iter().cloned()).collect();
+    let full_chain_for_enter = full_chain.clone();
     let mv_for_check = sm.mv.clone();
-    let text = board.with_value(|b| iccs::encode_move(b, &sm.mv));
+    let mv_text = board.with_value(|b| iccs::encode_move(b, &sm.mv));
+    // Render PV continuation as " → m1 → m2 → m3" inline. Truncate at
+    // 3 plies in the table cell to keep rows compact; the board chain
+    // overlay shows the full PV when hovered.
+    let pv_text = if sm.pv.is_empty() {
+        String::new()
+    } else {
+        let strs: Vec<String> =
+            board.with_value(|b| sm.pv.iter().take(3).map(|m| iccs::encode_move(b, m)).collect());
+        let suffix =
+            if sm.pv.len() > 3 { format!(" …(+{})", sm.pv.len() - 3) } else { String::new() };
+        format!(" → {}{}", strs.join(" → "), suffix)
+    };
     let score = sm.score;
     let is_chosen = Signal::derive(move || {
         chosen_mv.with(|c| match c {
@@ -159,14 +171,14 @@ fn DebugRow(
     view! {
         <tr
             class=row_class
-            on:mouseenter=move |_| on_hover.call(Some(mv_for_hover.clone()))
-            on:mouseleave=move |_| {
-                let _ = &mv_for_leave; // capture
-                on_hover.call(None);
-            }
+            on:mouseenter=move |_| on_hover.call(full_chain_for_enter.clone())
+            on:mouseleave=move |_| on_hover.call(Vec::new())
         >
             <td class="debug-panel__rank">{rank + 1}</td>
-            <td class="debug-panel__mv">{text}{star_text}</td>
+            <td class="debug-panel__mv">
+                <span class="debug-panel__mv-main">{mv_text}{star_text}</span>
+                <span class="debug-panel__mv-pv">{pv_text}</span>
+            </td>
             <td class="debug-panel__score">{format!("{:+}", score)}</td>
         </tr>
     }

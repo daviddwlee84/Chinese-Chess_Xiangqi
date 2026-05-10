@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use chess_ai::{AiOptions, Difficulty, Randomness, Strategy};
+use chess_ai::{AiAnalysis, AiOptions, Difficulty, Randomness, Strategy};
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
 use chess_core::moves::Move;
@@ -315,6 +315,12 @@ pub struct GameView {
     /// if it's now the AI's turn we synchronously call `chess_ai::choose_move`
     /// and apply the result before returning to the event loop.
     pub ai: Option<VsAiConfig>,
+    /// Most recent AI analysis (full scored root-move list + PVs).
+    /// Populated by `ai_reply` after every AI move regardless of the
+    /// `debug_open` state — ratatui re-renders cheaply, so we eagerly
+    /// produce the data and only render the panel when toggled.
+    /// Cleared on undo / new game.
+    pub last_analysis: Option<AiAnalysis>,
 }
 
 /// Per-prompt state for coord-input mode (`:` instant or `m` live preview).
@@ -447,6 +453,15 @@ pub struct AppState {
     /// User toggle: show the move-history panel in the sidebar.
     /// Default false (saves screen real estate); toggled by `H`.
     pub history_open: bool,
+    /// User toggle: show the AI debug overlay in the sidebar (vs-AI
+    /// only). Highlighted PV is overlaid on the board. Default false;
+    /// toggled by `D`.
+    pub debug_open: bool,
+    /// AI debug panel cursor — index into `GameView::last_analysis.scored`.
+    /// `,`/`.` move it (clamped). Determines which row's PV is rendered
+    /// on the board. Reset to 0 (the chosen move) on every new analysis
+    /// so the user starts on the AI's pick.
+    pub debug_cursor: usize,
     /// True while the y/N quit-confirm dialog is shown. Set when the user
     /// presses 'q' / Ctrl-C during an in-progress game (status `Ongoing` and
     /// at least one move played). Picker / game-over `q` skip the prompt.
@@ -587,6 +602,8 @@ impl AppState {
             help_open: false,
             rules_open: false,
             history_open: false,
+            debug_open: false,
+            debug_cursor: 0,
             quit_confirm_open: false,
             resign_confirm_open: false,
             board_rect: None,
@@ -665,6 +682,7 @@ impl AppState {
                 ),
                 coord_input: None,
                 ai,
+                last_analysis: None,
             })),
             style,
             use_color,
@@ -800,11 +818,15 @@ impl AppState {
         let check = self.show_check_banner;
         let captured_sort = self.captured_sort;
         let history_open = self.history_open;
+        let debug_open = self.debug_open;
         *self = fresh;
         self.show_confetti = confetti;
         self.show_check_banner = check;
         self.captured_sort = captured_sort;
         self.history_open = history_open;
+        self.debug_open = debug_open;
+        // debug_cursor is NOT preserved — fresh game = different scored
+        // moves, so the cursor must reset.
     }
 
     /// Drain ws events from the worker thread(s) and apply them to the
@@ -887,6 +909,42 @@ impl AppState {
                     Screen::Game(g) => g.last_msg = Some(msg),
                     Screen::Net(n) => n.last_msg = Some(msg),
                     _ => {}
+                }
+            }
+            Action::DebugToggle => {
+                self.debug_open = !self.debug_open;
+                let has_analysis =
+                    matches!(&self.screen, Screen::Game(g) if g.last_analysis.is_some());
+                let msg = if !self.debug_open {
+                    "AI debug panel: hidden".to_string()
+                } else if has_analysis {
+                    "AI debug panel: shown — ',' / '.' to navigate scored moves; PV overlays board"
+                        .to_string()
+                } else {
+                    "AI debug panel: shown — waiting for AI's first move".to_string()
+                };
+                match &mut self.screen {
+                    Screen::Game(g) => g.last_msg = Some(msg),
+                    Screen::Net(n) => n.last_msg = Some(msg),
+                    _ => {}
+                }
+            }
+            Action::DebugCursorUp => {
+                if self.debug_open {
+                    self.debug_cursor = self.debug_cursor.saturating_sub(1);
+                }
+            }
+            Action::DebugCursorDown => {
+                if self.debug_open {
+                    let max = match &self.screen {
+                        Screen::Game(g) => {
+                            g.last_analysis.as_ref().map(|a| a.scored.len()).unwrap_or(0)
+                        }
+                        _ => 0,
+                    };
+                    if max > 0 {
+                        self.debug_cursor = (self.debug_cursor + 1).min(max - 1);
+                    }
                 }
             }
             Action::CapturedSortToggle => {
@@ -1601,6 +1659,10 @@ impl AppState {
                 if undone > 0 {
                     g.state.refresh_status();
                     g.selected = None;
+                    // Undoing the AI's move invalidates the analysis it
+                    // produced (the position changed). Clear so the
+                    // debug panel doesn't show stale data.
+                    g.last_analysis = None;
                     g.last_msg =
                         Some(format!("Undone {} ply. {:?} to move.", undone, g.state.side_to_move));
                 } else if let Some(e) = last_err {
@@ -1757,17 +1819,26 @@ impl AppState {
             strategy: cfg.strategy,
             randomness: cfg.randomness,
         };
-        let Some(result) = chess_ai::choose_move(&g.state, &opts) else {
+        // Always call analyze (same cost as choose_move under the hood
+        // — choose_move just discards the scored list). The TUI debug
+        // panel reads `last_analysis` when toggled. No-debug TUIs pay
+        // the small Vec<ScoredMove> alloc cost for nothing, but it's
+        // negligible vs the ms-scale search itself.
+        let Some(analysis) = chess_ai::analyze(&g.state, &opts) else {
             return;
         };
-        match g.state.make_move(&result.mv) {
+        let mv = analysis.chosen.mv.clone();
+        let nodes = analysis.chosen.nodes;
+        let score = analysis.chosen.score;
+        g.last_analysis = Some(analysis);
+        match g.state.make_move(&mv) {
             Ok(()) => {
                 g.state.refresh_status();
                 g.last_msg = Some(format!(
                     "AI played: {} ({} nodes, score {})",
-                    chess_core::notation::iccs::encode_move(&g.state.board, &result.mv),
-                    result.nodes,
-                    result.score,
+                    chess_core::notation::iccs::encode_move(&g.state.board, &mv),
+                    nodes,
+                    score,
                 ));
             }
             Err(e) => {

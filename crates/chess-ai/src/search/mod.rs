@@ -34,6 +34,14 @@ pub const NODE_BUDGET: u32 = 250_000;
 pub struct ScoredMove {
     pub mv: Move,
     pub score: i32,
+    /// Principal variation continuation — the sequence of moves the
+    /// search expects to follow `mv` if both sides play optimally.
+    /// Element 0 is the opponent's best reply, element 1 is the AI's
+    /// best follow-up, etc. Empty when the search bailed at the leaf
+    /// (mate, stalemate, node-budget hit, or `depth == 0`).
+    /// Length ≤ `depth - 1`. Same `Vec<Move>` semantics as
+    /// `chess_core::state::history`.
+    pub pv: Vec<Move>,
 }
 
 /// Score every root move once at `depth` plies, in capture-first order.
@@ -75,10 +83,11 @@ pub fn score_root_moves<E: Evaluator>(
             continue;
         }
         // Full-window search — see fn doc.
-        let score =
-            -negamax(&mut work, depth.saturating_sub(1), -(MATE + 1), MATE + 1, &mut nodes, eval);
+        let (child_score, child_pv) =
+            negamax(&mut work, depth.saturating_sub(1), -(MATE + 1), MATE + 1, &mut nodes, eval);
+        let score = -child_score;
         let _ = work.unmake_move();
-        scored.push(ScoredMove { mv, score });
+        scored.push(ScoredMove { mv, score, pv: child_pv });
         if nodes >= NODE_BUDGET {
             break;
         }
@@ -89,6 +98,12 @@ pub fn score_root_moves<E: Evaluator>(
 /// Negamax with α-β pruning, capture-first move ordering, and node
 /// budgeting. Side-relative scores: positive = good for the side to
 /// move at this node.
+///
+/// Returns `(score, pv)` — the principal variation `pv` is the
+/// sequence of best-line moves starting from THIS node (i.e. element
+/// 0 is the move the side-to-move makes, element 1 is the opponent's
+/// reply, etc.). Empty when the search reached a leaf (no legal
+/// moves, depth == 0, or budget bail).
 pub fn negamax<E: Evaluator>(
     state: &mut GameState,
     depth: u8,
@@ -96,31 +111,36 @@ pub fn negamax<E: Evaluator>(
     beta: i32,
     nodes: &mut u32,
     eval: &E,
-) -> i32 {
+) -> (i32, Vec<Move>) {
     *nodes = nodes.saturating_add(1);
     let moves = state.legal_moves();
     if moves.is_empty() {
         // No legal moves under Asian rules → loss for the side to move
         // (checkmate or stalemate). Depth-relative mate makes the
         // search prefer faster mates and slower losses.
-        return -MATE + depth as i32;
+        return (-MATE + depth as i32, Vec::new());
     }
     if depth == 0 || *nodes >= NODE_BUDGET {
-        return eval.evaluate(state);
+        return (eval.evaluate(state), Vec::new());
     }
 
     let mut ordered: Vec<Move> = moves.into_iter().collect();
     ordered.sort_by_key(|m| if is_capture(m) { 0 } else { 1 });
 
     let mut best = -MATE - 1;
+    let mut best_pv: Vec<Move> = Vec::new();
     for mv in ordered {
         if state.make_move(&mv).is_err() {
             continue;
         }
-        let score = -negamax(state, depth - 1, -beta, -alpha, nodes, eval);
+        let (child_score, child_pv) = negamax(state, depth - 1, -beta, -alpha, nodes, eval);
+        let score = -child_score;
         let _ = state.unmake_move();
         if score > best {
             best = score;
+            best_pv.clear();
+            best_pv.push(mv.clone());
+            best_pv.extend(child_pv);
         }
         if score > alpha {
             alpha = score;
@@ -129,7 +149,7 @@ pub fn negamax<E: Evaluator>(
             break;
         }
     }
-    best
+    (best, best_pv)
 }
 
 /// True iff the move removes an opponent piece. v3+ may upgrade this to
@@ -181,7 +201,7 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
             continue;
         }
         // Full-window search — see `score_root_moves` doc.
-        let v = -negamax_qmvv(
+        let (child_score, child_pv) = negamax_qmvv(
             &mut work,
             depth.saturating_sub(1),
             -(MATE + 1),
@@ -189,8 +209,9 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
             &mut nodes,
             eval,
         );
+        let v = -child_score;
         let _ = work.unmake_move();
-        scored.push(ScoredMove { mv, score: v });
+        scored.push(ScoredMove { mv, score: v, pv: child_pv });
         if nodes >= NODE_BUDGET {
             break;
         }
@@ -199,7 +220,8 @@ pub fn score_root_moves_qmvv<E: Evaluator>(
 }
 
 /// Negamax + α-β with MVV-LVA move ordering and quiescence search at
-/// the horizon. Drop-in replacement for [`negamax`] in v4.
+/// the horizon. Drop-in replacement for [`negamax`] in v4. Returns
+/// `(score, pv)` like [`negamax`].
 pub fn negamax_qmvv<E: Evaluator>(
     state: &mut GameState,
     depth: u8,
@@ -207,18 +229,24 @@ pub fn negamax_qmvv<E: Evaluator>(
     beta: i32,
     nodes: &mut u32,
     eval: &E,
-) -> i32 {
+) -> (i32, Vec<Move>) {
     *nodes = nodes.saturating_add(1);
     let moves = state.legal_moves();
     if moves.is_empty() {
-        return -MATE + depth as i32;
+        return (-MATE + depth as i32, Vec::new());
     }
     if *nodes >= NODE_BUDGET {
-        return eval.evaluate(state);
+        return (eval.evaluate(state), Vec::new());
     }
     if depth == 0 {
         // Hand off to quiescence instead of returning the static eval.
-        return quiescence::quiescence(state, alpha, beta, nodes, eval, quiescence::Q_MAX_PLIES);
+        // Quiescence doesn't track PV — its captures are exploratory,
+        // not "the line we'll actually play". Returning empty is
+        // correct (PV ends here from the main-search POV).
+        return (
+            quiescence::quiescence(state, alpha, beta, nodes, eval, quiescence::Q_MAX_PLIES),
+            Vec::new(),
+        );
     }
 
     // MVV-LVA ordering instead of flat capture-first.
@@ -227,14 +255,19 @@ pub fn negamax_qmvv<E: Evaluator>(
     ordered.sort_by_key(|(s, _)| std::cmp::Reverse(*s));
 
     let mut best = -MATE - 1;
+    let mut best_pv: Vec<Move> = Vec::new();
     for (_score, mv) in ordered {
         if state.make_move(&mv).is_err() {
             continue;
         }
-        let v = -negamax_qmvv(state, depth - 1, -beta, -alpha, nodes, eval);
+        let (child_score, child_pv) = negamax_qmvv(state, depth - 1, -beta, -alpha, nodes, eval);
+        let v = -child_score;
         let _ = state.unmake_move();
         if v > best {
             best = v;
+            best_pv.clear();
+            best_pv.push(mv.clone());
+            best_pv.extend(child_pv);
         }
         if v > alpha {
             alpha = v;
@@ -243,5 +276,5 @@ pub fn negamax_qmvv<E: Evaluator>(
             break;
         }
     }
-    best
+    (best, best_pv)
 }

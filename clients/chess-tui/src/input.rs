@@ -80,6 +80,15 @@ pub enum Action {
     /// Bound to uppercase `H` so the lowercase vim-cursor `h` (left)
     /// stays untouched.
     HistoryToggle,
+    /// Toggle the AI debug overlay (Game mode, vs-AI only). Shows
+    /// scored root moves + highlighted PV on the board. Bound to
+    /// uppercase `D`.
+    DebugToggle,
+    /// Move the AI debug-panel cursor up (k) when debug is open.
+    /// Selects which scored move's PV to highlight on the board.
+    DebugCursorUp,
+    /// Move the AI debug-panel cursor down (j) when debug is open.
+    DebugCursorDown,
     /// Mouse click in terminal coords. The app resolves it against the board
     /// rect captured by the most recent draw().
     Click {
@@ -158,6 +167,13 @@ pub fn from_key(ev: KeyEvent, mode: InputMode, quit_confirm_open: bool) -> Actio
             KeyCode::Char('s') => Action::Resign,
             KeyCode::Char('t') => Action::ChatStart,
             KeyCode::Char('H') => Action::HistoryToggle,
+            KeyCode::Char('D') => Action::DebugToggle,
+            // Debug panel navigation: ',' and '.' move the row cursor
+            // (less invasive than overloading j/k which are vim-cursor
+            // bindings for board navigation). The dispatcher ignores
+            // these when debug is closed.
+            KeyCode::Char(',') => Action::DebugCursorUp,
+            KeyCode::Char('.') => Action::DebugCursorDown,
             KeyCode::Char(':') => Action::CoordStart(CoordKind::Instant),
             KeyCode::Char('m') => Action::CoordStart(CoordKind::Live),
             _ => Action::None,

@@ -93,9 +93,10 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     // Most recent AI analysis (only populated when cfg.debug = true).
     // Cleared on undo / new game so the panel doesn't show stale info.
     let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
-    // Hover-driven highlight for the AI debug panel: when the user
-    // hovers a row, board renders a from→to overlay. None = no highlight.
-    let highlighted_move = create_rw_signal::<Option<Move>>(None);
+    // Hover-driven PV chain for the AI debug panel: when the user
+    // hovers a row, board renders a faded chain of from→to overlays.
+    // Empty Vec = no highlight.
+    let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
     // Bumped on every state change (player move, AI move, undo, new game).
     // The AI task captures the epoch when it starts and discards its result
     // if the epoch has changed by the time it returns — prevents stale AI
@@ -273,7 +274,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
         selected.set(None);
         ai_thinking.set(false);
         ai_analysis.set(None);
-        highlighted_move.set(None);
+        highlighted_pv.set(Vec::new());
         move_epoch.update(|n| *n = n.wrapping_add(1));
     });
 
@@ -284,7 +285,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
             selected.set(None);
             ai_thinking.set(false);
             ai_analysis.set(None);
-            highlighted_move.set(None);
+            highlighted_pv.set(Vec::new());
             move_epoch.update(|n| *n = n.wrapping_add(1));
         }
     });
@@ -384,9 +385,9 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
         })
     });
 
-    let highlighted_move_signal: Signal<Option<Move>> = highlighted_move.into();
-    let on_debug_hover: Callback<Option<Move>> =
-        Callback::new(move |mv: Option<Move>| highlighted_move.set(mv));
+    let highlighted_pv_signal: Signal<Vec<Move>> = highlighted_pv.into();
+    let on_debug_hover: Callback<Vec<Move>> =
+        Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
     let debug_enabled = ai.map(|cfg| cfg.debug).unwrap_or(false);
     let board_for_debug = state.with_untracked(|s| s.board.clone());
     let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
@@ -400,7 +401,7 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     view=view
                     selected=effective_selected
                     on_click=on_click
-                    highlighted_move=highlighted_move_signal
+                    highlighted_pv=highlighted_pv_signal
                 />
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">

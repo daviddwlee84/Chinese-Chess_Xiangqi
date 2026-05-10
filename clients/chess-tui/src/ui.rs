@@ -2,6 +2,7 @@
 
 use chess_core::board::BoardShape;
 use chess_core::coord::Square;
+use chess_core::moves::Move;
 use chess_core::piece::{PieceKind, Side};
 use chess_core::state::{GameStatus, WinReason};
 use chess_core::view::{PlayerView, VisibleCell};
@@ -113,6 +114,27 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
     // the user doesn't have to re-click their attacker between hops.
     let effective_selected = view.chain_lock.or(g_ref.selected);
     let mut rect = app.board_rect;
+    // PV chain to highlight on the board (debug overlay). Empty unless
+    // debug panel is open AND there's an analysis to read from. The
+    // cursor index selects which scored move's PV to render — index 0
+    // (the AI's chosen move) by default, ',' / '.' navigate.
+    let highlighted_pv: Vec<Move> = if app.debug_open {
+        g_ref
+            .last_analysis
+            .as_ref()
+            .and_then(|a| {
+                let cur = app.debug_cursor.min(a.scored.len().saturating_sub(1));
+                a.scored.get(cur).map(|sm| {
+                    let mut chain = Vec::with_capacity(sm.pv.len() + 1);
+                    chain.push(sm.mv.clone());
+                    chain.extend(sm.pv.iter().cloned());
+                    chain
+                })
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
     draw_board(
         frame,
         chunks[0],
@@ -123,10 +145,13 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         g_ref.cursor,
         effective_selected,
         &mut rect,
+        &highlighted_pv,
     );
     app.board_rect = rect;
     let captured_sort = app.captured_sort;
     let history_open = app.history_open;
+    let debug_open = app.debug_open;
+    let debug_cursor = app.debug_cursor;
     draw_sidebar(
         frame,
         chunks[1],
@@ -137,6 +162,8 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         show_check_banner,
         captured_sort,
         history_open,
+        debug_open,
+        debug_cursor,
     );
 
     // Confetti + endgame banner. The board area is `chunks[0]`. We do this
@@ -171,6 +198,8 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
             // selection" — chain-locked piece + next-hops auto-highlighted.
             let effective_selected = view.chain_lock.or(n_ref.selected);
             let mut rect = app.board_rect;
+            // Net mode: no AI here, no debug PV to highlight. Pass empty.
+            let empty_pv: Vec<Move> = Vec::new();
             draw_board(
                 frame,
                 chunks[0],
@@ -181,6 +210,7 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 n_ref.cursor,
                 effective_selected,
                 &mut rect,
+                &empty_pv,
             );
             app.board_rect = rect;
             let captured_sort = app.captured_sort;
@@ -475,6 +505,10 @@ const HELP_LINES_LOBBY: &[&str] = &[
 ];
 
 #[allow(clippy::too_many_arguments)]
+// Optional `highlighted_pv`: PV chain to highlight on the board (debug
+// overlay). Element 0 is the AI's chosen move, 1..N is the predicted
+// continuation. Empty = no highlight. Rendered with bg color tint on
+// origin and destination of each step.
 fn draw_board(
     frame: &mut Frame,
     area: Rect,
@@ -485,6 +519,7 @@ fn draw_board(
     cursor: (u8, u8),
     selected: Option<Square>,
     board_rect: &mut Option<RectPx>,
+    highlighted_pv: &[Move],
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Board ");
     let inner = block.inner(area);
@@ -506,6 +541,19 @@ fn draw_board(
     };
 
     let border_style = TuiStyle::default().fg(Color::DarkGray);
+
+    // Build debug-overlay highlight sets from `highlighted_pv`.
+    // `debug_from` collects all origin squares (one per PV move),
+    // `debug_to` all destination squares. Both empty when not debugging.
+    let mut debug_from: std::collections::HashSet<Square> = std::collections::HashSet::new();
+    let mut debug_to: std::collections::HashSet<Square> = std::collections::HashSet::new();
+    for mv in highlighted_pv {
+        debug_from.insert(mv.origin_square());
+        if let Some(t) = mv.to_square() {
+            debug_to.insert(t);
+        }
+    }
+
     let mut lines: Vec<Line> = Vec::with_capacity(rows as usize * 2 + 2);
 
     // File header (top)
@@ -527,6 +575,8 @@ fn draw_board(
             style,
             use_color,
             border_style,
+            &debug_from,
+            &debug_to,
         ));
 
         // Between row (skip after last rank)
@@ -571,6 +621,8 @@ fn rank_row<'a>(
     style: Style,
     use_color: bool,
     border_style: TuiStyle,
+    debug_from: &std::collections::HashSet<Square>,
+    debug_to: &std::collections::HashSet<Square>,
 ) -> Line<'a> {
     let mut spans: Vec<Span> = Vec::with_capacity(cols as usize * 2 + 1);
     spans.push(Span::raw(rank_label(observer, shape, display_row)));
@@ -590,6 +642,8 @@ fn rank_row<'a>(
                 use_color,
                 display_row,
                 display_col,
+                debug_from,
+                debug_to,
             ),
             None => (intersection_glyph(false, style).to_string(), TuiStyle::default(), false),
         };
@@ -627,6 +681,8 @@ fn intersection_or_piece(
     use_color: bool,
     display_row: u8,
     display_col: u8,
+    debug_from: &std::collections::HashSet<Square>,
+    debug_to: &std::collections::HashSet<Square>,
 ) -> (String, TuiStyle, bool) {
     let cell = &view.cells[sq.0 as usize];
     let is_cursor = (display_row, display_col) == cursor;
@@ -669,6 +725,16 @@ fn intersection_or_piece(
     }
     if is_target {
         s = s.bg(Color::Rgb(40, 80, 40));
+    }
+    // Debug overlay highlights — applied before selection/cursor so
+    // those still take visual priority. `from` = origin of a PV move,
+    // `to` = destination. Different bg colors so the user can read
+    // direction at a glance.
+    if debug_from.contains(&sq) {
+        s = s.bg(Color::Rgb(80, 70, 30));
+    }
+    if debug_to.contains(&sq) {
+        s = s.bg(Color::Rgb(30, 70, 100));
     }
     if is_selected {
         // Brown for a regular user-driven selection, brighter orange
@@ -1009,6 +1075,107 @@ fn push_history_lines(lines: &mut Vec<Line<'static>>, g: &GameView, _style: Styl
     }
 }
 
+/// Render the AI debug panel: scored root moves with the cursor row
+/// highlighted (its PV is also overlaid on the board via
+/// `draw_board`'s `highlighted_pv`). Window of `MAX_DEBUG_LINES`
+/// rows centred on the cursor so even with 40+ moves the panel stays
+/// compact.
+fn push_debug_lines(lines: &mut Vec<Line<'static>>, g: &GameView, cursor: usize) {
+    use chess_core::piece::Side;
+    const MAX_DEBUG_LINES: usize = 14;
+
+    lines.push(Line::from(""));
+    let Some(analysis) = g.last_analysis.as_ref() else {
+        lines.push(Line::from(Span::styled(
+            "AI Debug: waiting for AI's first move…",
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+        return;
+    };
+
+    let header = format!(
+        "AI Debug ({}, depth {}, {} nodes, {} moves):",
+        analysis.strategy.as_str(),
+        analysis.depth,
+        analysis.nodes,
+        analysis.scored.len(),
+    );
+    lines.push(Line::from(Span::styled(header, TuiStyle::default().fg(Color::Rgb(245, 166, 35)))));
+    lines.push(Line::from(Span::styled(
+        "  ',' / '.' to navigate; PV overlays board",
+        TuiStyle::default().fg(Color::DarkGray),
+    )));
+
+    let chosen_mv = &analysis.chosen.mv;
+    let total = analysis.scored.len();
+    if total == 0 {
+        return;
+    }
+    let cur = cursor.min(total - 1);
+    // Window: try to centre cursor with a small bias toward the top.
+    let half = MAX_DEBUG_LINES / 2;
+    let start = cur.saturating_sub(half);
+    let end = (start + MAX_DEBUG_LINES).min(total);
+
+    if start > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("  … {} above", start),
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+
+    for i in start..end {
+        let sm = &analysis.scored[i];
+        let mv_text = chess_core::notation::iccs::encode_move(&g.state.board, &sm.mv);
+        let pv_text: String = if sm.pv.is_empty() {
+            String::new()
+        } else {
+            let strs: Vec<String> = sm
+                .pv
+                .iter()
+                .take(2)
+                .map(|m| chess_core::notation::iccs::encode_move(&g.state.board, m))
+                .collect();
+            let suffix =
+                if sm.pv.len() > 2 { format!(" …+{}", sm.pv.len() - 2) } else { String::new() };
+            format!(" → {}{}", strs.join(" → "), suffix)
+        };
+        let is_chosen = &sm.mv == chosen_mv;
+        let is_cursor = i == cur;
+        let mut row_color = match sm.mv.origin_square() {
+            _ if sm.score < -1000 => Color::Red,
+            _ if sm.score > 200 => Color::Green,
+            _ => Color::White,
+        };
+        let _ = &mut row_color;
+        let prefix = if is_cursor { ">" } else { " " };
+        let star = if is_chosen { "★" } else { " " };
+        let text =
+            format!("{}{:>3}. {} {} {:+}{}", prefix, i + 1, star, mv_text, sm.score, pv_text);
+        let style = if is_cursor {
+            TuiStyle::default()
+                .bg(Color::Rgb(60, 50, 30))
+                .fg(row_color)
+                .add_modifier(Modifier::BOLD)
+        } else if sm.score < -1000 {
+            TuiStyle::default().fg(Color::Red)
+        } else if sm.score > 200 {
+            TuiStyle::default().fg(Color::Green)
+        } else {
+            TuiStyle::default().fg(Color::Gray)
+        };
+        let _ = Side::RED; // suppress unused-import warning if all branches don't reach
+        lines.push(Line::from(Span::styled(text, style)));
+    }
+
+    if end < total {
+        lines.push(Line::from(Span::styled(
+            format!("  … {} below", total - end),
+            TuiStyle::default().fg(Color::DarkGray),
+        )));
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_sidebar(
     frame: &mut Frame,
@@ -1020,6 +1187,8 @@ fn draw_sidebar(
     show_check_banner: bool,
     captured_sort: CapturedSort,
     history_open: bool,
+    debug_open: bool,
+    debug_cursor: usize,
 ) {
     let block = Block::default().borders(Borders::ALL).title(" Status ");
     let inner = block.inner(area);
@@ -1109,6 +1278,10 @@ fn draw_sidebar(
         push_history_lines(&mut lines, g, style);
     }
 
+    if debug_open {
+        push_debug_lines(&mut lines, g, debug_cursor);
+    }
+
     lines.push(Line::from(""));
     if let Some(msg) = &g.last_msg {
         lines.push(Line::from(Span::styled(msg.clone(), TuiStyle::default().fg(Color::Yellow))));
@@ -1137,9 +1310,9 @@ fn draw_sidebar(
             // nothing happens.
             let is_banqi = matches!(view.shape, BoardShape::Banqi4x8);
             let hint = if is_banqi {
-                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, H=history, n=new, q=quit"
+                "?=help, f=flip 暗, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, n=new, q=quit"
             } else {
-                "?=help, s=resign, r=rules, : / m=coord, g=captured, H=history, n=new, q=quit"
+                "?=help, s=resign, r=rules, : / m=coord, g=captured, H=history, D=debug, n=new, q=quit"
             };
             lines.push(Line::from(Span::styled(hint, TuiStyle::default().fg(Color::DarkGray))));
 
@@ -2001,6 +2174,8 @@ const HELP_LINES: &[&str] = &[
     "n               new game (back to picker)",
     "g               toggle captured-pieces sort (time / rank)",
     "H               toggle move-history panel (sidebar)",
+    "D               toggle AI debug panel (vs-AI only)",
+    ", / .           AI debug: prev / next scored move (PV on board)",
     "r               toggle rules overlay",
     "?               toggle this help",
     "Click           select / commit",
