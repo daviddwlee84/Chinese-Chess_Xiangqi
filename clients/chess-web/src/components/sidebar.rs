@@ -87,9 +87,10 @@ pub fn Sidebar(
     let legal_count = move || view.with(|v| v.legal_moves.len());
 
     // Pull FX prefs from context (provided by `app.rs::App`). Both signals
-    // default to true on first visit and persist via localStorage.
+    // default to true on first visit and persist via localStorage. The
+    // toggles themselves live on the picker page (collapsed `<details>`)
+    // — in-game we only *read* the values to gate FX behaviour.
     let prefs = expect_context::<Prefs>();
-    let fx_confetti = prefs.fx_confetti;
     let fx_check_banner = prefs.fx_check_banner;
 
     let show_check = move || {
@@ -143,34 +144,9 @@ pub fn Sidebar(
                 }
             })}
             {history.map(|h| view! { <MoveHistory entries=h/> })}
-            <FxToggles fx_confetti=fx_confetti fx_check_banner=fx_check_banner/>
             <PwaInstallButton/>
             <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
         </aside>
-    }
-}
-
-#[component]
-fn FxToggles(fx_confetti: RwSignal<bool>, fx_check_banner: RwSignal<bool>) -> impl IntoView {
-    view! {
-        <div class="fx-toggles">
-            <label>
-                <input
-                    type="checkbox"
-                    prop:checked=move || fx_confetti.get()
-                    on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
-                />
-                <span>"Victory effects (confetti + banner)"</span>
-            </label>
-            <label>
-                <input
-                    type="checkbox"
-                    prop:checked=move || fx_check_banner.get()
-                    on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
-                />
-                <span>"將軍 / CHECK warning"</span>
-            </label>
-        </div>
     }
 }
 

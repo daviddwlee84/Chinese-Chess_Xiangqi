@@ -61,10 +61,6 @@ pub fn CapturedStrip(
         black
     };
 
-    // Hide the strip entirely until at least one piece has died — keeps
-    // the board area uncluttered for opening positions.
-    let any_captured = move || !view.get().captured.is_empty();
-
     let toggle_label = move || match sort_signal.get() {
         CapturedSort::Time => "⏱ time",
         CapturedSort::Rank => "📊 rank",
@@ -73,51 +69,42 @@ pub fn CapturedStrip(
 
     match placement {
         CapturedSlot::Combined => view! {
-            <Show when=any_captured>
-                <section class="captured-strip" aria-label="Captured pieces">
-                    <div class="captured-header">
-                        <h4>"Captured 死亡"</h4>
-                        <button
-                            class="captured-toggle btn"
-                            on:click=on_toggle
-                            title="Toggle sort: time / rank"
-                        >
-                            {toggle_label}
-                        </button>
-                    </div>
-                    <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
-                    <CapturedRow side_class="red"   label="紅" pieces=Signal::derive(red_pieces)   style=style mirrored=false/>
-                </section>
-            </Show>
+            <section class="captured-strip" aria-label="Captured pieces">
+                <div class="captured-header">
+                    <h4>"Captured 死亡"</h4>
+                    <button
+                        class="captured-toggle btn"
+                        on:click=on_toggle
+                        title="Toggle sort: time / rank"
+                    >
+                        {toggle_label}
+                    </button>
+                </div>
+                <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
+                <CapturedRow side_class="red"   label="紅" pieces=Signal::derive(red_pieces)   style=style mirrored=false/>
+            </section>
         }
         .into_view(),
         CapturedSlot::MirroredAbove => view! {
-            <Show when=any_captured>
-                <section class="captured-strip captured-strip--mirrored-above" aria-label="Captured Red pieces (Black's trophies)">
-                    // No header on the top strip — sort toggle lives on the bottom strip
-                    // so it isn't duplicated. Black player can still see/sort via the
-                    // bottom (Red's) toggle indirectly since sort affects both rows.
-                    <CapturedRow side_class="red" label="紅" pieces=Signal::derive(red_pieces) style=style mirrored=true/>
-                </section>
-            </Show>
+            <section class="captured-strip captured-strip--mirrored-above" aria-label="Captured Red pieces (Black's trophies)">
+                <CapturedRow side_class="red" label="紅" pieces=Signal::derive(red_pieces) style=style mirrored=true/>
+            </section>
         }
         .into_view(),
         CapturedSlot::MirroredBelow => view! {
-            <Show when=any_captured>
-                <section class="captured-strip captured-strip--mirrored-below" aria-label="Captured Black pieces (Red's trophies)">
-                    <div class="captured-header">
-                        <h4>"Captured 死亡"</h4>
-                        <button
-                            class="captured-toggle btn"
-                            on:click=on_toggle
-                            title="Toggle sort: time / rank"
-                        >
-                            {toggle_label}
-                        </button>
-                    </div>
-                    <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
-                </section>
-            </Show>
+            <section class="captured-strip captured-strip--mirrored-below" aria-label="Captured Black pieces (Red's trophies)">
+                <div class="captured-header">
+                    <h4>"Captured 死亡"</h4>
+                    <button
+                        class="captured-toggle btn"
+                        on:click=on_toggle
+                        title="Toggle sort: time / rank"
+                    >
+                        {toggle_label}
+                    </button>
+                </div>
+                <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
+            </section>
         }
         .into_view(),
     }

@@ -11,7 +11,7 @@ use leptos_router::{use_params_map, use_query_map};
 use crate::components::board::Board;
 use crate::components::captured::{CapturedSlot, CapturedStrip};
 use crate::components::debug_panel::DebugPanel;
-use crate::components::end_overlay::EndOverlay;
+use crate::components::end_overlay::{EndOverlay, MirrorHalf};
 use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
 use crate::prefs::Prefs;
@@ -637,8 +637,17 @@ fn LocalGame(
     // `hint_analysis` (live cache) based on `hint_view_active`.
 
     let mirror_signal: Signal<bool> = Signal::derive(move || mirror);
+    let game_page_class = if mirror { "game-page game-page--mirror" } else { "game-page" };
+
+    let game_over = move || !matches!(state.with(|s| s.status), GameStatus::Ongoing);
+    let on_resign = move |side: Side| {
+        state.update(|s| {
+            s.resign(side);
+            s.refresh_status();
+        });
+    };
     view! {
-        <section class="game-page">
+        <section class=game_page_class>
             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
                 <Show when=move || mirror && !wip>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
@@ -678,14 +687,34 @@ fn LocalGame(
                         </div>
                     </div>
                 </Show>
-                <Show when=move || !wip>
+                <Show when=move || !wip && !mirror>
                     <EndOverlay view=view role=role_signal enabled=fx_confetti/>
+                </Show>
+                <Show when=move || !wip && mirror>
+                    <EndOverlay view=view role=role_signal enabled=fx_confetti half=Some(MirrorHalf::Top)/>
+                    <EndOverlay view=view role=role_signal enabled=fx_confetti half=Some(MirrorHalf::Bottom)/>
                 </Show>
                 <Show when=move || !wip && !mirror>
                     <CapturedStrip view=view/>
                 </Show>
                 <Show when=move || !wip && mirror>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredBelow}/>
+                    <button
+                        class="resign-btn resign-btn--top"
+                        title="Black resigns"
+                        disabled=game_over
+                        on:click=move |_| on_resign(Side::BLACK)
+                    >
+                        "投降 Resign"
+                    </button>
+                    <button
+                        class="resign-btn resign-btn--bottom"
+                        title="Red resigns"
+                        disabled=game_over
+                        on:click=move |_| on_resign(Side::RED)
+                    >
+                        "投降 Resign"
+                    </button>
                 </Show>
             </div>
             <Sidebar

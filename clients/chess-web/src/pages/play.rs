@@ -575,7 +575,6 @@ fn OnlineSidebar(
     };
 
     let prefs = expect_context::<Prefs>();
-    let fx_confetti = prefs.fx_confetti;
     let fx_check_banner = prefs.fx_check_banner;
     let show_check = move || {
         let Some(v) = view_signal.get() else { return false };
@@ -622,24 +621,6 @@ fn OnlineSidebar(
                     }
                 }
             </Show>
-            <div class="fx-toggles">
-                <label>
-                    <input
-                        type="checkbox"
-                        prop:checked=move || fx_confetti.get()
-                        on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
-                    />
-                    <span>"Victory effects (confetti + banner)"</span>
-                </label>
-                <label>
-                    <input
-                        type="checkbox"
-                        prop:checked=move || fx_check_banner.get()
-                        on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
-                    />
-                    <span>"將軍 / CHECK warning"</span>
-                </label>
-            </div>
             <a class="back-link" href=back_to_lobby_href(&ws_base) rel="external">"← Back to lobby"</a>
         </aside>
     }

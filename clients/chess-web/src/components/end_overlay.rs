@@ -32,6 +32,16 @@ enum BannerKind {
     NeutralWin(Side),
 }
 
+/// Which half of the board pane this overlay covers in mirror mode.
+/// `None` = full-screen overlay (default, non-mirror behaviour).
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum MirrorHalf {
+    /// Top half, rotated 180°. Reads upright from the Black seat.
+    Top,
+    /// Bottom half, upright. Reads from the Red seat.
+    Bottom,
+}
+
 #[component]
 pub fn EndOverlay(
     /// Live `PlayerView` — drives the status transition watcher.
@@ -43,6 +53,11 @@ pub fn EndOverlay(
     /// User pref — when false the overlay never mounts.
     #[prop(into)]
     enabled: Signal<bool>,
+    /// `Some(half)` enables mirror mode: overlay covers half the board pane,
+    /// addresses the seat that half faces (top → Black, bottom → Red), and
+    /// the top half is rotated 180° so it reads upright from the far seat.
+    #[prop(default = None)]
+    half: Option<MirrorHalf>,
 ) -> impl IntoView {
     let (visible, set_visible) = create_signal(false);
     let (kind_signal, set_kind) = create_signal::<Option<BannerKind>>(None);
@@ -55,7 +70,15 @@ pub fn EndOverlay(
         let now_ended = matches!(cur, GameStatus::Won { .. } | GameStatus::Drawn { .. });
 
         if was_ongoing && now_ended && enabled.get_untracked() {
-            let resolved_kind = resolve_kind(&cur, role.get_untracked());
+            // Mirror-mode overlays force a synthetic seat role so each
+            // half gets personalised VICTORY/DEFEAT copy regardless of
+            // the page's actual `role` (Local pass-and-play is `None`).
+            let effective_role = match half {
+                Some(MirrorHalf::Top) => Some(ClientRole::Player(Side::BLACK)),
+                Some(MirrorHalf::Bottom) => Some(ClientRole::Player(Side::RED)),
+                None => role.get_untracked(),
+            };
+            let resolved_kind = resolve_kind(&cur, effective_role);
             set_kind.set(resolved_kind);
             set_visible.set(true);
             // Auto-dismiss after the confetti animation finishes. Use
@@ -99,9 +122,15 @@ pub fn EndOverlay(
         })
     };
 
+    let overlay_class = match half {
+        None => "endgame-overlay",
+        Some(MirrorHalf::Top) => "endgame-overlay endgame-overlay--top",
+        Some(MirrorHalf::Bottom) => "endgame-overlay endgame-overlay--bottom",
+    };
+
     view! {
         <Show when=move || visible.get()>
-            <div class="endgame-overlay" aria-live="polite">
+            <div class=overlay_class aria-live="polite">
                 <div class="endgame-banner">
                     <h1 class=title_class>{title}</h1>
                     <p class="endgame-reason">{reason}</p>

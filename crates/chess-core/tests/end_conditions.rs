@@ -56,6 +56,26 @@ fn banqi_red_wiped_out_loses() {
 }
 
 #[test]
+fn xiangqi_resign_red_makes_black_win_by_resignation() {
+    let mut state = GameState::new(chess_core::rules::RuleSet::xiangqi());
+    state.resign(Side::RED);
+    assert_eq!(
+        state.status,
+        GameStatus::Won { winner: Side::BLACK, reason: WinReason::Resignation },
+    );
+}
+
+#[test]
+fn resign_is_noop_when_game_already_won() {
+    // Already-won state should not be overwritten by a stray resign() call.
+    let mut state = load("tests/fixtures/xiangqi/three-chariot-mate.pos");
+    state.refresh_status();
+    let before = state.status;
+    state.resign(Side::RED);
+    assert_eq!(state.status, before, "resign() must not overwrite a finished game");
+}
+
+#[test]
 fn ongoing_position_stays_ongoing() {
     // Sanity: the fresh xiangqi opening should not trip any end condition.
     let mut state = GameState::new(chess_core::rules::RuleSet::xiangqi());

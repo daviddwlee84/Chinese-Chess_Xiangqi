@@ -203,6 +203,62 @@ body {
 .game-page--single { grid-template-columns: 1fr; }
 @media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
 
+/* Mirror mode (xiangqi pass-and-play with two players sitting opposite):
+ * cap the board pane to viewport height so the captured strips above and
+ * below the board don't push the page taller than the screen on iPad. The
+ * board pane becomes a 3-row grid (top strip / board / bottom strip) and
+ * the board SVG sizes to whatever's left after the strips. */
+.game-page--mirror {
+    align-items: stretch;
+    max-height: 100dvh;
+}
+.board-pane--mirror {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    max-height: 100dvh;
+}
+.board-pane--mirror > svg.board {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    justify-self: center;
+    align-self: center;
+}
+
+/* Per-seat resign buttons in mirror mode. Each button is anchored to its
+ * player's edge of the board pane. The top button is rotated 180° so the
+ * Black player reads it upright. Muted styling so they don't draw eyes
+ * during normal play; clearer hover state. */
+.resign-btn {
+    position: absolute;
+    z-index: 30;
+    background: rgba(244, 210, 163, 0.08);
+    color: var(--muted);
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.resign-btn:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.18);
+    color: #f87171;
+    border-color: #f87171;
+}
+.resign-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.resign-btn--top {
+    top: 0.5rem;
+    right: 0.5rem;
+    transform: rotate(180deg);
+    transform-origin: center;
+}
+.resign-btn--bottom {
+    bottom: 0.5rem;
+    right: 0.5rem;
+}
+
 /* Right-hand column on the play page stacks the sidebar and chat panel. */
 .right-column {
     display: grid;
@@ -682,6 +738,17 @@ body {
     border-radius: 0.5rem;
     animation: endgame-fade-in 0.25s ease-out;
 }
+/* Mirror-mode halves: each overlay covers the half of the board pane that
+ * faces a single seat. Top is rotated 180° so it reads upright from the
+ * far seat (Black). */
+.endgame-overlay--top {
+    inset: 0 0 50% 0;
+    transform: rotate(180deg);
+    transform-origin: center;
+}
+.endgame-overlay--bottom {
+    inset: 50% 0 0 0;
+}
 .endgame-banner {
     background: var(--bg);
     border: 2px solid var(--accent);
@@ -763,8 +830,28 @@ body {
     animation: pulse-banner 1.4s ease-in-out infinite;
 }
 
-/* FX toggle row in the sidebar footer. Compact so it doesn't crowd the
- * action buttons. */
+/* Picker "⚙ Display settings" expandable. Native <details> so collapsed
+ * by default, no JS. Lives at the bottom of the picker page. */
+.picker-settings {
+    margin: 1.5rem auto 0;
+    max-width: 640px;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--grid);
+    border-radius: 0.5rem;
+    background: rgba(244, 210, 163, 0.04);
+}
+.picker-settings > summary {
+    cursor: pointer;
+    user-select: none;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+.picker-settings[open] > summary {
+    margin-bottom: 0.5rem;
+    color: var(--fg);
+}
+
+/* FX toggle row. Used in the picker's display-settings expandable. */
 .fx-toggles {
     margin-top: 0.6rem;
     display: flex;

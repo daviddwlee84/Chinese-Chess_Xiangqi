@@ -623,6 +623,19 @@ impl GameState {
         }
     }
 
+    /// Mark `loser` as having resigned. The other seat is recorded as
+    /// the winner via `WinReason::Resignation`. No-op if the game is
+    /// already over.
+    ///
+    /// Two-player only for now (xiangqi / banqi). Three-kingdom banqi
+    /// resignation is out of scope until that variant ships.
+    pub fn resign(&mut self, loser: Side) {
+        if matches!(self.status, GameStatus::Won { .. } | GameStatus::Drawn { .. }) {
+            return;
+        }
+        self.status = GameStatus::Won { winner: loser.opposite(), reason: WinReason::Resignation };
+    }
+
     pub fn default_starter(variant: Variant) -> Side {
         match variant {
             Variant::Xiangqi => Side::RED,

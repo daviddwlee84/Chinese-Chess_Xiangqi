@@ -4,6 +4,7 @@ use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, P
 use leptos::*;
 
 use crate::components::pwa::PwaInstallBanner;
+use crate::prefs::Prefs;
 use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
 
 #[component]
@@ -39,7 +40,38 @@ pub fn Picker() -> impl IntoView {
                 <ThreeKingdomCard/>
                 <OnlineCard/>
             </div>
+            <DisplaySettings/>
         </section>
+    }
+}
+
+#[component]
+fn DisplaySettings() -> impl IntoView {
+    let prefs = expect_context::<Prefs>();
+    let fx_confetti = prefs.fx_confetti;
+    let fx_check_banner = prefs.fx_check_banner;
+    view! {
+        <details class="picker-settings">
+            <summary>"⚙ Display settings"</summary>
+            <div class="fx-toggles">
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_confetti.get()
+                        on:change=move |ev| fx_confetti.set(event_target_checked(&ev))
+                    />
+                    <span>"Victory effects (confetti + banner)"</span>
+                </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_check_banner.get()
+                        on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
+                    />
+                    <span>"將軍 / CHECK warning"</span>
+                </label>
+            </div>
+        </details>
     }
 }
 
