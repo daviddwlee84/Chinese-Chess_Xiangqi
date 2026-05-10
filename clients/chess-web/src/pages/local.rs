@@ -122,9 +122,19 @@ fn LocalGame(
     let state = create_rw_signal(GameState::new(rules));
     let selected = create_rw_signal::<Option<Square>>(None);
     let ai_thinking = create_rw_signal(false);
-    // Most recent AI analysis (only populated when cfg.debug = true).
-    // Cleared on undo / new game so the panel doesn't show stale info.
-    let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+    // Two SEPARATE analysis caches — they MUST NOT share storage,
+    // otherwise the freshest writer (typically the hint pump after the
+    // AI moves) clobbers the other and the user can't compare AI's POV
+    // vs. their own POV. The panel chooses which cache to render based
+    // on `hint_view_active` below.
+    //
+    // - `debug_analysis`: cached AI's POV after each AI move. Sticky
+    //   between turns; only the AI pump writes it. Empty in PvP (no AI
+    //   pump runs there).
+    // - `hint_analysis`: live re-analysis from the side-to-move's POV.
+    //   The hint pump rewrites it on every relevant state change.
+    let debug_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+    let hint_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
     // Hover-driven PV chain for the AI debug panel: when the user
     // hovers a row, board renders a faded chain of from→to overlays.
     // Empty Vec = no highlight.
@@ -137,54 +147,79 @@ fn LocalGame(
 
     // ---- Debug vs Hint panel state ----
     //
-    // Two distinct UX modes share one `<DebugPanel>` mount, but with
-    // different semantics:
+    // `?debug=1` and `?hints=1` are independent URL flags. They drive
+    // a single `<DebugPanel>` mount but with different content per the
+    // matrix below (effective_debug = debug_enabled && ai.is_some()
+    // because PvP has no AI to debug — flag is silently ignored there):
     //
-    // - `?debug=1` (sticky / power-user): panel is always visible.
-    //   The AI move pump caches its own POV analysis after picking
-    //   each move — the panel shows "why did the bot play this?".
+    // | flags        | mode  | panel visible        | content        | button             |
+    // |--------------|-------|----------------------|----------------|--------------------|
+    // | hints        | any   | when button ON       | hint_analysis  | 🧠 Show / Hide     |
+    // | debug        | vs-AI | always               | debug_analysis | hidden             |
+    // | debug        | PvP   | never                | —              | hidden             |
+    // | hints+debug  | vs-AI | always               | toggled below  | 🧠 Show / Hide     |
+    // | hints+debug  | PvP   | when button ON       | hint_analysis  | 🧠 Show / Hide     |
     //
-    // - `?hints=1` (on-demand / player-friendly): a "🧠 Show AI hint"
-    //   toggle button appears in the sidebar. Default hidden so the
-    //   user has to actively ask for help. When opened on the human's
-    //   turn, a separate "hint pump" runs `analyze` from the human's
-    //   POV — "if the bot were me, what would it play?". Closing the
-    //   toggle stops new analyses from being computed (cached one
-    //   stays so reopening is instant).
+    // In hints+debug+vs-AI: button OFF → debug_analysis (cached, sticky
+    // — user can study it as long as they want); button ON → switch to
+    // hint_analysis (live, the user's own POV). Critical UX point: the
+    // AI debug content was previously "稍縱即逝" (gone in a flash) when
+    // the hint pump immediately overwrote it after each AI move. Two
+    // separate caches + button-driven view selection fixes that — the
+    // user can flip between the two views without losing either.
     let debug_enabled = insight.debug;
     let hints_enabled = insight.hints;
-    let hints_open = create_rw_signal::<bool>(false);
+    let effective_debug = debug_enabled && ai.is_some();
+    let hint_view_active = create_rw_signal::<bool>(false);
     let panel_visible =
-        Signal::derive(move || debug_enabled || (hints_enabled && hints_open.get()));
-    // Sidebar gets the toggle ONLY when hints (not debug) is the
-    // controlling flag — debug already shows the panel always-on, so
-    // an extra button would be redundant noise. Works for both vs-AI
-    // and pass-and-play (PvP).
+        Signal::derive(move || effective_debug || (hints_enabled && hint_view_active.get()));
+    // Sidebar gets the toggle whenever hints is enabled. In debug-only
+    // mode it's hidden (the panel is sticky, no toggle needed). In
+    // hints-only mode it shows/hides the panel. In hints+debug+vs-AI
+    // mode it switches the panel CONTENT between debug and hint views.
     let sidebar_hint_toggle: Option<RwSignal<bool>> =
-        if hints_enabled && !debug_enabled { Some(hints_open) } else { None };
-    // Dynamic panel header so the user always knows whether they're
-    // looking at the sticky debug feed or the on-demand hint feed.
-    // When BOTH flags are set, debug wins on layout (sticky panel) but
-    // we expose both badges so the user knows hints are also enabled.
-    let panel_title = Signal::derive(move || match (debug_enabled, hints_enabled) {
-        (true, true) => "🔍 AI Debug + 🧠 Hint".to_string(),
-        (true, false) => "🔍 AI Debug".to_string(),
-        (false, true) => "🧠 AI Hint".to_string(),
-        (false, false) => "AI insight".to_string(),
+        if hints_enabled { Some(hint_view_active) } else { None };
+    // Title reflects which content is currently being displayed, not
+    // which flags are set. Cleaner than the previous "🔍 + 🧠" combined
+    // header which was ambiguous about what the user was actually seeing.
+    let panel_title = Signal::derive(move || {
+        if hints_enabled && hint_view_active.get() {
+            "🧠 AI Hint".to_string()
+        } else {
+            "🔍 AI Debug".to_string()
+        }
     });
-    // Subtitle shows the perspective the analysis is for. The hint
-    // pump only runs on the side-to-move's turn (skipping AI's turn in
-    // vs-AI mode), so this matches the analyzed POV. Debug pump caches
-    // analysis from the AI's side at the moment AI moved — strictly
-    // speaking the subtitle here is "current" not "analyzed", which
-    // can drift by 1 ply in vs-AI debug mode. Acceptable for a header
-    // hint; the per-move scores in the table are unambiguous.
+    // Subtitle clarifies whose POV the analysis is from. For hint
+    // content this matches side-to-move (hint pump only runs on
+    // human's turn). For debug content it's the AI's last move POV —
+    // which equals the *previous* side-to-move; shown as "Last AI:
+    // Red 紅" to be unambiguous.
     let panel_subtitle = Signal::derive(move || {
-        let stm = state.with(|s| s.side_to_move);
-        match stm {
-            Side::RED => "Red 紅 to move".to_string(),
-            Side::BLACK => "Black 黑 to move".to_string(),
-            _ => "Green 綠 to move".to_string(),
+        if hints_enabled && hint_view_active.get() {
+            let stm = state.with(|s| s.side_to_move);
+            match stm {
+                Side::RED => "Red 紅 to move".to_string(),
+                Side::BLACK => "Black 黑 to move".to_string(),
+                _ => "Green 綠 to move".to_string(),
+            }
+        } else if let Some(cfg) = ai {
+            // Debug view shows the AI's own POV.
+            match cfg.ai_side {
+                Side::RED => "AI POV: Red 紅".to_string(),
+                Side::BLACK => "AI POV: Black 黑".to_string(),
+                _ => "AI POV: Green 綠".to_string(),
+            }
+        } else {
+            String::new()
+        }
+    });
+    // The signal the panel actually reads. Mirrors `panel_title` /
+    // `panel_subtitle` logic so all three stay in sync.
+    let analysis_signal: Signal<Option<AiAnalysis>> = Signal::derive(move || {
+        if hints_enabled && hint_view_active.get() {
+            hint_analysis.get()
+        } else {
+            debug_analysis.get()
         }
     });
 
@@ -358,7 +393,8 @@ fn LocalGame(
         });
         selected.set(None);
         ai_thinking.set(false);
-        ai_analysis.set(None);
+        debug_analysis.set(None);
+        hint_analysis.set(None);
         highlighted_pv.set(Vec::new());
         move_epoch.update(|n| *n = n.wrapping_add(1));
     });
@@ -369,7 +405,8 @@ fn LocalGame(
             state.set(GameState::new(initial_rules.clone()));
             selected.set(None);
             ai_thinking.set(false);
-            ai_analysis.set(None);
+            debug_analysis.set(None);
+            hint_analysis.set(None);
             highlighted_pv.set(Vec::new());
             move_epoch.update(|n| *n = n.wrapping_add(1));
         }
@@ -431,14 +468,14 @@ fn LocalGame(
                 }
                 if let Some(a) = analysis {
                     let chosen_mv = a.chosen.mv.clone();
-                    // Cache AI's POV analysis ONLY for ?debug=1 mode
-                    // (sticky panel showing "why did the bot pick
-                    // this?"). For ?hints=1 mode, the hint pump runs
-                    // separately for the human's POV — caching AI's
-                    // POV here would clobber the human's hint with
-                    // stale debug data on the very next AI turn.
-                    if insight.debug {
-                        ai_analysis.set(Some(a));
+                    // Cache AI's POV analysis ONLY for ?debug=1 mode.
+                    // Goes into `debug_analysis` (separate from
+                    // `hint_analysis`) so the hint pump's later writes
+                    // don't clobber what the user might want to study
+                    // on the sticky debug panel. The two caches are
+                    // toggled into the panel by `hint_view_active`.
+                    if effective_debug {
+                        debug_analysis.set(Some(a));
                     }
                     state.update(|s| {
                         if s.make_move(&chosen_mv).is_ok() {
@@ -452,39 +489,26 @@ fn LocalGame(
         });
     }
 
-    // ---- Hint pump (player's POV analysis when the toggle is open) ----
+    // ---- Hint pump (side-to-move's POV analysis) ----
     //
-    // Distinct from the debug pump above: that one runs `analyze` from
-    // the AI's POV at the moment the AI picks a move, caching what the
-    // AI considered. THIS pump runs `analyze` from the human's POV —
-    // "what would the bot play if it were me?". Fires whenever the
-    // toggle is on AND it's the human's turn AND the game is ongoing.
+    // Distinct from the AI move pump above: that one runs `analyze`
+    // from the AI's POV at the moment the AI picks a move, caching
+    // what the AI considered. THIS pump runs `analyze` from the
+    // **side-to-move's** POV — "what would the bot play if it were
+    // me?". Works for both vs-AI and pass-and-play (PvP, two humans).
     //
-    // Skipped when:
-    // - hints disabled (no `?hints=1`)
-    // - debug enabled (debug pump already covers analysis; AI's POV is
-    //   what debug users want anyway)
-    // - panel not visible (saves the ~100-300 ms search cost)
-    // - it's the AI's turn (the AI pump will run its own analyze)
-    // - AI is mid-think (avoid racing the AI pump)
-    // ---- Hint pump (player's POV analysis when the toggle is open) ----
-    //
-    // Distinct from the debug pump above: that one runs `analyze` from
-    // the AI's POV at the moment the AI picks a move, caching what the
-    // AI considered. THIS pump runs `analyze` from the **side-to-move's**
-    // POV — "what would the bot play if it were me?". Works for both
-    // vs-AI and pass-and-play (PvP, two humans).
+    // Crucially this pump runs WHENEVER hints are enabled, including
+    // hints+debug "both" mode — keeping `hint_analysis` warm so the
+    // user can flip the sidebar button and instantly see fresh hint
+    // content without waiting for a re-search.
     //
     // Skipped when:
     // - hints disabled (no `?hints=1`)
-    // - debug enabled (debug pump already covers analysis; debug users
-    //   want the AI's POV, not side-to-move's)
-    // - panel not visible (saves the ~100-300 ms search cost — toggle
-    //   closed)
     // - vs-AI mode AND it's the AI's turn (the AI pump will run its
-    //   own analyze; spawning a duplicate would race)
+    //   own analyze for the AI's POV; spawning a duplicate would race
+    //   and the result wouldn't be the side-to-move's POV anyway)
     // - AI is mid-think (avoid racing the AI pump)
-    if hints_enabled && !debug_enabled {
+    if hints_enabled {
         // Difficulty/strategy/randomness for the hint search. For PvP we
         // pick sensible defaults (Hard + STRICT) since there's no AI
         // config to inherit. For vs-AI we mirror the AI's own knobs so
@@ -501,18 +525,23 @@ fn LocalGame(
             // reactive fire (from state change) sees thinking still
             // true and bails. We need the second fire (from
             // ai_thinking → false) to actually run analyze.
+            //
+            // We do NOT track `panel_visible` / `hint_view_active`
+            // here — the hint cache should stay fresh whether or not
+            // the user has the panel open, so flipping the toggle is
+            // instant. Cost is one extra ~100-300 ms search per turn
+            // when hints are enabled but the toggle is off; acceptable
+            // given we already pay that cost in vs-AI mode for the AI
+            // move itself.
             let s = state.get();
-            let visible = panel_visible.get();
             let thinking = ai_thinking.get();
-            if !visible {
-                return;
-            }
             if !matches!(s.status, GameStatus::Ongoing) {
-                ai_analysis.set(None);
+                hint_analysis.set(None);
                 return;
             }
             // vs-AI mode: skip when it's the AI's turn — the AI pump
-            // is already searching the same position.
+            // is already searching the same position from a different
+            // POV (the AI's own side, not the side-to-move).
             if let Some(ai_side) = hint_ai_side {
                 if s.side_to_move == ai_side {
                     return;
@@ -537,8 +566,8 @@ fn LocalGame(
                 randomness: Some(chess_ai::Randomness::STRICT),
             };
             wasm_bindgen_futures::spawn_local(async move {
-                // Yield a frame so the UI repaints (toggle button
-                // flips state visibly) before the search blocks.
+                // Yield a frame so the UI repaints before the search
+                // blocks the main thread.
                 gloo_timers::future::TimeoutFuture::new(40).await;
                 // Bail if state moved on while we yielded.
                 let current_hash = state.with_untracked(|cur| cur.position_hash);
@@ -552,7 +581,7 @@ fn LocalGame(
                     return;
                 }
                 if let Some(a) = analysis {
-                    ai_analysis.set(Some(a));
+                    hint_analysis.set(Some(a));
                 }
             });
         });
@@ -589,7 +618,9 @@ fn LocalGame(
     let on_debug_hover: Callback<Vec<Move>> =
         Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
     let board_for_debug = state.with_untracked(|s| s.board.clone());
-    let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
+    // `analysis_signal` is the derived signal declared above that
+    // toggles between `debug_analysis` (sticky cache) and
+    // `hint_analysis` (live cache) based on `hint_view_active`.
 
     view! {
         <section class="game-page">

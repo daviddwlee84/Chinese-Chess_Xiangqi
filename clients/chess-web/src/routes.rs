@@ -255,15 +255,23 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 if let Some(d) = params.ai_depth {
                     parts.push(format!("depth={}", d));
                 }
-                // Debug panel toggle (legacy admin URL).
+                // Debug panel toggle (vs-AI only — debug shows the AI's
+                // own POV cached after each AI move; meaningless in PvP
+                // where there's no AI move pump to fill the cache).
                 if params.ai_debug {
                     parts.push("debug=1".to_string());
                 }
-                // Hint mode toggle — friendlier URL alias for the same
-                // panel in local mode. The picker writes this one.
-                if params.ai_hints {
-                    parts.push("hints=1".to_string());
-                }
+            }
+            // Hint mode toggle is emitted REGARDLESS of mode — hints
+            // work in both vs-AI (analysis from human's POV when it's
+            // their turn) AND pass-and-play (analysis from current
+            // side-to-move's POV — both humans can ask the bot for
+            // advice on every move). If we only emitted hints=1 inside
+            // the VsAi block above, the picker's PvP-mode + checked
+            // hints box would silently drop the flag and the player
+            // would see no panel after clicking Start.
+            if params.ai_hints {
+                parts.push("hints=1".to_string());
             }
         }
         Variant::Banqi => {
@@ -679,6 +687,37 @@ mod tests {
         assert!(!p.ai_hints);
         let q = build_local_query(Variant::Xiangqi, &p);
         assert!(!q.contains("hints="), "off should not be emitted; got {}", q);
+    }
+
+    #[test]
+    fn xiangqi_pvp_hints_emitted_even_without_ai_mode() {
+        // Regression: previously `hints=1` lived inside the
+        // `if mode == VsAi` block in build_local_query, so a user
+        // checking the picker's "🧠 Allow AI hints" box in PvP mode
+        // would get a `/local/xiangqi` URL with no `hints=1`, and the
+        // game page would show no panel. Hints work in PvP (analysis
+        // for current side-to-move) so the flag must round-trip.
+        let p = LocalRulesParams { mode: PlayMode::Pvp, ai_hints: true, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("hints=1"), "PvP+hints must round-trip; got {:?}", q);
+        // mode=ai must NOT appear (we're in Pvp).
+        assert!(!q.contains("mode=ai"), "PvP must not emit mode=ai; got {:?}", q);
+    }
+
+    #[test]
+    fn xiangqi_pvp_hints_round_trips() {
+        // Full encode → decode round-trip for PvP+hints (the no-AI
+        // pass-and-play path that was previously broken).
+        let p = LocalRulesParams { mode: PlayMode::Pvp, ai_hints: true, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        let pairs: Vec<(String, String)> = q
+            .split('&')
+            .filter_map(|kv| kv.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())))
+            .collect();
+        let p2 =
+            parse_local_rules(|k| pairs.iter().find(|(pk, _)| pk == k).map(|(_, v)| v.clone()));
+        assert!(p2.ai_hints);
+        assert_eq!(p2.mode, PlayMode::Pvp);
     }
 
     #[test]

@@ -284,14 +284,21 @@ fn XiangqiCard() -> impl IntoView {
                     />
                     <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from the side-to-move's POV). Hidden by default; you stay in control. Works in both vs-Computer and Pass-and-play."</span>
                 </label>
-                <label class="check-row">
-                    <input
-                        type="checkbox"
-                        prop:checked=move || ai_show_debug.get()
-                        on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
-                    />
-                    <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis cached from the bot's POV after each AI turn). For development / curiosity. vs-Computer mode only."</span>
-                </label>
+                // Debug checkbox is vs-Computer ONLY: it shows the AI's
+                // own POV cached after each AI move. In Pass-and-play
+                // there's no AI move pump to fill that cache so the
+                // panel would be permanently empty — confusing UX.
+                // Hint mode covers PvP analysis needs.
+                <Show when=move || mode.get() == PlayMode::VsAi>
+                    <label class="check-row">
+                        <input
+                            type="checkbox"
+                            prop:checked=move || ai_show_debug.get()
+                            on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
+                        />
+                        <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis cached from the bot's POV after each AI turn). For development / curiosity. When combined with hints, the sidebar button toggles the panel between debug content (default) and live hint content."</span>
+                    </label>
+                </Show>
             </fieldset>
             <fieldset class="card-fieldset">
                 <legend>"Rules"</legend>

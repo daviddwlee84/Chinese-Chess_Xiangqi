@@ -48,6 +48,7 @@ pub fn Board(
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
             <rect class="board-bg" x="0" y="0" width="100%" height="100%"/>
             <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
+            <g class="coord-layer">{coord_labels(shape, rows, cols, observer)}</g>
             <g class="river-layer">{river_text(shape, cols)}</g>
             <g class="palace-layer">{palace_diagonals(shape)}</g>
             <g class="overlay-layer">
@@ -116,6 +117,74 @@ fn river_text(shape: BoardShape, cols: u8) -> View {
         </text>
     }
     .into_view()
+}
+
+/// Algebraic-style coordinate labels around the board: file letters
+/// (`a..i`) along the top + bottom edges, rank digits (`0..9`) along
+/// the left + right edges. Same notation as the ICCS-encoded moves
+/// shown in the AI hint / debug panel and the move-history sidebar
+/// (e.g. `h2g2` = move from h2 to g2). Without these labels users
+/// can't visually map the table entries to board squares.
+///
+/// Observer-aware: looks up file/rank via `square_at_display` then
+/// asks the board for the chess-coord of that square. This way the
+/// labels respect Red-at-bottom vs Black-at-bottom orientation
+/// automatically (Red sees `a..i` left-to-right, Black sees `i..a`).
+///
+/// Xiangqi only — banqi has no algebraic-style notation in this codebase.
+fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
+    if !matches!(shape, BoardShape::Xiangqi9x10) {
+        return ().into_view();
+    }
+    // Need a Board reference for file_rank() — cheap to construct, no
+    // pieces, just the shape. Done here rather than threading through
+    // from the page because the labels are static for a given shape.
+    let board = chess_core::board::Board::new(shape);
+    let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
+
+    // File labels (a..i) — read the file from the bottom-edge cell of
+    // each column, then mirror at the top edge.
+    let bottom_row = rows - 1;
+    let label_y_top = PAD - 10;
+    let label_y_bot = PAD + (rows as i32 - 1) * CELL + 18;
+    for col in 0..cols {
+        let Some(sq) = square_at_display(bottom_row, col, observer, shape) else { continue };
+        let (f, _) = board.file_rank(sq);
+        let ch = (b'a' + f.0) as char;
+        let x = PAD + col as i32 * CELL;
+        out.push(view! {
+            <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+                {ch.to_string()}
+            </text>
+        }.into_view());
+        out.push(view! {
+            <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
+                {ch.to_string()}
+            </text>
+        }.into_view());
+    }
+
+    // Rank labels (0..9) — read the rank from the left-edge cell of
+    // each row, then mirror at the right edge.
+    let label_x_left = PAD - 16;
+    let label_x_right = PAD + (cols as i32 - 1) * CELL + 16;
+    for row in 0..rows {
+        let Some(sq) = square_at_display(row, 0, observer, shape) else { continue };
+        let (_, r) = board.file_rank(sq);
+        let digit = r.0;
+        let y = PAD + row as i32 * CELL;
+        out.push(view! {
+            <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
+                {digit.to_string()}
+            </text>
+        }.into_view());
+        out.push(view! {
+            <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+                {digit.to_string()}
+            </text>
+        }.into_view());
+    }
+    out.into_view()
 }
 
 fn palace_diagonals(shape: BoardShape) -> View {

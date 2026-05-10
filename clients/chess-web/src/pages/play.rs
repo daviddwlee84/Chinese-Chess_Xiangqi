@@ -219,11 +219,19 @@ fn PlayConnected(
     });
     // Dynamic panel header — match local mode's labeling so users
     // recognize Hint vs Debug at a glance.
-    let panel_title = Signal::derive(move || match (debug_enabled, hints_requested) {
-        (true, true) => "🔍 AI Debug + 🧠 Hint".to_string(),
-        (true, false) => "🔍 AI Debug".to_string(),
-        (false, true) => "🧠 AI Hint".to_string(),
-        (false, false) => "AI insight".to_string(),
+    //
+    // Net mode has only ONE analysis pump (always for the side-to-move),
+    // unlike local vs-AI which has separate AI-POV-cache + hint pumps.
+    // So the "🔍 + 🧠" combined label from the previous attempt was
+    // misleading — both flags surface the same data here. Pick the
+    // label by user intent (hints = player asking for help, debug =
+    // developer / power-user).
+    let panel_title = Signal::derive(move || {
+        if hints_requested {
+            "🧠 AI Hint".to_string()
+        } else {
+            "🔍 AI Debug".to_string()
+        }
     });
     let panel_subtitle = Signal::derive(move || {
         let stm = view_signal.with(|v| v.as_ref().map(|view| view.side_to_move));

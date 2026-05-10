@@ -403,6 +403,19 @@ body {
     pointer-events: none;
 }
 
+/* ICCS-style coordinate labels around the board. Faded so they
+   don't compete with pieces but visible enough to map "h2g2" style
+   notation in the AI hint table back to actual squares. */
+.board-coord {
+    fill: var(--river);
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.55;
+    user-select: none;
+    pointer-events: none;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
 /* Pieces — discs with a centered glyph. */
 .tile { pointer-events: none; }
 .tile-disc { fill: var(--tile-disc); stroke: var(--grid); stroke-width: 1.5; }
