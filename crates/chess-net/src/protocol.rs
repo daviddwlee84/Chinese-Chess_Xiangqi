@@ -33,7 +33,20 @@ use serde::{Deserialize, Serialize};
 /// client deserializing a v3 message gets the same default. The bump is
 /// for documentation, not enforcement; the handshake still uses lenient
 /// equality. See ADR-0007.
-pub const PROTOCOL_VERSION: u16 = 4;
+///
+/// v4 → v5: added `hints_allowed: bool` to `RoomSummary`, `Hello`, and
+/// `Spectating` so clients can decide whether to mount the AI debug /
+/// hint panel for a given room. Set at room creation time from the
+/// first joiner's `?hints=1` query parameter, frozen for the room's
+/// lifetime (same pattern as `password`). Closes the previous
+/// client-only-`?debug=1` cheat hole — net-mode clients now refuse to
+/// mount the panel unless the server says hints are allowed in this
+/// room. Wire-compatible: `#[serde(default)]` on every new field means
+/// v4 clients deserializing v5 messages see `hints_allowed = false`,
+/// and v5 clients deserializing v4 messages also see `false`. Local
+/// (offline / GitHub Pages) `?debug=1` and `?hints=1` are unaffected
+/// — they bypass the server entirely.
+pub const PROTOCOL_VERSION: u16 = 5;
 
 /// Server → client.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,7 +54,17 @@ pub const PROTOCOL_VERSION: u16 = 4;
 pub enum ServerMsg {
     /// Sent once per client right after side assignment. Carries the variant
     /// (so the client knows what to render) plus the initial `PlayerView`.
-    Hello { protocol: u16, observer: Side, rules: RuleSet, view: PlayerView },
+    /// `hints_allowed` (v5+) reflects whether the room was created with
+    /// `?hints=1`; clients consult this to decide whether to mount the
+    /// AI debug / hint panel.
+    Hello {
+        protocol: u16,
+        observer: Side,
+        rules: RuleSet,
+        view: PlayerView,
+        #[serde(default)]
+        hints_allowed: bool,
+    },
     /// Sent to every seated client after each committed move.
     Update { view: PlayerView },
     /// Illegal move, room full, malformed message, opponent disconnect, etc.
@@ -55,8 +78,14 @@ pub enum ServerMsg {
     /// spectators are not seated. Carries the same `rules` + initial `view`
     /// (projected from `Side::RED`'s perspective so banqi hidden tiles stay
     /// hidden). Sent immediately after a `?role=spectator` connection
-    /// upgrades successfully.
-    Spectating { protocol: u16, rules: RuleSet, view: PlayerView },
+    /// upgrades successfully. `hints_allowed` (v5+) — see [`Hello`].
+    Spectating {
+        protocol: u16,
+        rules: RuleSet,
+        view: PlayerView,
+        #[serde(default)]
+        hints_allowed: bool,
+    },
     /// Pushed once right after `Hello` / `Spectating` with the room's chat
     /// ring buffer (≤50 lines). Empty `lines` for a fresh room.
     ChatHistory { lines: Vec<ChatLine> },
@@ -118,6 +147,14 @@ pub struct RoomSummary {
     pub spectators: u16,
     pub has_password: bool,
     pub status: RoomStatus,
+    /// Whether this room was created with `?hints=1` — i.e., AI hints
+    /// (the in-game debug panel + PV overlay) are sanctioned by the
+    /// room and visible to BOTH players + spectators. Frozen for the
+    /// room's lifetime. v4 lobby snapshots omit this field; the
+    /// `serde(default)` keeps v4 clients reading v5 summaries cleanly
+    /// (treating the column as `false`).
+    #[serde(default)]
+    pub hints_allowed: bool,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

@@ -81,6 +81,15 @@ struct RoomState {
     /// the right friends" mechanism, not a security boundary. Real auth
     /// belongs in a follow-up alongside TLS.
     password: Option<String>,
+    /// AI-hint sanction. `false` = clients must NOT mount the AI debug /
+    /// hint panel against this room. Set by the first joiner from the
+    /// `?hints=1` query string and never mutated afterwards (same
+    /// pattern as `password`). Closes the previous client-only
+    /// `?debug=1` cheat hole — net mode is now opt-in BEFORE the game
+    /// so opponents can't be surprised. Local (offline) mode bypasses
+    /// the server entirely so the GitHub Pages build still has hints
+    /// + debug working freely.
+    hints_allowed: bool,
     /// In-memory ring buffer of recent chat lines. Capped at
     /// `CHAT_HISTORY_CAP`; oldest line drops when a new one arrives at
     /// capacity. Sent verbatim to every new joiner via `ChatHistory`.
@@ -88,13 +97,14 @@ struct RoomState {
 }
 
 impl RoomState {
-    fn new(rules: RuleSet, password: Option<String>) -> Self {
+    fn new(rules: RuleSet, password: Option<String>, hints_allowed: bool) -> Self {
         Self {
             state: GameState::new(rules),
             seats: Vec::with_capacity(2),
             spectators: Vec::new(),
             rematch: Vec::with_capacity(2),
             password,
+            hints_allowed,
             chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
         }
     }
@@ -128,6 +138,7 @@ impl RoomState {
             spectators: self.spectators.len() as u16,
             has_password: self.password.is_some(),
             status,
+            hints_allowed: self.hints_allowed,
         }
     }
 
@@ -183,6 +194,17 @@ struct AuthQuery {
     /// behaviour is preserved (third joiner still gets "room full").
     #[serde(default)]
     role: Option<String>,
+    /// Opt-in AI hint sanction. `Some("1")` / `Some("true")` from the
+    /// **first joiner** sets `RoomState.hints_allowed = true` for the
+    /// room's lifetime; subsequent joiners' values are ignored. v4
+    /// clients never send this, so existing rooms stay hint-free.
+    /// See `protocol::PROTOCOL_VERSION` v4→v5 doc.
+    #[serde(default)]
+    hints: Option<String>,
+}
+
+fn parse_hints_param(raw: Option<&str>) -> bool {
+    matches!(raw, Some(v) if matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "on" | "yes"))
 }
 
 /// Server options. `rules` is required; `static_dir` is opt-in and only
@@ -336,8 +358,9 @@ async fn upgrade_default(
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     let role = parse_role(q.role.as_deref());
+    let hints = parse_hints_param(q.hints.as_deref());
     ws.on_upgrade(move |socket| {
-        handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password, role)
+        handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password, role, hints)
     })
 }
 
@@ -349,7 +372,10 @@ async fn upgrade_room(
 ) -> impl IntoResponse {
     let room_id_clone = room_id.clone();
     let role = parse_role(q.role.as_deref());
-    ws.on_upgrade(move |socket| handle_room_socket(socket, app, room_id_clone, q.password, role))
+    let hints = parse_hints_param(q.hints.as_deref());
+    ws.on_upgrade(move |socket| {
+        handle_room_socket(socket, app, room_id_clone, q.password, role, hints)
+    })
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -385,6 +411,7 @@ async fn handle_room_socket(
     room_id: String,
     password_param: Option<String>,
     role: JoinRole,
+    hints_param: bool,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
@@ -436,6 +463,7 @@ async fn handle_room_socket(
                 Arc::new(Mutex::new(RoomState::new(
                     app.default_rules.clone(),
                     password_param.clone(),
+                    hints_param,
                 )))
             })
             .clone()
@@ -465,6 +493,7 @@ async fn handle_room_socket(
                         observer: s,
                         rules: g.state.rules.clone(),
                         view,
+                        hints_allowed: g.hints_allowed,
                     };
                     if out_tx.send(hello).is_err() {
                         return;
@@ -509,6 +538,7 @@ async fn handle_room_socket(
                 protocol: PROTOCOL_VERSION,
                 rules: g.state.rules.clone(),
                 view,
+                hints_allowed: g.hints_allowed,
             };
             if out_tx.send(welcome).is_err() {
                 return;
@@ -883,6 +913,7 @@ fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
                 observer: *side,
                 rules: g.state.rules.clone(),
                 view,
+                hints_allowed: g.hints_allowed,
             });
         }
         if !g.spectators.is_empty() {
@@ -892,6 +923,7 @@ fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
                     protocol: PROTOCOL_VERSION,
                     rules: g.state.rules.clone(),
                     view: view.clone(),
+                    hints_allowed: g.hints_allowed,
                 });
             }
         }
