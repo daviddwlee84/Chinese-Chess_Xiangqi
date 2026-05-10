@@ -10,7 +10,7 @@ use crate::eval::Evaluator;
 use crate::search::ordering;
 use crate::search::quiescence;
 use crate::search::tt::{score_from_tt, score_to_tt, Bound, TranspositionTable, TtEntry};
-use crate::search::{is_capture, ScoredMove, MATE, NODE_BUDGET};
+use crate::search::{is_capture, node_budget_for_depth, ScoredMove, MATE};
 
 /// Mate-detection threshold. Anything above this is treated as a mate
 /// score for storage adjustment. Generous so deep search stays robust.
@@ -26,6 +26,13 @@ const MATE_THRESHOLD: i32 = MATE - 1000;
 ///
 /// `ply` is the distance from the search root, used for mate-score
 /// adjustment ([`score_to_tt`] / [`score_from_tt`]).
+///
+/// `node_budget` is the per-search hard cap; when [`Self::nodes`]
+/// crosses it the search bails to a static eval at the current node.
+/// v5 callers compute this via [`node_budget_for_depth`] from the
+/// requested target depth so deeper searches get proportionally more
+/// nodes (the constant `NODE_BUDGET` is the baseline at
+/// `target_depth <= 4`).
 #[allow(clippy::too_many_arguments)]
 pub fn negamax_v5<E: Evaluator>(
     state: &mut GameState,
@@ -36,6 +43,7 @@ pub fn negamax_v5<E: Evaluator>(
     eval: &E,
     tt: &mut TranspositionTable,
     ply: i32,
+    node_budget: u32,
 ) -> (i32, Vec<Move>) {
     *nodes = nodes.saturating_add(1);
     let alpha_orig = alpha;
@@ -72,7 +80,7 @@ pub fn negamax_v5<E: Evaluator>(
         // search prefer faster mates and slower losses.
         return (-MATE + ply, Vec::new());
     }
-    if *nodes >= NODE_BUDGET {
+    if *nodes >= node_budget {
         return (eval.evaluate(state), Vec::new());
     }
     if depth == 0 {
@@ -108,7 +116,7 @@ pub fn negamax_v5<E: Evaluator>(
             continue;
         }
         let (child_score, child_pv) =
-            negamax_v5(state, depth - 1, -beta, -alpha, nodes, eval, tt, ply + 1);
+            negamax_v5(state, depth - 1, -beta, -alpha, nodes, eval, tt, ply + 1, node_budget);
         let v = -child_score;
         let _ = state.unmake_move();
         if v > best {
@@ -158,10 +166,30 @@ pub fn negamax_v5<E: Evaluator>(
 ///
 /// Same **full-window-at-root** rule as v4 — see
 /// [`crate::search::score_root_moves_qmvv`]'s doc for why.
+///
+/// The per-search node budget scales with `target_depth` via
+/// [`node_budget_for_depth`] — `target_depth = 4` keeps the historical
+/// 250 k cap; each extra requested ply doubles the budget so deeper
+/// requests admit more iterations before bailing. See
+/// `pitfalls/ai-search-depth-setting-shows-depth-4.md` for why this
+/// dynamic policy replaces the v5-shipping flat constant.
 pub fn score_root_moves_v5<E: Evaluator>(
     state: &GameState,
     target_depth: u8,
     eval: &E,
+) -> (Vec<ScoredMove>, u32, u8) {
+    score_root_moves_v5_with_budget(state, target_depth, eval, node_budget_for_depth(target_depth))
+}
+
+/// Variant of [`score_root_moves_v5`] that takes an explicit
+/// `node_budget`. Engine entry points wanting to override the auto-
+/// scaled default (typically because the user passed
+/// `AiOptions::node_budget`) call this directly.
+pub fn score_root_moves_v5_with_budget<E: Evaluator>(
+    state: &GameState,
+    target_depth: u8,
+    eval: &E,
+    node_budget: u32,
 ) -> (Vec<ScoredMove>, u32, u8) {
     let moves = state.legal_moves();
     if moves.is_empty() {
@@ -212,11 +240,12 @@ pub fn score_root_moves_v5<E: Evaluator>(
                 eval,
                 &mut tt,
                 /*ply=*/ 1,
+                node_budget,
             );
             let v = -child_score;
             let _ = work.unmake_move();
             iter_scored.push(ScoredMove { mv, score: v, pv: child_pv });
-            if nodes >= NODE_BUDGET {
+            if nodes >= node_budget {
                 // Budget hit mid-iteration. Don't promote this depth's
                 // partial result — caller wants the last *completed*
                 // depth so all root moves are scored consistently.
@@ -237,7 +266,7 @@ pub fn score_root_moves_v5<E: Evaluator>(
         // Even depth-1 didn't complete. Take whatever depth-1 got
         // (better than returning nothing). Recompute with a small
         // budget; this branch is extremely rare (would require
-        // NODE_BUDGET < ~50).
+        // node_budget < ~50).
         let (scored, n) = crate::search::score_root_moves_qmvv(state, 1, eval);
         return (scored, n, 1);
     }
@@ -305,5 +334,66 @@ mod tests {
             assert_eq!(sa.mv, sb.mv);
             assert_eq!(sa.score, sb.score);
         }
+    }
+
+    /// Regression for `pitfalls/ai-search-depth-setting-shows-depth-4.md`:
+    /// a target_depth=8 request must allow the iterative-deepening loop
+    /// to reach **strictly deeper** than a target_depth=4 request from
+    /// the same position. Pre-fix behaviour (flat NODE_BUDGET=250k for
+    /// every target) plateaued at depth 4 regardless. Post-fix the
+    /// scaled budget admits at least one more iteration.
+    ///
+    /// We test on the opening position because it's both deterministic
+    /// and busy (~44 legal moves), exercising the budget rather than
+    /// trivially completing every depth.
+    #[test]
+    fn higher_target_depth_reaches_strictly_deeper_in_opening() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        let (_, _, d_low) = score_root_moves_v5(&state, 4, &MaterialKingSafetyPstV3);
+        let (_, _, d_high) = score_root_moves_v5(&state, 8, &MaterialKingSafetyPstV3);
+        assert!(
+            d_high > d_low,
+            "target=8 ({d_high}) should reach strictly deeper than target=4 ({d_low}); \
+             the depth-scaled budget should allow at least one more ID iteration",
+        );
+    }
+
+    /// The auto-budget is always honored — explicit budget overrides
+    /// via `score_root_moves_v5_with_budget` should produce the same
+    /// `reached_depth` as the auto path when given the same value
+    /// `node_budget_for_depth(target)` would compute.
+    #[test]
+    fn explicit_budget_matching_auto_yields_same_reached_depth() {
+        use crate::search::node_budget_for_depth;
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        for target in [2u8, 4, 6] {
+            let auto_budget = node_budget_for_depth(target);
+            let (_, _, d_auto) = score_root_moves_v5(&state, target, &MaterialKingSafetyPstV3);
+            let (_, _, d_explicit) = score_root_moves_v5_with_budget(
+                &state,
+                target,
+                &MaterialKingSafetyPstV3,
+                auto_budget,
+            );
+            assert_eq!(
+                d_auto, d_explicit,
+                "target={target}: auto({auto_budget}) and explicit budget should match",
+            );
+        }
+    }
+
+    /// A tiny explicit budget forces the v5 fallback path
+    /// (`reached_depth == 0` → returns whatever depth-1 v4 gets).
+    /// Ensures the budget plumbing actually controls bail-out, not
+    /// just doc-comments suggesting it does.
+    #[test]
+    fn tiny_explicit_budget_forces_fallback_to_depth_1() {
+        let state = GameState::new(RuleSet::xiangqi_casual());
+        let (scored, _nodes, depth) =
+            score_root_moves_v5_with_budget(&state, 8, &MaterialKingSafetyPstV3, 1);
+        // With a 1-node budget, no ID iteration can complete; the
+        // fallback gives us depth 1 + a non-empty scored list.
+        assert_eq!(depth, 1, "tiny budget should fall back to depth 1");
+        assert!(!scored.is_empty(), "fallback must still return moves");
     }
 }

@@ -23,11 +23,75 @@ use crate::eval::Evaluator;
 /// Mate score — large enough that no material configuration can match it.
 pub const MATE: i32 = 1_000_000;
 
-/// Cap nodes-per-search to keep web UI snappy. Hit at depth 4 in busy
-/// midgames; the search returns the best-found-so-far when exceeded.
-/// Bumped from 250k (v1 MVP) — v2's PST adds no extra node cost; later
-/// versions with iterative deepening will set this dynamically.
+/// Default per-search node budget for v1-v4 and the **baseline** for v5
+/// at low requested depths. Picked to keep web UI responsive: hit at
+/// depth 4 in busy midgames; the search returns the best-found-so-far
+/// when exceeded.
+///
+/// **For v5** (iterative deepening), the actual budget is computed by
+/// [`node_budget_for_depth`] from the user's requested target depth —
+/// a request of `Some(10)` gets a much larger budget than the baseline
+/// so iterative deepening can complete more iterations. v1-v4 callers
+/// keep using this flat constant since they don't iterate.
 pub const NODE_BUDGET: u32 = 250_000;
+
+/// Hard ceiling on the auto-computed v5 budget. Picked so the worst
+/// case (`target_depth >= 10`) stays under ~10 s on a typical 2024
+/// laptop running WASM. Native is ~3-5× faster, so deep searches there
+/// complete well within this ceiling.
+pub const MAX_AUTO_NODE_BUDGET: u32 = 16_000_000;
+
+/// Baseline depth at which [`node_budget_for_depth`] returns
+/// [`NODE_BUDGET`] verbatim. Above this, the budget doubles per extra
+/// requested ply (matching the empirically-observed effective branching
+/// factor of v5 with TT-driven move ordering, ~2 in the opening / ~3
+/// in tactical positions). Equal to `Difficulty::Hard.default_depth()`
+/// so the **default Hard behaviour does not change** with this scaling
+/// (preserves the perf characteristics documented in `docs/ai/perf.md`).
+const NODE_BUDGET_BASELINE_DEPTH: u8 = 4;
+
+/// Compute the effective per-search node budget for a given requested
+/// target depth.
+///
+/// **Policy** (v5 only — v1-v4 keep using the flat [`NODE_BUDGET`]):
+///
+/// | `target_depth` | budget       |
+/// |----------------|--------------|
+/// | 1..=4          | `NODE_BUDGET` (250k) — unchanged baseline |
+/// | 5              | 500k          |
+/// | 6              | 1.0M          |
+/// | 7              | 2.0M          |
+/// | 8              | 4.0M          |
+/// | 9              | 8.0M          |
+/// | 10+            | 16.0M (cap)   |
+///
+/// Why the doubling: empirically v5's iterative deepening + TT achieves
+/// effective branching factor ~2-3 in midgame Xiangqi positions
+/// (better than raw v4 negamax thanks to TT-driven move ordering
+/// hits). Doubling per extra ply means a depth-N+1 iteration uses
+/// roughly 2× the depth-N nodes, so the new budget admits exactly one
+/// more iteration before tripping. Exact alignment isn't possible
+/// (positions vary wildly) but the policy keeps `reached_depth`
+/// growing monotonically with `target_depth` instead of plateauing at
+/// 4 forever — see `pitfalls/ai-search-depth-setting-shows-depth-4.md`.
+///
+/// The cap at [`MAX_AUTO_NODE_BUDGET`] keeps the worst-case wall-clock
+/// bounded; users who want to override (either way) will get an
+/// `AiOptions.node_budget: Option<u32>` knob in a follow-up.
+pub fn node_budget_for_depth(target_depth: u8) -> u32 {
+    if target_depth <= NODE_BUDGET_BASELINE_DEPTH {
+        return NODE_BUDGET;
+    }
+    let extra = target_depth - NODE_BUDGET_BASELINE_DEPTH;
+    // `1u32 << 32` overflows; the cap at MAX_AUTO_NODE_BUDGET is
+    // reached at extra=6 (250k * 64 = 16M), so any extra ≥ 6 already
+    // saturates. Use `checked_shl` and fall through to the cap on
+    // overflow rather than relying on a hypothetical `saturating_shl`
+    // (no such method on u32 as of stable 2026-05).
+    let multiplier = 1u32.checked_shl(extra as u32).unwrap_or(u32::MAX);
+    let scaled = NODE_BUDGET.saturating_mul(multiplier);
+    scaled.min(MAX_AUTO_NODE_BUDGET)
+}
 
 /// Outcome of a root search: the chosen move plus diagnostic stats. The
 /// caller (engine impl) is free to apply Easy/Normal randomisation on
@@ -279,4 +343,80 @@ pub fn negamax_qmvv<E: Evaluator>(
         }
     }
     (best, best_pv)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Defensive: the baseline value used by v1-v4 must not change
+    /// without thinking — every test that pins v3/v4 perf depends on
+    /// 250k. If we ever bump it, every doc/perf reference needs the
+    /// same audit.
+    #[test]
+    fn node_budget_baseline_is_250k() {
+        assert_eq!(NODE_BUDGET, 250_000);
+    }
+
+    /// Below the baseline depth (4 = `Difficulty::Hard.default_depth()`)
+    /// the auto-budget is `NODE_BUDGET` verbatim. This is the
+    /// "back-compat" guarantee — default Hard play has the same node
+    /// budget as it did before the depth-scaling policy landed.
+    #[test]
+    fn node_budget_for_depth_at_or_below_baseline_returns_baseline() {
+        for d in 1..=NODE_BUDGET_BASELINE_DEPTH {
+            assert_eq!(
+                node_budget_for_depth(d),
+                NODE_BUDGET,
+                "depth {d}: should equal baseline {NODE_BUDGET}",
+            );
+        }
+    }
+
+    /// Above the baseline the budget doubles per extra requested ply.
+    /// This mirrors v5's empirical effective branching factor with TT.
+    #[test]
+    fn node_budget_for_depth_doubles_per_extra_ply_above_baseline() {
+        // depth 5 → 2× baseline = 500k
+        assert_eq!(node_budget_for_depth(5), 500_000);
+        // depth 6 → 4× = 1M
+        assert_eq!(node_budget_for_depth(6), 1_000_000);
+        // depth 7 → 8× = 2M
+        assert_eq!(node_budget_for_depth(7), 2_000_000);
+        // depth 8 → 16× = 4M
+        assert_eq!(node_budget_for_depth(8), 4_000_000);
+        // depth 9 → 32× = 8M
+        assert_eq!(node_budget_for_depth(9), 8_000_000);
+    }
+
+    /// At depth 10+ the budget hits `MAX_AUTO_NODE_BUDGET` and stays
+    /// there; preserves a wall-clock ceiling so a typo of `depth=99`
+    /// can't lock the browser tab.
+    #[test]
+    fn node_budget_for_depth_caps_at_max_auto_budget() {
+        assert_eq!(node_budget_for_depth(10), MAX_AUTO_NODE_BUDGET);
+        assert_eq!(node_budget_for_depth(15), MAX_AUTO_NODE_BUDGET);
+        assert_eq!(node_budget_for_depth(255), MAX_AUTO_NODE_BUDGET);
+    }
+
+    /// `node_budget_for_depth` must be monotonically non-decreasing.
+    /// A higher requested depth never shrinks the budget — required
+    /// invariant for the "depth=N reaches deeper than depth=N-1"
+    /// regression in `pitfalls/ai-search-depth-setting-shows-depth-4.md`.
+    #[test]
+    fn node_budget_for_depth_is_monotonic() {
+        let mut prev = node_budget_for_depth(1);
+        for d in 2u8..=20 {
+            let cur = node_budget_for_depth(d);
+            assert!(
+                cur >= prev,
+                "non-monotonic: depth {} → {} < depth {} → {}",
+                d,
+                cur,
+                d - 1,
+                prev,
+            );
+            prev = cur;
+        }
+    }
 }
