@@ -81,12 +81,9 @@ pub fn see(state: &GameState, target_sq: Square, attacker_side: Side) -> i16 {
     let mut last_attacker_value = piece_value(first_piece, target_sq, state);
     let mut side = attacker_side.opposite();
 
-    loop {
-        let Some((from, piece)) =
-            pick_least_valuable_attacker(&working, target_sq, side, variant, state)
-        else {
-            break;
-        };
+    while let Some((from, piece)) =
+        pick_least_valuable_attacker(&working, target_sq, side, variant, state)
+    {
         // gains[d] = (last attacker's value just placed on target) - gains[d-1]
         // — this represents the trade outcome if the recapture happens.
         let prev = *gains.last().expect("gains non-empty");
