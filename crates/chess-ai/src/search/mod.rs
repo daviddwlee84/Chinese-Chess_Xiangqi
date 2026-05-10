@@ -12,6 +12,8 @@
 
 pub mod ordering;
 pub mod quiescence;
+pub mod tt;
+pub mod v5;
 
 use chess_core::moves::Move;
 use chess_core::state::GameState;

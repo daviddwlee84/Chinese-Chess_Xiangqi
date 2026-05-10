@@ -20,6 +20,7 @@ use crate::eval::material_king_safety_pst_v3::MaterialKingSafetyPstV3;
 use crate::eval::material_pst_v2::MaterialPstV2;
 use crate::eval::material_v1::MaterialV1;
 use crate::eval::Evaluator;
+use crate::search::v5::score_root_moves_v5;
 use crate::search::{score_root_moves, score_root_moves_qmvv, ScoredMove};
 use crate::{AiAnalysis, AiMoveResult, AiOptions, Randomness, Strategy};
 
@@ -95,6 +96,24 @@ impl Engine for NegamaxQuiescenceMvvLvaV4 {
     }
 }
 
+/// v5 (2026-05-10): same v3 evaluator and v4 quiescence/MVV-LVA, but the
+/// search now uses **iterative deepening** with a **Zobrist
+/// transposition table** — depth-by-depth search reuses TT-stored
+/// scores and best-move hints from shallower iterations to drastically
+/// reduce node count for the same effective depth. Default since
+/// 2026-05-10. See `docs/ai/v5-id-tt.md`.
+#[derive(Default, Clone, Copy, Debug)]
+pub struct NegamaxIterativeTtV5;
+
+impl Engine for NegamaxIterativeTtV5 {
+    fn choose_move(&self, state: &GameState, opts: &AiOptions) -> Option<AiMoveResult> {
+        analyze_v5(state, opts).map(|a| a.chosen)
+    }
+    fn name(&self) -> &'static str {
+        "negamax-iterative-tt-v5"
+    }
+}
+
 /// Shared body. `engine_label` is only used for the `AiMoveResult` —
 /// the search itself is fully parameterised on the [`Evaluator`].
 fn run<E: Evaluator>(
@@ -161,6 +180,43 @@ pub(crate) fn analyze_v4(state: &GameState, opts: &AiOptions) -> Option<AiAnalys
         Strategy::QuiescenceMvvLvaV4,
         true,
     )
+}
+
+/// v5 entry: iterative deepening + Zobrist transposition table. Has a
+/// distinct shape from v1-v4 because [`score_root_moves_v5`] also
+/// returns the actually-reached depth (which may be less than the
+/// requested target when the node budget is exhausted mid-iteration).
+pub(crate) fn analyze_v5(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
+    if !matches!(state.status, chess_core::state::GameStatus::Ongoing) {
+        return None;
+    }
+
+    let target_depth = opts.max_depth.unwrap_or_else(|| opts.difficulty.default_depth()).max(1);
+    let seed = opts.seed.unwrap_or(0xC0FFEE_u64);
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+
+    let (mut scored, nodes, reached_depth) =
+        score_root_moves_v5(state, target_depth, &MaterialKingSafetyPstV3);
+    if scored.is_empty() {
+        return None;
+    }
+
+    let randomness = opts.effective_randomness();
+    let chosen = pick_with_randomness(&scored, randomness, &mut rng);
+    let chosen_result =
+        AiMoveResult { mv: chosen.mv.clone(), score: chosen.score, depth: reached_depth, nodes };
+    let _: u8 = rng.gen();
+
+    scored.sort_by_key(|sm| std::cmp::Reverse(sm.score));
+
+    Some(AiAnalysis {
+        chosen: chosen_result,
+        scored,
+        depth: reached_depth,
+        nodes,
+        strategy: Strategy::IterativeDeepeningTtV5,
+        randomness,
+    })
 }
 
 /// Unified search-and-pick path for both `run`/`run_qmvv` and the

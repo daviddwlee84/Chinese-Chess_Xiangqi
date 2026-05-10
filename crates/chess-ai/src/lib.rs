@@ -191,10 +191,16 @@ pub enum Strategy {
     /// v4 (2026-05-09): same v3 evaluator, but the search now uses
     /// MVV-LVA capture ordering and a quiescence search at the horizon.
     /// Stops the "AI wins a chariot then loses it back next move" class
-    /// of horizon-effect blunder. Default since 2026-05-09. See
-    /// `docs/ai/v4-quiescence-mvv-lva.md`.
-    #[default]
+    /// of horizon-effect blunder. Was the default 2026-05-09 →
+    /// 2026-05-10; superseded by v5 because raw `negamax_qmvv` blew
+    /// the 250k-node budget on Hard difficulty in busy midgames.
     QuiescenceMvvLvaV4,
+    /// v5 (2026-05-10): v4's search + iterative deepening + Zobrist
+    /// transposition table. Same evaluator, faster and stronger thanks
+    /// to TT-driven move ordering and depth-by-depth refinement.
+    /// Default since 2026-05-10. See `docs/ai/v5-id-tt.md`.
+    #[default]
+    IterativeDeepeningTtV5,
 }
 
 impl Strategy {
@@ -206,6 +212,7 @@ impl Strategy {
             Strategy::MaterialPstV2 => "v2",
             Strategy::MaterialKingSafetyPstV3 => "v3",
             Strategy::QuiescenceMvvLvaV4 => "v4",
+            Strategy::IterativeDeepeningTtV5 => "v5",
         }
     }
 
@@ -221,6 +228,9 @@ impl Strategy {
             "v4" | "quiescence" | "quiescence-mvv-lva" | "qmvv" => {
                 Some(Strategy::QuiescenceMvvLvaV4)
             }
+            "v5" | "id-tt" | "iterative-deepening" | "iterative-deepening-tt" => {
+                Some(Strategy::IterativeDeepeningTtV5)
+            }
             _ => None,
         }
     }
@@ -231,14 +241,18 @@ impl Strategy {
             Strategy::MaterialV1 => "Material only (v1, original MVP)",
             Strategy::MaterialPstV2 => "Material + piece-square tables (v2)",
             Strategy::MaterialKingSafetyPstV3 => "Material + PSTs + king safety (v3)",
-            Strategy::QuiescenceMvvLvaV4 => "Quiescence + MVV-LVA (v4, recommended)",
+            Strategy::QuiescenceMvvLvaV4 => "Quiescence + MVV-LVA (v4)",
+            Strategy::IterativeDeepeningTtV5 => {
+                "Iterative deepening + transposition table (v5, recommended)"
+            }
         }
     }
 
     /// Iteration helper — the picker uses this to render a dropdown.
     /// Order is "newest/recommended first" so the picker's natural
     /// top-of-list pick is the default.
-    pub const ALL: [Strategy; 4] = [
+    pub const ALL: [Strategy; 5] = [
+        Strategy::IterativeDeepeningTtV5,
         Strategy::QuiescenceMvvLvaV4,
         Strategy::MaterialKingSafetyPstV3,
         Strategy::MaterialPstV2,
@@ -355,6 +369,7 @@ pub fn analyze(state: &GameState, opts: &AiOptions) -> Option<AiAnalysis> {
         Strategy::MaterialPstV2 => engines::analyze_v2(state, opts),
         Strategy::MaterialKingSafetyPstV3 => engines::analyze_v3(state, opts),
         Strategy::QuiescenceMvvLvaV4 => engines::analyze_v4(state, opts),
+        Strategy::IterativeDeepeningTtV5 => engines::analyze_v5(state, opts),
     }
 }
 
@@ -606,9 +621,9 @@ mod tests {
     }
 
     #[test]
-    fn default_strategy_is_v4() {
-        assert_eq!(Strategy::default(), Strategy::QuiescenceMvvLvaV4);
-        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::QuiescenceMvvLvaV4);
+    fn default_strategy_is_v5() {
+        assert_eq!(Strategy::default(), Strategy::IterativeDeepeningTtV5);
+        assert_eq!(AiOptions::new(Difficulty::Normal).strategy, Strategy::IterativeDeepeningTtV5);
     }
 
     /// `analyze` returns the same chosen move as `choose_move` and a

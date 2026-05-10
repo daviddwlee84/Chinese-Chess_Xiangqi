@@ -17,7 +17,7 @@ forever. This makes the engine easy to:
 - pin a particular release's behaviour for a tournament run
 
 The default is whichever version is currently strongest at zero extra
-cost (today: `v2`).
+cost (today: `v5`).
 
 ## Selecting a version
 
@@ -26,8 +26,9 @@ cost (today: `v2`).
 URL query parameter on `/local/xiangqi`:
 
 ```
-/local/xiangqi?mode=ai&ai=black&diff=hard               # uses default (v4)
-/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v4     # explicit v4 (quiescence + MVV-LVA)
+/local/xiangqi?mode=ai&ai=black&diff=hard               # uses default (v5)
+/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v5     # explicit v5 (ID + TT)
+/local/xiangqi?mode=ai&ai=black&diff=hard&engine=v4     # legacy (no ID/TT)
 /local/xiangqi?mode=ai&ai=black&diff=hard&engine=v3     # legacy (no quiescence)
 /local/xiangqi?mode=ai&ai=black&diff=hard&engine=v2     # legacy (king-blind in casual)
 /local/xiangqi?mode=ai&ai=black&diff=hard&engine=v1     # legacy material-only
@@ -43,7 +44,7 @@ URL query parameter on `/local/xiangqi`:
 The picker exposes radios under "Engine" and "Variation", plus a
 "Search depth (advanced)" number input, inside the vs-AI fieldset.
 Aliases accepted by the parser:
-- engine: `material`, `material-v1` → v1; `material-pst`, `material-pst-v2` → v2; `material-king-safety-pst`, `king-safety` → v3; `quiescence`, `quiescence-mvv-lva`, `qmvv` → v4.
+- engine: `material`, `material-v1` → v1; `material-pst`, `material-pst-v2` → v2; `material-king-safety-pst`, `king-safety` → v3; `quiescence`, `quiescence-mvv-lva`, `qmvv` → v4; `id-tt`, `iterative-deepening`, `iterative-deepening-tt` → v5.
 - variation: `strict`/`off`/`none`/`deterministic`; `subtle`/`low`; `varied`/`medium`/`med`; `chaotic`/`wild`/`high`.
 
 ### chess-tui
@@ -51,11 +52,12 @@ Aliases accepted by the parser:
 CLI flags on the `xiangqi` subcommand:
 
 ```
-chess-tui xiangqi --ai                              # vs computer (defaults: Black/Normal/v4)
+chess-tui xiangqi --ai                              # vs computer (defaults: Black/Normal/v5)
+chess-tui xiangqi --ai --ai-engine v4               # legacy v4 (no ID/TT)
 chess-tui xiangqi --ai --ai-engine v3               # legacy v3 (no quiescence)
 chess-tui xiangqi --ai --ai-engine v2               # legacy v2 (no king safety)
 chess-tui xiangqi --ai --ai-engine v1               # legacy material-only
-chess-tui xiangqi --ai --ai-side red --ai-difficulty hard --ai-engine v4
+chess-tui xiangqi --ai --ai-side red --ai-difficulty hard --ai-engine v5
 chess-tui xiangqi --ai --ai-difficulty hard --ai-variation strict   # deterministic Hard
 chess-tui xiangqi --ai --ai-difficulty hard --ai-variation chaotic  # high-variety Hard
 chess-tui xiangqi --ai --ai-depth 6                                 # override depth (1..=12)

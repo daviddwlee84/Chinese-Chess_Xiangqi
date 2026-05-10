@@ -2289,3 +2289,897 @@ Lines 1–58 show:
 - `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/app.rs` (lines 15–32 Router + Routes)
 - `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/Makefile` (lines 62–73 build targets)
 - `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/crates/chess-net/src/bin/server.rs` (lines 26–31, 90–96 static-dir)
+
+_**Agent (claude-opus-4-7 2026-05-10 04:46:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 04:46:36Z)**_
+
+我已經看過 `clients/chess-web/` 的結構了。重點摘要:
+
+- **Trunk 已經分兩種 build target**: `make build-web` (chess-net `--static-dir`) 和 `make build-web-static` (GitHub Pages, 帶 `CHESS_WEB_BASE_PATH`)
+- **base path 已經架構好了** (`build.rs` + `routes.rs::base_path()` + Leptos Router base)
+- **目前完全沒有 PWA 設施**: 沒 manifest、sw.js、icon、install logic
+- **Trunk 會 hash JS/WASM 檔名**, 但 `style.css`/`og-image.png` 用 `data-trunk rel="copy-file"` 原樣複製 → manifest/sw/icon 也走這條路
+
+在我寫 plan 之前有幾個方向上的選擇要先跟你確認:
+
+_**Agent (claude-opus-4-7 2026-05-10 04:56:15Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="AskUserQuestion"><details>
+<summary>Tool use: **AskUserQuestion**</summary>
+**更新通知的 UX 策略 (有新版本時怎麼處理)?**
+
+Options:
+- **Toast + 手動點擊 reload** - 偵測到 waiting SW → 顯示提示「有新版本,點擊重新載入」→ user 點擊才 skipWaiting + reload。最常見、最不打斷使用者。對棋類 app 最安全 (不會在對局中強制 reload)。
+- **下次啟動才更新** - 不彈提示, 不呼叫 skipWaiting()。等 user 自己關掉 tab 再開時才生效。最保守但 user 可能很久都用舊版。
+- **自動 reload** - 新版裝好就自動 skipWaiting + reload。對棋類 app 不推薦 (可能打斷對局)。
+
+**Icons 怎麼處理?**
+
+Options:
+- **我先放 placeholder, 你之後再換** - 用一個簡單的紅黑棋盤 SVG 生成 192/512/maskable/apple-touch-icon, 你之後想換可以直接覆蓋檔案。可立即驗證 PWA 安裝流程。
+- **我提供 icon 檔案** - 你會自己準備 PNG (建議至少 192×192 + 512×512 + maskable 512×512), 我把路徑寫進 manifest。
+- **暫時用既有 og-image.png** - 先湊合著用 og-image.png 當 icon (尺寸不一定是正方形, 安裝體驗會比較醜, 但可以先跑通流程)。
+
+**Install 提示要放在哪裡?** _(select multiple)_
+
+Options:
+- **Picker 頁面 (首頁) 顯示安裝橫幅** - 在 / (variant picker) 顯示「📱 安裝到桌面」按鈕。最自然的入口。
+- **Sidebar footer 加一個按鈕** - 和現有 confetti / check-banner toggle 同區域, 不打擾遊戲體驗。
+- **iOS Safari 顯示手動安裝說明** - iOS Safari 不支援 beforeinstallprompt → 偵測到 iOS 時顯示「點分享 → 加入主畫面」提示。多一些工作但 mobile UX 完整很多。
+
+**Service Worker 的 precache 策略?**
+
+Options:
+- **Runtime cache (推薦)** - install 時只 precache 固定檔案 (index.html, manifest, icons)。Hashed JS/WASM 在第一次 fetch 時 cache。優點: 不需要 build script 掃 dist/, sw.js 是純 hand-written, GitHub Pages / chess-net static 兩種模式同一份。缺點: 第一次離線打開前必須 online 用過一次。
+- **Build-time precache list** - post-build script 掃 dist/ 的 hashed 檔名寫進 sw.js 的 precache 陣列。優點: 第一次安裝就能 100% offline。缺點: build pipeline 複雜化, 兩套 dist (server / static) 要各自處理一次。
+
+
+**Answer:** Toast + 手動點擊 reload, 我先放 placeholder, 你之後再換, Picker 頁面 (首頁) 顯示安裝橫幅, Sidebar footer 加一個按鈕, iOS Safari 顯示手動安裝說明, ChatGPT建議 Build-time precache list
+```
+我會這樣判斷：
+
+**如果你只是想快速讓 PWA 跑起來：選 1 Runtime cache。**
+**但如果你想對 user 說「安裝後斷網也能用」：我建議選 2 Build-time precache list。**
+
+你的這個象棋 app 看起來是 **純前端 Rust/WASM + GitHub Pages**，資源量應該不大，所以 **build-time precache 其實更適合**。它會在 build 完後把 `dist/` 裡的 hashed JS/WASM/CSS/icon/manifest 全部寫進 `sw.js` 的 precache list，第一次 Service Worker 安裝時就 cache 完整 app shell。這樣比較符合「安裝後 offline」的直覺。
+
+### 為什麼我不太建議只選 1？
+
+它的描述裡有一個隱含風險：
+
+> Hashed JS/WASM 在第一次 fetch 時 cache。
+
+但 Service Worker **不一定會控制第一次打開的頁面**。MDN 明確說，service worker 啟用後通常只會控制 registration 成功之後新開的頁面；目前已開頁面要 reload 或用 `clients.claim()` 才會被控制。
+
+所以只靠 runtime cache 可能會出現：
+
+```text
+第一次 online 打開 app
+  ↓
+JS/WASM 已經被瀏覽器載入
+  ↓
+Service Worker 才安裝完成
+  ↓
+這次 JS/WASM fetch 沒被 SW 攔到
+  ↓
+user 以為已經安裝成功
+  ↓
+斷網再開，可能缺 wasm/js cache
+```
+
+不是一定壞，但容易有灰色地帶。MDN 也把 precache 描述為適合「PWA 確定需要、該版本不會變、啟動時要快速取得」的基礎 UI 資源。對你的 WASM app 來說，`index.html + js + wasm + css` 就是 app shell。
+
+### 我會給 agent 的選擇
+
+在這個畫面我會選：
+
+```text
+2. Build-time precache list
+```
+
+然後補一句需求給它：
+
+```text
+Use build-time precache for the Rust/WASM app shell. After Trunk builds dist/, scan the generated dist files and inject the hashed JS/WASM/CSS/assets into sw.js precache list. The goal is: after the user has opened/installed the app once online, future launches should work offline reliably. Make the implementation GitHub Pages base-path safe.
+```
+
+### 但要特別要求它注意這幾點
+
+第一，**GitHub Pages base path 一定要處理好**。不要在 `manifest`、`sw.js`、cache URL 裡無腦寫：
+
+```js
+"/app_bg.wasm"
+"/sw.js"
+"/manifest.webmanifest"
+```
+
+因為 GitHub Pages 很可能是：
+
+```text
+https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/
+```
+
+不是 domain root。Trunk 支援用 `<base data-trunk-public-url/>` 把 `--public-url` 寫進 HTML，這對 GitHub Pages 子路徑很重要。
+
+第二，**`sw.js` / `manifest.webmanifest` 可以用 Trunk copy-file 複製，但它們不會被 Trunk 自動 hash 或改內容**。Trunk 官方文件說 `copy-file` 是原樣複製到 `dist`，不做 hashing；所以如果要把 hashed WASM/JS 塞進 `sw.js`，需要 post-build script 或 template injection。
+
+第三，**更新 UX 要做**。新版 SW 進入 `waiting` 時，顯示「有新版本，重新載入」；user 點擊後 `postMessage` 給 SW，SW `skipWaiting()`，然後前端收到 `controllerchange` 後 reload。Chrome Workbox 文件也是這個思路：當 waiting service worker 被發現時通知 user，接受後切換並 reload。
+
+第四，註冊 SW 時加：
+
+```js
+navigator.serviceWorker.register("./sw.js", {
+  scope: "./",
+  updateViaCache: "none",
+});
+```
+
+`updateViaCache: "none"` 的意思是檢查 service worker 更新時不查 HTTP cache，比較不容易卡舊 `sw.js`。MDN 對這個選項的說明就是控制 browser 更新 SW script 時是否 consult HTTP cache。
+
+第五，cache 策略建議：
+
+```text
+navigation / index.html:
+  network-first，失敗才 fallback cache
+
+hashed js/wasm/css:
+  cache-first，因為檔名帶 hash
+
+manifest/icons:
+  precache
+
+其他圖片/asset:
+  如果是棋子、棋盤、音效這種固定資源，也 precache
+
+API / online 對戰:
+  不要假裝 offline 可用，做 fallback UI
+```
+
+### 我的總結
+
+對你這個專案，我的建議是：
+
+```text
+現在就選 2 Build-time precache list。
+```
+
+原因是：你的 app 是遊戲型、純前端、資源應該不大，而且你真正想要的是「GitHub Pages 打開後可安裝，之後斷網也能玩」。這種情境 **build-time precache 比 runtime cache 更可靠**。
+
+如果怕 agent 一次改太多，也可以說：
+
+```text
+先做 build-time precache + install/update/offline UX 的最小版本，不要引入 Workbox，不要改太多 app 邏輯。
+```
+```
+
+（然後整套Rust + WASM的PWA best practice方案 我需要有一個完整的docs來做爲takeaway）
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:57:08Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 04:57:09Z)**_
+
+很好,選擇都很合理。我直接寫 plan 給你。
+
+_**Agent (claude-opus-4-7 2026-05-10 04:57:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check plans dir
+
+`ls /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/ 2>/dev/null || mkdir -p /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/`
+
+```text
+ ai-vs-chatgpt-deep-research-docs-ai-dee-typed-stonebraker.md
+ confetti-tui-kind-firefly.md
+ image-3-tui-menu-ux-drifting-flask.md
+ magical-honking-book.md
+ tui-magical-rabbit.md
+ ux-bug-vivid-meerkat.md
+ web-gentle-island-agent-a0c0196361eee6786.md
+ web-gentle-island.md
+ web-sunny-badger.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:57:12Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/Trunk.toml`
+
+```text
+1	# Trunk dev-server config. The single `/ws` proxy entry covers BOTH
+2	# `/ws` (default-room upgrade for v1 chess-tui clients) and `/ws/<room>`
+3	# (named room) because Trunk nests the proxy as a prefix route in axum.
+4	# Registering separate `/ws` and `/ws/` entries panics on startup with
+5	# "conflict with previously registered route" — see the gotcha note in
+6	# `docs/trunk-leptos-wasm.md`.
+7	#
+8	# `addresses` is the new (Trunk 0.21+) replacement for the deprecated
+9	# `address` scalar. Production-mode prod is chess-net's `--static-dir`
+10	# path; Trunk is dev-only.
+11	
+12	[build]
+13	target  = "index.html"
+14	release = false
+15	
+16	[serve]
+17	addresses = ["127.0.0.1"]
+18	port      = 8080
+19	open      = false
+20	
+21	# WebSocket upgrades — chess-net's /ws and /ws/<room> routes.
+22	[[proxy]]
+23	backend = "ws://127.0.0.1:7878/ws"
+24	ws      = true
+25	rewrite = "/ws"
+26	
+27	# Lobby push channel.
+28	[[proxy]]
+29	backend = "ws://127.0.0.1:7878/lobby"
+30	ws      = true
+31	rewrite = "/lobby"
+32	
+33	# Snapshot endpoint (debug; the SPA itself uses the lobby ws).
+34	[[proxy]]
+35	backend = "http://127.0.0.1:7878/rooms"
+36	rewrite = "/rooms"
+37
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:57:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/index.html`
+
+```text
+1	<!DOCTYPE html>
+2	<html lang="en">
+3	<head>
+4	    <meta charset="utf-8"/>
+5	    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+6	    <title>Chinese Chess 中國象棋</title>
+7	    <meta name="description" content="Play Chinese chess (xiangqi 象棋), banqi 暗棋, and three-kingdom banqi 三國暗棋 in your browser. Local pass-and-play or online multiplayer rooms. Open source Rust + WASM client."/>
+8	    <meta name="theme-color" content="#1a1614"/>
+9	
+10	    <!-- Open Graph (Facebook, LinkedIn, Discord, iMessage, …) -->
+11	    <meta property="og:type" content="website"/>
+12	    <meta property="og:site_name" content="Chinese Chess 中國象棋"/>
+13	    <meta property="og:title" content="Chinese Chess 中國象棋 — play xiangqi & banqi in your browser"/>
+14	    <meta property="og:description" content="Pass-and-play or online multiplayer for xiangqi 象棋, banqi 暗棋, and three-kingdom banqi 三國暗棋. Open source Rust + WASM, no install."/>
+15	    <meta property="og:url" content="https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/"/>
+16	    <meta property="og:image" content="https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/og-image.png"/>
+17	    <meta property="og:image:width" content="1200"/>
+18	    <meta property="og:image:height" content="630"/>
+19	    <meta property="og:image:alt" content="Chinese Chess 中國象棋 share card with the red 帥 piece on a dark board background"/>
+20	    <meta property="og:locale" content="en_US"/>
+21	    <meta property="og:locale:alternate" content="zh_TW"/>
+22	    <meta property="og:locale:alternate" content="zh_CN"/>
+23	
+24	    <!-- Twitter / X card -->
+25	    <meta name="twitter:card" content="summary_large_image"/>
+26	    <meta name="twitter:title" content="Chinese Chess 中國象棋"/>
+27	    <meta name="twitter:description" content="Play xiangqi 象棋, banqi 暗棋, and three-kingdom banqi 三國暗棋 in your browser. Local or online multiplayer."/>
+28	    <meta name="twitter:image" content="https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/og-image.png"/>
+29	
+30	    <link data-trunk rel="rust"/>
+31	    <link data-trunk rel="css" href="style.css"/>
+32	    <link data-trunk rel="copy-file" href="og-image.png"/>
+33	</head>
+34	<body>
+35	    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">
+36	        <div class="boot-card">
+37	            <div class="boot-mark" aria-hidden="true">帥</div>
+38	            <p class="boot-kicker">Chinese Chess</p>
+39	            <h1>Loading board engine</h1>
+40	            <p class="boot-copy">
+41	                Downloading and starting the Rust WASM client. First load can take longer on remote links.
+42	            </p>
+43	            <div class="boot-progress" aria-hidden="true"><span></span></div>
+44	        </div>
+45	    </div>
+46	    <noscript>
+47	        <p class="boot-noscript">JavaScript and WebAssembly are required to play Chinese Chess in the browser.</p>
+48	    </noscript>
+49	    <script>
+50	        window.addEventListener("TrunkApplicationStarted", () => {
+51	            const loader = document.getElementById("boot-loader");
+52	            if (!loader) return;
+53	            loader.classList.add("boot-loader--done");
+54	            window.setTimeout(() => loader.remove(), 180);
+55	        });
+56	    </script>
+57	</body>
+58	</html>
+59
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:59:00Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Wrap chess-web (Rust + Leptos + WASM) as an installable PWA
+
+## Context
+
+`clients/chess-web` is a Leptos + Trunk SPA that already supports two
+hosting targets — chess-net `--static-dir` (single-binary prod) and
+GitHub Pages at the `/Chinese-Chess_Xiangqi/` subpath
+(`make build-web-static`). We want it to also be a real PWA:
+
+- 第一次 online 打開後可以裝到桌面 / 手機主畫面,離開網路也能繼續玩
+  本地對戰 (xiangqi pass-and-play、banqi、AI)。
+- 行動裝置打開時主動引導安裝 (Picker 橫幅 + iOS Safari 手動說明)。
+- 連上網路時偵測新版 chess-web 並彈 toast 給使用者按「重新整理」。
+- 網路中斷時 lobby/online play 路徑 graceful degrade,不要白屏。
+
+Online (`/lobby`, `/play/<room>`) 顯然需要 chess-net,離線時這條路徑
+保持目前的 ws 連不上即顯示錯誤訊息即可 — 不在這個 plan 範圍。
+
+設計原則: 不引入 Workbox / npm,純手寫 sw.js + post-build bash hook,
+和 repo 現有風格 (cargo + bash + Makefile) 一致。
+
+## Architecture decisions
+
+1. **Build-time precache list, generated by Trunk post-build hook.**
+   Trunk hashes `app-[hash].js` / `_bg.wasm` / `style-[hash].css`,
+   filename 是穩定指紋,適合做 cache-first immutable。Hook 掃 `dist/`
+   產生 precache 陣列 + content hash 當作 `APP_VERSION`,模板替換寫入
+   `dist/sw.js`。
+
+2. **Two templates, one hook, base-path aware.**
+   `public/sw.js.tmpl` 與 `public/manifest.webmanifest.tmpl` 留下
+   `__APP_VERSION__` / `__BASE_PATH__` / `__PRECACHE_MANIFEST__` 佔位,
+   由 `scripts/build-pwa.sh` 在 post-build 階段替換。Hook 從
+   `TRUNK_PUBLIC_URL` 讀基底路徑,自動覆蓋 server 模式 (`/`) 與
+   GitHub Pages 模式 (`/Chinese-Chess_Xiangqi/`) — 不用 build 兩份。
+
+3. **PWA glue in plain JS, UI in Leptos.**
+   `public/pwa.js` 負責: `navigator.serviceWorker.register` (帶
+   `updateViaCache: "none"`), 監聽 `beforeinstallprompt` / `appinstalled`
+   / SW lifecycle,把狀態經由 `CustomEvent` (`pwa:install-available`、
+   `pwa:update-ready`、`pwa:installed`) 拋給 Leptos 端;暴露
+   `window.__pwa.install()` / `window.__pwa.applyUpdate()`。
+   Leptos 端用 `wasm_bindgen` `EventListener` 訂閱,顯示 banner / toast。
+   不在 Rust 寫 `navigator.serviceWorker.register` — 因為 SW 註冊要
+   在 page load 早期跑,不該等 WASM 啟動。
+
+4. **Update UX: prompt + manual reload.**
+   新 SW 進 waiting 時 Leptos 顯示 toast「有新版本,點此重新載入」;
+   user 點擊 → `postMessage({ type: "SKIP_WAITING" })` → SW 呼叫
+   `self.skipWaiting()` → `controllerchange` → `location.reload()`。
+   不自動 reload (避免打斷對局)。
+
+5. **Cache strategy (in `sw.js`):**
+   - Navigation request (`request.mode === "navigate"`) → network-first,
+     失敗 fallback 到 precache 的 `index.html` (SPA shell)。
+   - Hashed JS / WASM / CSS → cache-first (immutable)。
+   - Manifest / icons / pwa.js → precache + cache-first。
+   - `/ws*`, `/lobby`, `/rooms`, `/api/*` → bypass SW 完全不攔截
+     (online 對戰走原有錯誤處理)。
+   - 其他同 origin GET → stale-while-revalidate。
+
+6. **Icons: SVG placeholder + 一份 PNG 應急。**
+   先做一個 `public/icons/icon.svg` (紅 `帥` on dark square),manifest
+   兩條 entry: `purpose: "any maskable"` 直接吃 SVG。Apple touch icon
+   單獨用 180×180 PNG (從同一 SVG 預先 rasterize 成佔位 PNG,commit
+   進去) — iOS 不認 SVG apple-touch-icon。日後使用者要替換時,只動
+   `public/icons/` 內檔案,template 不用改。
+
+7. **Online detect / offline fallback in app:**
+   不在這個 plan 動 lobby/play 程式碼,但會加一個極小的
+   `<OfflineIndicator>` 訊號 (用 `navigator.onLine` + `online`/`offline`
+   事件) 顯示在 sidebar footer 的角落,讓 user 知道目前離線 → online
+   功能不可用是預期的。
+
+## Files to create
+
+### Templates & static (under `clients/chess-web/public/`)
+
+- `public/sw.js.tmpl` — service worker 模板,含 lifecycle、cache
+  versioning、install/activate/fetch handler、`message` handler 處理
+  `SKIP_WAITING`。佔位: `__APP_VERSION__`, `__BASE_PATH__`,
+  `__PRECACHE_MANIFEST__` (JSON array)。
+- `public/manifest.webmanifest.tmpl` — `name`, `short_name`,
+  `start_url: "__BASE_PATH__/"`, `scope: "__BASE_PATH__/"`,
+  `display: "standalone"`, `theme_color: "#1a1614"`,
+  `background_color: "#1a1614"`, `icons[]` 指向 `__BASE_PATH__/icons/...`
+  ,`categories: ["games", "entertainment"]`,`lang: "zh-Hant"`。
+- `public/pwa.js` — 純 JS,registerServiceWorker、deferredPrompt 暫存、
+  iOS detect、CustomEvent dispatch、暴露 `window.__pwa`。
+- `public/icons/icon.svg` — placeholder (紅底 `帥`)。
+- `public/icons/icon-192.png` — placeholder (一次性 rasterize commit)。
+- `public/icons/icon-512.png` — placeholder。
+- `public/icons/icon-maskable-512.png` — 安全區內縮 ~10%。
+- `public/icons/apple-touch-icon-180.png` — iOS。
+- `public/icons/favicon.svg` — 同一張 SVG 的 favicon。
+
+> Placeholder PNG 先用 macOS 內建 `qlmanage` 或 `rsvg-convert` 任一可
+> 用工具預先生成提交;`scripts/regenerate-placeholder-icons.sh`
+> commit 進去當文件 — user 之後想換成正式 icon 時跑這個腳本即可。
+
+### Build
+
+- `clients/chess-web/scripts/build-pwa.sh` — Trunk post-build hook。
+  讀 `TRUNK_STAGING_DIR` / `TRUNK_PUBLIC_URL`,遞迴掃 dist 內所有
+  `.js`/`.wasm`/`.css`/`.html`/`.svg`/`.png`/`.webmanifest` (排除
+  `og-image.png`、`404.html`、`sw.js` 自己),產生 precache JSON,
+  `shasum -a 256` 全部串接得到 `APP_VERSION` 前 12 位,`sed` 替換
+  template 寫入 dist。
+
+### Leptos UI
+
+- `clients/chess-web/src/components/pwa.rs` (new) —
+  - `PwaBootstrap`: 在 `AppShell` 早期呼叫一次,確保 `pwa.js` 已載入
+    (僅做 sanity check,不註冊 SW;註冊在 `pwa.js` 自己於 page load
+    時進行)。
+  - `PwaUpdateToast`: 全域 toast,`pwa:update-ready` 觸發顯示,點擊
+    呼叫 `window.__pwa.applyUpdate()`。
+  - `PwaInstallBanner`: Picker 頁面用,大張橫幅。`pwa:install-available`
+    觸發 + 不在 `display-mode: standalone` 才顯示。iOS 偵測為真時
+    改顯示「點下方分享 → 加入主畫面」靜態說明 (附 ▢↑ 圖示)。
+  - `PwaInstallButton`: sidebar footer compact 版本,共享同一邏輯。
+  - `OfflineIndicator`: 角落小圓點 + tooltip,顯示 `navigator.onLine`
+    狀態,所有頁面都掛。
+
+### Docs (takeaway)
+
+- `docs/pwa.md` — 完整 best practice 文件:
+  整體架構圖、檔案職責、build flow (server vs static)、base-path
+  陷阱、cache 策略、update lifecycle、install UX (Chrome / Edge /
+  iOS Safari / Firefox)、如何替換 icon、如何強制清 cache、
+  Lighthouse / DevTools 驗證步驟、未來可考慮的進階主題 (Workbox、
+  Background Sync、Periodic Sync、Push Notifications、IndexedDB
+  存遊戲歷史)。約 300–500 行。
+- `pitfalls/pwa-base-path-and-stale-cache.md` — 三個常見坑:
+  (1) GitHub Pages 子路徑下 `start_url`/`scope` 寫錯導致無法安裝;
+  (2) `updateViaCache` 沒設 `"none"` 導致 `sw.js` 被 HTTP cache 卡
+  幾天;(3) Trunk hashed asset 沒進 precache list 導致斷網第二次
+  打開白屏。每個記症狀 / 根因 / 修法。
+
+## Files to edit
+
+- `clients/chess-web/Trunk.toml`
+  - 新增 `[[hooks]]` block:
+
+    \```toml
+    [[hooks]]
+    stage = "post_build"
+    command = "sh"
+    command_arguments = ["scripts/build-pwa.sh"]
+    \```
+
+- `clients/chess-web/index.html`
+  - 加 `<link rel="manifest" href="manifest.webmanifest"/>` (相對路徑,
+    Trunk 會配合 `--public-url` 處理 base path)。
+  - 加 `<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png"/>`。
+  - 加 `<link rel="icon" type="image/svg+xml" href="icons/favicon.svg"/>`。
+  - 加 `<meta name="apple-mobile-web-app-capable" content="yes"/>`、
+    `<meta name="mobile-web-app-capable" content="yes"/>`、
+    `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>`、
+    `<meta name="apple-mobile-web-app-title" content="象棋"/>`。
+  - 加 Trunk copy-file directives 把 `manifest.webmanifest.tmpl`、
+    `sw.js.tmpl`、`pwa.js`、`icons/` 整個目錄複製進 dist
+    (template 維持原檔名複製,post-build hook 會就地替換)。
+  - 加 `<script src="pwa.js" defer></script>` (相對路徑)。
+
+- `clients/chess-web/src/app.rs`
+  - 在 `AppShell` 內掛 `<PwaUpdateToast/>` 與 `<OfflineIndicator/>`
+    (全域,所有 route 都看得到)。
+
+- `clients/chess-web/src/pages/picker.rs`
+  - 在最上方插入 `<PwaInstallBanner/>` (mobile / 未安裝才顯示)。
+
+- `clients/chess-web/src/components/mod.rs`
+  - `pub mod pwa;`。
+
+- 既有 sidebar footer (在 confetti / check-banner toggle 旁) — 找到
+  那個 component (`components/sidebar*` 或 `pages/play.rs` 內聯)
+  並加上 `<PwaInstallButton/>`。
+
+- `clients/chess-web/style.css`
+  - 加 `.pwa-banner` / `.pwa-toast` / `.pwa-offline-dot` 樣式,沿用
+    既有 CSS 變數 (`--accent`, `--bg-elev`, etc.)。
+
+- `Makefile`
+  - `build-web-static` target 後加註解,提醒 hook 會自動產生 sw.js
+    與 manifest;不需 export 額外 env var (Trunk 會把 `--public-url`
+    傳給 hook 透過 `TRUNK_PUBLIC_URL`)。
+  - 新增 `serve-web-static` target: `cd clients/chess-web/dist-static
+    && python3 -m http.server 4173` (本地驗 PWA 用,因為 PWA 需要
+    secure context — `localhost` 算 secure)。
+
+- `CLAUDE.md`
+  - 在「chess-web ...」段落附近加一條 PWA gotcha:
+    sw.js / manifest 由 post-build hook 產生,別手改 dist。
+  - Common commands 加 `make serve-web-static` 一行。
+
+- `TODO.md`
+  - 加一個 P3 項目: 「PWA: 用 Workbox 或自寫 OPFS 把對局歷史存本機
+    + 線上恢復同步」。
+  - 加一個 P3 項目: 「PWA: Web Share API 分享當前對局 FEN/PGN」。
+
+## Critical files referenced
+
+- `clients/chess-web/build.rs:1-25` — `CHESS_WEB_BASE_PATH` 已從 env
+  進 binary,sw.js 不需要重複實作這條;走 `TRUNK_PUBLIC_URL` 即可。
+- `clients/chess-web/src/routes.rs:22-58` — `base_path()`、
+  `app_href()`,SPA 路由本身 base-path safe,SW navigation fallback
+  到 `${base}/index.html` 後 router 會接手。
+- `clients/chess-web/src/app.rs:15-32` — `<Router base=...>` 已
+  讀同一個 base,新增的 toast/indicator 掛在這層之內。
+- `clients/chess-web/Trunk.toml` — 加 `[[hooks]]`。
+- `Makefile:62-73` — `build-web` / `build-web-static` 都會觸發 hook。
+- `crates/chess-net/src/bin/server.rs:26-31,90-96` — `--static-dir`
+  模式的 SPA fallback;SW 不會跟 ServeDir 衝突 (SW scope 是 `/`,
+  `tower_http` 自然會把所有 GET 給 SW 攔到的東西先讓 browser cache
+  優先讀)。
+
+## Verification
+
+\```bash
+# 1. Build server-mode dist + 跑單一 binary,Chrome DevTools 驗證
+make build-web
+cargo run -p chess-net -- --port 7878 \
+    --static-dir clients/chess-web/dist xiangqi
+# → http://127.0.0.1:7878/
+#   DevTools › Application › Manifest 應該綠燈,Service Workers 顯示
+#   activated,Cache Storage 有 `chinese-chess-pwa-<hash>` entry。
+#   Lighthouse PWA audit 跑一次,目標分數 ≥ 90。
+
+# 2. Build GitHub Pages dist + 本地 secure-context 驗證子路徑
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+make serve-web-static  # python3 -m http.server 4173 in dist-static
+# → http://localhost:4173/Chinese-Chess_Xiangqi/
+#   檢查 manifest.webmanifest 內 start_url / scope / icons 路徑都
+#   帶 /Chinese-Chess_Xiangqi/ 前綴;sw.js 內 PRECACHE 陣列每筆都
+#   是 /Chinese-Chess_Xiangqi/... 開頭。
+
+# 3. 離線驗證
+#   DevTools › Application › Service Workers › Offline 勾起來
+#   → reload。應該還能玩 /local/xiangqi 對局。
+#   /lobby 顯示 OfflineIndicator + 連線失敗訊息 (預期)。
+
+# 4. 更新驗證
+#   不關 tab,改 src/lib.rs 加一行 (e.g. 改 console_error_panic_hook
+#   訊息),`make build-web` 再跑一次,在 tab 內 reload (browser
+#   會去抓 sw.js,不命中 HTTP cache 因 updateViaCache: "none")。
+#   應該看到 PwaUpdateToast 跳出。點擊 → reload → 新版生效。
+
+# 5. 行動裝置驗證 (chrome://inspect 或實機)
+#   Chrome Android: 進 picker 應該看到 InstallBanner;點擊出系統
+#     install dialog;裝完 app drawer 有 icon。
+#   iOS Safari: 進 picker 看到 iOS-specific 手動指示而非 prompt。
+
+# 6. 既有 CI 仍要過
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+cargo build --target wasm32-unknown-unknown -p chess-web
+\```
+
+## Out of scope (記在 TODO.md)
+
+- 真正的 offline-first online play (CRDT / Yjs 棋譜同步)。
+- Push Notifications (對手走子通知) — 需 server 端 Web Push 訂閱
+  管理。
+- Background Sync 把離線時段的本地對局 push 上 server。
+- Workbox 升級 (短期手寫足夠)。
+- iOS 16.4+ Web Push (要 manifest declarative_push,還要使用者先把
+  app 加到主畫面才有訂閱權限)。
+- 在 chess-tui / chess-net 加 PWA 相關功能 (CLI/server 不適用)。
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:59:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 04:59:05Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+**Input:**
+
+- plan: `# Wrap chess-web (Rust + Leptos + WASM) as an installable PWA
+
+## Context
+
+`clients/chess-web` is a Leptos + Trunk SPA that already supports two
+hosting targets — chess-net `--static-dir` (single-binary prod) and
+GitHub Pages at the `/Chinese-Chess_Xiangqi/` subpath
+(`make build-web-static`). We want it to also be a real PWA:
+
+- 第一次 online 打開後可以裝到桌面 / 手機主畫面,離開網路也能繼續玩
+  本地對戰 (xiangqi pass-and-play、banqi、AI)。
+- 行動裝置打開時主動引導安裝 (Picker 橫幅 + iOS Safari 手動說明)。
+- 連上網路時偵測新版 chess-web 並彈 toast 給使用者按「重新整理」。
+- 網路中斷時 lobby/online play 路徑 graceful degrade,不要白屏。
+
+Online (`/lobby`, `/play/<room>`) 顯然需要 chess-net,離線時這條路徑
+保持目前的 ws 連不上即顯示錯誤訊息即可 — 不在這個 plan 範圍。
+
+設計原則: 不引入 Workbox / npm,純手寫 sw.js + post-build bash hook,
+和 repo 現有風格 (cargo + bash + Makefile) 一致。
+
+## Architecture decisions
+
+1. **Build-time precache list, generated by Trunk post-build hook.**
+   Trunk hashes `app-[hash].js` / `_bg.wasm` / `style-[hash].css`,
+   filename 是穩定指紋,適合做 cache-first immutable。Hook 掃 `dist/`
+   產生 precache 陣列 + content hash 當作 `APP_VERSION`,模板替換寫入
+   `dist/sw.js`。
+
+2. **Two templates, one hook, base-path aware.**
+   `public/sw.js.tmpl` 與 `public/manifest.webmanifest.tmpl` 留下
+   `__APP_VERSION__` / `__BASE_PATH__` / `__PRECACHE_MANIFEST__` 佔位,
+   由 `scripts/build-pwa.sh` 在 post-build 階段替換。Hook 從
+   `TRUNK_PUBLIC_URL` 讀基底路徑,自動覆蓋 server 模式 (`/`) 與
+   GitHub Pages 模式 (`/Chinese-Chess_Xiangqi/`) — 不用 build 兩份。
+
+3. **PWA glue in plain JS, UI in Leptos.**
+   `public/pwa.js` 負責: `navigator.serviceWorker.register` (帶
+   `updateViaCache: "none"`), 監聽 `beforeinstallprompt` / `appinstalled`
+   / SW lifecycle,把狀態經由 `CustomEvent` (`pwa:install-available`、
+   `pwa:update-ready`、`pwa:installed`) 拋給 Leptos 端;暴露
+   `window.__pwa.install()` / `window.__pwa.applyUpdate()`。
+   Leptos 端用 `wasm_bindgen` `EventListener` 訂閱,顯示 banner / toast。
+   不在 Rust 寫 `navigator.serviceWorker.register` — 因為 SW 註冊要
+   在 page load 早期跑,不該等 WASM 啟動。
+
+4. **Update UX: prompt + manual reload.**
+   新 SW 進 waiting 時 Leptos 顯示 toast「有新版本,點此重新載入」;
+   user 點擊 → `postMessage({ type: "SKIP_WAITING" })` → SW 呼叫
+   `self.skipWaiting()` → `controllerchange` → `location.reload()`。
+   不自動 reload (避免打斷對局)。
+
+5. **Cache strategy (in `sw.js`):**
+   - Navigation request (`request.mode === "navigate"`) → network-first,
+     失敗 fallback 到 precache 的 `index.html` (SPA shell)。
+   - Hashed JS / WASM / CSS → cache-first (immutable)。
+   - Manifest / icons / pwa.js → precache + cache-first。
+   - `/ws*`, `/lobby`, `/rooms`, `/api/*` → bypass SW 完全不攔截
+     (online 對戰走原有錯誤處理)。
+   - 其他同 origin GET → stale-while-revalidate。
+
+6. **Icons: SVG placeholder + 一份 PNG 應急。**
+   先做一個 `public/icons/icon.svg` (紅 `帥` on dark square),manifest
+   兩條 entry: `purpose: "any maskable"` 直接吃 SVG。Apple touch icon
+   單獨用 180×180 PNG (從同一 SVG 預先 rasterize 成佔位 PNG,commit
+   進去) — iOS 不認 SVG apple-touch-icon。日後使用者要替換時,只動
+   `public/icons/` 內檔案,template 不用改。
+
+7. **Online detect / offline fallback in app:**
+   不在這個 plan 動 lobby/play 程式碼,但會加一個極小的
+   `<OfflineIndicator>` 訊號 (用 `navigator.onLine` + `online`/`offline`
+   事件) 顯示在 sidebar footer 的角落,讓 user 知道目前離線 → online
+   功能不可用是預期的。
+
+## Files to create
+
+### Templates & static (under `clients/chess-web/public/`)
+
+- `public/sw.js.tmpl` — service worker 模板,含 lifecycle、cache
+  versioning、install/activate/fetch handler、`message` handler 處理
+  `SKIP_WAITING`。佔位: `__APP_VERSION__`, `__BASE_PATH__`,
+  `__PRECACHE_MANIFEST__` (JSON array)。
+- `public/manifest.webmanifest.tmpl` — `name`, `short_name`,
+  `start_url: "__BASE_PATH__/"`, `scope: "__BASE_PATH__/"`,
+  `display: "standalone"`, `theme_color: "#1a1614"`,
+  `background_color: "#1a1614"`, `icons[]` 指向 `__BASE_PATH__/icons/...`
+  ,`categories: ["games", "entertainment"]`,`lang: "zh-Hant"`。
+- `public/pwa.js` — 純 JS,registerServiceWorker、deferredPrompt 暫存、
+  iOS detect、CustomEvent dispatch、暴露 `window.__pwa`。
+- `public/icons/icon.svg` — placeholder (紅底 `帥`)。
+- `public/icons/icon-192.png` — placeholder (一次性 rasterize commit)。
+- `public/icons/icon-512.png` — placeholder。
+- `public/icons/icon-maskable-512.png` — 安全區內縮 ~10%。
+- `public/icons/apple-touch-icon-180.png` — iOS。
+- `public/icons/favicon.svg` — 同一張 SVG 的 favicon。
+
+> Placeholder PNG 先用 macOS 內建 `qlmanage` 或 `rsvg-convert` 任一可
+> 用工具預先生成提交;`scripts/regenerate-placeholder-icons.sh`
+> commit 進去當文件 — user 之後想換成正式 icon 時跑這個腳本即可。
+
+### Build
+
+- `clients/chess-web/scripts/build-pwa.sh` — Trunk post-build hook。
+  讀 `TRUNK_STAGING_DIR` / `TRUNK_PUBLIC_URL`,遞迴掃 dist 內所有
+  `.js`/`.wasm`/`.css`/`.html`/`.svg`/`.png`/`.webmanifest` (排除
+  `og-image.png`、`404.html`、`sw.js` 自己),產生 precache JSON,
+  `shasum -a 256` 全部串接得到 `APP_VERSION` 前 12 位,`sed` 替換
+  template 寫入 dist。
+
+### Leptos UI
+
+- `clients/chess-web/src/components/pwa.rs` (new) —
+  - `PwaBootstrap`: 在 `AppShell` 早期呼叫一次,確保 `pwa.js` 已載入
+    (僅做 sanity check,不註冊 SW;註冊在 `pwa.js` 自己於 page load
+    時進行)。
+  - `PwaUpdateToast`: 全域 toast,`pwa:update-ready` 觸發顯示,點擊
+    呼叫 `window.__pwa.applyUpdate()`。
+  - `PwaInstallBanner`: Picker 頁面用,大張橫幅。`pwa:install-available`
+    觸發 + 不在 `display-mode: standalone` 才顯示。iOS 偵測為真時
+    改顯示「點下方分享 → 加入主畫面」靜態說明 (附 ▢↑ 圖示)。
+  - `PwaInstallButton`: sidebar footer compact 版本,共享同一邏輯。
+  - `OfflineIndicator`: 角落小圓點 + tooltip,顯示 `navigator.onLine`
+    狀態,所有頁面都掛。
+
+### Docs (takeaway)
+
+- `docs/pwa.md` — 完整 best practice 文件:
+  整體架構圖、檔案職責、build flow (server vs static)、base-path
+  陷阱、cache 策略、update lifecycle、install UX (Chrome / Edge /
+  iOS Safari / Firefox)、如何替換 icon、如何強制清 cache、
+  Lighthouse / DevTools 驗證步驟、未來可考慮的進階主題 (Workbox、
+  Background Sync、Periodic Sync、Push Notifications、IndexedDB
+  存遊戲歷史)。約 300–500 行。
+- `pitfalls/pwa-base-path-and-stale-cache.md` — 三個常見坑:
+  (1) GitHub Pages 子路徑下 `start_url`/`scope` 寫錯導致無法安裝;
+  (2) `updateViaCache` 沒設 `"none"` 導致 `sw.js` 被 HTTP cache 卡
+  幾天;(3) Trunk hashed asset 沒進 precache list 導致斷網第二次
+  打開白屏。每個記症狀 / 根因 / 修法。
+
+## Files to edit
+
+- `clients/chess-web/Trunk.toml`
+  - 新增 `[[hooks]]` block:
+
+    ```toml
+    [[hooks]]
+    stage = "post_build"
+    command = "sh"
+    command_arguments = ["scripts/build-pwa.sh"]
+    ```
+
+- `clients/chess-web/index.html`
+  - 加 `<link rel="manifest" href="manifest.webmanifest"/>` (相對路徑,
+    Trunk 會配合 `--public-url` 處理 base path)。
+  - 加 `<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png"/>`。
+  - 加 `<link rel="icon" type="image/svg+xml" href="icons/favicon.svg"/>`。
+  - 加 `<meta name="apple-mobile-web-app-capable" content="yes"/>`、
+    `<meta name="mobile-web-app-capable" content="yes"/>`、
+    `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>`、
+    `<meta name="apple-mobile-web-app-title" content="象棋"/>`。
+  - 加 Trunk copy-file directives 把 `manifest.webmanifest.tmpl`、
+    `sw.js.tmpl`、`pwa.js`、`icons/` 整個目錄複製進 dist
+    (template 維持原檔名複製,post-build hook 會就地替換)。
+  - 加 `<script src="pwa.js" defer></script>` (相對路徑)。
+
+- `clients/chess-web/src/app.rs`
+  - 在 `AppShell` 內掛 `<PwaUpdateToast/>` 與 `<OfflineIndicator/>`
+    (全域,所有 route 都看得到)。
+
+- `clients/chess-web/src/pages/picker.rs`
+  - 在最上方插入 `<PwaInstallBanner/>` (mobile / 未安裝才顯示)。
+
+- `clients/chess-web/src/components/mod.rs`
+  - `pub mod pwa;`。
+
+- 既有 sidebar footer (在 confetti / check-banner toggle 旁) — 找到
+  那個 component (`components/sidebar*` 或 `pages/play.rs` 內聯)
+  並加上 `<PwaInstallButton/>`。
+
+- `clients/chess-web/style.css`
+  - 加 `.pwa-banner` / `.pwa-toast` / `.pwa-offline-dot` 樣式,沿用
+    既有 CSS 變數 (`--accent`, `--bg-elev`, etc.)。
+
+- `Makefile`
+  - `build-web-static` target 後加註解,提醒 hook 會自動產生 sw.js
+    與 manifest;不需 export 額外 env var (Trunk 會把 `--public-url`
+    傳給 hook 透過 `TRUNK_PUBLIC_URL`)。
+  - 新增 `serve-web-static` target: `cd clients/chess-web/dist-static
+    && python3 -m http.server 4173` (本地驗 PWA 用,因為 PWA 需要
+    secure context — `localhost` 算 secure)。
+
+- `CLAUDE.md`
+  - 在「chess-web ...」段落附近加一條 PWA gotcha:
+    sw.js / manifest 由 post-build hook 產生,別手改 dist。
+  - Common commands 加 `make serve-web-static` 一行。
+
+- `TODO.md`
+  - 加一個 P3 項目: 「PWA: 用 Workbox 或自寫 OPFS 把對局歷史存本機
+    + 線上恢復同步」。
+  - 加一個 P3 項目: 「PWA: Web Share API 分享當前對局 FEN/PGN」。
+
+## Critical files referenced
+
+- `clients/chess-web/build.rs:1-25` — `CHESS_WEB_BASE_PATH` 已從 env
+  進 binary,sw.js 不需要重複實作這條;走 `TRUNK_PUBLIC_URL` 即可。
+- `clients/chess-web/src/routes.rs:22-58` — `base_path()`、
+  `app_href()`,SPA 路由本身 base-path safe,SW navigation fallback
+  到 `${base}/index.html` 後 router 會接手。
+- `clients/chess-web/src/app.rs:15-32` — `<Router base=...>` 已
+  讀同一個 base,新增的 toast/indicator 掛在這層之內。
+- `clients/chess-web/Trunk.toml` — 加 `[[hooks]]`。
+- `Makefile:62-73` — `build-web` / `build-web-static` 都會觸發 hook。
+- `crates/chess-net/src/bin/server.rs:26-31,90-96` — `--static-dir`
+  模式的 SPA fallback;SW 不會跟 ServeDir 衝突 (SW scope 是 `/`,
+  `tower_http` 自然會把所有 GET 給 SW 攔到的東西先讓 browser cache
+  優先讀)。
+
+## Verification
+
+```bash
+# 1. Build server-mode dist + 跑單一 binary,Chrome DevTools 驗證
+make build-web
+cargo run -p chess-net -- --port 7878 \
+    --static-dir clients/chess-web/dist xiangqi
+# → http://127.0.0.1:7878/
+#   DevTools › Application › Manifest 應該綠燈,Service Workers 顯示
+#   activated,Cache Storage 有 `chinese-chess-pwa-<hash>` entry。
+#   Lighthouse PWA audit 跑一次,目標分數 ≥ 90。
+
+# 2. Build GitHub Pages dist + 本地 secure-context 驗證子路徑
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+make serve-web-static  # python3 -m http.server 4173 in dist-static
+# → http://localhost:4173/Chinese-Chess_Xiangqi/
+#   檢查 manifest.webmanifest 內 start_url / scope / icons 路徑都
+#   帶 /Chinese-Chess_Xiangqi/ 前綴;sw.js 內 PRECACHE 陣列每筆都
+#   是 /Chinese-Chess_Xiangqi/... 開頭。
+
+# 3. 離線驗證
+#   DevTools › Application › Service Workers › Offline 勾起來
+#   → reload。應該還能玩 /local/xiangqi 對局。
+#   /lobby 顯示 OfflineIndicator + 連線失敗訊息 (預期)。
+
+# 4. 更新驗證
+#   不關 tab,改 src/lib.rs 加一行 (e.g. 改 console_error_panic_hook
+#   訊息),`make build-web` 再跑一次,在 tab 內 reload (browser
+#   會去抓 sw.js,不命中 HTTP cache 因 updateViaCache: "none")。
+#   應該看到 PwaUpdateToast 跳出。點擊 → reload → 新版生效。
+
+# 5. 行動裝置驗證 (chrome://inspect 或實機)
+#   Chrome Android: 進 picker 應該看到 InstallBanner;點擊出系統
+#     install dialog;裝完 app drawer 有 icon。
+#   iOS Safari: 進 picker 看到 iOS-specific 手動指示而非 prompt。
+
+# 6. 既有 CI 仍要過
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --target wasm32-unknown-unknown -p chess-core
+cargo build --target wasm32-unknown-unknown -p chess-web
+```
+
+## Out of scope (記在 TODO.md)
+
+- 真正的 offline-first online play (CRDT / Yjs 棋譜同步)。
+- Push Notifications (對手走子通知) — 需 server 端 Web Push 訂閱
+  管理。
+- Background Sync 把離線時段的本地對局 push 上 server。
+- Workbox 升級 (短期手寫足夠)。
+- iOS 16.4+ Web Push (要 manifest declarative_push,還要使用者先把
+  app 加到主畫面才有訂閱權限)。
+- 在 chess-tui / chess-net 加 PWA 相關功能 (CLI/server 不適用)。
+`
+- planFilePath: `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md`
+
+</details></tool-use>

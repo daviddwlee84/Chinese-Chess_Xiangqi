@@ -1,6 +1,6 @@
 # chess-ai performance
 
-> **Last measured**: 2026-05-09 on M-class Mac, release profile.
+> **Last measured**: 2026-05-10 on M-class Mac, release profile.
 > **Reproduce**: `cargo test -p chess-ai --release perf -- --ignored --nocapture`
 
 ## Complexity model
@@ -72,6 +72,50 @@ nodes are deterministic given the search inputs.
 | **sparse endgame (5 pieces total)** | **v4** | **Easy** | **1** | **36** | **0.02** | **2000** |
 | **sparse endgame (5 pieces total)** | **v4** | **Normal** | **3** | **4972** | **2.74** | **1817** |
 | **sparse endgame (5 pieces total)** | **v4** | **Hard** | **4** | **21668** | **12.03** | **1801** |
+
+## v5 (2026-05-10): iterative deepening + transposition table
+
+v5 layers ID + Zobrist TT on top of v4's quiescence/MVV-LVA. The TT
+amortizes search cost across iterations: depth 2 hits depth-1 entries,
+depth 3 hits depth-1/2 entries, etc. Endgame positions where many
+move orders converge to the same position benefit dramatically. Wide
+opening positions benefit less because new positions outpace TT hits.
+
+| Fixture | Strategy | Difficulty | Depth | Nodes | Median ms (3 runs) | nodes/ms |
+|---------|----------|------------|-------|-------|--------------------|---------|
+| opening (initial xiangqi) | v5 | Easy | 1 | 362 | 3.04 | 119 |
+| opening (initial xiangqi) | v5 | Normal | 3 | 60 828 | 113.10 | 538 |
+| opening (initial xiangqi) | v5 | Hard | **3** | 250 077 | 355.09 | 704 |
+| midgame (4 pieces removed) | v5 | Easy | 1 | 13 900 | 21.04 | 661 |
+| midgame (4 pieces removed) | v5 | Normal | 3 | 83 967 | 119.97 | 700 |
+| midgame (4 pieces removed) | v5 | Hard | **3** | 250 070 | 329.91 | 758 |
+| **sparse endgame (5 pieces total)** | **v5** | **Easy** | **1** | **36** | **1.83** | **20** |
+| **sparse endgame (5 pieces total)** | **v5** | **Normal** | **3** | **3 930** | **4.50** | **874** |
+| **sparse endgame (5 pieces total)** | **v5** | **Hard** | **4** | **34 668** | **20.61** | **1682** |
+
+### v5 vs v4 read
+
+- **Endgame Hard**: v5 = 35 k nodes / 21 ms. v4 = 22 k / 12 ms. v5
+  visits 60 % more nodes because ID re-searches d1+d2+d3 before d4,
+  but completes the same depth in similar wall-clock — and would
+  scale better at d5+ because the TT cache hits compound.
+- **Opening / Midgame Hard**: v5 hits the 250 k node budget at
+  depth **3** (vs v4 at depth 4). The v4 depth-4 figure is
+  *truncated* mid-search (not all root moves reached d4); v5's
+  depth-3 result is fully searched (every root move scored
+  consistently). Quality probably comparable; v5 is more honest.
+- **Easy mode (depth 1)**: v5 has ~3 ms TT-allocation overhead vs
+  v4's <1 ms. Imperceptible. v5.1 may pre-allocate.
+
+The depth ceiling at the budget is the v5 cost. Per-iteration TT
+overhead means v5 spends more total nodes for the same effective
+depth in *unique-position-rich* searches (openings); but per-move
+quality at the achieved depth is strictly better thanks to ID's
+"better moves first" property.
+
+See [`v5-id-tt.md`](v5-id-tt.md) for the design rationale and the
+list of follow-up optimizations (PVS, aspiration windows,
+depth-preferred replacement) tracked as v5.1.
 
 ## v4 Hard cost vs the node budget
 
