@@ -38,12 +38,22 @@ The strategy-vs-RL/AlphaZero/Pikafish decision is in
   [`docs/ai/v3-king-safety-pst.md`](../docs/ai/v3-king-safety-pst.md).
   Was the default for a few hours on 2026-05-09; superseded by v4 because
   horizon-effect blunders on captures still slipped through.
-- ✅ **v4 — `Strategy::QuiescenceMvvLvaV4`** (2026-05-09, default).
+- ✅ **v4 — `Strategy::QuiescenceMvvLvaV4`** (2026-05-09).
   Same v3 evaluator, but the search now uses MVV-LVA capture ordering
   and a quiescence search at the horizon. Stops the "AI wins a chariot
   then loses it back next move" class of horizon-effect blunder.
   Cost: ~9× v3 in busy openings (uses ~71% of the 250k node budget at
   Hard depth 4). See [`docs/ai/v4-quiescence-mvv-lva.md`](../docs/ai/v4-quiescence-mvv-lva.md).
+  Was the default 2026-05-09 → 2026-05-10; superseded by v5 (TT recovers
+  most of the cost while strictly improving move ordering).
+- ✅ **v5 — `Strategy::IterativeDeepeningTtV5`** (2026-05-10, default).
+  Iterative deepening + Zobrist transposition table on top of v4.
+  Endgame Hard: 35k nodes / 21 ms (vs v4's 65k / 34 ms — −46% nodes,
+  −38% wall-clock). Opening Hard: caps at depth 3 within the 250k node
+  budget but every root move scored consistently (vs v4's truncated
+  d4). Zobrist hash field on `GameState.position_hash` simultaneously
+  unblocks the P1 threefold-rep TODO. See
+  [`docs/ai/v5-id-tt.md`](../docs/ai/v5-id-tt.md).
 
 ## User-side configuration shipped 2026-05-09
 
@@ -60,32 +70,36 @@ In addition to the engine versions above, the AI exposes:
 
 ## Roadmap
 
-### v5 — `Strategy::NegamaxIdTtV5` (next)
+### v5.1 — aspiration windows + depth-preferred TT replacement
 
-Iterative deepening + Zobrist transposition table.
+Two follow-up search refinements after v5 ID+TT shipped. v5 was scoped
+to "minimum viable ID + TT" so each addition is independently
+reviewable. Tracked as a separate P3/S in `TODO.md` (`chess-ai v5.1`).
+Doc: when implementing, write `docs/ai/v5.1-aspiration-tt-depth.md`.
 
-- **Why next**: v4's busy-opening cost (280 ms native, 1-3 s WASM) is
-  the new ceiling. The single biggest mitigation is a TT — many
-  positions are reached via multiple move orders, and v4 re-searches
-  each one. With a TT, depth-4 search shrinks back toward v3 cost
-  range. Iterative deepening reuses shallow PVs as ordering hints for
-  deeper search → fewer nodes for the same depth.
-- **Bonus**: shares Zobrist hashing with the P1 TODO
-  "threefold-repetition draw detection" — doing them together avoids
-  writing Zobrist twice.
-- **Tasks**:
-  - Implement Zobrist hash on `Board` + `side_to_move` (lives in
-    `chess-core`, not `chess-ai`, so the repetition detector can share).
-  - Add a small TT (~64 MB) keyed by Zobrist, storing
-    `{score, depth, bound, best_move}`.
-  - Iterative deepening loop in `engines/negamax_id_tt_v5.rs`:
-    deepen until `Difficulty::default_depth` or time budget hits.
-  - Use TT best-move as primary move ordering hint (PV-first), fall
-    back to MVV-LVA.
-- **Risk**: TT memory in WASM. 64 MB is fine for desktop browsers but
-  noticeable on mobile. Cap at 16 MB for WASM target via a `cfg`.
+- **Aspiration windows**: narrow the root window to
+  `[prev_score - W, prev_score + W]` (W ≈ 50 cp) for the deepest
+  iteration. Re-search with full window on fail-high/low. Recovers
+  most of the alpha-beta savings the full-window-at-root fix
+  (2026-05-09) gave up — see
+  [`pitfalls/alpha-beta-root-score-pollution.md`](../pitfalls/alpha-beta-root-score-pollution.md).
+- **Depth-preferred TT replacement**: keep deeper entries longer.
+  Current always-replace policy can evict a depth-6 cached score with
+  a depth-2 one, defeating the point of the cache. Two-bucket scheme:
+  `[depth-preferred slot, always-replace slot]` per index. ~30 % nodes
+  savings expected in deep positions.
 
-### v6 — `Strategy::NegamaxWebWorkerV6`
+### v6 — `Strategy::PonderingV6` (AI pondering during human's turn)
+
+The AI's wall-clock cost (1-3 s WASM at Hard depth 4) is most painful
+when it's the human's turn to move and the AI is idle. Pondering
+predicts the most likely human reply, runs `score_root_moves` on the
+resulting position, and stores the result in the TT (which v5 made
+possible). When the human actually plays the predicted move, half the
+work for the AI's response is already cached. Standalone from v5.1 /
+v7 / v8. → [research](ai-pondering.md)
+
+### v7 — `Strategy::NegamaxWebWorkerV7`
 
 Same engine as v4/v5, but hosted in a Web Worker.
 
@@ -100,7 +114,7 @@ Same engine as v4/v5, but hosted in a Web Worker.
     `clients/chess-web/src/pages/local.rs` is enough — ignore stale
     worker results.
 
-### v7 — `Strategy::ISMCTSv7` (banqi only)
+### v8 — `Strategy::ISMCTSv8` (banqi only)
 
 Information-set Monte Carlo Tree Search for banqi.
 
@@ -117,7 +131,7 @@ Information-set Monte Carlo Tree Search for banqi.
     unflipped tiles).
 - **Standalone**: doesn't depend on v5-v6; can ship in parallel.
 
-### v8 — `Strategy::PikafishBackendV8` (optional)
+### v9 — `Strategy::PikafishBackendV9` (optional)
 
 Pikafish UCI backend — gated behind a Cargo feature.
 
@@ -136,8 +150,9 @@ Pikafish UCI backend — gated behind a Cargo feature.
 
 - **Tuning rounds for PSTs (v2.1?)**. Self-play tournaments to refine
   the hand-derived numbers. Could land before v3 if v3 slips.
-- **Opening book**. Pre-computed table for the first ~10 plies. Cheap
-  way to make all difficulties feel "professional" in the opening.
+- **Opening book** (P? in `TODO.md` → [`ai-opening-book.md`](ai-opening-book.md)).
+  Pre-computed table for the first ~10 plies; cheap way to make all
+  difficulties feel "professional" in the opening without search cost.
 - **Endgame tablebase**. K+R vs K and similar — out of scope until we
   have a real player base who notices missed wins.
 - **Game-phase split** (opening / midgame / endgame PSTs). Tag for v3

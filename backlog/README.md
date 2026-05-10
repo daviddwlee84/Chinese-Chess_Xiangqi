@@ -50,4 +50,6 @@ Add new entries here as you create them. Keep alphabetical.
 
 | Slug | Status | TODO entry |
 |---|---|---|
+| ai-opening-book | spike-needed | chess-ai opening book |
+| ai-pondering | not-started | chess-ai v6 pondering |
 | web-wasm-download-progress | deferred | chess-web: real WASM download progress meter |
