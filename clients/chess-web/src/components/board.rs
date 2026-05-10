@@ -42,6 +42,11 @@ pub fn Board(
     /// line. Empty Vec = no highlight.
     #[prop(optional, into)]
     highlighted_pv: Option<Signal<Vec<Move>>>,
+    /// Pass-and-play mirror mode: when `true`, Black-side piece glyphs
+    /// are rendered rotated 180° so a player sitting opposite the device
+    /// reads their pieces upright. Coordinates / hit-testing unchanged.
+    #[prop(optional, into)]
+    mirror_black: Option<Signal<bool>>,
 ) -> impl IntoView {
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
@@ -57,6 +62,7 @@ pub fn Board(
     let style = Style::Cjk;
     let highlighted_pv: Signal<Vec<Move>> =
         highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
+    let mirror_black: Signal<bool> = mirror_black.unwrap_or_else(|| Signal::derive(|| false));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
@@ -68,14 +74,16 @@ pub fn Board(
                 height=total_h
             />
             <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
-            <g class="coord-layer">{coord_labels(shape, rows, cols, observer)}</g>
+            <g class="coord-layer">
+                {move || coord_labels(shape, rows, cols, observer, mirror_black.get())}
+            </g>
             <g class="river-layer">{river_text(shape, cols)}</g>
             <g class="palace-layer">{palace_diagonals(shape)}</g>
             <g class="overlay-layer">
                 {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
             </g>
             <g class="pieces-layer">
-                {move || pieces_view(&view.get(), observer, shape, style)}
+                {move || pieces_view(&view.get(), observer, shape, style, mirror_black.get())}
             </g>
             <g class="overlay-top-layer">
                 {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
@@ -160,12 +168,18 @@ fn river_text(shape: BoardShape, cols: u8) -> View {
 /// placement keeps them clear of all piece geometry.
 ///
 /// Xiangqi only — banqi has no algebraic-style notation in this codebase.
-fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
+fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side, mirror_black: bool) -> View {
     if !matches!(shape, BoardShape::Xiangqi9x10) {
         return ().into_view();
     }
     let board = chess_core::board::Board::new(shape);
     let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
+
+    // In mirror mode, top file labels and right rank labels are rotated
+    // 180° in place so the player on the opposite seat reads them
+    // upright (matches the same rotation we apply to Black's piece
+    // glyphs). Bottom + left labels stay normal for the Red player.
+    let mirror_attr = |x: i32, y: i32| -> String { format!("rotate(180 {} {})", x, y) };
 
     // File labels (a..i) — read the file from the bottom-edge cell of
     // each column (any row would do; bottom-edge avoids needing to
@@ -183,9 +197,11 @@ fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
         let (f, _) = board.file_rank(sq);
         let ch = (b'a' + f.0) as char;
         let x = PAD + col as i32 * CELL;
+        let top_transform = if mirror_black { mirror_attr(x, label_y_top) } else { String::new() };
         out.push(
             view! {
-                <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+                <text class="board-coord" x=x y=label_y_top transform=top_transform
+                    text-anchor="middle" dominant-baseline="central">
                     {ch.to_string()}
                 </text>
             }
@@ -211,6 +227,8 @@ fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
         let (_, r) = board.file_rank(sq);
         let digit = r.0;
         let y = PAD + row as i32 * CELL;
+        let right_transform =
+            if mirror_black { mirror_attr(label_x_right, y) } else { String::new() };
         out.push(
             view! {
                 <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
@@ -221,7 +239,8 @@ fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
         );
         out.push(
             view! {
-                <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+                <text class="board-coord" x=label_x_right y=y transform=right_transform
+                    text-anchor="middle" dominant-baseline="central">
                     {digit.to_string()}
                 </text>
             }
@@ -250,7 +269,13 @@ fn palace_diagonals(shape: BoardShape) -> View {
         .into_view()
 }
 
-fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Style) -> View {
+fn pieces_view(
+    view: &PlayerView,
+    observer: Side,
+    shape: BoardShape,
+    style: Style,
+    mirror_black: bool,
+) -> View {
     let (rows, cols) = display_dims(shape);
     let mut out: Vec<View> = Vec::new();
     for row in 0..rows {
@@ -276,9 +301,18 @@ fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Styl
                         Side::BLACK => "black",
                         _ => "green",
                     };
+                    // Mirror: rotate Black-side glyphs 180° around the
+                    // piece center so the opposite-seated player reads
+                    // them upright. Only the inner glyph rotates — the
+                    // disc is symmetric so no visual difference.
+                    let transform = if mirror_black && p.piece.side == Side::BLACK {
+                        format!("translate({}, {}) rotate(180)", cx, cy)
+                    } else {
+                        format!("translate({}, {})", cx, cy)
+                    };
                     out.push(
                         view! {
-                            <g class=format!("tile piece {}", side_class) transform=format!("translate({}, {})", cx, cy)>
+                            <g class=format!("tile piece {}", side_class) transform=transform>
                                 <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
                                 <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
                                     {glyph::glyph(p.piece.kind, p.piece.side, style)}

@@ -67,6 +67,10 @@ fn XiangqiCard() -> impl IntoView {
     // `<DebugPanel>` and lets either source feed it.
     let ai_show_hints = create_rw_signal(false);
     let ai_show_debug = create_rw_signal(false);
+    // Pass-and-play only: rotate Black piece glyphs 180° so the player
+    // sitting on the opposite side of the device reads their own pieces
+    // upright. Coordinate system unchanged.
+    let mirror_black = create_rw_signal(false);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
         let ai_depth =
@@ -81,6 +85,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_depth,
             ai_debug: ai_show_debug.get(),
             ai_hints: ai_show_hints.get(),
+            mirror: mirror_black.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -110,6 +115,19 @@ fn XiangqiCard() -> impl IntoView {
                     <span>"vs Computer — alpha-beta engine, runs entirely in your browser."</span>
                 </label>
             </fieldset>
+            <Show when=move || mode.get() == PlayMode::Pvp>
+                <fieldset class="card-fieldset">
+                    <legend>"Seat layout"</legend>
+                    <label class="check-row">
+                        <input
+                            type="checkbox"
+                            prop:checked=move || mirror_black.get()
+                            on:change=move |ev| mirror_black.set(event_target_checked(&ev))
+                        />
+                        <span>"鏡像黑方 — Mirror Black's pieces 180° for a player sitting opposite (phone flat on a table). Captured pieces split to each side's edge."</span>
+                    </label>
+                </fieldset>
+            </Show>
             <Show when=move || mode.get() == PlayMode::VsAi>
                 <fieldset class="card-fieldset">
                     <legend>"You play"</legend>

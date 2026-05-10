@@ -149,6 +149,12 @@ pub struct LocalRulesParams {
     /// `hints_allowed` (set at room creation by the first joiner's
     /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
     pub ai_hints: bool,
+    /// Xiangqi pass-and-play only. When `true`, Black's piece glyphs are
+    /// rendered rotated 180° so a player sitting on the opposite side of
+    /// the device reads their pieces upright. Coordinate system is
+    /// unchanged. Ignored when `mode == VsAi`, banqi, or three-kingdom.
+    /// URL token: `&mirror=1`.
+    pub mirror: bool,
 }
 
 /// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
@@ -171,6 +177,7 @@ impl Default for LocalRulesParams {
             ai_depth: None,
             ai_debug: false,
             ai_hints: false,
+            mirror: false,
         }
     }
 }
@@ -204,6 +211,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
     let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
     let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
+    let mirror = matches!(get("mirror").as_deref(), Some("1") | Some("true") | Some("on"));
     LocalRulesParams {
         strict,
         house: house::normalize(house),
@@ -216,6 +224,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_depth,
         ai_debug,
         ai_hints,
+        mirror,
     }
 }
 
@@ -272,6 +281,15 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
             // would see no panel after clicking Start.
             if params.ai_hints {
                 parts.push("hints=1".to_string());
+            }
+            // Mirror is pass-and-play only — vs-AI has no opponent on
+            // the far side of the device, so it would just confuse the
+            // single human. We still allow `?mirror=1` to round-trip
+            // when set even with mode=ai (so URL hand-edits don't get
+            // silently dropped on parse), but the picker only offers
+            // the checkbox when mode == Pvp.
+            if params.mirror && params.mode == PlayMode::Pvp {
+                parts.push("mirror=1".to_string());
             }
         }
         Variant::Banqi => {
@@ -725,6 +743,29 @@ mod tests {
         let p = LocalRulesParams::default();
         let q = build_local_query(Variant::Xiangqi, &p);
         assert!(q.is_empty(), "default mode should not emit query, got {:?}", q);
+    }
+
+    #[test]
+    fn xiangqi_mirror_round_trips_in_pvp() {
+        let p = parse_local_rules(from_pairs(&[("mirror", "1")]));
+        assert!(p.mirror);
+        assert_eq!(p.mode, PlayMode::Pvp);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("mirror=1"), "PvP+mirror must round-trip; got {:?}", q);
+    }
+
+    #[test]
+    fn xiangqi_mirror_default_off_omitted() {
+        let p = LocalRulesParams::default();
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("mirror="), "default off must not emit; got {:?}", q);
+    }
+
+    #[test]
+    fn xiangqi_mirror_dropped_in_vs_ai_emission() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, mirror: true, ..Default::default() };
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("mirror="), "mirror must not be emitted in vs-AI; got {:?}", q);
     }
 
     #[test]

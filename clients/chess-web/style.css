@@ -353,6 +353,22 @@ body {
 .captured-row.black .captured-piece-glyph { color: var(--black); }
 .captured-empty { color: var(--muted); font-size: 0.85rem; }
 
+/* Mirror mode: above-board strip is rotated 180° so glyphs read upright
+ * for the player sitting on the opposite seat. The strip sits BEFORE the
+ * board in source order (so it's at the top of the device) and we drop
+ * the dashed top-border + flip the margin to a bottom-margin so the
+ * visual separator still lives between the strip and the board. */
+.captured-strip--mirrored-above {
+    margin-top: 0;
+    margin-bottom: 0.6rem;
+    border-top: none;
+    border-bottom: 1px dashed var(--grid);
+}
+.captured-row--mirrored {
+    transform: rotate(180deg);
+    transform-origin: center;
+}
+
 /* Three-kingdom WIP overlay. */
 .wip-overlay {
     position: absolute;
@@ -567,6 +583,9 @@ body {
     border-radius: 0.4rem;
     padding: 0.5rem 0.75rem;
     font: inherit;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .text-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 /* Search-depth number input: by default <input type=number> in the

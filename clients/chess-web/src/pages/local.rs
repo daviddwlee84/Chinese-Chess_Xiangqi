@@ -9,7 +9,7 @@ use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
 use crate::components::board::Board;
-use crate::components::captured::CapturedStrip;
+use crate::components::captured::{CapturedSlot, CapturedStrip};
 use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::EndOverlay;
 use crate::components::move_history::HistoryEntry;
@@ -57,8 +57,10 @@ struct InsightConfig {
 pub fn LocalPage() -> impl IntoView {
     let params = use_params_map();
     let query = use_query_map();
-    let resolved =
-        move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>, InsightConfig), String> {
+    let resolved = move || -> Result<
+        (Variant, RuleSet, bool, Option<VsAiConfig>, InsightConfig, bool),
+        String,
+    > {
             let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
             let variant =
                 parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
@@ -89,12 +91,18 @@ pub fn LocalPage() -> impl IntoView {
             } else {
                 InsightConfig::default()
             };
-            Ok((variant, rules, wip, ai, insight))
+            // Mirror is xiangqi pass-and-play only (the picker only
+            // exposes the checkbox there). Vs-AI / banqi / three-kingdom
+            // silently drop the flag.
+            let mirror = matches!(variant, Variant::Xiangqi)
+                && parsed.mode == PlayMode::Pvp
+                && parsed.mirror;
+            Ok((variant, rules, wip, ai, insight, mirror))
         };
 
     move || match resolved() {
-        Ok((variant, rules, wip, ai, insight)) => view! {
-            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight/>
+        Ok((variant, rules, wip, ai, insight, mirror)) => view! {
+            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight mirror=mirror/>
         }
         .into_view(),
         Err(msg) => view! {
@@ -117,6 +125,12 @@ fn LocalGame(
     wip: bool,
     ai: Option<VsAiConfig>,
     insight: InsightConfig,
+    /// Pass-and-play only: rotate Black piece glyphs 180° and split the
+    /// captured-pieces strip to opposite edges of the board so two
+    /// players sitting on opposite sides of the device each read their
+    /// own pieces upright. Resolved upstream — already gated to xiangqi
+    /// + Pvp mode by the caller.
+    mirror: bool,
 ) -> impl IntoView {
     let initial_rules = rules.clone();
     let state = create_rw_signal(GameState::new(rules));
@@ -622,9 +636,13 @@ fn LocalGame(
     // toggles between `debug_analysis` (sticky cache) and
     // `hint_analysis` (live cache) based on `hint_view_active`.
 
+    let mirror_signal: Signal<bool> = Signal::derive(move || mirror);
     view! {
         <section class="game-page">
-            <div class="board-pane">
+            <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
+                <Show when=move || mirror && !wip>
+                    <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
+                </Show>
                 <Board
                     shape=shape
                     observer=observer
@@ -632,6 +650,7 @@ fn LocalGame(
                     selected=effective_selected
                     on_click=on_click
                     highlighted_pv=highlighted_pv_signal
+                    mirror_black=mirror_signal
                 />
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">
@@ -662,8 +681,11 @@ fn LocalGame(
                 <Show when=move || !wip>
                     <EndOverlay view=view role=role_signal enabled=fx_confetti/>
                 </Show>
-                <Show when=move || !wip>
+                <Show when=move || !wip && !mirror>
                     <CapturedStrip view=view/>
+                </Show>
+                <Show when=move || !wip && mirror>
+                    <CapturedStrip view=view placement={CapturedSlot::MirroredBelow}/>
                 </Show>
             </div>
             <Sidebar
