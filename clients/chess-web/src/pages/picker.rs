@@ -54,10 +54,17 @@ fn XiangqiCard() -> impl IntoView {
     // Empty = use difficulty default depth; numeric = override (clamped
     // 1..=MAX_AI_DEPTH on parse).
     let ai_depth_text = create_rw_signal(String::new());
-    // Picker writes the canonical "user" URL token `hints=1` rather
-    // than the legacy `debug=1`. Both work in local mode (parse_local_rules
-    // ORs them); `hints=1` is what shareable links surface.
-    let ai_debug = create_rw_signal(false);
+    // Two independent advanced toggles — see the corresponding fields
+    // on `LocalRulesParams` for the semantic split:
+    //   - ai_show_hints → URL `hints=1` → in-game 🧠 toggle button,
+    //     default hidden, runs analyze from the human's POV when
+    //     opened (player-friendly).
+    //   - ai_show_debug → URL `debug=1` → sticky always-on panel
+    //     showing the AI's POV after each AI move (power-user).
+    // Both can be enabled together; `pages/local.rs` mounts a single
+    // `<DebugPanel>` and lets either source feed it.
+    let ai_show_hints = create_rw_signal(false);
+    let ai_show_debug = create_rw_signal(false);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
         let ai_depth =
@@ -70,7 +77,8 @@ fn XiangqiCard() -> impl IntoView {
             ai_strategy: ai_strategy.get(),
             ai_variation: ai_variation.get(),
             ai_depth,
-            ai_hints: ai_debug.get(),
+            ai_debug: ai_show_debug.get(),
+            ai_hints: ai_show_hints.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -170,14 +178,22 @@ fn XiangqiCard() -> impl IntoView {
                     />
                 </fieldset>
                 <fieldset class="card-fieldset">
-                    <legend>"AI hints (advanced)"</legend>
+                    <legend>"AI insight panels (advanced)"</legend>
                     <label class="check-row">
                         <input
                             type="checkbox"
-                            prop:checked=move || ai_debug.get()
-                            on:change=move |ev| ai_debug.set(event_target_checked(&ev))
+                            prop:checked=move || ai_show_hints.get()
+                            on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
                         />
-                        <span>"Allow AI hints — adds a 🧠 toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (top scored moves + principal variation overlay). Hidden by default; you stay in control."</span>
+                        <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from your POV). Hidden by default; you stay in control."</span>
+                    </label>
+                    <label class="check-row">
+                        <input
+                            type="checkbox"
+                            prop:checked=move || ai_show_debug.get()
+                            on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
+                        />
+                        <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis from the bot's POV after each AI turn). For development / curiosity."</span>
                     </label>
                 </fieldset>
                 <fieldset class="card-fieldset">

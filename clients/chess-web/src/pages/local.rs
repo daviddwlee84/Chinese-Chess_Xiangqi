@@ -386,7 +386,13 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                 }
                 if let Some(a) = analysis {
                     let chosen_mv = a.chosen.mv.clone();
-                    if cfg.debug || cfg.hints {
+                    // Cache AI's POV analysis ONLY for ?debug=1 mode
+                    // (sticky panel showing "why did the bot pick
+                    // this?"). For ?hints=1 mode, the hint pump runs
+                    // separately for the human's POV — caching AI's
+                    // POV here would clobber the human's hint with
+                    // stale debug data on the very next AI turn.
+                    if cfg.debug {
                         ai_analysis.set(Some(a));
                     }
                     state.update(|s| {
@@ -419,8 +425,15 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
     if let Some(cfg) = ai {
         if cfg.hints && !cfg.debug {
             create_effect(move |_| {
+                // All four reads are tracked so the effect re-fires when
+                // ANY of them change. Critical: `ai_thinking` flips
+                // false AFTER `state.update()` in the AI pump, so the
+                // first reactive fire (from state change) sees thinking
+                // still true and bails. We need the second fire (from
+                // ai_thinking → false) to actually run analyze.
                 let s = state.get();
                 let visible = panel_visible.get();
+                let thinking = ai_thinking.get();
                 if !visible {
                     return;
                 }
@@ -429,31 +442,44 @@ fn LocalGame(variant: Variant, rules: RuleSet, wip: bool, ai: Option<VsAiConfig>
                     return;
                 }
                 if s.side_to_move == cfg.ai_side {
-                    // AI's turn — the AI pump handles analysis (and
-                    // its result lives until the human plays back).
+                    // AI's turn — wait until AI moves and side flips.
                     return;
                 }
-                if ai_thinking.get_untracked() {
+                if thinking {
+                    // AI mid-think; will re-fire when ai_thinking → false.
                     return;
                 }
-                let cur_epoch = move_epoch.get_untracked();
+                // Snapshot the position hash for invalidation. Using
+                // `position_hash` (from chess-core v5) lets us cancel
+                // stale tasks WITHOUT depending on `move_epoch` —
+                // which is bumped by the AI pump's
+                // `state.update(...) → move_epoch.update(...)` ordering
+                // race (the hint effect would fire from `state.update`
+                // BEFORE `move_epoch.update`, capturing the pre-bump
+                // epoch and then bailing 40ms later when it doesn't
+                // match).
+                let snapshot = s;
+                let snapshot_hash = snapshot.position_hash;
                 let opts = AiOptions {
                     difficulty: cfg.difficulty,
                     max_depth: cfg.depth,
-                    seed: Some(cur_epoch as u64 ^ 0xC0FFEE_BABE_u64),
+                    seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
                     strategy: cfg.strategy,
                     randomness: Some(chess_ai::Randomness::STRICT),
                 };
-                let snapshot = s;
                 wasm_bindgen_futures::spawn_local(async move {
                     // Yield a frame so the UI repaints (toggle button
                     // flips state visibly) before the search blocks.
                     gloo_timers::future::TimeoutFuture::new(40).await;
-                    if move_epoch.get_untracked() != cur_epoch {
+                    // Bail if state moved on while we yielded.
+                    let current_hash = state.with_untracked(|cur| cur.position_hash);
+                    if current_hash != snapshot_hash {
                         return;
                     }
                     let analysis = chess_ai::analyze(&snapshot, &opts);
-                    if move_epoch.get_untracked() != cur_epoch {
+                    // Bail if state moved on during the search itself.
+                    let current_hash = state.with_untracked(|cur| cur.position_hash);
+                    if current_hash != snapshot_hash {
                         return;
                     }
                     if let Some(a) = analysis {
