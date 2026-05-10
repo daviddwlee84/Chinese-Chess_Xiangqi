@@ -383,6 +383,15 @@ pub struct NetView {
     /// `Some(state)` while the user is typing a coord move (`:` or `m`).
     /// Mutually exclusive with `chat_input`.
     pub coord_input: Option<CoordInputState>,
+    /// Server's `hints_allowed` flag for this room (v5+ protocol). `None`
+    /// while waiting for the welcome; `Some(b)` once Hello/Spectating
+    /// arrives. The TUI debug panel (`D` key) only shows analysis in
+    /// net mode when this is `Some(true)`.
+    pub hints_allowed: Option<bool>,
+    /// Cached `chess_ai::AiAnalysis` for the current `last_view`. Lazily
+    /// computed when the user opens the debug panel and `hints_allowed`
+    /// is true. Reset to `None` on every `Update`.
+    pub last_analysis: Option<chess_ai::AiAnalysis>,
 }
 
 /// Free-text "ws://host:port" prompt entered before the lobby.
@@ -406,6 +415,11 @@ pub struct LobbyView {
     /// When `Some`, the user picked a password-locked room and we're
     /// reading the password into this buffer before issuing the join.
     pub pending_join: Option<PendingJoin>,
+    /// CLI `--hints` flag — appended to every join URL emitted from
+    /// this lobby. The server ignores it for existing rooms (first-
+    /// joiner wins); it's only effective when this user creates a
+    /// fresh room.
+    pub want_hints: bool,
 }
 
 pub struct PendingJoin {
@@ -713,6 +727,8 @@ impl AppState {
                 chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
                 chat_input: None,
                 coord_input: None,
+                hints_allowed: None,
+                last_analysis: None,
             })),
             style,
             use_color,
@@ -749,7 +765,16 @@ impl AppState {
     }
 
     /// Open the lobby browser against `host` (e.g. `"ws://127.0.0.1:7878"`).
-    pub fn new_lobby(host: String, style: Style, use_color: bool, observer: Side) -> Self {
+    /// `want_hints = true` makes every room-join URL emitted from this
+    /// lobby append `?hints=1` (only effective when this user creates
+    /// a fresh room — server first-write-wins).
+    pub fn new_lobby(
+        host: String,
+        style: Style,
+        use_color: bool,
+        observer: Side,
+        want_hints: bool,
+    ) -> Self {
         let client = NetClient::spawn(format!("{host}/lobby"));
         Self {
             screen: Screen::Lobby(Box::new(LobbyView {
@@ -760,6 +785,7 @@ impl AppState {
                 last_msg: Some("Connecting to lobby…".into()),
                 connected: false,
                 pending_join: None,
+                want_hints,
             })),
             style,
             use_color,
@@ -915,8 +941,25 @@ impl AppState {
                 self.debug_open = !self.debug_open;
                 let has_analysis =
                     matches!(&self.screen, Screen::Game(g) if g.last_analysis.is_some());
+                // Net-mode message accounts for hints permission and the
+                // (current) lack of in-TUI analysis. Web client has the
+                // full panel — nudge users there until TUI catches up.
+                let net_hints =
+                    if let Screen::Net(n) = &self.screen { n.hints_allowed } else { None };
                 let msg = if !self.debug_open {
                     "AI debug panel: hidden".to_string()
+                } else if matches!(&self.screen, Screen::Net(_)) {
+                    match net_hints {
+                        None => "AI debug panel: waiting for room welcome".into(),
+                        Some(false) => {
+                            "AI debug panel: this room has hints disabled (creator must set ?hints=1)"
+                                .into()
+                        }
+                        Some(true) => {
+                            "AI debug panel: hints sanctioned for this room — use the web client for the full panel"
+                                .into()
+                        }
+                    }
                 } else if has_analysis {
                     "AI debug panel: shown — ',' / '.' to navigate scored moves; PV overlays board"
                         .to_string()
@@ -1059,7 +1102,7 @@ impl AppState {
             Screen::CreateRoom(c) => {
                 let host = c.host.clone();
                 self.replace_preserving_prefs(AppState::new_lobby(
-                    host, style, use_color, observer,
+                    host, style, use_color, observer, /*want_hints=*/ false,
                 ));
             }
             // Esc inside Game / Net while a coord-input prompt is open: close
@@ -1171,9 +1214,13 @@ impl AppState {
             return;
         }
         let host = l.host.clone();
+        let want_hints = l.want_hints;
         let style = self.style;
         let use_color = self.use_color;
-        let url = format!("{host}/ws/{}?role=spectator", room.id);
+        let mut url = format!("{host}/ws/{}?role=spectator", room.id);
+        if want_hints {
+            url.push_str("&hints=1");
+        }
         self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
     }
 
@@ -1388,13 +1435,15 @@ impl AppState {
                     return;
                 }
                 let host = l.host.clone();
+                let want_hints = l.want_hints;
                 let style = self.style;
                 let use_color = self.use_color;
-                self.replace_preserving_prefs(AppState::new_net(
-                    format!("{host}/ws/{}", room.id),
-                    style,
-                    use_color,
-                ));
+                let url = if want_hints {
+                    format!("{host}/ws/{}?hints=1", room.id)
+                } else {
+                    format!("{host}/ws/{}", room.id)
+                };
+                self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
             }
             Action::LobbyCreate => {
                 let host = l.host.clone();
@@ -1432,7 +1481,7 @@ impl AppState {
                     let use_color = self.use_color;
                     let observer = self.observer;
                     self.replace_preserving_prefs(AppState::new_lobby(
-                        host, style, use_color, observer,
+                        host, style, use_color, observer, /*want_hints=*/ false,
                     ));
                 }
                 _ => {}
@@ -1479,6 +1528,13 @@ impl AppState {
                         Some(pw) => format!("{host}/ws/{id}?password={}", urlencode(&pw)),
                         None => format!("{host}/ws/{id}"),
                     };
+                    // CreateRoom is reached from the lobby — no straight-
+                    // forward way to read `LobbyView.want_hints` here
+                    // (we've already transitioned to `CreateRoom`). For
+                    // now CreateRoom doesn't carry the flag; users who
+                    // want a hint-sanctioned room should join via the
+                    // lobby's `j` (which respects `--hints`) or pass
+                    // `--connect ws://.../ws/<id>?hints=1` directly.
                     let style = self.style;
                     let use_color = self.use_color;
                     self.replace_preserving_prefs(AppState::new_net(url, style, use_color));
@@ -1494,6 +1550,7 @@ impl AppState {
                     Action::TextBackspace => text_input::backspace(&mut pj.password_buf),
                     Action::Submit => {
                         let host = l.host.clone();
+                        let want_hints = l.want_hints;
                         let pj_owned = l.pending_join.take().unwrap();
                         let mut url = format!(
                             "{host}/ws/{}?password={}",
@@ -1502,6 +1559,9 @@ impl AppState {
                         );
                         if pj_owned.as_spectator {
                             url.push_str("&role=spectator");
+                        }
+                        if want_hints {
+                            url.push_str("&hints=1");
                         }
                         let style = self.style;
                         let use_color = self.use_color;
@@ -2211,7 +2271,7 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
             n.last_msg = Some("Connected. Waiting for welcome…".into());
         }
         NetEvent::Server(boxed) => match *boxed {
-            ServerMsg::Hello { observer, rules, view, .. } => {
+            ServerMsg::Hello { observer, rules, view, hints_allowed, .. } => {
                 let was_seated = n.role.is_some();
                 n.role = Some(NetRole::Player(observer));
                 n.rules = Some(rules);
@@ -2221,14 +2281,17 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
                 n.selected = None;
                 n.last_view = Some(view);
                 n.connected = true;
+                n.hints_allowed = Some(hints_allowed);
+                n.last_analysis = None;
                 // First Hello = "Joined as X". Subsequent Hello = rematch reset.
                 n.last_msg = Some(if was_seated {
                     "Rematch — new game.".into()
                 } else {
-                    format!("Joined as {}.", side_label(observer))
+                    let hints_note = if hints_allowed { " (🧠 hints allowed)" } else { "" };
+                    format!("Joined as {}{}.", side_label(observer), hints_note)
                 });
             }
-            ServerMsg::Spectating { rules, view, .. } => {
+            ServerMsg::Spectating { rules, view, hints_allowed, .. } => {
                 let was_welcomed = n.role.is_some();
                 n.role = Some(NetRole::Spectator);
                 n.rules = Some(rules);
@@ -2238,10 +2301,13 @@ fn apply_net_event(n: &mut NetView, evt: NetEvent) {
                 n.selected = None;
                 n.last_view = Some(view);
                 n.connected = true;
+                n.hints_allowed = Some(hints_allowed);
+                n.last_analysis = None;
                 n.last_msg = Some(if was_welcomed {
                     "Rematch — new game (spectating).".into()
                 } else {
-                    "Joined as spectator (read-only).".into()
+                    let hints_note = if hints_allowed { " (🧠 hints allowed)" } else { "" };
+                    format!("Joined as spectator (read-only){}.", hints_note)
                 });
             }
             ServerMsg::Update { view } => {

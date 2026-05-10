@@ -54,6 +54,9 @@ fn XiangqiCard() -> impl IntoView {
     // Empty = use difficulty default depth; numeric = override (clamped
     // 1..=MAX_AI_DEPTH on parse).
     let ai_depth_text = create_rw_signal(String::new());
+    // Picker writes the canonical "user" URL token `hints=1` rather
+    // than the legacy `debug=1`. Both work in local mode (parse_local_rules
+    // ORs them); `hints=1` is what shareable links surface.
     let ai_debug = create_rw_signal(false);
     let href = move || {
         let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
@@ -67,7 +70,7 @@ fn XiangqiCard() -> impl IntoView {
             ai_strategy: ai_strategy.get(),
             ai_variation: ai_variation.get(),
             ai_depth,
-            ai_debug: ai_debug.get(),
+            ai_hints: ai_debug.get(),
             ..Default::default()
         };
         app_href(&build_local_href(Variant::Xiangqi, &params))
@@ -167,14 +170,14 @@ fn XiangqiCard() -> impl IntoView {
                     />
                 </fieldset>
                 <fieldset class="card-fieldset">
-                    <legend>"Debug (advanced)"</legend>
+                    <legend>"AI hints (advanced)"</legend>
                     <label class="check-row">
                         <input
                             type="checkbox"
                             prop:checked=move || ai_debug.get()
                             on:change=move |ev| ai_debug.set(event_target_checked(&ev))
                         />
-                        <span>"AI debug panel — show all scored root moves + hover-to-highlight on board. Useful for understanding why the AI picked what it did."</span>
+                        <span>"Show AI hints — open a side panel with all scored root moves, principal variation, and hover-to-highlight on the board. Helps you understand the AI's reasoning and find the best move yourself."</span>
                     </label>
                 </fieldset>
                 <fieldset class="card-fieldset">
@@ -183,10 +186,19 @@ fn XiangqiCard() -> impl IntoView {
                         <input
                             type="radio"
                             name="xiangqi-engine"
+                            prop:checked=move || ai_strategy.get() == Strategy::IterativeDeepeningTtV5
+                            on:change=move |_| ai_strategy.set(Strategy::IterativeDeepeningTtV5)
+                        />
+                        <span>"v5 — iterative deepening + transposition table (recommended). v4's evaluator with TT-amortized search; ~50% fewer nodes in endgames."</span>
+                    </label>
+                    <label class="radio-row">
+                        <input
+                            type="radio"
+                            name="xiangqi-engine"
                             prop:checked=move || ai_strategy.get() == Strategy::QuiescenceMvvLvaV4
                             on:change=move |_| ai_strategy.set(Strategy::QuiescenceMvvLvaV4)
                         />
-                        <span>"v4 — quiescence + MVV-LVA (recommended). Avoids horizon-effect blunders on captures."</span>
+                        <span>"v4 — quiescence + MVV-LVA. Avoids horizon-effect blunders on captures."</span>
                     </label>
                     <label class="radio-row">
                         <input

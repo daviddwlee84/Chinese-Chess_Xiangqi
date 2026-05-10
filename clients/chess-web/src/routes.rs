@@ -140,6 +140,15 @@ pub struct LocalRulesParams {
     /// `&debug=1`. Default off (consumes ~no extra search cost — the
     /// scored list is computed regardless; `&debug=1` just exposes it).
     pub ai_debug: bool,
+    /// User-facing alias for [`Self::ai_debug`]: opens the same AI
+    /// hint / debug panel via the friendlier URL token `&hints=1`.
+    /// Local mode treats `ai_debug || ai_hints` as the trigger to
+    /// mount the panel — both flags are functionally equivalent
+    /// offline (e.g. on the GitHub Pages build). In net mode (`/play/`)
+    /// neither flag is enough on its own — the server's
+    /// `hints_allowed` (set at room creation by the first joiner's
+    /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
+    pub ai_hints: bool,
 }
 
 /// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
@@ -161,6 +170,7 @@ impl Default for LocalRulesParams {
             ai_variation: None,
             ai_depth: None,
             ai_debug: false,
+            ai_hints: false,
         }
     }
 }
@@ -193,6 +203,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         .and_then(|s| s.parse::<u32>().ok())
         .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
     let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
+    let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
     LocalRulesParams {
         strict,
         house: house::normalize(house),
@@ -204,6 +215,7 @@ pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesPara
         ai_variation,
         ai_depth,
         ai_debug,
+        ai_hints,
     }
 }
 
@@ -243,9 +255,14 @@ pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String 
                 if let Some(d) = params.ai_depth {
                     parts.push(format!("depth={}", d));
                 }
-                // Debug panel toggle.
+                // Debug panel toggle (legacy admin URL).
                 if params.ai_debug {
                     parts.push("debug=1".to_string());
+                }
+                // Hint mode toggle — friendlier URL alias for the same
+                // panel in local mode. The picker writes this one.
+                if params.ai_hints {
+                    parts.push("hints=1".to_string());
                 }
             }
         }
@@ -633,6 +650,35 @@ mod tests {
             let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", token)]));
             assert!(!p.ai_debug, "token {:?} should NOT enable debug", token);
         }
+    }
+
+    #[test]
+    fn xiangqi_hints_round_trips() {
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("hints", "1")]));
+        assert!(p.ai_hints);
+        // ai_debug stays independent (hint is its own URL flag).
+        assert!(!p.ai_debug);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("hints=1"), "hints= round-trip: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_hints_and_debug_can_coexist() {
+        // Both URL tokens together → both flags set; canonical
+        // emission preserves both. In local.rs the panel mounts when
+        // either is true.
+        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", "1"), ("hints", "1")]));
+        assert!(p.ai_debug && p.ai_hints);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(q.contains("debug=1") && q.contains("hints=1"), "both kept: {}", q);
+    }
+
+    #[test]
+    fn xiangqi_hints_default_off_omitted_from_query() {
+        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+        assert!(!p.ai_hints);
+        let q = build_local_query(Variant::Xiangqi, &p);
+        assert!(!q.contains("hints="), "off should not be emitted; got {}", q);
     }
 
     #[test]

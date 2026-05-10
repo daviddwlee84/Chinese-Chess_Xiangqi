@@ -32,6 +32,11 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
     let (rooms, set_rooms) = create_signal::<Vec<RoomSummary>>(vec![]);
     let (room_input, set_room_input) = create_signal::<String>(String::new());
     let (password_input, set_password_input) = create_signal::<String>(String::new());
+    // Opt-in checkbox: when checked, "Create / Join" appends `?hints=1`
+    // so this client becomes the room's first joiner with hints
+    // sanctioned. If joining an existing room, the existing room's
+    // setting wins (server-side first-write-wins, like password).
+    let (allow_hints, set_allow_hints) = create_signal::<bool>(false);
 
     let (handle, incoming, conn) = connect(lobby_url(&ws_base));
 
@@ -50,6 +55,7 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
     let ws_for_join = ws_base.clone();
     let go_to_room: Callback<String> = Callback::new(move |id: String| {
         let pw = password_input.get_untracked();
+        let want_hints = allow_hints.get_untracked();
         let mut pairs = Vec::new();
         if let Some(pair) = ws_query_pair(&ws_for_join) {
             pairs.push(pair);
@@ -57,12 +63,16 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
         if !pw.is_empty() {
             pairs.push(format!("password={}", urlencode(&pw)));
         }
+        if want_hints {
+            pairs.push("hints=1".to_string());
+        }
         navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
     });
 
     let ws_for_watch = ws_base.clone();
     let watch_room: Callback<String> = Callback::new(move |id: String| {
         let pw = password_input.get_untracked();
+        let want_hints = allow_hints.get_untracked();
         let mut pairs = Vec::new();
         if let Some(pair) = ws_query_pair(&ws_for_watch) {
             pairs.push(pair);
@@ -70,6 +80,14 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
         pairs.push("role=spectator".to_string());
         if !pw.is_empty() {
             pairs.push(format!("password={}", urlencode(&pw)));
+        }
+        if want_hints {
+            // Spectators forward hints=1 too — useful for the "watch
+            // your friend's game with AI commentary" flow when the
+            // creator forgot to enable it. Server still gates on
+            // first-joiner; spectators arrive after seats fill so this
+            // mostly applies when watching an empty / new room.
+            pairs.push("hints=1".to_string());
         }
         navigate_external(&append_query_pairs(&format!("/play/{id}"), pairs));
     });
@@ -105,6 +123,14 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
                     prop:value=password_input
                     on:input=move |ev| set_password_input.set(event_target_value(&ev))
                 />
+                <label class="check-row" title="When you create a new room with this checked, both players + spectators get the AI hint panel. Frozen at creation; existing rooms keep their setting.">
+                    <input
+                        type="checkbox"
+                        prop:checked=move || allow_hints.get()
+                        on:change=move |ev| set_allow_hints.set(event_target_checked(&ev))
+                    />
+                    <span>"🧠 Allow AI hints in this room (anti-cheat: must be set BEFORE the game starts)"</span>
+                </label>
                 <button class="btn btn-primary" on:click=create_or_join>
                     "Create / Join"
                 </button>
@@ -120,11 +146,12 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
                     <For
                         each=move || rooms.get()
                         key=|r| format!(
-                            "{}|{}|{}|{:?}",
+                            "{}|{}|{}|{:?}|{}",
                             r.id,
                             r.seats,
                             r.spectators,
-                            r.status
+                            r.status,
+                            r.hints_allowed,
                         )
                         children=move |room| {
                             let id_join = room.id.clone();
@@ -142,6 +169,9 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
                                     <span class="room-seats">{seats_label}</span>
                                     {if room.has_password {
                                         view! { <span class="room-lock" title="password protected">"🔒"</span> }.into_view()
+                                    } else { ().into_view() }}
+                                    {if room.hints_allowed {
+                                        view! { <span class="room-hints" title="AI hints enabled — both players + spectators see the panel">"🧠"</span> }.into_view()
                                     } else { ().into_view() }}
                                     <span class=room_status_class(room.status)>{room_status_label(room.status)}</span>
                                     <span class="room-actions">

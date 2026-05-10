@@ -59,7 +59,12 @@ pub fn LocalPage() -> impl IntoView {
                 strategy: parsed.ai_strategy,
                 randomness: parsed.ai_variation,
                 depth: parsed.ai_depth,
-                debug: parsed.ai_debug,
+                // Local mode: hints and debug are functionally
+                // equivalent — both mount the AI panel. The picker's
+                // "Show AI hints" checkbox writes `hints=1`; legacy
+                // `debug=1` URLs continue to work. Net mode (play.rs)
+                // adds a server-permission gate on top of these.
+                debug: parsed.ai_debug || parsed.ai_hints,
             })
         } else {
             None

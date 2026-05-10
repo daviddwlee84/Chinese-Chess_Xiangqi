@@ -1480,6 +1480,13 @@ fn draw_sidebar_net(
 
     lines.push(line_label_value("Server:", &n.url));
     lines.push(line_label_value("Connection:", if n.connected { "live" } else { "disconnected" }));
+    // Surface the room's hints sanction so opponents see when AI hints
+    // are sanctioned. Matches the web client's "🧠 hints enabled"
+    // banner. None until welcome arrives.
+    if let Some(allowed) = n.hints_allowed {
+        lines
+            .push(line_label_value("AI hints:", if allowed { "enabled (🧠)" } else { "disabled" }));
+    }
 
     lines.push(Line::from(""));
     if let Some(msg) = &n.last_msg {

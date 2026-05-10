@@ -41,6 +41,9 @@ pub fn PlayPage() -> impl IntoView {
     let debug_enabled = query.with(|q| {
         matches!(q.get("debug").map(|s| s.as_str()), Some("1") | Some("true") | Some("on"))
     });
+    let hints_requested = query.with(|q| {
+        matches!(q.get("hints").map(|s| s.as_str()), Some("1") | Some("true") | Some("on"))
+    });
     let raw_ws = query.with(|q| q.get(WS_QUERY_KEY).cloned());
 
     let room_now = room();
@@ -51,6 +54,12 @@ pub fn PlayPage() -> impl IntoView {
         }
         if watch_only() {
             pairs.push("role=spectator".to_string());
+        }
+        if hints_requested {
+            // Forward hints flag through the WS-base setup wall so the
+            // first-joiner request reaches the server even if we have
+            // to detour through the WsSetup screen first.
+            pairs.push("hints=1".to_string());
         }
         append_query_pairs(&format!("/play/{room_now}"), pairs)
     };
@@ -75,6 +84,7 @@ pub fn PlayPage() -> impl IntoView {
             password=password()
             watch_only=watch_only()
             debug_enabled=debug_enabled
+            hints_requested=hints_requested
         />
     }
     .into_view()
@@ -87,9 +97,17 @@ fn PlayConnected(
     password: Option<String>,
     watch_only: bool,
     debug_enabled: bool,
+    /// `?hints=1` was set on the URL. The server may or may not honor
+    /// it: if this client is the first joiner the room becomes
+    /// `hints_allowed=true`; otherwise the existing room's flag wins
+    /// and we may end up with `hints_allowed=false` — in which case
+    /// the panel stays hidden + a toast warns the user.
+    hints_requested: bool,
 ) -> impl IntoView {
     // Open the WS once on mount. Spectator opt-in propagates into the URL.
-    let url = room_url(&ws_base, &room, password.as_deref(), watch_only);
+    // hints_requested → `?hints=1` on the WS URL so the server can
+    // (try to) sanction this room.
+    let url = room_url(&ws_base, &room, password.as_deref(), watch_only, hints_requested);
     let (handle, incoming, conn) = connect(url);
 
     let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
@@ -97,19 +115,36 @@ fn PlayConnected(
     let (view_signal, set_view) = create_signal::<Option<PlayerView>>(None);
     let (chat, set_chat) = create_signal::<Vec<ChatLine>>(Vec::new());
     let (toast, set_toast) = create_signal::<Option<String>>(None);
+    // `Some(true|false)` once Hello/Spectating arrives; `None` while
+    // waiting for the welcome.
+    let (hints_allowed, set_hints_allowed) = create_signal::<Option<bool>>(None);
 
     create_effect(move |_| match incoming.get() {
-        Some(ServerMsg::Hello { observer, rules: r, view: v, .. }) => {
+        Some(ServerMsg::Hello { observer, rules: r, view: v, hints_allowed: h, .. }) => {
             set_role.set(Some(ClientRole::Player(observer)));
             set_rules.set(Some(r));
             set_view.set(Some(v));
+            set_hints_allowed.set(Some(h));
             set_toast.set(None);
+            // If the user asked for hints and the room said no, warn
+            // visibly. Don't block the game — they can still play.
+            if (debug_enabled || hints_requested) && !h {
+                set_toast.set(Some(
+                    "Hints not enabled in this room — the panel is hidden for fairness.".into(),
+                ));
+            }
         }
-        Some(ServerMsg::Spectating { rules: r, view: v, .. }) => {
+        Some(ServerMsg::Spectating { rules: r, view: v, hints_allowed: h, .. }) => {
             set_role.set(Some(ClientRole::Spectator));
             set_rules.set(Some(r));
             set_view.set(Some(v));
+            set_hints_allowed.set(Some(h));
             set_toast.set(None);
+            if (debug_enabled || hints_requested) && !h {
+                set_toast.set(Some(
+                    "Hints not enabled in this room — the panel is hidden for fairness.".into(),
+                ));
+            }
         }
         Some(ServerMsg::Update { view: v }) => {
             set_view.set(Some(v));
@@ -146,17 +181,26 @@ fn PlayConnected(
     let view_for_overlay = Signal::derive(move || view_signal.get());
     let role_for_overlay: Signal<Option<ClientRole>> = role.into();
 
-    // Net debug overlay: when ?debug=1, run chess_ai::analyze on every
-    // PlayerView update (xiangqi only — banqi has hidden info we can't
-    // analyze without cheating). Pure client-side; no server / protocol
-    // changes. Spectators and players both see the panel; whether to
-    // surface it to opponents-via-screenshare is a UX call left to the
-    // user. Analysis happens lazily — if the URL doesn't have ?debug=1
-    // we skip the work entirely.
+    // Net debug / hint overlay. Net mode adds a server-permission gate
+    // on top of the URL flag: the room creator must have set
+    // `?hints=1` so the server's `hints_allowed` is true. This closes
+    // the previous client-only `?debug=1` cheat hole — the panel only
+    // mounts when the room sanctioned it. Local mode (offline /
+    // GitHub Pages standalone) skips this gate entirely; see
+    // `pages/local.rs`.
+    let panel_requested = debug_enabled || hints_requested;
     let ai_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
     let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
-    if debug_enabled {
+    let panel_visible =
+        Signal::derive(move || panel_requested && hints_allowed.get().unwrap_or(false));
+    if panel_requested {
         create_effect(move |_| {
+            // Only run analysis when the panel is going to be shown —
+            // server-denied requests skip the search work entirely.
+            if !panel_visible.get() {
+                ai_analysis.set(None);
+                return;
+            }
             let Some(v) = view_signal.get() else {
                 ai_analysis.set(None);
                 return;
@@ -179,7 +223,7 @@ fn PlayConnected(
                 randomness: Some(chess_ai::Randomness::STRICT),
             };
             // Yield a frame so the board re-paints first; keeps the UI
-            // snappy even if v4 Hard takes ~300 ms in WASM.
+            // snappy even if v5 Hard takes ~300 ms in WASM.
             wasm_bindgen_futures::spawn_local(async move {
                 gloo_timers::future::TimeoutFuture::new(40).await;
                 let analysis = chess_ai::analyze(&state, &opts);
@@ -196,6 +240,11 @@ fn PlayConnected(
     view! {
         <section class="game-page">
             <div class="board-pane">
+                <Show when=move || hints_allowed.get().unwrap_or(false)>
+                    <div class="hints-banner">
+                        "🧠 AI hints enabled in this room — visible to both players + spectators."
+                    </div>
+                </Show>
                 <Show
                     when=move || view_signal.get().is_some() && role.get().is_some()
                     fallback=move || view! { <ConnPlaceholder room=room.clone() conn=conn/> }
@@ -237,7 +286,7 @@ fn PlayConnected(
                     on_send=on_chat_send
                 />
             </div>
-            <Show when=move || debug_enabled>
+            <Show when=move || panel_visible.get()>
                 {move || {
                     // Pre-build a fresh xiangqi board for ICCS encoding.
                     // Net mode doesn't have a fixed Board reference; the

@@ -55,7 +55,13 @@ pub fn lobby_url(ws: &WsBase) -> String {
     format!("{}/lobby", ws.base)
 }
 
-pub fn room_url(ws: &WsBase, room: &str, password: Option<&str>, spectator: bool) -> String {
+pub fn room_url(
+    ws: &WsBase,
+    room: &str,
+    password: Option<&str>,
+    spectator: bool,
+    hints: bool,
+) -> String {
     let base = format!("{}/ws/{}", ws.base, encode(room));
     let mut params: Vec<String> = Vec::new();
     if let Some(pw) = password.filter(|p| !p.is_empty()) {
@@ -63,6 +69,13 @@ pub fn room_url(ws: &WsBase, room: &str, password: Option<&str>, spectator: bool
     }
     if spectator {
         params.push("role=spectator".to_string());
+    }
+    if hints {
+        // First-joiner request — sets `RoomState.hints_allowed = true`
+        // for the room's lifetime. Subsequent joiners' values are
+        // ignored server-side. See `crates/chess-net/src/protocol.rs`
+        // PROTOCOL_VERSION v4→v5 doc.
+        params.push("hints=1".to_string());
     }
     if params.is_empty() {
         base

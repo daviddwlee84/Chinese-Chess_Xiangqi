@@ -555,10 +555,24 @@ body {
 .room-variant { color: var(--muted); font-size: 0.9rem; }
 .room-seats { color: var(--muted); font-size: 0.9rem; }
 .room-lock { font-size: 0.85rem; }
+.room-hints { font-size: 0.85rem; }
 .room-status { font-size: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 0.2rem; }
 .room-status.lobby { background: rgba(122, 108, 90, 0.3); color: var(--fg); }
 .room-status.playing { background: rgba(40, 120, 60, 0.4); color: #d6f3d8; }
 .room-status.finished { background: rgba(178, 34, 34, 0.3); color: #f3d6d6; }
+
+/* AI hints banner above the board in net mode (server says
+   hints_allowed). Tells both players + spectators that the AI panel
+   is sanctioned for this room. */
+.hints-banner {
+  background: rgba(80, 130, 200, 0.18);
+  color: #d6e3f3;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.3rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
 
 /* Connection banner. */
 .conn-banner { margin: 0; padding: 0.4rem 0.75rem; border-radius: 0.3rem; font-size: 0.9rem; }

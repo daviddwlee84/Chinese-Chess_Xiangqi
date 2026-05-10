@@ -95,6 +95,20 @@ struct Cli {
     #[arg(long)]
     password: Option<String>,
 
+    /// Request that the room sanction AI hints (the analysis panel +
+    /// PV overlay) for both players + spectators. Only takes effect
+    /// for the **first joiner** of a room — subsequent joiners with
+    /// `--hints` against an existing room are silently ignored
+    /// (server's first-write-wins, like password). The room's flag is
+    /// frozen for its lifetime; re-create the room to flip it.
+    /// Anti-cheat-friendly: opponents see the same setting in the
+    /// lobby badge and the in-game banner. The TUI's full debug panel
+    /// is currently web-only; pass this flag if you'll open the same
+    /// room in your browser to consult the panel without surprising
+    /// your opponent.
+    #[arg(long)]
+    hints: bool,
+
     #[command(subcommand)]
     cmd: Option<Cmd>,
 }
@@ -277,12 +291,19 @@ fn main() -> Result<()> {
         // Strip the /lobby suffix before storing as `host` so the lobby
         // can re-derive `/ws/<id>` for joins.
         let host = url.trim_end_matches("/lobby").to_string();
-        AppState::new_lobby(host, style, use_color, observer)
+        AppState::new_lobby(host, style, use_color, observer, cli.hints)
     } else if let Some(url) = cli.connect.as_deref() {
         let mut url = normalize_connect_url(url).map_err(|e| anyhow!(e))?;
         if let Some(pw) = cli.password.as_deref() {
             let sep = if url.contains('?') { '&' } else { '?' };
             url = format!("{url}{sep}password={}", crate::url::urlencode(pw));
+        }
+        if cli.hints {
+            // Set `RoomState.hints_allowed = true` for this room (only
+            // honored if we're the first joiner; subsequent joiners
+            // are silently ignored server-side).
+            let sep = if url.contains('?') { '&' } else { '?' };
+            url = format!("{url}{sep}hints=1");
         }
         AppState::new_net(url, style, use_color)
     } else {
