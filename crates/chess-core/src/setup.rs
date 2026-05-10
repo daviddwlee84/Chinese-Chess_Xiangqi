@@ -23,7 +23,7 @@ pub fn build_initial_state(rules: RuleSet) -> GameState {
 fn build_xiangqi(rules: RuleSet) -> GameState {
     let mut board = Board::new(BoardShape::Xiangqi9x10);
     place_xiangqi_initial(&mut board);
-    GameState {
+    let mut state = GameState {
         rules,
         board,
         side_to_move: Side::RED,
@@ -33,7 +33,10 @@ fn build_xiangqi(rules: RuleSet) -> GameState {
         side_assignment: None,
         no_progress_plies: 0,
         chain_lock: None,
-    }
+        position_hash: 0,
+    };
+    state.recompute_position_hash();
+    state
 }
 
 /// Place the 32 standard xiangqi pieces. Files indexed 0..9 left-to-right
@@ -86,7 +89,7 @@ fn build_banqi(rules: RuleSet) -> GameState {
     for (i, p) in pieces.into_iter().enumerate() {
         board.set(crate::coord::Square(i as u16), Some(PieceOnSquare::hidden(p)));
     }
-    GameState {
+    let mut state = GameState {
         rules,
         board,
         side_to_move: Side::RED,
@@ -96,7 +99,10 @@ fn build_banqi(rules: RuleSet) -> GameState {
         side_assignment: None,
         no_progress_plies: 0,
         chain_lock: None,
-    }
+        position_hash: 0,
+    };
+    state.recompute_position_hash();
+    state
 }
 
 /// One xiangqi piece-set per side, all 32 pieces. Order doesn't matter
@@ -118,7 +124,7 @@ fn banqi_piece_set() -> Vec<Piece> {
 
 fn build_three_kingdom_stub(rules: RuleSet) -> GameState {
     // PR-2 placeholder. For now build an empty 4x8 board.
-    GameState {
+    let mut state = GameState {
         rules,
         board: Board::new(BoardShape::Banqi4x8),
         side_to_move: Side(0),
@@ -128,7 +134,10 @@ fn build_three_kingdom_stub(rules: RuleSet) -> GameState {
         side_assignment: None,
         no_progress_plies: 0,
         chain_lock: None,
-    }
+        position_hash: 0,
+    };
+    state.recompute_position_hash();
+    state
 }
 
 #[cfg(test)]

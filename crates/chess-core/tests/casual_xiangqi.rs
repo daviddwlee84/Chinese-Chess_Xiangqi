@@ -65,7 +65,9 @@ fn general_captured_triggers_won_by_general_captured() {
         side_assignment: None,
         no_progress_plies: 0,
         chain_lock: None,
+        position_hash: 0,
     };
+    state.recompute_position_hash();
 
     let capture = state
         .legal_moves()

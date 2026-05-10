@@ -59,7 +59,12 @@ impl GameState {
 
     /// Deserialize from canonical JSON.
     pub fn from_json(s: &str) -> Result<Self, CoreError> {
-        serde_json::from_str(s).map_err(|e| CoreError::BadNotation(format!("json parse: {e}")))
+        let mut state: GameState = serde_json::from_str(s)
+            .map_err(|e| CoreError::BadNotation(format!("json parse: {e}")))?;
+        // Pre-v5 snapshots have no `position_hash` field — `#[serde(default)]`
+        // gives 0; recompute so the loaded state is search-ready.
+        state.recompute_position_hash();
+        Ok(state)
     }
 
     /// Emit human-friendly `.pos` text. Two-player variants only.
@@ -69,7 +74,9 @@ impl GameState {
 
     /// Parse a `.pos` text fixture into a fresh `GameState`. History is empty.
     pub fn from_pos_text(input: &str) -> Result<Self, CoreError> {
-        parse_pos_text(input)
+        let mut state = parse_pos_text(input)?;
+        state.recompute_position_hash();
+        Ok(state)
     }
 }
 
@@ -329,6 +336,7 @@ fn parse_pos_text(input: &str) -> Result<GameState, CoreError> {
         side_assignment,
         no_progress_plies,
         chain_lock: None,
+        position_hash: 0,
     })
 }
 

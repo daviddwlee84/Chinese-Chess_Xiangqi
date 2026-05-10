@@ -3,9 +3,11 @@
 pub mod history;
 pub mod repetition;
 pub mod turn_order;
+pub mod zobrist;
 
 pub use history::MoveRecord;
 pub use turn_order::TurnOrder;
+pub use zobrist::{compute_position_hash, zobrist_piece, zobrist_side_to_move};
 
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -71,11 +73,35 @@ pub struct GameState {
     /// pre-chain-mode snapshots load.
     #[serde(default)]
     pub chain_lock: Option<crate::coord::Square>,
+    /// Zobrist hash of the current position — incrementally updated by
+    /// [`Self::make_move`] / [`Self::unmake_move`]. Used by the v5+ AI
+    /// search transposition table and (forthcoming) threefold-repetition
+    /// detection. See [`zobrist`] module for what is and isn't hashed.
+    /// `#[serde(default)]` for back-compat: deserialized snapshots get
+    /// hash 0; call [`Self::recompute_position_hash`] to populate it.
+    #[serde(default)]
+    pub position_hash: u64,
 }
 
 impl GameState {
     pub fn new(rules: RuleSet) -> Self {
         crate::setup::build_initial_state(rules)
+    }
+
+    /// Recompute [`Self::position_hash`] from scratch by scanning the
+    /// board. Call after constructing a `GameState` from a struct
+    /// literal, after `serde` deserialization, or after any direct
+    /// mutation of `board` / `side_to_move` that bypasses the
+    /// `make_move`/`unmake_move` machinery.
+    pub fn recompute_position_hash(&mut self) {
+        self.position_hash = zobrist::compute_position_hash(self);
+    }
+
+    /// XOR a single piece in/out of the running [`Self::position_hash`].
+    /// Helper for the make/unmake hash maintenance below.
+    #[inline]
+    fn xor_piece(&mut self, piece: Piece, sq: crate::coord::Square) {
+        self.position_hash ^= zobrist::zobrist_piece(piece.side, piece.kind, sq.0 as usize);
     }
 
     /// Generate all legal moves for the side to move.
@@ -135,8 +161,14 @@ impl GameState {
         // Turn advances UNLESS we just entered / are continuing chain
         // mode (chain_lock now Some).
         if self.chain_lock.is_none() {
+            let prev_side = self.side_to_move;
             self.turn_order.advance();
             self.side_to_move = self.turn_order.current_side();
+            // Maintain incremental Zobrist hash: XOR off the previous
+            // stm key, XOR on the new one. (For 2-player, this just
+            // toggles the single stm bit.)
+            self.position_hash ^= zobrist::zobrist_side_to_move(prev_side);
+            self.position_hash ^= zobrist::zobrist_side_to_move(self.side_to_move);
         }
 
         Ok(())
@@ -157,12 +189,16 @@ impl GameState {
         self.chain_lock = rec.chain_lock_before;
 
         if turn_advanced {
+            let prev_side = self.side_to_move;
             if self.turn_order.current == 0 {
                 self.turn_order.current = (self.turn_order.seats.len() as u8) - 1;
             } else {
                 self.turn_order.current -= 1;
             }
             self.side_to_move = self.turn_order.current_side();
+            // Inverse of make_move's stm hash maintenance.
+            self.position_hash ^= zobrist::zobrist_side_to_move(prev_side);
+            self.position_hash ^= zobrist::zobrist_side_to_move(self.side_to_move);
         }
         // Game status reset to Ongoing — caller may recompute.
         self.status = GameStatus::Ongoing;
@@ -294,6 +330,9 @@ impl GameState {
                             Some(banqi_side_assignment(self.side_to_move, p.side));
                     }
                 }
+                // Reveal does NOT change piece location → no Zobrist delta.
+                // (See `state::zobrist` module docs: hidden vs revealed
+                // are deliberately treated identically.)
             }
             Move::Step { from, to } => {
                 let p = self.board.get(*from).ok_or(CoreError::Illegal("Step: empty from"))?;
@@ -302,17 +341,27 @@ impl GameState {
                 }
                 self.board.set(*from, None);
                 self.board.set(*to, Some(p));
+                // Hash: piece left `from`, arrived at `to`.
+                self.xor_piece(p.piece, *from);
+                self.xor_piece(p.piece, *to);
             }
-            Move::Capture { from, to, captured: _ } => {
+            Move::Capture { from, to, captured } => {
                 let p = self.board.get(*from).ok_or(CoreError::Illegal("Capture: empty from"))?;
                 self.board.set(*from, None);
                 self.board.set(*to, Some(p));
+                // Hash: attacker moved from→to, defender removed at `to`.
+                self.xor_piece(p.piece, *from);
+                self.xor_piece(*captured, *to);
+                self.xor_piece(p.piece, *to);
             }
-            Move::CannonJump { from, to, screen: _, captured: _ } => {
+            Move::CannonJump { from, to, screen: _, captured } => {
                 let p =
                     self.board.get(*from).ok_or(CoreError::Illegal("CannonJump: empty from"))?;
                 self.board.set(*from, None);
                 self.board.set(*to, Some(p));
+                self.xor_piece(p.piece, *from);
+                self.xor_piece(*captured, *to);
+                self.xor_piece(p.piece, *to);
             }
             Move::ChainCapture { from, path } => {
                 let p = self.board.get(*from).ok_or(CoreError::Illegal("Chain: empty from"))?;
@@ -323,7 +372,15 @@ impl GameState {
                 for hop in &path[..path.len() - 1] {
                     self.board.set(hop.to, None);
                 }
-                self.board.set(path.last().unwrap().to, Some(p));
+                let last = *path.last().unwrap();
+                self.board.set(last.to, Some(p));
+                // Hash: attacker moved from→last_hop.to; every captured
+                // piece along the path is removed.
+                self.xor_piece(p.piece, *from);
+                for hop in path {
+                    self.xor_piece(hop.captured, hop.to);
+                }
+                self.xor_piece(p.piece, last.to);
             }
             Move::EndChain { at } => {
                 // No board change — just verifies that a chain-locked piece
@@ -369,13 +426,22 @@ impl GameState {
                     DarkCaptureOutcome::Capture => {
                         self.board.set(*from, None);
                         self.board.set(*to, Some(attacker_pos));
+                        // Hash: attacker from→to, defender removed at to.
+                        self.xor_piece(attacker_piece, *from);
+                        self.xor_piece(revealed_piece, *to);
+                        self.xor_piece(attacker_piece, *to);
                     }
                     DarkCaptureOutcome::Trade => {
                         // Attacker dies; target stays revealed at `to`.
                         self.board.set(*from, None);
+                        // Hash: attacker removed at from, defender removed at to.
+                        // (Defender was hidden but contributed to hash.)
+                        self.xor_piece(attacker_piece, *from);
+                        self.xor_piece(revealed_piece, *to);
                     }
                     DarkCaptureOutcome::Probe => {
                         // Both pieces stay; target is now revealed.
+                        // Reveal-only changes don't move pieces → no hash change.
                     }
                 }
             }
@@ -394,21 +460,32 @@ impl GameState {
                 if self.history.is_empty() {
                     self.side_assignment = None;
                 }
+                // No piece moved → no Zobrist delta to undo.
             }
             Move::Step { from, to } => {
                 let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Step: empty to"))?;
                 self.board.set(*to, None);
                 self.board.set(*from, Some(p));
+                // Inverse of apply_inner Step.
+                self.xor_piece(p.piece, *to);
+                self.xor_piece(p.piece, *from);
             }
             Move::Capture { from, to, captured } => {
                 let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Capture: empty to"))?;
                 self.board.set(*to, Some(PieceOnSquare::revealed(*captured)));
                 self.board.set(*from, Some(p));
+                // Inverse of apply_inner Capture.
+                self.xor_piece(p.piece, *to);
+                self.xor_piece(*captured, *to);
+                self.xor_piece(p.piece, *from);
             }
             Move::CannonJump { from, to, screen: _, captured } => {
                 let p = self.board.get(*to).ok_or(CoreError::Illegal("Undo Jump: empty to"))?;
                 self.board.set(*to, Some(PieceOnSquare::revealed(*captured)));
                 self.board.set(*from, Some(p));
+                self.xor_piece(p.piece, *to);
+                self.xor_piece(*captured, *to);
+                self.xor_piece(p.piece, *from);
             }
             Move::ChainCapture { from, path } => {
                 let last_to = path.last().unwrap().to;
@@ -420,6 +497,12 @@ impl GameState {
                     self.board.set(hop.to, Some(PieceOnSquare::revealed(hop.captured)));
                 }
                 self.board.set(*from, Some(p));
+                // Inverse of apply_inner ChainCapture.
+                self.xor_piece(p.piece, last_to);
+                for hop in path {
+                    self.xor_piece(hop.captured, hop.to);
+                }
+                self.xor_piece(p.piece, *from);
             }
             Move::EndChain { .. } => {
                 // No board change to undo. chain_lock is restored by
@@ -444,13 +527,21 @@ impl GameState {
                         // Attacker is at `to`; remove it, restore at `from`.
                         self.board.set(*to, None);
                         self.board.set(*from, Some(PieceOnSquare::revealed(attacker_piece)));
+                        // Inverse of apply_inner Capture branch.
+                        self.xor_piece(attacker_piece, *to);
+                        self.xor_piece(revealed_piece, *to);
+                        self.xor_piece(attacker_piece, *from);
                     }
                     DarkCaptureOutcome::Trade => {
                         // Attacker is gone; restore it at `from`.
                         self.board.set(*from, Some(PieceOnSquare::revealed(attacker_piece)));
+                        // Inverse of apply_inner Trade branch.
+                        self.xor_piece(revealed_piece, *to);
+                        self.xor_piece(attacker_piece, *from);
                     }
                     DarkCaptureOutcome::Probe => {
                         // Attacker is still at `from`. Nothing to do for it.
+                        // No hash delta from apply_inner Probe branch either.
                     }
                 }
                 // Always re-hide the target (it was revealed during apply).
