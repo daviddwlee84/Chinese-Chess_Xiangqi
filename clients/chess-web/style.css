@@ -201,7 +201,15 @@ body {
     align-items: start;
 }
 .game-page--single { grid-template-columns: 1fr; }
-@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+/* Three-column variant when `?evalbar=1` is on: thin eval-bar column
+ * sits between the board pane and the sidebar. The eval bar stretches
+ * to match the board pane's height via `align-self: stretch` so its
+ * top/bottom align with the board's edges. */
+.game-page--with-evalbar { grid-template-columns: minmax(0, 1fr) 32px 280px; }
+@media (max-width: 720px) {
+    .game-page { grid-template-columns: 1fr; }
+    .game-page--with-evalbar { grid-template-columns: 1fr; }
+}
 
 /* Non-mirror viewport fit (desktop / two-column layout). Cap the board
  * pane to the available viewport height (minus `.app-shell`'s 2rem top +
@@ -218,12 +226,7 @@ body {
         min-height: 0;
         box-sizing: border-box;
     }
-    /* Descendant selector (not `>`) so the rule applies whether the
-     * SVG board is a direct child of `.board-pane` (net mode,
-     * pages/play.rs) or wrapped inside `.board-pane__row` next to a
-     * `.eval-bar` sibling (local mode with `?evalbar=1`,
-     * pages/local.rs). */
-    .board-pane svg.board {
+    .board-pane > svg.board {
         flex: 1 1 auto;
         width: 100%;
         height: 100%;
@@ -231,24 +234,6 @@ body {
         max-height: 100%;
         min-height: 0;
     }
-}
-
-/* Inner row container introduced by `pages/local.rs` so the eval bar
- * (when `?evalbar=1` is on) can sit as a flex sibling to the right of
- * the board SVG without disturbing the column-stacked siblings
- * (banners, captured strips, end overlays) above and below. The row
- * itself is a flex item of `.board-pane`, taking whatever vertical
- * space remains via `flex: 1 1 auto`. Always present (even when the
- * eval bar is hidden) — the row degenerates into a one-child flex
- * box that behaves identically to the unwrapped pre-evalbar layout. */
-.board-pane__row {
-    display: flex;
-    flex-direction: row;
-    flex: 1 1 auto;
-    align-items: stretch;
-    min-width: 0;
-    min-height: 0;
-    gap: 0.4rem;
 }
 
 /* Mirror mode (xiangqi pass-and-play with two players sitting opposite).
@@ -268,7 +253,7 @@ body {
 }
 /* Override the global `.board { height: auto; max-height: 80vh }` so the
  * SVG can shrink inside the flex column instead of forcing 80vh. */
-.board-pane--mirror svg.board {
+.board-pane--mirror > svg.board {
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
@@ -1505,15 +1490,23 @@ body {
  * ============================================================ */
 
 /* --- Vertical eval bar (chess.com / lichess style) --- */
-
+/*
+ * Mounted as a top-level grid item of `.game-page` (between
+ * `.board-pane` and `<Sidebar>`) when the URL has `?evalbar=1`. The
+ * page-level `.game-page--with-evalbar` modifier class adds the third
+ * grid column. `align-self: stretch` makes the bar match the board
+ * pane's height so its top/bottom visually align with the board's
+ * edges. On mobile (`<= 720px`) the page collapses to one column and
+ * the bar stacks above the sidebar — narrow but still readable.
+ */
 .eval-bar {
     position: relative;
-    flex: 0 0 auto;
-    width: 28px;
-    min-width: 22px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    align-self: stretch;
+    width: 32px;
+    min-height: 0;
     border: 1px solid var(--grid);
     border-radius: 0.3rem;
     overflow: hidden;

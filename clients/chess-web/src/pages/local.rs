@@ -828,8 +828,15 @@ fn LocalGame(
             s.refresh_status();
         });
     };
+    let game_page_class = move || {
+        if evalbar_show() {
+            "game-page game-page--with-evalbar"
+        } else {
+            "game-page"
+        }
+    };
     view! {
-        <section class="game-page">
+        <section class=game_page_class>
             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
                 <Show when=move || mirror && !wip>
                     <button
@@ -842,21 +849,16 @@ fn LocalGame(
                     </button>
                     <CapturedStrip view=view placement={CapturedSlot::MirroredAbove}/>
                 </Show>
-                <div class="board-pane__row">
-                    <Board
-                        shape=shape
-                        observer=observer
-                        view=view
-                        selected=effective_selected
-                        on_click=on_click
-                        highlighted_pv=highlighted_pv_signal
-                        mirror_black=mirror_signal
-                        threats=threat_overlay
-                    />
-                    <Show when=evalbar_show>
-                        <EvalBar sample=current_eval/>
-                    </Show>
-                </div>
+                <Board
+                    shape=shape
+                    observer=observer
+                    view=view
+                    selected=effective_selected
+                    on_click=on_click
+                    highlighted_pv=highlighted_pv_signal
+                    mirror_black=mirror_signal
+                    threats=threat_overlay
+                />
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">
                         <span>"連吃 — 繼續吃 or "</span>
@@ -905,6 +907,9 @@ fn LocalGame(
                     </button>
                 </Show>
             </div>
+            <Show when=evalbar_show>
+                <EvalBar sample=current_eval/>
+            </Show>
             <Sidebar
                 variant=variant
                 view=view
