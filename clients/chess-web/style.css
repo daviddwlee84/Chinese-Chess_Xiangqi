@@ -551,16 +551,30 @@ body {
     stroke-dasharray: 5 3;
     pointer-events: none;
 }
+/* Floating toast — overlays the board top-center so its mount/unmount
+ * doesn't reflow the flex column and snap the SVG to a different size. */
 .chain-banner {
-    margin-top: 0.5rem;
+    position: absolute;
+    top: 0.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
     padding: 0.4rem 0.8rem;
-    background: rgba(245, 166, 35, 0.15);
+    background: rgba(245, 166, 35, 0.92);
     border: 1px solid #f5a623;
     border-radius: 0.4rem;
-    color: #f5a623;
+    color: #1a1614;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.ai-thinking-banner {
+    background: rgba(212, 165, 92, 0.92);
+    border-color: var(--accent);
 }
 .btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
 
