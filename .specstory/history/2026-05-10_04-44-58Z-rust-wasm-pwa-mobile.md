@@ -8399,3 +8399,8945 @@ All correct now:
 Quick recap of fixes this round:
 - `serve-web-static` stages `dist-static/` under `$tmp/Chinese-Chess_Xiangqi/` (matches GH Pages layout) and runs the new SPA-aware server.
 - New `clients/chess-web/scripts/serve-spa.py` — stdlib-only, falls back to `index.html` for in-scope routes without an extension, returns real 404 for missing assets and out-of-scope paths.
+
+---
+
+_**User (2026-05-10 08:46:59Z)**_
+
+git commit and use gh to track CI progress and see if our PWA app works
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:06Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+git status + branch + log
+
+`git status --short && echo "---branch---" && git branch --show-current && echo "---log---" && git log --oneline -5`
+
+```text
+MM .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+M  CLAUDE.md
+M  Makefile
+M  TODO.md
+M  clients/chess-web/Cargo.toml
+M  clients/chess-web/Trunk.toml
+M  clients/chess-web/index.html
+A  clients/chess-web/public/icons/apple-touch-icon-180.png
+A  clients/chess-web/public/icons/favicon.svg
+A  clients/chess-web/public/icons/icon-192.png
+A  clients/chess-web/public/icons/icon-512.png
+A  clients/chess-web/public/icons/icon-maskable-512.png
+A  clients/chess-web/public/icons/icon-maskable.svg
+A  clients/chess-web/public/icons/icon.svg
+A  clients/chess-web/public/manifest.webmanifest.tmpl
+A  clients/chess-web/public/pwa.js
+A  clients/chess-web/public/sw.js.tmpl
+A  clients/chess-web/scripts/build-pwa.sh
+A  clients/chess-web/scripts/regenerate-placeholder-icons.sh
+A  clients/chess-web/scripts/serve-spa.py
+M  clients/chess-web/src/app.rs
+M  clients/chess-web/src/components/mod.rs
+A  clients/chess-web/src/components/pwa.rs
+M  clients/chess-web/src/components/sidebar.rs
+M  clients/chess-web/src/pages/picker.rs
+M  clients/chess-web/style.css
+A  docs/pwa.md
+A  pitfalls/pwa-base-path-and-stale-cache.md
+---branch---
+main
+---log---
+bbaf9e1 docs(backlog): add v6 pondering + opening book + sound fx + hint spinner
+ae9d417 fix(chess-web): board coord labels — extend viewBox into negative space
+caf6365 fix(chess-web): hint mode UX overhaul (PvP emit, button-toggle, coords)
+84aaa0e fix(chess-web): hint mode dynamic title + PvP support
+aad9f00 fix(chess-web): hint mode POV clobber + separate Debug/Hint picker checkboxes
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check staged vs unstaged diffs
+
+`git diff --cached --stat | tail -30; echo "---unstaged---"; git diff --stat | tail -10`
+
+```text
+ .../2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md   | 5226 +++++++++++++++++++-
+ CLAUDE.md                                          |    4 +
+ Makefile                                           |   84 +-
+ TODO.md                                            |    6 +-
+ clients/chess-web/Cargo.toml                       |    2 +-
+ clients/chess-web/Trunk.toml                       |    9 +
+ clients/chess-web/index.html                       |   21 +
+ .../public/icons/apple-touch-icon-180.png          |  Bin 0 -> 11653 bytes
+ clients/chess-web/public/icons/favicon.svg         |   12 +
+ clients/chess-web/public/icons/icon-192.png        |  Bin 0 -> 12544 bytes
+ clients/chess-web/public/icons/icon-512.png        |  Bin 0 -> 35039 bytes
+ .../chess-web/public/icons/icon-maskable-512.png   |  Bin 0 -> 25962 bytes
+ clients/chess-web/public/icons/icon-maskable.svg   |   17 +
+ clients/chess-web/public/icons/icon.svg            |   14 +
+ clients/chess-web/public/manifest.webmanifest.tmpl |   56 +
+ clients/chess-web/public/pwa.js                    |  185 +
+ clients/chess-web/public/sw.js.tmpl                |  157 +
+ clients/chess-web/scripts/build-pwa.sh             |  142 +
+ .../scripts/regenerate-placeholder-icons.sh        |   46 +
+ clients/chess-web/scripts/serve-spa.py             |  118 +
+ clients/chess-web/src/app.rs                       |    8 +
+ clients/chess-web/src/components/mod.rs            |    1 +
+ clients/chess-web/src/components/pwa.rs            |  291 ++
+ clients/chess-web/src/components/sidebar.rs        |    2 +
+ clients/chess-web/src/pages/picker.rs              |    2 +
+ clients/chess-web/style.css                        |  162 +
+ docs/pwa.md                                        |  450 ++
+ pitfalls/pwa-base-path-and-stale-cache.md          |  225 +
+ 28 files changed, 7231 insertions(+), 9 deletions(-)
+---unstaged---
+ .../2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md   | 58 ++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:24Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit PWA changes
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(chess-web): PWA — installable, offline-capable, version-aware
+
+chess-web becomes a real PWA on top of the existing dual-target Trunk
+build (chess-net --static-dir + GitHub Pages subpath).
+
+New:
+- public/{sw.js.tmpl,manifest.webmanifest.tmpl,pwa.js,icons/}
+- scripts/build-pwa.sh — Trunk post-build hook scans dist/ for hashed
+  JS/WASM/CSS, computes a content-hash APP_VERSION, substitutes
+  __BASE_PATH__/__APP_VERSION__/__PRECACHE_MANIFEST__. Same hook works
+  for server (/) and GitHub Pages (/Chinese-Chess_Xiangqi/) by reading
+  TRUNK_PUBLIC_URL.
+- scripts/serve-spa.py — stdlib-only SPA-aware server for local PWA
+  verification under a base path (python3 -m http.server has no
+  fallback).
+- scripts/regenerate-placeholder-icons.sh — re-rasterize PNGs from the
+  committed SVG sources via rsvg-convert/ImageMagick.
+- src/components/pwa.rs — PwaState (signals hydrated from window.__pwa
+  + window events), PwaInstallBanner (picker), PwaInstallButton
+  (sidebar footer), PwaUpdateToast (global), OfflineIndicator. iOS
+  Safari fallback with manual "Add to Home Screen" hint.
+- docs/pwa.md — full architectural takeaway (~450 lines).
+- pitfalls/pwa-base-path-and-stale-cache.md — three traps: subpath
+  manifest, HTTP-cached sw.js, runtime-cache-only first-visit white
+  page.
+
+SW strategy: navigation network-first → SPA shell fallback (offline
+route changes still work via Leptos router); hashed assets cache-first
+(immutable by filename); /ws*, /lobby, /rooms, /api/* bypassed so
+online play retains its existing failure surface.
+
+Update UX is opt-in: a fresh build precaches but the old SW keeps
+controlling the page until the user clicks the Reload toast
+(skipWaiting → controllerchange → reload). Chosen over auto-reload so
+an in-progress 對局 isn't reloaded out from under the player.
+
+Makefile: serve-web-static now stages dist-static under WEB_BASE in a
+tempdir and runs scripts/serve-spa.py so SPA routes like
+/Chinese-Chess_Xiangqi/local/xiangqi resolve via index.html (mirrors
+GH Pages 404.html behaviour).
+
+Verified end-to-end:
+- make build-web → dist/ with correct base="" precache list
+- make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi → dist-static/
+  with /Chinese-Chess_Xiangqi/ prefix on every URL
+- make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi serves
+  picker, /local/xiangqi, /play/<room> via SPA fallback; sw.js loads;
+  out-of-scope and missing assets still return real 404.
+- cargo fmt --check / cargo clippy --workspace --all-targets / cargo
+  test --workspace / cargo build --target wasm32-unknown-unknown -p
+  chess-core / -p chess-web all green.
+
+TODO.md: ship entry in Done; three follow-ups (IndexedDB persistence,
+Web Share API, real icon design).
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -20
+```
+
+```text
+[main 0b3bbdd] feat(chess-web): PWA — installable, offline-capable, version-aware
+ 28 files changed, 7231 insertions(+), 9 deletions(-)
+ create mode 100644 clients/chess-web/public/icons/apple-touch-icon-180.png
+ create mode 100644 clients/chess-web/public/icons/favicon.svg
+ create mode 100644 clients/chess-web/public/icons/icon-192.png
+ create mode 100644 clients/chess-web/public/icons/icon-512.png
+ create mode 100644 clients/chess-web/public/icons/icon-maskable-512.png
+ create mode 100644 clients/chess-web/public/icons/icon-maskable.svg
+ create mode 100644 clients/chess-web/public/icons/icon.svg
+ create mode 100644 clients/chess-web/public/manifest.webmanifest.tmpl
+ create mode 100644 clients/chess-web/public/pwa.js
+ create mode 100644 clients/chess-web/public/sw.js.tmpl
+ create mode 100755 clients/chess-web/scripts/build-pwa.sh
+ create mode 100755 clients/chess-web/scripts/regenerate-placeholder-icons.sh
+ create mode 100755 clients/chess-web/scripts/serve-spa.py
+ create mode 100644 clients/chess-web/src/components/pwa.rs
+ create mode 100644 docs/pwa.md
+ create mode 100644 pitfalls/pwa-base-path-and-stale-cache.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:47:56Z)**_
+
+Acknowledged. Let me push first to start CI, then record the pitfalls we hit (will be a follow-up commit).
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Push to origin/main
+
+`git push origin main 2>&1 | tail -10`
+
+```text
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   bbaf9e1..0b3bbdd  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List recent CI runs
+
+`gh run list --limit 3 --branch main 2>&1 | head -10`
+
+```text
+queued		feat(chess-web): PWA — installable, offline-capable, version-aware	ci	main	push	25624424040	3s	2026-05-10T08:48:04Z
+in_progress		feat(chess-web): PWA — installable, offline-capable, version-aware	pages	main	push	25624424036	3s	2026-05-10T08:48:04Z
+completed	success	docs(backlog): add v6 pondering + opening book + sound fx + hint spinner	pages	main	push	25623440403	1m0s	2026-05-10T07:56:30Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:13Z)**_
+
+CI started. Now let me append a new pitfall covering what we hit live.
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:14Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./pitfalls/pwa-base-path-and-stale-cache.md`
+
+```text
+200	files).
+201	
+202	---
+203	
+204	## Bonus: don't precache `og-image.png`
+205	
+206	`og-image.png` is the social-card image used by Facebook /
+207	LinkedIn / Discord crawlers. It's not part of the runtime
+208	shell — caching it eats space for no benefit, and worse, if
+209	you ever swap it for a new design, the SW will keep serving
+210	the old one to crawlers that re-fetch through the same origin.
+211	
+212	The `find` filter in `build-pwa.sh` explicitly excludes
+213	`og-image.png`. If you add other social / SEO assets, exclude
+214	them too unless they are needed offline.
+215	
+216	---
+217	
+218	## Bonus: 404.html is a GitHub Pages quirk, not a precache target
+219	
+220	`make build-web-static` copies `index.html` to `404.html` so
+221	GitHub Pages serves the SPA shell on unknown URLs (so direct
+222	links to `/Chinese-Chess_Xiangqi/play/myroom` work). The SW
+223	also has its own SPA fallback (network-first navigation →
+224	cached `index.html`), so we deliberately exclude `404.html`
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find end of file
+
+`tail -5 /Users/david/Documents/Program/Chinese-Chess_Xiangqi/pitfalls/pwa-base-path-and-stale-cache.md`
+
+```text
+GitHub Pages serves the SPA shell on unknown URLs (so direct
+links to `/Chinese-Chess_Xiangqi/play/myroom` work). The SW
+also has its own SPA fallback (network-first navigation →
+cached `index.html`), so we deliberately exclude `404.html`
+from precache — caching both would just waste a slot.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:48:24Z)**_
+
+Now I'll write a new pitfall covering the local-serve / SPA-fallback / poisoned-SW traps we hit live this session:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Local-served PWA: subpath build 404s on every asset, or SPA routes return "Error response — File not found"
+
+**Symptoms** (any combination):
+
+\```
+$ make serve-web-static WEB_BASE=/Chinese-Chess_Xiangqi
+Serving HTTP on :: port 4173 ...
+::1 - "GET / HTTP/1.1" 200 -                          # boot loader shows
+::1 - "GET /Chinese-Chess_Xiangqi/style-…css" 404 -   # …but every asset fails
+::1 - "GET /Chinese-Chess_Xiangqi/chess-web-…js" 404 -
+::1 - "GET /Chinese-Chess_Xiangqi/icons/icon.svg" 404 -
+…
+\```
+
+\```
+# After clicking into a game route from the picker:
+http://localhost:4173/Chinese-Chess_Xiangqi/local/xiangqi?hints=1
+
+  Error response
+  Error code: 404
+  Message: File not found.
+\```
+
+\```
+# Even after rebuilding & restarting, the service worker is still
+# making requests to /Chinese-Chess_Xiangqi/... that 404, OR every
+# navigation outside that subpath returns "404 (from service worker)".
+\```
+
+These three things have one root cause apiece, and all three bit us
+on the first end-to-end run of the new PWA setup. Each is its own
+trap.
+
+---
+
+## Trap 1 — `python3 -m http.server` in `dist-static/` serves the
+build at `/`, not at the GitHub Pages subpath
+
+**What happens**: `make build-web-static` produces
+`clients/chess-web/dist-static/index.html` whose `<base href>` is
+`/Chinese-Chess_Xiangqi/` (because we passed `--public-url` to Trunk).
+If you then `cd dist-static && python3 -m http.server 4173`, the
+server roots `dist-static` at `/`. The browser fetches
+`http://localhost:4173/`, gets that `index.html`, sees the `<base
+href>`, and resolves every script / stylesheet / WASM URL to
+`/Chinese-Chess_Xiangqi/...` — none of which exist on the python
+server, because the dist files live at `/style-….css` etc. on disk.
+
+**Why this is confusing**: you DO see the boot loader render (the
+inline HTML shell loads fine from `/`). It feels like "almost
+working", but no asset ever loads, so the WASM never starts.
+
+**Fix**: stage `dist-static` *under* the base subpath before serving.
+That mirrors GitHub Pages' actual layout. The repo's
+`make serve-web-static` target does this:
+
+\```makefile
+serve-web-static: build-web-static
+    @base="$(WEB_BASE)"; base="$${base#/}"; base="$${base%/}"; \
+    tmp=$$(mktemp -d -t chess-web-pwa-serve); \
+    target="$$tmp"; if [ -n "$$base" ]; then target="$$tmp/$$base"; fi; \
+    mkdir -p "$$target"; \
+    cp -R clients/chess-web/dist-static/. "$$target/"; \
+    python3 clients/chess-web/scripts/serve-spa.py "$$tmp" 4173 "/$$base/"
+\```
+
+The result: `http://localhost:4173/Chinese-Chess_Xiangqi/index.html`
+is the dist's index, and every asset URL resolves correctly. Open
+exactly that URL — opening `http://localhost:4173/` (no subpath)
+just shows whatever is at the python root, which is misleading.
+
+---
+
+## Trap 2 — `python3 -m http.server` has no SPA fallback, so
+client-side routes 404
+
+**What happens**: even after fixing Trap 1, clicking from the picker
+into `/Chinese-Chess_Xiangqi/local/xiangqi?hints=1` produces:
+
+\```
+Error response
+Error code: 404
+Message: File not found.
+Error code explanation: 404 - Nothing matches the given URI.
+\```
+
+This isn't the SW or the SPA; it's python's own error page.
+`SimpleHTTPRequestHandler` only resolves real files on disk, and
+`/Chinese-Chess_Xiangqi/local/xiangqi` is a Leptos client-side route,
+not a file. The Leptos router is willing to handle it, but only after
+`index.html` is served — and python returns 404 instead.
+
+GitHub Pages handles this for you via the `404.html` trick: when a
+real 404 happens, Pages serves `404.html`, and we make `404.html`
+identical to `index.html` (`make build-web-static` copies it). The
+chess-net `--static-dir` mode handles this via `tower_http`'s
+`.fallback(ServeFile::new(dir/"index.html"))`. Plain python http.server
+does neither.
+
+**Fix**: ship a tiny SPA-aware static server. The repo includes
+`clients/chess-web/scripts/serve-spa.py` (stdlib-only, ~120 lines).
+Behaviour:
+
+| Path                                      | Action                          |
+| ----------------------------------------- | ------------------------------- |
+| in scope, exists                          | serve as-is                     |
+| in scope, no extension, doesn't exist     | rewrite to `<base>/index.html`  |
+| in scope, has known asset extension       | real 404                        |
+| out of scope                              | real 404                        |
+
+`make serve-web-static` invokes it automatically. **Do not** swap
+back to `python3 -m http.server` for this build — it will look like
+the SPA is broken when in fact the server is the problem.
+
+---
+
+## Trap 3 — A poisoned service worker registered at scope `/` keeps
+intercepting navigations after you fix the underlying issue
+
+**What happens**: while iterating on Traps 1 + 2, you opened
+`http://localhost:4173/` (no subpath) several times. Each visit
+caused `pwa.js` to register a service worker at scope `/` (its
+`resolveBase()` heuristic returned `/` since the path ended with
+`/`). That SW precached *nothing useful* (every URL it tried 404'd)
+but it's still installed, with scope `/`, persistent across page
+reloads.
+
+After you fix the Makefile and start the SPA-aware server, you reload
+the tab. The page at `/Chinese-Chess_Xiangqi/` registers a *new* SW
+at scope `/Chinese-Chess_Xiangqi/`. But the *old* SW at scope `/` is
+still there. Any navigation that doesn't match the narrower scope is
+still handled by the broken SW — including arbitrary requests like
+`/sw.js` or future probes, which then return weird 404s "from
+service worker".
+
+**Symptoms** in the network log:
+
+\```
+GET /sw.js → 404 (from service worker)
+GET /local/xiangqi → 404 (from service worker, with the old broken cache)
+\```
+
+**Fix**: clear the registration before re-testing. DevTools →
+Application → Storage → "Clear site data" (Service Workers + Cache
+storage are enough; you don't need to wipe localStorage). Or in the
+console:
+
+\```js
+navigator.serviceWorker.getRegistrations()
+  .then(rs => Promise.all(rs.map(r => r.unregister())));
+caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))));
+\```
+
+Then close the tab and re-open the correct URL
+(`http://localhost:4173/Chinese-Chess_Xiangqi/`).
+
+**Prevention**: don't open the served base path's *parent* URL during
+development. If you've staged dist-static under `/Chinese-Chess_Xiangqi/`,
+go straight there — don't probe `/` "to see what happens". The
+`make serve-web-static` target prints the exact correct URL on
+startup; copy from there.
+
+---
+
+## Why these three were one bug, conceptually
+
+All three are "the GitHub Pages deployment layout has one shape, and
+local quick-and-dirty tools (`python3 -m http.server`, intuitively
+just opening `/`) have a slightly different one." The PWA layer
+amplifies any path mismatch because:
+
+1. The manifest's `start_url` and `scope` are baked in at build time.
+2. The SW's precache list is an absolute URL list, also baked at
+   build time.
+3. SW scope is sticky across reloads; a wrong-scope registration
+   persists until manually cleared.
+
+The defenses we ended up shipping:
+
+- `scripts/build-pwa.sh` derives all paths from `TRUNK_PUBLIC_URL`
+  (single source of truth, no duplicate base-path values to drift).
+- `scripts/serve-spa.py` mirrors GitHub Pages' SPA fallback locally.
+- `Makefile :: serve-web-static` stages dist into the right subpath
+  layout and prints the correct URL.
+- `pwa.js` reads `<base href>` first (Trunk injects this with
+  `--public-url`) and only falls back to `pathname.lastIndexOf('/')`
+  when no base element exists. As long as you build via the
+  Makefile, the base is correct.
+
+If you ever change one of the three (build script, server, or
+registration logic), re-test all three traps before declaring done.
+A green Lighthouse score on a fresh profile does not catch the
+"poisoned old SW" trap because that profile has nothing cached.
+
+```
+
+```text
+File created successfully at: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/pitfalls/pwa-local-serve-spa-fallback.md (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:17Z)**_
+
+Now check CI progress while preparing the follow-up commit:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+CI progress
+
+`gh run list --limit 3 --branch main 2>&1 | head -5`
+
+```text
+in_progress		feat(chess-web): PWA — installable, offline-capable, version-aware	pages	main	push	25624424036	1m15s	2026-05-10T08:48:04Z
+completed	success	feat(chess-web): PWA — installable, offline-capable, version-aware	ci	main	push	25624424040	1m11s	2026-05-10T08:48:04Z
+completed	success	docs(backlog): add v6 pondering + opening book + sound fx + hint spinner	pages	main	push	25623440403	1m0s	2026-05-10T07:56:30Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:25Z)**_
+
+CI ✅ green (1m11s); pages workflow still deploying. Commit the new pitfall and watch pages finish:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit + push pitfall doc
+
+```bash
+git add pitfalls/pwa-local-serve-spa-fallback.md && git commit -m "$(cat <<'EOF'
+docs(pitfalls): three local-serve traps from the PWA shake-down
+
+Captures the bugs we hit on the first end-to-end run of the new PWA
+setup, all three rooted in "GitHub Pages deployment layout vs. local
+quick-and-dirty tools".
+
+1. python3 -m http.server in dist-static/ serves the build at /, not
+   at /Chinese-Chess_Xiangqi/. Boot loader renders but every asset
+   404s because <base href> rewrites them under the subpath.
+2. python3 -m http.server has no SPA fallback, so client-side routes
+   like /Chinese-Chess_Xiangqi/local/xiangqi return python's "Error
+   response — File not found" instead of index.html. GitHub Pages
+   handles this via 404.html; chess-net handles it via tower_http
+   fallback; plain http.server does neither.
+3. A previous accidental visit to / registers a service worker at
+   scope /, which then keeps intercepting navigations even after the
+   real fix lands. Symptoms include "(from service worker) 404" on
+   unrelated paths. Requires DevTools "Clear site data" before
+   retrying.
+
+Each trap documents symptom + root cause + fix; closes with the
+defenses we ended up shipping (build-pwa.sh as single source of
+truth, serve-spa.py for SPA fallback, Makefile staging the right
+subpath layout, pwa.js reading <base href> first).
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3 && git push origin main 2>&1 | tail -3
+```
+
+```text
+[main a67907c] docs(pitfalls): three local-serve traps from the PWA shake-down
+ 1 file changed, 193 insertions(+)
+ create mode 100644 pitfalls/pwa-local-serve-spa-fallback.md
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   0b3bbdd..a67907c  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait until all CI runs complete
+
+`until gh run list --limit 4 --branch main --json status,conclusion,name,databaseId 2>/dev/null | jq -e 'all(.[]; .status == "completed")' >/dev/null; do sleep 10; done; gh run list --limit 4 --branch main 2>&1 | head -8`
+
+```text
+Command running in background with ID: b20tgufff. Output is being written to: /private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/b20tgufff.output
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect CI workflows
+
+`gh workflow list 2>&1 | head -10; echo "---"; ls .github/workflows/ 2>&1`
+
+```text
+ci	active	271909141
+pages	active	272965513
+---
+ ci.yml
+ pages.yml
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check pages.yml
+
+`cat .github/workflows/pages.yml 2>&1 | head -60`
+
+```text
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: cargo install trunk --version 0.21.14 --locked
+      - name: Build static web
+        run: make build-web-static WEB_BASE=/${{ github.event.repository.name }}
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: clients/chess-web/dist-static
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:58Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:49:59Z)**_
+
+Pages workflow uses `make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi` — exactly the path I verified locally. Hook will run on the GH runner. Waiting for the monitor.
+
+---
+
+_**User (2026-05-10 08:51:13Z)**_
+
+<task-notification>
+<task-id>b20tgufff</task-id>
+<tool-use-id>toolu_018D6kHLCwgFqJqjKmcykvWc</tool-use-id>
+<output-file>/private/tmp/claude-502/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2/tasks/b20tgufff.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait until all CI runs complete" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 08:51:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Final CI status
+
+`gh run list --limit 6 --branch main 2>&1`
+
+```text
+completed	success	docs(pitfalls): three local-serve traps from the PWA shake-down	pages	main	push	25624455144	1m5s	2026-05-10T08:49:41Z
+completed	success	docs(pitfalls): three local-serve traps from the PWA shake-down	ci	main	push	25624455153	1m22s	2026-05-10T08:49:41Z
+completed	success	feat(chess-web): PWA — installable, offline-capable, version-aware	ci	main	push	25624424040	1m11s	2026-05-10T08:48:04Z
+completed	success	feat(chess-web): PWA — installable, offline-capable, version-aware	pages	main	push	25624424036	1m36s	2026-05-10T08:48:04Z
+completed	success	docs(backlog): add v6 pondering + opening book + sound fx + hint spinner	pages	main	push	25623440403	1m0s	2026-05-10T07:56:30Z
+completed	success	docs(backlog): add v6 pondering + opening book + sound fx + hint spinner	ci	main	push	25623440401	1m18s	2026-05-10T07:56:30Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:51:37Z)**_
+
+All 4 runs ✅ green. Verify the deployed PWA on GitHub Pages:
+
+_**Agent (claude-opus-4-7 2026-05-10 08:51:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Probe live PWA on GitHub Pages
+
+```bash
+URL="https://daviddwlee84.github.io/Chinese-Chess_Xiangqi"
+echo "===== picker =====" && curl -sI "$URL/" | head -1
+echo "===== sw.js =====" && curl -sI "$URL/sw.js" | head -1
+echo "===== manifest =====" && curl -s "$URL/manifest.webmanifest" | grep -E '"(start_url|scope|src)"' | head -8
+echo "===== sw header =====" && curl -s "$URL/sw.js" | grep -E "APP_VERSION|BASE_PATH" | head -2
+echo "===== icon =====" && curl -sI "$URL/icons/icon-512.png" | head -1
+echo "===== SPA route via 404.html =====" && curl -sI "$URL/local/xiangqi" | head -1
+```
+
+```text
+===== picker =====
+HTTP/2 200 
+===== sw.js =====
+HTTP/2 200 
+===== manifest =====
+  "start_url": "/Chinese-Chess_Xiangqi/",
+  "scope": "/Chinese-Chess_Xiangqi/",
+      "src": "/Chinese-Chess_Xiangqi/icons/icon.svg",
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-192.png",
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-512.png",
+      "src": "/Chinese-Chess_Xiangqi/icons/icon-maskable-512.png",
+===== sw header =====
+const APP_VERSION = "531f4b9a5cce";
+const BASE_PATH = "/Chinese-Chess_Xiangqi";
+===== icon =====
+HTTP/2 200 
+===== SPA route via 404.html =====
+HTTP/2 404
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 08:51:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 08:51:58Z)**_
+
+All green and live.
+
+**CI** — 2 commits, 4 workflow runs ✅:
+- `feat(chess-web): PWA …` → ci 1m11s, pages 1m36s
+- `docs(pitfalls): three local-serve traps …` → ci 1m22s, pages 1m05s
+
+**Live PWA at https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/**:
+- Picker / SW / icons / manifest all 200
+- `manifest.webmanifest`: `start_url` and `scope` = `/Chinese-Chess_Xiangqi/`, every icon path subpath-prefixed
+- `sw.js`: `APP_VERSION = "531f4b9a5cce"`, `BASE_PATH = "/Chinese-Chess_Xiangqi"` (substituted by the Trunk hook on the runner — confirms the build-pwa.sh works on Ubuntu, not just macOS)
+- SPA route `/local/xiangqi` returns HTTP 404 with the `404.html` body (a copy of `index.html`) — that's the standard GH Pages SPA hack and the Leptos router takes over client-side once it parses
+
+Open the live URL in Chrome → Application panel should show installable manifest + active service worker; the install banner should appear on the picker on first visit.
+
+---
+
+_**User (2026-05-10 09:06:51Z)**_
+
+<local-command-caveat>Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.</local-command-caveat>
+
+_**User (2026-05-10 09:06:51Z)**_
+
+<command-name>/compact</command-name>
+            <command-message>compact</command-message>
+            <command-args></command-args>
+
+_**User (2026-05-10 09:09:02Z)**_
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Initial: Evaluate how to wrap the Rust + Leptos + Trunk WASM chess-web app as a Progressive Web App (PWA) supporting:
+     - Mobile install prompts ("add to home screen")
+     - Offline functionality once installed
+     - Update detection prompting users to refresh
+     - GitHub Pages deployment at /Chinese-Chess_Xiangqi/ subpath
+     - A complete docs/takeaway file
+   - User provided a ChatGPT conversation as reference and asked me to "自己評估best practice"
+   - User chose: Toast + manual reload UX; placeholder icons; install UI in picker + sidebar + iOS hint; build-time precache list (with detailed reasoning that runtime cache misses first-load assets due to SW registration race)
+   - After implementation: "git commit and use gh to track CI progress and see if our PWA app works"
+   - Mid-flight directive: "Remember to record pitfalls (why we failed earlier)"
+
+2. Key Technical Concepts:
+   - PWA: Service Worker (SW) lifecycle, Web App Manifest, beforeinstallprompt event, display-mode standalone, maskable icons, iOS Safari "Add to Home Screen", apple-touch-icon
+   - Service Worker strategies: network-first navigation, cache-first hashed assets, stale-while-revalidate, bypass for runtime endpoints
+   - SW update flow: updateViaCache: "none", waiting → SKIP_WAITING postMessage → controllerchange → reload
+   - Trunk: post_build hooks via [[hooks]], --public-url for base path, data-trunk rel="copy-file" / rel="copy-dir", filename hashing for JS/WASM/CSS
+   - Leptos 0.6 CSR: RwSignal, provide_context/expect_context, wasm_bindgen Closure for event listeners, js_sys::Reflect for window.__pwa bridge
+   - Build-path normalization: TRUNK_PUBLIC_URL → BASE_PATH (strip trailing slash, ensure leading slash)
+   - SPA fallback: GH Pages 404.html trick vs. tower_http fallback vs. python http.server's lack thereof
+   - Cache versioning: SHA256 of concatenated file hashes → 12-char APP_VERSION
+
+3. Files and Code Sections:
+   - `.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md` — final approved plan
+   - `clients/chess-web/public/sw.js.tmpl` — SW template with __APP_VERSION__, __BASE_PATH__, __PRECACHE_MANIFEST__ placeholders. Cache strategies: navigation network-first → SHELL_INDEX fallback; hashed assets cache-first; bypass `/ws*`, `/lobby`, `/rooms`, `/api/*`; SKIP_WAITING message handler; per-URL cache.put with try/catch (avoid addAll atomic failure)
+   - `clients/chess-web/public/manifest.webmanifest.tmpl` — manifest with start_url/scope/id all set to `__BASE_PATH__/`, theme_color #1a1614, maskable icon variant, shortcuts for Xiangqi/Banqi local routes
+   - `clients/chess-web/public/pwa.js` — IIFE bridge. Reads `<base href>` first then falls back to pathname.lastIndexOf('/'). Captures beforeinstallprompt, fires CustomEvent("pwa:install-available"). Registers SW with `updateViaCache: "none"`, listens for updatefound, fires "pwa:update-ready". Exposes `window.__pwa = { canInstall, isStandalone, isIos, isMobile, install, applyUpdate }`. controllerchange triggers reload.
+   - `clients/chess-web/public/icons/icon.svg`, `icon-maskable.svg`, `favicon.svg` — SVG sources; PNGs rendered by rsvg-convert
+   - `clients/chess-web/scripts/build-pwa.sh` — bash post-build hook. Key lines:
+     ```bash
+     BASE_PATH="${PUBLIC_URL%/}"
+     if [[ -n "${BASE_PATH}" && "${BASE_PATH}" != /* ]]; then
+       BASE_PATH="/${BASE_PATH}"
+     fi
+     ```
+     Walks dist/ for assets (excludes og-image.png, 404.html, sw.js, *.tmpl), JSON-array of URLs prefixed with BASE_PATH, awk substitutes placeholders, deletes leftover *.tmpl files.
+   - `clients/chess-web/scripts/regenerate-placeholder-icons.sh` — rsvg-convert/ImageMagick rasterizer
+   - `clients/chess-web/scripts/serve-spa.py` — stdlib-only ~120-line SPA-aware server. Rewrites in-scope no-extension paths to `<base>/index.html`; asset-shaped paths get real 404; out-of-scope passes through.
+   - `clients/chess-web/Trunk.toml` — added:
+     ```toml
+     [[hooks]]
+     stage = "post_build"
+     command = "bash"
+     command_arguments = ["scripts/build-pwa.sh"]
+     ```
+   - `clients/chess-web/index.html` — added manifest link, apple-touch-icon, PWA meta tags, copy-file directives for templates/pwa.js/icons, `<script src="pwa.js" defer>`
+   - `clients/chess-web/Cargo.toml` — added web-sys features: Event, EventTarget, Navigator, CustomEvent
+   - `clients/chess-web/src/components/pwa.rs` — `PwaState` struct (Copy, Clone — no Default since RwSignal lacks it), hydrate() reads window.__pwa via Reflect + attaches CustomEvent listeners, components PwaUpdateToast/PwaInstallBanner/PwaInstallButton/OfflineIndicator
+   - `clients/chess-web/src/app.rs` — PwaState::hydrate() + provide_context, PwaUpdateToast + OfflineIndicator in AppShell
+   - `clients/chess-web/src/pages/picker.rs` — PwaInstallBanner above hero
+   - `clients/chess-web/src/components/sidebar.rs` — PwaInstallButton next to FX toggles
+   - `clients/chess-web/src/components/mod.rs` — `pub mod pwa;`
+   - `clients/chess-web/style.css` — appended .pwa-banner, .pwa-toast, .pwa-online-dot, .pwa-install-btn styles using existing CSS variables
+   - `Makefile` — added `serve-web-static` target that stages dist-static into tempdir under WEB_BASE subpath and invokes serve-spa.py
+   - `CLAUDE.md` — added PWA gotcha paragraph linking to docs/pwa.md and pitfalls
+   - `TODO.md` — removed old "chess-web: PWA / offline cache" P3, added 3 P3 follow-ups (IndexedDB persistence, Web Share API, real icon design), added Done entry
+   - `docs/pwa.md` — ~450 lines: TL;DR, file layout, build flow, SW strategy, update lifecycle, install lifecycle (Chromium/iOS/Firefox), local verification recipes, icon replacement, future work
+   - `pitfalls/pwa-base-path-and-stale-cache.md` — three traps: subpath manifest, HTTP-cached sw.js (need updateViaCache:"none"), runtime-cache-only first-visit white page
+   - `pitfalls/pwa-local-serve-spa-fallback.md` — three live-debugged traps: python http.server-at-root subpath mismatch, SPA fallback missing, poisoned SW at scope `/`
+
+4. Errors and fixes:
+   - **`sh` vs `bash`**: build-pwa.sh used `mapfile`/process substitution (bash-only) but Trunk.toml had `command = "sh"`. Fixed by changing to `command = "bash"`.
+   - **BASE_PATH no leading slash**: WEB_BASE without leading slash produced relative URLs in the output. Fixed by adding leading slash if missing in build-pwa.sh.
+   - **PwaState Default derive**: RwSignal<T> doesn't implement Default in Leptos 0.6. Removed `Default` from `#[derive(Copy, Clone, Default)]`.
+   - **Clippy redundant_closure**: `Closure::<dyn FnMut()>::new(move || f())` flagged. Simplified to `Closure::<dyn FnMut()>::new(f)` and removed `mut` from `f` parameter.
+   - **rustfmt long if-else**: rustfmt reformatted long single-line if-else to multi-line.
+   - **serve-web-static bug 1 — Subpath layout mismatch**: User reported "/" served boot loader but every asset 404'd because dist-static was rooted at / but assets expected /Chinese-Chess_Xiangqi/ prefix. Fixed by staging dist-static under tempdir/$WEB_BASE/ before serving.
+   - **serve-web-static bug 2 — SPA fallback missing**: User reported clicking into game route returned python's 404 page. Fixed by creating serve-spa.py and invoking it instead of `python3 -m http.server`.
+   - **Cosmetic Makefile bug**: `http://localhost:4173//Chinese-Chess_Xiangqi/` had double slash because $(WEB_BASE) already starts with `/`. Fixed by stripping leading `/` before reassembly.
+   - **User feedback**: After fix, user said "Remember to record pitfalls (why we failed earlier)" — created pitfalls/pwa-local-serve-spa-fallback.md.
+
+5. Problem Solving:
+   - **Build-time vs runtime precache**: User chose build-time per ChatGPT's argument that SW registration races with first page load → first-visit assets miss the cache. Implemented via post-build dist scan.
+   - **Single hook for two deploy targets**: Same scripts/build-pwa.sh handles `/` (server) and `/Chinese-Chess_Xiangqi/` (GH Pages) by reading TRUNK_PUBLIC_URL — no duplicate config.
+   - **JS bridge vs Rust SW registration**: Putting registration in pwa.js (script defer) ensures beforeinstallprompt is captured before WASM finishes loading.
+   - **iOS Safari install hint**: Detected via UA + iPadOS-as-Mac-with-touch heuristic; renders manual instruction variant instead of native install button.
+   - **Online endpoints bypass**: `/ws*`, `/lobby`, `/rooms`, `/api/*` skipped by SW so chess-net's existing connection failure UX is preserved.
+   - **Local PWA testing**: Required SPA-aware server because python http.server lacks fallback; built serve-spa.py.
+
+6. All user messages (non-tool):
+   - "幫我評估一下如何把這個Rust + WASM包裝成PWA..." (initial request with ChatGPT reference)
+   - AskUserQuestion answers: Toast + manual reload / placeholder icons / picker banner + sidebar button + iOS hint / Build-time precache list (with extensive ChatGPT reasoning quoted)
+   - System reminder noting Makefile was modified (toolchain prerequisites added)
+   - "Just installed trunk `~/.cargo/bin/trunk` how about you verify for me?"
+   - "Seems super buggy" (with screenshots showing 404s and Error response)
+   - "The port 7878 version works fine..?" / "http://localhost:4173/Chinese-Chess_Xiangqi/ works but click inside game Still got 404"
+   - "git commit and use gh to track CI progress and see if our PWA app works"
+   - "Remember to record pitfalls (why we failed earlier)"
+   - Final summary request
+
+7. Pending Tasks:
+   - None explicitly pending. All 8 implementation tasks completed; both commits pushed; CI green; live deploy verified.
+
+8. Current Work:
+   Immediately before this summary request, I was verifying the live PWA deployment on GitHub Pages. After both commits pushed and all 4 CI runs (`feat(chess-web): PWA...` ci+pages and `docs(pitfalls): three local-serve traps...` ci+pages) completed with success, I probed the live URL `https://daviddwlee84.github.io/Chinese-Chess_Xiangqi` and confirmed:
+   - Picker / → 200
+   - sw.js → 200 with `APP_VERSION = "531f4b9a5cce"` and `BASE_PATH = "/Chinese-Chess_Xiangqi"`
+   - manifest.webmanifest has correct start_url/scope/icons all under /Chinese-Chess_Xiangqi/
+   - icon-512.png → 200
+   - SPA route /local/xiangqi → 404 (this is GitHub Pages' 404.html trick — body is the SPA shell, status code is 404 by design; the browser still loads the body and the Leptos router takes over, so direct links work in a real browser even though my curl HEAD probe shows 404)
+
+9. Optional Next Step:
+   The user's most recent explicit task ("git commit and use gh to track CI progress and see if our PWA app works") is completed: commits pushed, CI green, live deploy verified working. No follow-up was requested. If continuation is desired, the natural next steps from the TODO.md follow-ups I added would be: (1) replace placeholder icons with real artwork, (2) add IndexedDB persistence for in-progress games, or (3) wire Web Share API for FEN/PGN. But these were tagged P3 ("someday/nice-to-have") and not explicitly requested — I should not start on them without confirmation.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/david/.claude/projects/-Users-david-Documents-Program-Chinese-Chess-Xiangqi/1b15988f-991f-4f61-aa58-c816fe1b25a2.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+_**User (2026-05-10 09:09:03Z)**_
+
+<local-command-stdout>[2mCompacted (ctrl+o to see full summary)[22m
+[2mTip: You have access to Opus 1M with 5x more context[22m</local-command-stdout>
+
+_**User (2026-05-10 09:09:32Z)**_
+
+感覺不錯 目前美中不足是 [Image #11] Banqi seed 那邊 UI 有點超出去
+另外 也許可以給 Xangqi Pass-and-play 加上一個mirror的選項 這樣黑方的字都反著印 （這樣如果玩家用手機坐在對面玩 則可以看自己的棋子都是正的,
+此外在這個模式之下可以把己方死亡的棋子列在對手那方 （原本是統一列在棋盤下方）
+
+_**User (2026-05-10 09:09:32Z)**_
+
+[Image: source: /Users/david/.claude/image-cache/1b15988f-991f-4f61-aa58-c816fe1b25a2/11.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 09:09:41Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:11:00Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="Agent"><details>
+<summary>Tool use: **Agent**</summary>
+Explore picker + board rendering for plan
+
+```text
+Perfect! Now I have comprehensive information. Let me create a summary report of my findings.
+
+## Summary: Code Locations and Patterns for Your Three Changes
+
+Based on my analysis of `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web`, here are the exact file locations and patterns you need:
+
+### **Change 1: Banqi Seed Input Overflow (picker.rs)**
+
+**Banqi seed input markup:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs`, lines 419–430
+- **Pattern:** The `<fieldset>` with legend "Seed (optional)" wraps a text input with class `.text-input` and a hint paragraph
+- **Input state:** `seed_text: RwSignal<String>` created at line 338; bound to input via `prop:value` and `on:input` handlers
+
+**CSS findings:**
+- **Global `box-sizing`:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`, line 20: `* { box-sizing: border-box; }` ✓ All elements use border-box
+- **`.text-input` base styles:** lines 563–570 — has `padding: 0.5rem 0.75rem` and `border-radius: 0.4rem` but **NO explicit `max-width`**
+- **`.depth-input` override:** lines 576–580 — sets `width: 100%; min-width: 6rem; box-sizing: border-box;` for number fields specifically
+- **Fieldset styling:** lines 154–159 — `.card-fieldset` has `padding: 0.5rem 0.75rem` and `border: 1px solid var(--grid)` but no width constraint
+- **Grid container (picker-grid):** lines 125–128 — `grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));` with `gap: 1rem`
+- **Card flex layout:** lines 147–152 — `.variant-card--form` uses `display: flex; flex-direction: column; gap: 0.6rem;`
+
+**Issue:** The seed `.text-input` has no `max-width` constraint and inherits `width: auto` in the flex column, allowing it to overflow on narrow viewports.
+
+---
+
+### **Change 2: Mirror Black Side for Xiangqi Pass-and-play**
+
+**Piece rendering (SVG):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs`, lines 253–295
+- **Glyph rendering:** line 284 — `glyph::glyph(p.piece.kind, p.piece.side, style)` — glyph table is side-aware
+- **Piece side determination:** lines 274–278 — reads `p.piece.side` (Type: `Side` from chess-core)
+- **SVG group transform:** line 281 — `transform=format!("translate({}, {})", cx, cy)` applies per-piece positioning
+- **Note:** Comment at line 1 says "SVG-only rendering" as CLAUDE.md notes
+
+**Glyph module:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/glyph.rs`, lines 15–46
+- **Side-based mapping:** `cjk()` function (lines 22–46) maps `(Side, PieceKind)` → glyph string
+- **Side enum:** `Side::RED` (line 24) and `Side::BLACK` (line 31) — derive from `chess_core::piece::Side`
+
+**Orientation module (existing transforms):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/orient.rs`, lines 27–69
+- **Current transforms:** `project_cell()` (lines 27–41) rotates xiangqi board 180° for Black observer (lines 33–34)
+- **Banqi transpose:** lines 37–38 transform 4×8 board to display 8×4 layout
+- **Note:** The tests (lines 99–108) verify Red and Black projections are 180° rotations of each other
+
+**Picker form state pattern (model for mirror checkbox):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs`, lines 46–87 (XiangqiCard)
+- **Signal creation:** line 48 — `let strict = create_rw_signal(false);`
+- **Checkbox binding:** lines 281–286 — pattern for `ai_show_hints` checkbox with `prop:checked` and `on:change`
+- **URL params passed:** lines 74–85 — LocalRulesParams struct gets populated and passed to `build_local_href()`
+
+**URL query encoding:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs`, lines 105–176
+- **LocalRulesParams struct:** lines 106–152 — has fields for all URL-encodable options
+- **Parse function:** lines 184–220 — `parse_local_rules()` reads query params via `get(key)` closure
+- **Build function:** lines 225–250+ — `build_local_query()` encodes params back to URL (reads variant and emits parts)
+- **Example encoding:** line 230 — `if params.strict { parts.push("strict=1".to_string()); }`
+
+**Pattern for new "mirror" field:**
+- Add `mirror: bool` to `LocalRulesParams` (around line 110)
+- Add parsing in `parse_local_rules()` (around line 206): `let mirror = matches!(get("mirror").as_deref(), Some("1") | Some("true"));`
+- Add encoding in `build_local_query()` (around line 250): `if params.mirror { parts.push("mirror=1".to_string()); }`
+- Add to Default impl (around line 167): `mirror: false,`
+
+**Local page state struct:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs`, lines 23–54
+- **VsAiConfig struct:** lines 24–32 — holds per-game settings (passed to LocalGame)
+- **LocalGame component:** lines 114–120 — receives variant, rules, wip, ai, insight as signals
+- **State initialization:** line 122 — `let state = create_rw_signal(GameState::new(rules));`
+- **Pattern:** Game runtime state lives as RwSignals created in LocalGame; mirror flag should live here as `create_rw_signal(bool)` and be threaded through the Board component
+
+**Prefs shared context (reference for similar pattern):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/prefs.rs`, lines 27–61
+- **Pattern:** `Prefs` struct holds multiple `RwSignal` fields, hydrated once in app init, `provide_context`-shared to all routes
+- **Suggestion:** Mirror flag could live here (global per session) OR as a local signal in LocalGame (scoped to that game) — depends on whether you want to persist the choice across games
+
+---
+
+### **Change 3: Split Captured Pieces by Side**
+
+**Captured strip component:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs`, lines 17–62
+- **Current structure:** Lines 57–58 render two `<CapturedRow>` components — one for Black pieces (label="黑"), one for Red (label="紅")
+- **Row split logic:** lines 23–32 — `split_and_sort_captured()` helper already returns `(red, black)` tuple
+- **Layout:** lines 46–59 show the captured-strip section with header + two rows stacked vertically
+
+**CSS styles for captured pieces:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`, lines 287–354
+- **Container:** `.captured-strip` (lines 290–296) — `margin-top: 0.6rem` below board, `display: grid; gap: 0.35rem`
+- **Header:** `.captured-header` (lines 297–302) — flexbox with title + toggle button
+- **Row:** `.captured-row` (lines 316–320) — `display: flex; gap: 0.45rem;` horizontal layout
+- **Pieces container:** `.captured-pieces` (lines 330–336) — `display: flex; flex-wrap: wrap;` with `flex: 1` to fill width
+- **Current layout:** Both rows stack vertically in a single column under the board
+
+**To split by side on edges (mirror mode):**
+- Captured Red pieces should appear on Red's side edge
+- Captured Black pieces should appear on Black's side edge
+- Suggestion: Modify `.game-page` grid (line 199) or add a new layout wrapper when mirror is active
+- **Game page layout:** lines 198–203 — currently `grid-template-columns: minmax(0, 1fr) 280px;` for board + sidebar
+- You'd need a mirror-mode layout that places captured rows left/right of the board in a 3-column or different structure
+
+**State module split/sort helper:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/state.rs`, lines 133–143
+- **Function:** `split_and_sort_captured()` already separates by side; already used by CapturedStrip
+- **No changes needed** — just consume the split results differently in the layout based on mirror flag
+
+---
+
+### **Key Patterns Summary**
+
+| Item | File | Lines | Pattern |
+|------|------|-------|---------|
+| Banqi seed input | picker.rs | 419–430 | Fieldset with `.text-input` class |
+| Fieldset base styles | style.css | 154–159 | `.card-fieldset` — padding + border, no width |
+| Text input styles | style.css | 563–580 | `.text-input` lacks `max-width`; `.depth-input` overrides with `100%` |
+| Picker grid | style.css | 125–128 | `repeat(auto-fit, minmax(220px, 1fr))` — flexible columns |
+| SVG piece rendering | board.rs | 253–295 | Per-piece `<g transform>` with `.tile-glyph` text element |
+| Glyph side mapping | glyph.rs | 15–46 | `glyph(kind, side, style)` — 14 CJK strings per side |
+| Orient transforms | orient.rs | 27–69 | `project_cell()` for 180° board flip; banqi transpose |
+| URL params struct | routes.rs | 105–176 | `LocalRulesParams` with parse/build functions |
+| Picker form signals | picker.rs | 46–87 | `create_rw_signal()` + `prop:checked` + `on:change` |
+| Captured split | captured.rs | 17–62 | Two `CapturedRow` instances from `split_and_sort_captured()` |
+| Captured styles | style.css | 287–354 | `.captured-strip` grid, `.captured-row` flex row layout |
+| Game page grid | style.css | 198–203 | `grid-template-columns: minmax(0, 1fr) 280px;` |
+
+All files are read-only for now. Ready to write the detailed plan?
+```
+</details></tool-use>
+
+_**Agent - sidechain (2026-05-10 09:10:02Z)**_
+
+I'm planning three changes to `clients/chess-web` (Rust + Leptos + Trunk SPA). I need you to find the relevant code so I can write an accurate plan. Do NOT write code — just find files, line numbers, and summarize patterns. Report back in under 500 words.
+
+**Change 1 — Fix Banqi "Seed (optional)" input overflow on picker.**
+The picker page is at `clients/chess-web/src/pages/picker.rs`. On a tablet/phone-width viewport, the seed input box and helper text appear to overflow the column (see the screenshot the user attached — the input visibly extends past its parent fieldset). Find:
+- The Banqi column / seed fieldset markup in picker.rs
+- Related CSS in `clients/chess-web/style.css` (search for picker-related selectors, fieldset, .picker-card, anything with grid/flex/column layout, seed input class)
+- Whether the input has `box-sizing: border-box` and a sensible `max-width: 100%`
+- The grid container around the three columns (Xiangqi / Banqi / Three-Kingdom) — does it use fixed widths, fr units, minmax?
+
+**Change 2 — Add a "mirror Black side" option for Xiangqi pass-and-play.**
+The intent: two players sharing one device (phone/tablet flat on a table, sitting opposite). When it's Black's turn, Black's pieces should be rendered rotated 180° so they read upright from the opposite seat. (Red pieces stay upright; only Black side's glyphs flip.) This is a per-game toggle exposed in the Xiangqi picker column (mode = pass-and-play only). Find:
+- Where Xiangqi pieces are rendered: probably `clients/chess-web/src/components/board.rs` and/or a `<svg>`/SVG-based piece component. The CLAUDE.md notes "SVG-only rendering".
+- How the Side is determined per piece (`Piece::side()` from `chess-core`?)
+- Where the picker stores form state (the existing AI hints toggle, casual/strict radio) — model after that for the new "Mirror Black" checkbox.
+- How URL query params encode picker options (`routes.rs::parse_local_rules`, `build_local_query`) — would `?mirror=1` fit naturally?
+- Whether `clients/chess-web/src/orient.rs` already does any flipping (CLAUDE.md says it transposes banqi 4×8→8×4 and flips xiangqi for Black observer); check if a mirror-Black-glyphs option can compose with it without breaking anything.
+- The state struct for the play page (where the mirror flag would live as a boolean).
+
+**Change 3 — In mirror mode, show each side's captured pieces on that side's edge of the board.**
+Currently captured pieces appear "unified below the board". Find:
+- Where captured-piece display lives. Search for "captured", "graveyard", "taken", or component imports in the play page.
+- Whether it's a single component instance or already split by side.
+- Layout in style.css.
+
+Also useful: a quick scan of `clients/chess-web/src/pages/picker.rs` form-state struct so I know the field naming convention for the new mirror checkbox, and `app.rs`/`state.rs` to know where game-runtime preferences live (similar to how `Prefs` for confetti/check-banner is shared via `provide_context`).
+
+Report file paths with line numbers and concise quotes of the relevant patterns. No editing.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:04Z)**_
+
+I'll systematically search for these code patterns across the Leptos SPA project. Let me start with a broad exploration of the structure and then dive into each change area.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web -type f -name "*.rs" | head -20`
+
+```text
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/build.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/config.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/lib.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/glyph.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/orient.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/state.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/app.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/prefs.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/ws.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/end_overlay.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/move_history.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/confetti.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/sidebar.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/ws_setup.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/mod.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/pwa.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/debug_panel.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:06Z)**_
+
+Good—I can see `captured.rs` exists. Now let me read the key files in parallel.
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:07Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/picker.rs`
+
+```text
+1	use chess_ai::{Difficulty, Randomness, Strategy};
+2	use chess_core::piece::Side;
+3	use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN};
+4	use leptos::*;
+5	
+6	use crate::components::pwa::PwaInstallBanner;
+7	use crate::routes::{app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH};
+8	
+9	#[component]
+10	pub fn Picker() -> impl IntoView {
+11	    view! {
+12	        <section class="picker">
+13	            <PwaInstallBanner/>
+14	            <header class="picker-hero">
+15	                <div class="picker-hero__glyph" aria-hidden="true">"帥"</div>
+16	                <div class="picker-hero__copy">
+17	                    <h1>"Chinese Chess 中國象棋"</h1>
+18	                    <p>
+19	                        "Pick a variant for local pass-and-play, or join the online lobby. "
+20	                        "Rule choices encode into the URL — bookmark to share a configuration."
+21	                    </p>
+22	                </div>
+23	                <a
+24	                    class="picker-hero__source"
+25	                    href="https://github.com/daviddwlee84/Chinese-Chess_Xiangqi"
+26	                    target="_blank"
+27	                    rel="noopener noreferrer"
+28	                    aria-label="View source on GitHub"
+29	                    title="View source on GitHub"
+30	                >
+31	                    <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true">
+32	                        <path fill="currentColor" fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+33	                    </svg>
+34	                </a>
+35	            </header>
+36	            <div class="picker-grid">
+37	                <XiangqiCard/>
+38	                <BanqiCard/>
+39	                <ThreeKingdomCard/>
+40	                <OnlineCard/>
+41	            </div>
+42	        </section>
+43	    }
+44	}
+45	
+46	#[component]
+47	fn XiangqiCard() -> impl IntoView {
+48	    let strict = create_rw_signal(false);
+49	    let mode = create_rw_signal(PlayMode::Pvp);
+50	    let player_red = create_rw_signal(true);
+51	    let difficulty = create_rw_signal(Difficulty::Normal);
+52	    let ai_strategy = create_rw_signal(Strategy::default());
+53	    // None = "use difficulty default"; Some(_) = explicit override.
+54	    // Encoded into the URL via `&variation=`.
+55	    let ai_variation = create_rw_signal::<Option<Randomness>>(None);
+56	    // Empty = use difficulty default depth; numeric = override (clamped
+57	    // 1..=MAX_AI_DEPTH on parse).
+58	    let ai_depth_text = create_rw_signal(String::new());
+59	    // Two independent advanced toggles — see the corresponding fields
+60	    // on `LocalRulesParams` for the semantic split:
+61	    //   - ai_show_hints → URL `hints=1` → in-game 🧠 toggle button,
+62	    //     default hidden, runs analyze from the human's POV when
+63	    //     opened (player-friendly).
+64	    //   - ai_show_debug → URL `debug=1` → sticky always-on panel
+65	    //     showing the AI's POV after each AI move (power-user).
+66	    // Both can be enabled together; `pages/local.rs` mounts a single
+67	    // `<DebugPanel>` and lets either source feed it.
+68	    let ai_show_hints = create_rw_signal(false);
+69	    let ai_show_debug = create_rw_signal(false);
+70	    let href = move || {
+71	        let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
+72	        let ai_depth =
+73	            ai_depth_text.with(|s| s.trim().parse::<u8>().ok().map(|d| d.clamp(1, MAX_AI_DEPTH)));
+74	        let params = LocalRulesParams {
+75	            strict: strict.get(),
+76	            mode: mode.get(),
+77	            ai_side,
+78	            ai_difficulty: difficulty.get(),
+79	            ai_strategy: ai_strategy.get(),
+80	            ai_variation: ai_variation.get(),
+81	            ai_depth,
+82	            ai_debug: ai_show_debug.get(),
+83	            ai_hints: ai_show_hints.get(),
+84	            ..Default::default()
+85	        };
+86	        app_href(&build_local_href(Variant::Xiangqi, &params))
+87	    };
+88	    view! {
+89	        <div class="variant-card variant-card--form">
+90	            <h2>"Xiangqi 象棋"</h2>
+91	            <p>"Standard 9×10 Chinese chess."</p>
+92	            <fieldset class="card-fieldset">
+93	                <legend>"Mode"</legend>
+94	                <label class="radio-row">
+95	                    <input
+96	                        type="radio"
+97	                        name="xiangqi-mode"
+98	                        prop:checked=move || mode.get() == PlayMode::Pvp
+99	                        on:change=move |_| mode.set(PlayMode::Pvp)
+100	                    />
+101	                    <span>"Pass-and-play — two humans share this device."</span>
+102	                </label>
+103	                <label class="radio-row">
+104	                    <input
+105	                        type="radio"
+106	                        name="xiangqi-mode"
+107	                        prop:checked=move || mode.get() == PlayMode::VsAi
+108	                        on:change=move |_| mode.set(PlayMode::VsAi)
+109	                    />
+110	                    <span>"vs Computer — alpha-beta engine, runs entirely in your browser."</span>
+111	                </label>
+112	            </fieldset>
+113	            <Show when=move || mode.get() == PlayMode::VsAi>
+114	                <fieldset class="card-fieldset">
+115	                    <legend>"You play"</legend>
+116	                    <label class="radio-row">
+117	                        <input
+118	                            type="radio"
+119	                            name="xiangqi-player-side"
+120	                            prop:checked=move || player_red.get()
+121	                            on:change=move |_| player_red.set(true)
+122	                        />
+123	                        <span>"紅 Red — moves first."</span>
+124	                    </label>
+125	                    <label class="radio-row">
+126	                        <input
+127	                            type="radio"
+128	                            name="xiangqi-player-side"
+129	                            prop:checked=move || !player_red.get()
+130	                            on:change=move |_| player_red.set(false)
+131	                        />
+132	                        <span>"黑 Black — AI moves first."</span>
+133	                    </label>
+134	                </fieldset>
+135	                <fieldset class="card-fieldset">
+136	                    <legend>"Difficulty"</legend>
+137	                    <label class="radio-row">
+138	                        <input
+139	                            type="radio"
+140	                            name="xiangqi-difficulty"
+141	                            prop:checked=move || difficulty.get() == Difficulty::Easy
+142	                            on:change=move |_| difficulty.set(Difficulty::Easy)
+143	                        />
+144	                        <span>"Easy — depth 1, picks at random from the top three replies."</span>
+145	                    </label>
+146	                    <label class="radio-row">
+147	                        <input
+148	                            type="radio"
+149	                            name="xiangqi-difficulty"
+150	                            prop:checked=move || difficulty.get() == Difficulty::Normal
+151	                            on:change=move |_| difficulty.set(Difficulty::Normal)
+152	                        />
+153	                        <span>"Normal — depth 3, mostly plays the best line."</span>
+154	                    </label>
+155	                    <label class="radio-row">
+156	                        <input
+157	                            type="radio"
+158	                            name="xiangqi-difficulty"
+159	                            prop:checked=move || difficulty.get() == Difficulty::Hard
+160	                            on:change=move |_| difficulty.set(Difficulty::Hard)
+161	                        />
+162	                        <span>"Hard — depth 4, may take a couple of seconds per move."</span>
+163	                    </label>
+164	                </fieldset>
+165	                <fieldset class="card-fieldset">
+166	                    <legend>"Search depth (advanced)"</legend>
+167	                    <p class="hint">
+168	                        "Override the difficulty's default search depth (Easy=1, Normal=3, Hard=4). Higher = stronger but slower. Cap: "
+169	                        {MAX_AI_DEPTH.to_string()}". Leave blank to use the difficulty default."
+170	                    </p>
+171	                    <input
+172	                        type="number"
+173	                        inputmode="numeric"
+174	                        min="1"
+175	                        max=MAX_AI_DEPTH.to_string()
+176	                        placeholder="auto"
+177	                        class="text-input depth-input"
+178	                        prop:value=move || ai_depth_text.get()
+179	                        on:input=move |ev| ai_depth_text.set(event_target_value(&ev))
+180	                    />
+181	                </fieldset>
+182	                <fieldset class="card-fieldset">
+183	                    <legend>"Engine"</legend>
+184	                    <label class="radio-row">
+185	                        <input
+186	                            type="radio"
+187	                            name="xiangqi-engine"
+188	                            prop:checked=move || ai_strategy.get() == Strategy::IterativeDeepeningTtV5
+189	                            on:change=move |_| ai_strategy.set(Strategy::IterativeDeepeningTtV5)
+190	                        />
+191	                        <span>"v5 — iterative deepening + transposition table (recommended). v4's evaluator with TT-amortized search; ~50% fewer nodes in endgames."</span>
+192	                    </label>
+193	                    <label class="radio-row">
+194	                        <input
+195	                            type="radio"
+196	                            name="xiangqi-engine"
+197	                            prop:checked=move || ai_strategy.get() == Strategy::QuiescenceMvvLvaV4
+198	                            on:change=move |_| ai_strategy.set(Strategy::QuiescenceMvvLvaV4)
+199	                        />
+200	                        <span>"v4 — quiescence + MVV-LVA. Avoids horizon-effect blunders on captures."</span>
+201	                    </label>
+202	                    <label class="radio-row">
+203	                        <input
+204	                            type="radio"
+205	                            name="xiangqi-engine"
+206	                            prop:checked=move || ai_strategy.get() == Strategy::MaterialKingSafetyPstV3
+207	                            on:change=move |_| ai_strategy.set(Strategy::MaterialKingSafetyPstV3)
+208	                        />
+209	                        <span>"v3 — material + PSTs + king safety. Defends against 1-ply mates but has horizon-effect blunders on captures."</span>
+210	                    </label>
+211	                    <label class="radio-row">
+212	                        <input
+213	                            type="radio"
+214	                            name="xiangqi-engine"
+215	                            prop:checked=move || ai_strategy.get() == Strategy::MaterialPstV2
+216	                            on:change=move |_| ai_strategy.set(Strategy::MaterialPstV2)
+217	                        />
+218	                        <span>"v2 — material + piece-square tables. Plays principled openings but can lose its general in casual mode."</span>
+219	                    </label>
+220	                    <label class="radio-row">
+221	                        <input
+222	                            type="radio"
+223	                            name="xiangqi-engine"
+224	                            prop:checked=move || ai_strategy.get() == Strategy::MaterialV1
+225	                            on:change=move |_| ai_strategy.set(Strategy::MaterialV1)
+226	                        />
+227	                        <span>"v1 — material only (original MVP). Picks at random in the opening."</span>
+228	                    </label>
+229	                </fieldset>
+230	                <fieldset class="card-fieldset">
+231	                    <legend>"Variation"</legend>
+232	                    <label class="radio-row">
+233	                        <input
+234	                            type="radio"
+235	                            name="xiangqi-variation"
+236	                            prop:checked=move || ai_variation.get().is_none()
+237	                            on:change=move |_| ai_variation.set(None)
+238	                        />
+239	                        <span>"Default — chosen by difficulty (Easy=Chaotic, Normal=Varied, Hard=Subtle)."</span>
+240	                    </label>
+241	                    <label class="radio-row">
+242	                        <input
+243	                            type="radio"
+244	                            name="xiangqi-variation"
+245	                            prop:checked=move || ai_variation.get() == Some(Randomness::STRICT)
+246	                            on:change=move |_| ai_variation.set(Some(Randomness::STRICT))
+247	                        />
+248	                        <span>"Strict — always the best move (deterministic, no variation)."</span>
+249	                    </label>
+250	                    <label class="radio-row">
+251	                        <input
+252	                            type="radio"
+253	                            name="xiangqi-variation"
+254	                            prop:checked=move || ai_variation.get() == Some(Randomness::SUBTLE)
+255	                            on:change=move |_| ai_variation.set(Some(Randomness::SUBTLE))
+256	                        />
+257	                        <span>"Subtle — top-3 within ±20 cp."</span>
+258	                    </label>
+259	                    <label class="radio-row">
+260	                        <input
+261	                            type="radio"
+262	                            name="xiangqi-variation"
+263	                            prop:checked=move || ai_variation.get() == Some(Randomness::VARIED)
+264	                            on:change=move |_| ai_variation.set(Some(Randomness::VARIED))
+265	                        />
+266	                        <span>"Varied — top-5 within ±60 cp."</span>
+267	                    </label>
+268	                    <label class="radio-row">
+269	                        <input
+270	                            type="radio"
+271	                            name="xiangqi-variation"
+272	                            prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
+273	                            on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
+274	                        />
+275	                        <span>"Chaotic — top-10 within ±150 cp (weak Hard, fun for learners)."</span>
+276	                    </label>
+277	                </fieldset>
+278	            </Show>
+279	            <fieldset class="card-fieldset">
+280	                <legend>"AI insight panels (advanced)"</legend>
+281	                <label class="check-row">
+282	                    <input
+283	                        type="checkbox"
+284	                        prop:checked=move || ai_show_hints.get()
+285	                        on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
+286	                    />
+287	                    <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from the side-to-move's POV). Hidden by default; you stay in control. Works in both vs-Computer and Pass-and-play."</span>
+288	                </label>
+289	                // Debug checkbox is vs-Computer ONLY: it shows the AI's
+290	                // own POV cached after each AI move. In Pass-and-play
+291	                // there's no AI move pump to fill that cache so the
+292	                // panel would be permanently empty — confusing UX.
+293	                // Hint mode covers PvP analysis needs.
+294	                <Show when=move || mode.get() == PlayMode::VsAi>
+295	                    <label class="check-row">
+296	                        <input
+297	                            type="checkbox"
+298	                            prop:checked=move || ai_show_debug.get()
+299	                            on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
+300	                        />
+301	                        <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis cached from the bot's POV after each AI turn). For development / curiosity. When combined with hints, the sidebar button toggles the panel between debug content (default) and live hint content."</span>
+302	                    </label>
+303	                </Show>
+304	            </fieldset>
+305	            <fieldset class="card-fieldset">
+306	                <legend>"Rules"</legend>
+307	                <label class="radio-row">
+308	                    <input
+309	                        type="radio"
+310	                        name="xiangqi-strict"
+311	                        prop:checked=move || !strict.get()
+312	                        on:change=move |_| strict.set(false)
+313	                    />
+314	                    <span>"Casual — leaving your general in check is allowed; you lose if it's actually captured."</span>
+315	                </label>
+316	                <label class="radio-row">
+317	                    <input
+318	                        type="radio"
+319	                        name="xiangqi-strict"
+320	                        prop:checked=move || strict.get()
+321	                        on:change=move |_| strict.set(true)
+322	                    />
+323	                    <span>"Strict — standard rules; self-check moves are illegal."</span>
+324	                </label>
+325	            </fieldset>
+326	            <a href=href rel="external" class="btn btn-primary card-cta">"Start Xiangqi →"</a>
+327	        </div>
+328	    }
+329	}
+330	
+331	#[component]
+332	fn BanqiCard() -> impl IntoView {
+333	    let chain = create_rw_signal(false);
+334	    let dark = create_rw_signal(false);
+335	    let dark_trade = create_rw_signal(false);
+336	    let rush = create_rw_signal(false);
+337	    let horse = create_rw_signal(false);
+338	    let seed_text = create_rw_signal(String::new());
+339	
+340	    let house = move || {
+341	        let mut h = HouseRules::empty();
+342	        if chain.get() {
+343	            h.insert(HouseRules::CHAIN_CAPTURE);
+344	        }
+345	        if dark.get() {
+346	            h.insert(HouseRules::DARK_CAPTURE);
+347	        }
+348	        if dark_trade.get() {
+349	            h.insert(HouseRules::DARK_CAPTURE_TRADE);
+350	        }
+351	        if rush.get() {
+352	            h.insert(HouseRules::CHARIOT_RUSH);
+353	        }
+354	        if horse.get() {
+355	            h.insert(HouseRules::HORSE_DIAGONAL);
+356	        }
+357	        h
+358	    };
+359	    let apply_preset = move |preset: HouseRules| {
+360	        chain.set(preset.contains(HouseRules::CHAIN_CAPTURE));
+361	        dark.set(preset.contains(HouseRules::DARK_CAPTURE));
+362	        dark_trade.set(preset.contains(HouseRules::DARK_CAPTURE_TRADE));
+363	        rush.set(preset.contains(HouseRules::CHARIOT_RUSH));
+364	        horse.set(preset.contains(HouseRules::HORSE_DIAGONAL));
+365	    };
+366	    let href = move || {
+367	        let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
+368	        let params = LocalRulesParams { house: house(), seed, ..Default::default() };
+369	        app_href(&build_local_href(Variant::Banqi, &params))
+370	    };
+371	
+372	    view! {
+373	        <div class="variant-card variant-card--form">
+374	            <h2>"Banqi 暗棋"</h2>
+375	            <p>"Hidden-piece variant on a 4×8 board. Whoever flips first plays that color."</p>
+376	            <fieldset class="card-fieldset">
+377	                <legend>"Preset"</legend>
+378	                <div class="preset-row">
+379	                    <button class="btn btn-ghost" type="button"
+380	                        on:click=move |_| apply_preset(PRESET_PURIST)>"Purist"</button>
+381	                    <button class="btn btn-ghost" type="button"
+382	                        on:click=move |_| apply_preset(PRESET_TAIWAN)>"Taiwan"</button>
+383	                    <button class="btn btn-ghost" type="button"
+384	                        on:click=move |_| apply_preset(PRESET_AGGRESSIVE)>"Aggressive"</button>
+385	                </div>
+386	            </fieldset>
+387	            <fieldset class="card-fieldset">
+388	                <legend>"House rules"</legend>
+389	                <label class="check-row">
+390	                    <input type="checkbox" prop:checked=move || chain.get()
+391	                        on:change=move |ev| chain.set(event_target_checked(&ev))/>
+392	                    <span>"連吃 — chain captures along a line"</span>
+393	                </label>
+394	                <label class="check-row">
+395	                    <input type="checkbox" prop:checked=move || dark.get()
+396	                        on:change=move |ev| dark.set(event_target_checked(&ev))/>
+397	                    <span>"暗吃 — atomic reveal+capture; on rank-fail your piece stays put (probe)"</span>
+398	                </label>
+399	                <label class="check-row">
+400	                    <input type="checkbox" prop:checked=move || dark_trade.get()
+401	                        on:change=move |ev| dark_trade.set(event_target_checked(&ev))/>
+402	                    <span>"暗吃·搏命 — on rank-fail your attacker dies (implies 暗吃)"</span>
+403	                </label>
+404	                <label class="check-row">
+405	                    <input type="checkbox" prop:checked=move || rush.get()
+406	                        on:change=move |ev| rush.set(event_target_checked(&ev))/>
+407	                    <span>"車衝 — chariot rays the full board; with a gap, captures any piece"</span>
+408	                </label>
+409	                <label class="check-row">
+410	                    <input type="checkbox" prop:checked=move || horse.get()
+411	                        on:change=move |ev| horse.set(event_target_checked(&ev))/>
+412	                    <span>"馬斜 — horse adds diagonal one-step moves; diagonal captures any piece"</span>
+413	                </label>
+414	                <p class="hint">
+415	                    "炮快移 is accepted by the engine but not yet wired into move-gen "
+416	                    "(see "<code>"TODO.md"</code>")."
+417	                </p>
+418	            </fieldset>
+419	            <fieldset class="card-fieldset">
+420	                <legend>"Seed (optional)"</legend>
+421	                <input
+422	                    type="text"
+423	                    inputmode="numeric"
+424	                    placeholder="leave blank for random"
+425	                    class="text-input"
+426	                    prop:value=move || seed_text.get()
+427	                    on:input=move |ev| seed_text.set(event_target_value(&ev))
+428	                />
+429	                <p class="hint">"Same seed = same shuffle, useful for puzzles or rematches."</p>
+430	            </fieldset>
+431	            <a href=href rel="external" class="btn btn-primary card-cta">"Start Banqi →"</a>
+432	        </div>
+433	    }
+434	}
+435	
+436	#[component]
+437	fn ThreeKingdomCard() -> impl IntoView {
+438	    view! {
+439	        <a href=app_href("/local/three-kingdom") rel="external" class="variant-card">
+440	            <h2>"Three-Kingdom 三國暗棋"</h2>
+441	            <p>"3-player banqi. Engine still WIP — board renders but moves are gated."</p>
+442	        </a>
+443	    }
+444	}
+445	
+446	#[component]
+447	fn OnlineCard() -> impl IntoView {
+448	    view! {
+449	        <a href=app_href("/lobby") rel="external" class="variant-card variant-card--online">
+450	            <h2>"Online"</h2>
+451	            <p>"Browse rooms or create your own."</p>
+452	        </a>
+453	    }
+454	}
+455
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:08Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/board.rs`
+
+```text
+1	//! SVG board renderer. Variant-agnostic: takes a `PlayerView` + observer +
+2	//! a click callback, and lays cells on the intersection grid that the TUI
+3	//! also uses (see `crate::orient`).
+4	
+5	use chess_core::board::BoardShape;
+6	use chess_core::coord::Square;
+7	use chess_core::moves::Move;
+8	use chess_core::piece::Side;
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use leptos::*;
+11	
+12	use crate::glyph::{self, Style};
+13	use crate::orient::{display_dims, square_at_display};
+14	use crate::state::legal_targets;
+15	
+16	pub const CELL: i32 = 60;
+17	pub const PAD: i32 = 30;
+18	const RIVER_TOP_ROW: u8 = 4;
+19	const RIVER_BOT_ROW: u8 = 5;
+20	const TILE_RADIUS: i32 = 24;
+21	/// Extra space reserved OUTSIDE the existing PAD for ICCS-style coord
+22	/// labels (a..i / 0..9). Lives in negative-coord territory so we don't
+23	/// shrink the playing area or change piece geometry. Without this, an
+24	/// edge-rank piece (e.g. 俥 on a0) overlaps the label — PAD=30 vs
+25	/// piece radius=24 only leaves 6 px of clearance, not enough to fit a
+26	/// readable label outside the disc.
+27	const LABEL_MARGIN: i32 = 18;
+28	
+29	#[component]
+30	pub fn Board(
+31	    shape: BoardShape,
+32	    observer: Side,
+33	    #[prop(into)] view: Signal<PlayerView>,
+34	    #[prop(into)] selected: Signal<Option<Square>>,
+35	    #[prop(into)] on_click: Callback<Square>,
+36	    /// Optional debug-overlay highlight for an arbitrary move chain
+37	    /// (no commitment — purely visual). Used by the AI debug panel:
+38	    /// element 0 is the AI's chosen move, elements 1..N are the
+39	    /// principal variation continuation. Renders as a sequence of
+40	    /// from→to arrows with the first move bright and later moves
+41	    /// progressively faded so the user can trace the AI's predicted
+42	    /// line. Empty Vec = no highlight.
+43	    #[prop(optional, into)]
+44	    highlighted_pv: Option<Signal<Vec<Move>>>,
+45	) -> impl IntoView {
+46	    let (rows, cols) = display_dims(shape);
+47	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+48	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+49	    // Extend the viewBox into negative space on all sides for coord
+50	    // labels. Pieces still live at their original positive-coord
+51	    // centers — only the SVG canvas grows. Bg rect grows to match so
+52	    // the labels render on the wood-tone board frame, not on the dark
+53	    // page background.
+54	    let total_w = view_w + LABEL_MARGIN * 2;
+55	    let total_h = view_h + LABEL_MARGIN * 2;
+56	    let viewbox = format!("{} {} {} {}", -LABEL_MARGIN, -LABEL_MARGIN, total_w, total_h);
+57	    let style = Style::Cjk;
+58	    let highlighted_pv: Signal<Vec<Move>> =
+59	        highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
+60	
+61	    view! {
+62	        <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
+63	            <rect
+64	                class="board-bg"
+65	                x=-LABEL_MARGIN
+66	                y=-LABEL_MARGIN
+67	                width=total_w
+68	                height=total_h
+69	            />
+70	            <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
+71	            <g class="coord-layer">{coord_labels(shape, rows, cols, observer)}</g>
+72	            <g class="river-layer">{river_text(shape, cols)}</g>
+73	            <g class="palace-layer">{palace_diagonals(shape)}</g>
+74	            <g class="overlay-layer">
+75	                {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
+76	            </g>
+77	            <g class="pieces-layer">
+78	                {move || pieces_view(&view.get(), observer, shape, style)}
+79	            </g>
+80	            <g class="overlay-top-layer">
+81	                {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
+82	                {move || selection_marker(selected.get(), observer, shape)}
+83	                {move || debug_pv_marker(highlighted_pv.get(), observer, shape)}
+84	            </g>
+85	            <g class="cells-layer">
+86	                {hit_cells(rows, cols, observer, shape, on_click)}
+87	            </g>
+88	        </svg>
+89	    }
+90	}
+91	
+92	#[inline]
+93	fn intersection(row: u8, col: u8) -> (i32, i32) {
+94	    (PAD + col as i32 * CELL, PAD + row as i32 * CELL)
+95	}
+96	
+97	fn grid_lines(shape: BoardShape, rows: u8, cols: u8) -> View {
+98	    let is_xiangqi = matches!(shape, BoardShape::Xiangqi9x10);
+99	    let mut out: Vec<View> = Vec::with_capacity(rows as usize + cols as usize * 2);
+100	    for r in 0..rows {
+101	        let y = PAD + r as i32 * CELL;
+102	        let x1 = PAD;
+103	        let x2 = PAD + (cols as i32 - 1) * CELL;
+104	        out.push(view! { <line class="grid" x1=x1 y1=y x2=x2 y2=y/> }.into_view());
+105	    }
+106	    for c in 0..cols {
+107	        let x = PAD + c as i32 * CELL;
+108	        let is_border = c == 0 || c == cols - 1;
+109	        let y_top = PAD;
+110	        let y_bot = PAD + (rows as i32 - 1) * CELL;
+111	        if is_xiangqi && !is_border {
+112	            let y_river_top = PAD + RIVER_TOP_ROW as i32 * CELL;
+113	            let y_river_bot = PAD + RIVER_BOT_ROW as i32 * CELL;
+114	            out.push(
+115	                view! {
+116	                    <line class="grid" x1=x y1=y_top x2=x y2=y_river_top/>
+117	                    <line class="grid" x1=x y1=y_river_bot x2=x y2=y_bot/>
+118	                }
+119	                .into_view(),
+120	            );
+121	        } else {
+122	            out.push(view! { <line class="grid" x1=x y1=y_top x2=x y2=y_bot/> }.into_view());
+123	        }
+124	    }
+125	    out.into_view()
+126	}
+127	
+128	fn river_text(shape: BoardShape, cols: u8) -> View {
+129	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+130	        return ().into_view();
+131	    }
+132	    let cx = PAD + (cols as i32 - 1) * CELL / 2;
+133	    let cy = PAD + (RIVER_TOP_ROW as i32 * CELL + RIVER_BOT_ROW as i32 * CELL) / 2;
+134	    view! {
+135	        <text class="river-text" x=cx y=cy text-anchor="middle" dominant-baseline="central">
+136	            "楚 河 漢 界"
+137	        </text>
+138	    }
+139	    .into_view()
+140	}
+141	
+142	/// Algebraic-style coordinate labels around the board: file letters
+143	/// (`a..i`) along the top + bottom edges, rank digits (`0..9`) along
+144	/// the left + right edges. Same notation as the ICCS-encoded moves
+145	/// shown in the AI hint / debug panel and the move-history sidebar
+146	/// (e.g. `h2g2` = move from h2 to g2). Without these labels users
+147	/// can't visually map the table entries to board squares.
+148	///
+149	/// Observer-aware: looks up file/rank via `square_at_display` then
+150	/// asks the board for the chess-coord of that square. This way the
+151	/// labels respect Red-at-bottom vs Black-at-bottom orientation
+152	/// automatically (Red sees `a..i` left-to-right, Black sees `i..a`).
+153	///
+154	/// Labels live in the LABEL_MARGIN strip OUTSIDE the original PAD
+155	/// area (negative coords for top/left, beyond view_w/view_h for
+156	/// bottom/right). The previous version put them at PAD-16, which
+157	/// landed *inside* the disc of any edge-rank/edge-file piece (PAD=30
+158	/// vs piece radius=24 → only 6 px clearance) so the corner labels
+159	/// were invisible whenever a 俥/車 sat on a0/i0/a9/i9. Negative-coord
+160	/// placement keeps them clear of all piece geometry.
+161	///
+162	/// Xiangqi only — banqi has no algebraic-style notation in this codebase.
+163	fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
+164	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+165	        return ().into_view();
+166	    }
+167	    let board = chess_core::board::Board::new(shape);
+168	    let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
+169	
+170	    // File labels (a..i) — read the file from the bottom-edge cell of
+171	    // each column (any row would do; bottom-edge avoids needing to
+172	    // worry about non-rectangular shapes), then mirror at the top edge.
+173	    let bottom_row = rows - 1;
+174	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+175	    // Halfway up the top margin (negative coords): well clear of
+176	    // top-edge piece discs (whose top edge is at y = PAD - TILE_RADIUS = 6).
+177	    let label_y_top = -LABEL_MARGIN / 2;
+178	    // Halfway down the bottom margin (beyond view_h): clear of
+179	    // bottom-edge piece discs (whose bottom edge is at y = view_h - PAD + TILE_RADIUS).
+180	    let label_y_bot = view_h + LABEL_MARGIN / 2;
+181	    for col in 0..cols {
+182	        let Some(sq) = square_at_display(bottom_row, col, observer, shape) else { continue };
+183	        let (f, _) = board.file_rank(sq);
+184	        let ch = (b'a' + f.0) as char;
+185	        let x = PAD + col as i32 * CELL;
+186	        out.push(
+187	            view! {
+188	                <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+189	                    {ch.to_string()}
+190	                </text>
+191	            }
+192	            .into_view(),
+193	        );
+194	        out.push(
+195	            view! {
+196	                <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
+197	                    {ch.to_string()}
+198	                </text>
+199	            }
+200	            .into_view(),
+201	        );
+202	    }
+203	
+204	    // Rank labels (0..9) — read the rank from the left-edge cell of
+205	    // each row, then mirror at the right edge.
+206	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+207	    let label_x_left = -LABEL_MARGIN / 2; // ≈ -9
+208	    let label_x_right = view_w + LABEL_MARGIN / 2; // ≈ view_w + 9
+209	    for row in 0..rows {
+210	        let Some(sq) = square_at_display(row, 0, observer, shape) else { continue };
+211	        let (_, r) = board.file_rank(sq);
+212	        let digit = r.0;
+213	        let y = PAD + row as i32 * CELL;
+214	        out.push(
+215	            view! {
+216	                <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
+217	                    {digit.to_string()}
+218	                </text>
+219	            }
+220	            .into_view(),
+221	        );
+222	        out.push(
+223	            view! {
+224	                <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+225	                    {digit.to_string()}
+226	                </text>
+227	            }
+228	            .into_view(),
+229	        );
+230	    }
+231	    out.into_view()
+232	}
+233	
+234	fn palace_diagonals(shape: BoardShape) -> View {
+235	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+236	        return ().into_view();
+237	    }
+238	    // Files 3..5; top palace = display rows 0..2; bottom palace = rows 7..9.
+239	    // Symmetric for both observers because the palace box is centered on the file axis.
+240	    let segments = [
+241	        (intersection(0, 3), intersection(2, 5)),
+242	        (intersection(0, 5), intersection(2, 3)),
+243	        (intersection(7, 3), intersection(9, 5)),
+244	        (intersection(7, 5), intersection(9, 3)),
+245	    ];
+246	    segments
+247	        .into_iter()
+248	        .map(|(a, b)| view! { <line class="palace" x1=a.0 y1=a.1 x2=b.0 y2=b.1/> }.into_view())
+249	        .collect::<Vec<View>>()
+250	        .into_view()
+251	}
+252	
+253	fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Style) -> View {
+254	    let (rows, cols) = display_dims(shape);
+255	    let mut out: Vec<View> = Vec::new();
+256	    for row in 0..rows {
+257	        for col in 0..cols {
+258	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+259	            let cell = view.cells[sq.0 as usize];
+260	            let (cx, cy) = intersection(row, col);
+261	            match cell {
+262	                VisibleCell::Empty => {}
+263	                VisibleCell::Hidden => {
+264	                    out.push(
+265	                        view! {
+266	                            <g class="tile hidden" transform=format!("translate({}, {})", cx, cy)>
+267	                                <circle class="tile-back" r=TILE_RADIUS cx="0" cy="0"/>
+268	                            </g>
+269	                        }
+270	                        .into_view(),
+271	                    );
+272	                }
+273	                VisibleCell::Revealed(p) => {
+274	                    let side_class = match p.piece.side {
+275	                        Side::RED => "red",
+276	                        Side::BLACK => "black",
+277	                        _ => "green",
+278	                    };
+279	                    out.push(
+280	                        view! {
+281	                            <g class=format!("tile piece {}", side_class) transform=format!("translate({}, {})", cx, cy)>
+282	                                <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
+283	                                <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
+284	                                    {glyph::glyph(p.piece.kind, p.piece.side, style)}
+285	                                </text>
+286	                            </g>
+287	                        }
+288	                        .into_view(),
+289	                    );
+290	                }
+291	            }
+292	        }
+293	    }
+294	    out.into_view()
+295	}
+296	
+297	fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape) -> View {
+298	    let Some(sq) = selected else { return ().into_view() };
+299	    let (rows, cols) = display_dims(shape);
+300	    for row in 0..rows {
+301	        for col in 0..cols {
+302	            if square_at_display(row, col, observer, shape) == Some(sq) {
+303	                let (cx, cy) = intersection(row, col);
+304	                return view! { <circle class="selection" cx=cx cy=cy r="28"/> }.into_view();
+305	            }
+306	        }
+307	    }
+308	    ().into_view()
+309	}
+310	
+311	/// Debug overlay: render a sequence of `from→to` arrows for an entire
+312	/// principal variation, with the first move bright (the AI's chosen
+313	/// move) and later moves progressively faded (the predicted line).
+314	/// Used by the AI debug panel's hover-to-highlight. Empty Vec renders
+315	/// nothing.
+316	fn debug_pv_marker(pv: Vec<Move>, observer: Side, shape: BoardShape) -> View {
+317	    if pv.is_empty() {
+318	        return ().into_view();
+319	    }
+320	    let (rows, cols) = display_dims(shape);
+321	    let mut out: Vec<View> = Vec::with_capacity(pv.len() * 3);
+322	    let total = pv.len();
+323	    for (i, mv) in pv.iter().enumerate() {
+324	        // Opacity fades from 1.0 (chosen) to ~0.35 (deepest PV move).
+325	        let alpha = 1.0 - (i as f32 / total.max(2) as f32) * 0.65;
+326	        let alpha_str = format!("{:.2}", alpha);
+327	        // Step 0 (the AI's chosen move) gets the "from" / "to" classes;
+328	        // PV continuations get the "pv" variant which is dashed-thinner.
+329	        let from_class = if i == 0 { "debug-from" } else { "debug-pv-from" };
+330	        let to_class = if i == 0 { "debug-to" } else { "debug-pv-to" };
+331	        let line_class = if i == 0 { "debug-line" } else { "debug-pv-line" };
+332	
+333	        let from_sq = mv.origin_square();
+334	        let to_sq = mv.to_square();
+335	        let mut from_xy: Option<(i32, i32)> = None;
+336	        let mut to_xy: Option<(i32, i32)> = None;
+337	        for row in 0..rows {
+338	            for col in 0..cols {
+339	                if square_at_display(row, col, observer, shape) == Some(from_sq) {
+340	                    from_xy = Some(intersection(row, col));
+341	                }
+342	                if let Some(t) = to_sq {
+343	                    if square_at_display(row, col, observer, shape) == Some(t) {
+344	                        to_xy = Some(intersection(row, col));
+345	                    }
+346	                }
+347	            }
+348	        }
+349	        let Some((fx, fy)) = from_xy else { continue };
+350	        out.push(
+351	            view! { <circle class=from_class cx=fx cy=fy r="32" opacity=alpha_str.clone()/> }
+352	                .into_view(),
+353	        );
+354	        if let Some((tx, ty)) = to_xy {
+355	            out.push(
+356	                view! {
+357	                    <line class=line_class x1=fx y1=fy x2=tx y2=ty opacity=alpha_str.clone()/>
+358	                }
+359	                .into_view(),
+360	            );
+361	            out.push(
+362	                view! { <circle class=to_class cx=tx cy=ty r="32" opacity=alpha_str/> }.into_view(),
+363	            );
+364	        }
+365	    }
+366	    out.into_view()
+367	}
+368	
+369	fn chain_lock_marker(locked: Option<Square>, observer: Side, shape: BoardShape) -> View {
+370	    let Some(sq) = locked else { return ().into_view() };
+371	    let (rows, cols) = display_dims(shape);
+372	    for row in 0..rows {
+373	        for col in 0..cols {
+374	            if square_at_display(row, col, observer, shape) == Some(sq) {
+375	                let (cx, cy) = intersection(row, col);
+376	                return view! { <circle class="chain-lock" cx=cx cy=cy r="30"/> }.into_view();
+377	            }
+378	        }
+379	    }
+380	    ().into_view()
+381	}
+382	
+383	fn move_dots_view(
+384	    view: &PlayerView,
+385	    selected: Option<Square>,
+386	    observer: Side,
+387	    shape: BoardShape,
+388	) -> View {
+389	    let Some(from) = selected else { return ().into_view() };
+390	    let targets = legal_targets(view, from);
+391	    if targets.is_empty() {
+392	        return ().into_view();
+393	    }
+394	    let (rows, cols) = display_dims(shape);
+395	    let mut out: Vec<View> = Vec::new();
+396	    for row in 0..rows {
+397	        for col in 0..cols {
+398	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+399	            if !targets.contains(&sq) {
+400	                continue;
+401	            }
+402	            let (cx, cy) = intersection(row, col);
+403	            // Empty target → small dot. Capturable target (revealed
+404	            // enemy piece OR face-down tile under DARK_CAPTURE) →
+405	            // larger ring framing the piece, so the player sees at a
+406	            // glance which enemies / hidden tiles can be taken — not
+407	            // just where to slide to. Same data the TUI surfaces with
+408	            // its green-highlighted attackable squares.
+409	            let cell = view.cells[sq.0 as usize];
+410	            let class = match cell {
+411	                VisibleCell::Empty => "move-dot",
+412	                _ => "move-target",
+413	            };
+414	            let r = if class == "move-dot" { "9" } else { "26" };
+415	            out.push(view! { <circle class=class cx=cx cy=cy r=r/> }.into_view());
+416	        }
+417	    }
+418	    out.into_view()
+419	}
+420	
+421	fn hit_cells(
+422	    rows: u8,
+423	    cols: u8,
+424	    observer: Side,
+425	    shape: BoardShape,
+426	    on_click: Callback<Square>,
+427	) -> View {
+428	    let mut out: Vec<View> = Vec::with_capacity(rows as usize * cols as usize);
+429	    for row in 0..rows {
+430	        for col in 0..cols {
+431	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+432	            let x = col as i32 * CELL;
+433	            let y = row as i32 * CELL;
+434	            out.push(
+435	                view! {
+436	                    <rect
+437	                        class="cell-hit"
+438	                        x=x y=y width=CELL height=CELL
+439	                        on:pointerup=move |_| on_click.call(sq)
+440	                    />
+441	                }
+442	                .into_view(),
+443	            );
+444	        }
+445	    }
+446	    out.into_view()
+447	}
+448
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:08Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/captured.rs`
+
+```text
+1	//! Below-board "captured pieces" strip ("graveyard").
+2	//!
+3	//! Renders as two horizontal rows directly under the Board: each side's
+4	//! dead pieces shown as small disc-icons styled like the board pieces
+5	//! (red glyph on a paler tile-back). A tiny toggle in the header flips
+6	//! the sort order between chronological (default) and rank. The signal
+7	//! lives on `Prefs` so the choice persists in `localStorage`.
+8	
+9	use chess_core::piece::Piece;
+10	use chess_core::view::PlayerView;
+11	use leptos::*;
+12	
+13	use crate::glyph::{self, Style};
+14	use crate::prefs::Prefs;
+15	use crate::state::{split_and_sort_captured, CapturedSort};
+16	
+17	#[component]
+18	pub fn CapturedStrip(#[prop(into)] view: Signal<PlayerView>) -> impl IntoView {
+19	    let prefs = expect_context::<Prefs>();
+20	    let sort_signal = prefs.captured_sort;
+21	    let style = Style::Cjk;
+22	
+23	    let red_pieces = move || {
+24	        let v = view.get();
+25	        let (red, _black) = split_and_sort_captured(&v.captured, sort_signal.get());
+26	        red
+27	    };
+28	    let black_pieces = move || {
+29	        let v = view.get();
+30	        let (_red, black) = split_and_sort_captured(&v.captured, sort_signal.get());
+31	        black
+32	    };
+33	
+34	    // Hide the strip entirely until at least one piece has died — keeps
+35	    // the board area uncluttered for opening positions.
+36	    let any_captured = move || !view.get().captured.is_empty();
+37	
+38	    let toggle_label = move || match sort_signal.get() {
+39	        CapturedSort::Time => "⏱ time",
+40	        CapturedSort::Rank => "📊 rank",
+41	    };
+42	    let on_toggle = move |_| sort_signal.update(|s| *s = s.toggled());
+43	
+44	    view! {
+45	        <Show when=any_captured>
+46	            <section class="captured-strip" aria-label="Captured pieces">
+47	                <div class="captured-header">
+48	                    <h4>"Captured 死亡"</h4>
+49	                    <button
+50	                        class="captured-toggle btn"
+51	                        on:click=on_toggle
+52	                        title="Toggle sort: time / rank"
+53	                    >
+54	                        {toggle_label}
+55	                    </button>
+56	                </div>
+57	                <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style/>
+58	                <CapturedRow side_class="red"   label="紅" pieces=Signal::derive(red_pieces)   style=style/>
+59	            </section>
+60	        </Show>
+61	    }
+62	}
+63	
+64	#[component]
+65	fn CapturedRow(
+66	    side_class: &'static str,
+67	    label: &'static str,
+68	    #[prop(into)] pieces: Signal<Vec<Piece>>,
+69	    style: Style,
+70	) -> impl IntoView {
+71	    let row_class = format!("captured-row {side_class}");
+72	    let glyphs = move || {
+73	        let ps = pieces.get();
+74	        if ps.is_empty() {
+75	            view! { <span class="captured-empty">"—"</span> }.into_view()
+76	        } else {
+77	            ps.into_iter()
+78	                .map(|p| {
+79	                    let g = glyph::glyph(p.kind, p.side, style).to_string();
+80	                    view! {
+81	                        <span class="captured-piece" aria-label=format!("{:?}", p.kind)>
+82	                            <span class="captured-piece-glyph">{g}</span>
+83	                        </span>
+84	                    }
+85	                })
+86	                .collect_view()
+87	        }
+88	    };
+89	    view! {
+90	        <div class=row_class>
+91	            <span class="captured-label">{label}</span>
+92	            <div class="captured-pieces">{glyphs}</div>
+93	        </div>
+94	    }
+95	}
+96
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:10Z)**_
+
+Now let me read the CSS file and check for orient.rs, routes.rs, state.rs, and prefs.rs:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+1	:root {
+2	    --bg: #1a1614;
+3	    --fg: #f4d2a3;
+4	    --board: #f0c98c;
+5	    --board-edge: #6b4a1f;
+6	    --grid: #5a3b1c;
+7	    --red: #b22222;
+8	    --black: #1a1a1a;
+9	    --green: #228b22;
+10	    --accent: #d4a55c;
+11	    --muted: #7a6c5a;
+12	    --select-bg: rgba(80, 60, 20, 0.85);
+13	    --legal-bg: rgba(40, 80, 40, 0.65);
+14	    --tile-back: #d8a96b;
+15	    --tile-disc: #fffbe6;
+16	    --river: #5a8fbf;
+17	    font-family: ui-sans-serif, "Noto Sans CJK SC", "Noto Sans CJK TC", system-ui, sans-serif;
+18	}
+19	
+20	* { box-sizing: border-box; }
+21	
+22	body {
+23	    margin: 0;
+24	    background: var(--bg);
+25	    color: var(--fg);
+26	    min-height: 100vh;
+27	    display: grid;
+28	    place-items: start center;
+29	}
+30	
+31	.boot-loader {
+32	    width: min(100%, 760px);
+33	    min-height: 100vh;
+34	    padding: 2rem 1rem;
+35	    display: grid;
+36	    place-items: center;
+37	    transition: opacity 0.18s ease, transform 0.18s ease;
+38	}
+39	.boot-loader--done {
+40	    opacity: 0;
+41	    transform: translateY(-0.35rem);
+42	}
+43	.boot-card {
+44	    width: min(100%, 32rem);
+45	    padding: clamp(1.5rem, 6vw, 2.4rem);
+46	    border: 1px solid rgba(212, 165, 92, 0.45);
+47	    border-radius: 1rem;
+48	    background:
+49	        radial-gradient(circle at 20% 15%, rgba(178, 34, 34, 0.22), transparent 36%),
+50	        linear-gradient(145deg, rgba(244, 210, 163, 0.09), rgba(0, 0, 0, 0.2));
+51	    box-shadow: 0 18px 56px rgba(0, 0, 0, 0.35);
+52	}
+53	.boot-mark {
+54	    width: 4rem;
+55	    height: 4rem;
+56	    display: grid;
+57	    place-items: center;
+58	    border: 2px solid var(--red);
+59	    border-radius: 999px;
+60	    background: var(--tile-disc);
+61	    color: var(--red);
+62	    font-size: 2.15rem;
+63	    font-weight: 800;
+64	    box-shadow: 0 0 0 0.45rem rgba(178, 34, 34, 0.12);
+65	}
+66	.boot-kicker {
+67	    margin: 1.25rem 0 0.35rem;
+68	    color: var(--accent);
+69	    font-size: 0.78rem;
+70	    font-weight: 700;
+71	    letter-spacing: 0.14em;
+72	    text-transform: uppercase;
+73	}
+74	.boot-card h1 {
+75	    margin: 0;
+76	    font-size: clamp(1.9rem, 7vw, 3.4rem);
+77	    line-height: 0.95;
+78	}
+79	.boot-copy {
+80	    max-width: 30rem;
+81	    margin: 1rem 0 1.25rem;
+82	    color: var(--muted);
+83	    line-height: 1.5;
+84	}
+85	.boot-progress {
+86	    height: 0.55rem;
+87	    overflow: hidden;
+88	    border: 1px solid rgba(212, 165, 92, 0.36);
+89	    border-radius: 999px;
+90	    background: rgba(0, 0, 0, 0.28);
+91	}
+92	.boot-progress span {
+93	    display: block;
+94	    width: 45%;
+95	    height: 100%;
+96	    border-radius: inherit;
+97	    background: linear-gradient(90deg, var(--red), var(--accent), var(--tile-disc));
+98	    animation: boot-progress 1.2s ease-in-out infinite;
+99	}
+100	.boot-noscript {
+101	    max-width: 34rem;
+102	    margin: 1rem;
+103	    padding: 1rem;
+104	    border: 1px solid var(--red);
+105	    border-radius: 0.5rem;
+106	    background: rgba(178, 34, 34, 0.12);
+107	}
+108	@keyframes boot-progress {
+109	    0% { transform: translateX(-105%); }
+110	    55%, 100% { transform: translateX(235%); }
+111	}
+112	@media (prefers-reduced-motion: reduce) {
+113	    .boot-loader { transition: none; }
+114	    .boot-progress span { animation: none; transform: none; width: 100%; }
+115	}
+116	
+117	.app-shell {
+118	    width: min(1100px, 100%);
+119	    padding: 2rem 1rem;
+120	}
+121	
+122	.picker h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 0.5rem; }
+123	.subtitle { color: var(--muted); margin: 0 0 2rem; }
+124	
+125	.picker-grid {
+126	    display: grid;
+127	    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+128	    gap: 1rem;
+129	}
+130	
+131	.variant-card {
+132	    display: block;
+133	    padding: 1.25rem;
+134	    background: rgba(244, 210, 163, 0.06);
+135	    border: 1px solid var(--grid);
+136	    border-radius: 0.75rem;
+137	    color: inherit;
+138	    text-decoration: none;
+139	    transition: background 0.12s ease, border-color 0.12s ease;
+140	}
+141	.variant-card:hover { background: rgba(244, 210, 163, 0.12); border-color: var(--accent); }
+142	.variant-card h2 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+143	.variant-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+144	.variant-card--online { background: rgba(178, 34, 34, 0.1); }
+145	.variant-card--online:hover { background: rgba(178, 34, 34, 0.2); }
+146	
+147	.variant-card--form {
+148	    cursor: default;
+149	    display: flex;
+150	    flex-direction: column;
+151	    gap: 0.6rem;
+152	}
+153	.variant-card--form:hover { background: rgba(244, 210, 163, 0.06); border-color: var(--grid); }
+154	.card-fieldset {
+155	    border: 1px solid var(--grid);
+156	    border-radius: 0.4rem;
+157	    padding: 0.5rem 0.75rem;
+158	    margin: 0;
+159	}
+160	.card-fieldset legend {
+161	    color: var(--accent);
+162	    font-size: 0.8rem;
+163	    padding: 0 0.35rem;
+164	}
+165	.radio-row, .check-row {
+166	    display: flex;
+167	    align-items: flex-start;
+168	    gap: 0.45rem;
+169	    font-size: 0.9rem;
+170	    line-height: 1.3;
+171	    padding: 0.15rem 0;
+172	    cursor: pointer;
+173	}
+174	.radio-row input, .check-row input { margin-top: 0.2rem; flex-shrink: 0; }
+175	.preset-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+176	.btn-ghost {
+177	    background: transparent;
+178	    border: 1px solid var(--grid);
+179	    color: var(--fg);
+180	    padding: 0.25rem 0.6rem;
+181	    font-size: 0.85rem;
+182	}
+183	.btn-ghost:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.08); }
+184	.hint {
+185	    margin: 0.35rem 0 0;
+186	    color: var(--muted);
+187	    font-size: 0.78rem;
+188	    line-height: 1.35;
+189	}
+190	.hint code {
+191	    background: rgba(244, 210, 163, 0.1);
+192	    padding: 0.05rem 0.25rem;
+193	    border-radius: 0.2rem;
+194	}
+195	.card-cta { margin-top: auto; align-self: flex-start; }
+196	
+197	.game-page {
+198	    display: grid;
+199	    grid-template-columns: minmax(0, 1fr) 280px;
+200	    gap: 1.5rem;
+201	    align-items: start;
+202	}
+203	.game-page--single { grid-template-columns: 1fr; }
+204	@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+205	
+206	/* Right-hand column on the play page stacks the sidebar and chat panel. */
+207	.right-column {
+208	    display: grid;
+209	    gap: 1rem;
+210	    align-content: start;
+211	}
+212	
+213	.chat-panel {
+214	    background: rgba(244, 210, 163, 0.04);
+215	    border: 1px solid var(--grid);
+216	    border-radius: 0.5rem;
+217	    display: grid;
+218	    grid-template-rows: 1fr auto;
+219	    height: 320px;
+220	    overflow: hidden;
+221	}
+222	.chat-log {
+223	    overflow-y: auto;
+224	    padding: 0.5rem 0.75rem;
+225	    font-size: 0.88rem;
+226	    display: flex;
+227	    flex-direction: column;
+228	    gap: 0.1rem;
+229	}
+230	.chat-line {
+231	    margin: 0;
+232	    line-height: 1.35;
+233	    word-wrap: break-word;
+234	}
+235	.chat-line .ts {
+236	    color: var(--muted);
+237	    font-size: 0.78rem;
+238	    margin-right: 0.4rem;
+239	    font-variant-numeric: tabular-nums;
+240	}
+241	.chat-line .from-red { color: var(--red); font-weight: 600; }
+242	.chat-line .from-black { color: var(--fg); font-weight: 600; }
+243	.chat-line .from-green { color: var(--green); font-weight: 600; }
+244	.chat-line .text { color: var(--fg); }
+245	.chat-empty { color: var(--muted); margin: 0.4rem 0; font-size: 0.85rem; }
+246	.chat-input {
+247	    display: flex;
+248	    gap: 0.4rem;
+249	    padding: 0.4rem 0.5rem;
+250	    border-top: 1px solid var(--grid);
+251	    background: rgba(0, 0, 0, 0.18);
+252	}
+253	.chat-input input {
+254	    flex: 1;
+255	    background: rgba(244, 210, 163, 0.06);
+256	    color: var(--fg);
+257	    border: 1px solid var(--grid);
+258	    border-radius: 0.3rem;
+259	    padding: 0.35rem 0.55rem;
+260	    font: inherit;
+261	}
+262	.chat-input input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+263	.chat-input input:disabled { opacity: 0.5; cursor: not-allowed; }
+264	.spectator-badge { color: var(--accent); font-weight: 600; }
+265	.room-actions {
+266	    display: flex;
+267	    gap: 0.35rem;
+268	}
+269	
+270	.back-link {
+271	    display: inline-block;
+272	    color: var(--muted);
+273	    text-decoration: none;
+274	}
+275	.back-link:hover { color: var(--accent); }
+276	
+277	/* Board pane + SVG. */
+278	.board-pane {
+279	    position: relative;
+280	    background: var(--board);
+281	    border: 4px solid var(--board-edge);
+282	    border-radius: 0.5rem;
+283	    padding: 0.5rem;
+284	    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+285	}
+286	
+287	/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+288	 * Two stacked rows — Black dead on top (Red's trophies), Red dead below
+289	 * (Black's trophies) — each piece a small disc-icon mirroring board style. */
+290	.captured-strip {
+291	    margin-top: 0.6rem;
+292	    padding: 0.55rem 0.75rem 0.65rem;
+293	    border-top: 1px dashed var(--grid);
+294	    display: grid;
+295	    gap: 0.35rem;
+296	}
+297	.captured-header {
+298	    display: flex;
+299	    justify-content: space-between;
+300	    align-items: baseline;
+301	    gap: 0.5rem;
+302	}
+303	.captured-header h4 {
+304	    margin: 0;
+305	    font-size: 0.85rem;
+306	    color: var(--muted);
+307	    font-weight: 600;
+308	    letter-spacing: 0.04em;
+309	    text-transform: uppercase;
+310	}
+311	.captured-toggle {
+312	    font-size: 0.75rem;
+313	    padding: 0.1rem 0.55rem;
+314	    line-height: 1.25;
+315	}
+316	.captured-row {
+317	    display: flex;
+318	    align-items: center;
+319	    gap: 0.45rem;
+320	    min-height: 1.7rem;
+321	}
+322	.captured-label {
+323	    color: var(--muted);
+324	    font-size: 0.85rem;
+325	    width: 1.4rem;
+326	    flex-shrink: 0;
+327	    text-align: center;
+328	}
+329	.captured-row.red .captured-label { color: var(--red); }
+330	.captured-pieces {
+331	    display: flex;
+332	    flex-wrap: wrap;
+333	    gap: 0.25rem;
+334	    align-items: center;
+335	    flex: 1;
+336	}
+337	.captured-piece {
+338	    display: inline-grid;
+339	    place-items: center;
+340	    width: 1.65rem;
+341	    height: 1.65rem;
+342	    border-radius: 50%;
+343	    background: var(--tile-disc);
+344	    border: 1px solid var(--grid);
+345	    line-height: 1;
+346	}
+347	.captured-piece-glyph {
+348	    font-size: 0.95rem;
+349	    font-weight: 700;
+350	    user-select: none;
+351	}
+352	.captured-row.red .captured-piece-glyph { color: var(--red); }
+353	.captured-row.black .captured-piece-glyph { color: var(--black); }
+354	.captured-empty { color: var(--muted); font-size: 0.85rem; }
+355	
+356	/* Three-kingdom WIP overlay. */
+357	.wip-overlay {
+358	    position: absolute;
+359	    inset: 0;
+360	    background: rgba(26, 22, 20, 0.78);
+361	    display: grid;
+362	    place-items: center;
+363	    border-radius: 0.5rem;
+364	    pointer-events: none;
+365	}
+366	.wip-banner {
+367	    background: var(--bg);
+368	    color: var(--fg);
+369	    border: 1px solid var(--accent);
+370	    border-radius: 0.5rem;
+371	    padding: 1.25rem 1.5rem;
+372	    max-width: 80%;
+373	    text-align: center;
+374	    pointer-events: auto;
+375	}
+376	.wip-banner h3 { margin: 0 0 0.4rem; color: var(--accent); }
+377	.wip-banner p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+378	.wip-banner code {
+379	    background: rgba(244, 210, 163, 0.1);
+380	    padding: 0.05rem 0.3rem;
+381	    border-radius: 0.2rem;
+382	    color: var(--fg);
+383	}
+384	.board {
+385	    display: block;
+386	    width: 100%;
+387	    height: auto;
+388	    max-height: 80vh;
+389	    user-select: none;
+390	    -webkit-user-select: none;
+391	    -webkit-touch-callout: none;
+392	    touch-action: manipulation;
+393	}
+394	.board-bg { fill: var(--board); }
+395	.grid { stroke: var(--grid); stroke-width: 1.5; }
+396	.palace { stroke: var(--grid); stroke-width: 1.2; opacity: 0.85; }
+397	.river-text {
+398	    fill: var(--river);
+399	    font-size: 28px;
+400	    letter-spacing: 0.6em;
+401	    font-weight: 600;
+402	    user-select: none;
+403	    pointer-events: none;
+404	}
+405	
+406	/* ICCS-style coordinate labels around the board. Live in the
+407	   LABEL_MARGIN strip OUTSIDE the playing area (board.rs extends the
+408	   viewBox + bg into negative coords) so they never overlap pieces.
+409	   Slightly higher opacity than before since they now sit on the
+410	   wood frame, not on the grid where they competed visually. */
+411	.board-coord {
+412	    fill: var(--river);
+413	    font-size: 12px;
+414	    font-weight: 600;
+415	    opacity: 0.7;
+416	    user-select: none;
+417	    pointer-events: none;
+418	    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+419	}
+420	
+421	/* Pieces — discs with a centered glyph. */
+422	.tile { pointer-events: none; }
+423	.tile-disc { fill: var(--tile-disc); stroke: var(--grid); stroke-width: 1.5; }
+424	.tile-back {
+425	    fill: var(--tile-back);
+426	    stroke: var(--board-edge);
+427	    stroke-width: 1.8;
+428	}
+429	.tile-glyph { font-size: 30px; font-weight: 700; user-select: none; }
+430	.tile.piece.red .tile-glyph { fill: var(--red); }
+431	.tile.piece.black .tile-glyph { fill: var(--black); }
+432	.tile.piece.green .tile-glyph { fill: var(--green); }
+433	
+434	.selection {
+435	    fill: rgba(255, 200, 60, 0.18);
+436	    stroke: #ff8c1a;
+437	    stroke-width: 4;
+438	    pointer-events: none;
+439	    filter: drop-shadow(0 0 5px rgba(255, 140, 26, 0.6));
+440	}
+441	.move-dot {
+442	    fill: var(--legal-bg);
+443	    pointer-events: none;
+444	}
+445	.move-target {
+446	    fill: rgba(60, 140, 60, 0.20);
+447	    stroke: rgba(80, 200, 80, 0.85);
+448	    stroke-width: 2.5;
+449	    pointer-events: none;
+450	}
+451	.chain-lock {
+452	    fill: none;
+453	    stroke: #f5a623;
+454	    stroke-width: 3.5;
+455	    stroke-dasharray: 5 3;
+456	    pointer-events: none;
+457	}
+458	.chain-banner {
+459	    margin-top: 0.5rem;
+460	    padding: 0.4rem 0.8rem;
+461	    background: rgba(245, 166, 35, 0.15);
+462	    border: 1px solid #f5a623;
+463	    border-radius: 0.4rem;
+464	    color: #f5a623;
+465	    display: inline-flex;
+466	    align-items: center;
+467	    gap: 0.5rem;
+468	}
+469	.btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
+470	
+471	/* Hit-test cells. Transparent but clickable.
+472	   pointer-events: all stops iOS Safari from skipping the rect when fill is
+473	   transparent. The :hover rule is gated on hover-capable devices because
+474	   iOS otherwise treats the first tap as a hover (consuming the click). */
+475	.cell-hit {
+476	    fill: transparent;
+477	    cursor: pointer;
+478	    touch-action: manipulation;
+479	    pointer-events: all;
+480	}
+481	@media (hover: hover) and (pointer: fine) {
+482	    .cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+483	}
+484	
+485	/* Sidebar. */
+486	.sidebar {
+487	    background: rgba(244, 210, 163, 0.04);
+488	    border: 1px solid var(--grid);
+489	    border-radius: 0.5rem;
+490	    padding: 1rem 1.25rem;
+491	    display: grid;
+492	    gap: 0.65rem;
+493	}
+494	.variant-label { margin: 0; font-size: 1.1rem; }
+495	.turn-row { display: flex; align-items: baseline; gap: 0.4rem; }
+496	.turn-prefix { color: var(--muted); }
+497	.turn-red { color: var(--red); font-weight: 700; }
+498	.turn-black { color: var(--fg); font-weight: 700; }
+499	.turn-green { color: var(--green); font-weight: 700; }
+500	.status { margin: 0; font-weight: 600; }
+501	.status.ongoing { color: var(--muted); font-weight: 400; }
+502	.status.won { color: var(--accent); }
+503	.status.drawn { color: var(--muted); }
+504	.muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+505	.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+506	.btn {
+507	    background: rgba(244, 210, 163, 0.08);
+508	    color: var(--fg);
+509	    border: 1px solid var(--grid);
+510	    border-radius: 0.4rem;
+511	    padding: 0.4rem 0.8rem;
+512	    cursor: pointer;
+513	    font: inherit;
+514	}
+515	.btn:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.16); }
+516	.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+517	.btn-primary {
+518	    background: rgba(178, 34, 34, 0.6);
+519	    border-color: var(--red);
+520	    color: #fffbe6;
+521	    font-weight: 600;
+522	}
+523	.btn-primary:hover { background: rgba(178, 34, 34, 0.78); }
+524	
+525	/* AI hint toggle button (sidebar). Distinguishable from generic .btn
+526	   so the user spots the on-demand affordance immediately, but visually
+527	   subordinate to .btn-primary. The "on" state shifts to a muted blue
+528	   matching the .hints-banner net-mode banner. */
+529	.btn-hint {
+530	    margin-top: 0.5rem;
+531	    width: 100%;
+532	    background: rgba(80, 130, 200, 0.1);
+533	    border-color: rgba(80, 130, 200, 0.45);
+534	    color: #d6e3f3;
+535	    font-weight: 500;
+536	}
+537	.btn-hint:hover {
+538	    background: rgba(80, 130, 200, 0.22);
+539	    border-color: rgba(80, 130, 200, 0.7);
+540	}
+541	.btn-hint--on {
+542	    background: rgba(80, 130, 200, 0.32);
+543	    border-color: rgba(120, 170, 230, 0.85);
+544	    color: #ffffff;
+545	}
+546	.btn-hint--on:hover {
+547	    background: rgba(80, 130, 200, 0.45);
+548	}
+549	
+550	/* Lobby. */
+551	.lobby { display: grid; gap: 1rem; }
+552	.lobby h2 { margin: 0; }
+553	.lobby h3 { margin: 1rem 0 0; }
+554	.lobby-form {
+555	    display: grid;
+556	    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+557	    gap: 0.5rem;
+558	    align-items: stretch;
+559	}
+560	@media (max-width: 600px) {
+561	    .lobby-form { grid-template-columns: 1fr; }
+562	}
+563	.text-input {
+564	    background: rgba(244, 210, 163, 0.06);
+565	    color: var(--fg);
+566	    border: 1px solid var(--grid);
+567	    border-radius: 0.4rem;
+568	    padding: 0.5rem 0.75rem;
+569	    font: inherit;
+570	}
+571	.text-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+572	/* Search-depth number input: by default <input type=number> in the
+573	 * variant card uses 100% of grid width (which is narrow). Force a
+574	 * comfortable minimum so placeholder + 2-digit values fit without
+575	 * clipping. */
+576	.depth-input {
+577	    width: 100%;
+578	    min-width: 6rem;
+579	    box-sizing: border-box;
+580	}
+581	
+582	.rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+583	.room-row {
+584	    display: grid;
+585	    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto auto auto;
+586	    gap: 0.75rem;
+587	    align-items: center;
+588	    padding: 0.6rem 0.9rem;
+589	    background: rgba(244, 210, 163, 0.04);
+590	    border: 1px solid var(--grid);
+591	    border-radius: 0.4rem;
+592	}
+593	.room-row:hover { border-color: var(--accent); }
+594	.room-id { font-weight: 600; }
+595	.room-variant { color: var(--muted); font-size: 0.9rem; }
+596	.room-seats { color: var(--muted); font-size: 0.9rem; }
+597	.room-lock { font-size: 0.85rem; }
+598	.room-hints { font-size: 0.85rem; }
+599	.room-status { font-size: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 0.2rem; }
+600	.room-status.lobby { background: rgba(122, 108, 90, 0.3); color: var(--fg); }
+601	.room-status.playing { background: rgba(40, 120, 60, 0.4); color: #d6f3d8; }
+602	.room-status.finished { background: rgba(178, 34, 34, 0.3); color: #f3d6d6; }
+603	
+604	/* AI hints banner above the board in net mode (server says
+605	   hints_allowed). Tells both players + spectators that the AI panel
+606	   is sanctioned for this room. */
+607	.hints-banner {
+608	  background: rgba(80, 130, 200, 0.18);
+609	  color: #d6e3f3;
+610	  padding: 0.4rem 0.75rem;
+611	  border-radius: 0.3rem;
+612	  font-size: 0.85rem;
+613	  margin-bottom: 0.5rem;
+614	  text-align: center;
+615	}
+616	
+617	/* Connection banner. */
+618	.conn-banner { margin: 0; padding: 0.4rem 0.75rem; border-radius: 0.3rem; font-size: 0.9rem; }
+619	.conn-banner.ok { background: rgba(40, 120, 60, 0.18); color: #d6f3d8; }
+620	.conn-banner.pending { background: rgba(212, 165, 92, 0.15); color: var(--accent); }
+621	.conn-banner.error { background: rgba(178, 34, 34, 0.2); color: #f3d6d6; }
+622	
+623	/* Online play placeholder + toast. */
+624	.conn-placeholder {
+625	    aspect-ratio: 9 / 10;
+626	    display: grid;
+627	    place-items: center;
+628	    text-align: center;
+629	    color: var(--muted);
+630	    padding: 2rem;
+631	}
+632	.toast {
+633	    position: absolute;
+634	    left: 50%;
+635	    bottom: 1rem;
+636	    transform: translateX(-50%);
+637	    background: rgba(178, 34, 34, 0.92);
+638	    color: #fffbe6;
+639	    padding: 0.6rem 1rem;
+640	    border-radius: 0.4rem;
+641	    font-weight: 500;
+642	    cursor: pointer;
+643	    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+644	}
+645	
+646	/* ─────────────────────────────────────────────────────────────────────
+647	 * End-of-game overlay + confetti + check banner. See `prefs.rs` for
+648	 * the localStorage toggles that gate these.
+649	 * ───────────────────────────────────────────────────────────────────── */
+650	
+651	/* Centered VICTORY/DEFEAT/DRAW banner over the board area. The container
+652	 * is `position: absolute` so it lives inside `.board-pane`'s positioning
+653	 * context (same as `.wip-overlay`). The banner card uses the existing
+654	 * accent palette so it reads as part of the theme rather than a popover. */
+655	.endgame-overlay {
+656	    position: absolute;
+657	    inset: 0;
+658	    display: grid;
+659	    place-items: center;
+660	    z-index: 40;
+661	    pointer-events: none;
+662	    background: rgba(26, 22, 20, 0.45);
+663	    border-radius: 0.5rem;
+664	    animation: endgame-fade-in 0.25s ease-out;
+665	}
+666	.endgame-banner {
+667	    background: var(--bg);
+668	    border: 2px solid var(--accent);
+669	    border-radius: 0.6rem;
+670	    padding: 1.25rem 2rem;
+671	    text-align: center;
+672	    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+673	    animation: pulse-banner 1.6s ease-in-out infinite;
+674	}
+675	.endgame-title {
+676	    margin: 0;
+677	    font-size: clamp(2rem, 6vw, 3.5rem);
+678	    letter-spacing: 0.18em;
+679	    font-weight: 800;
+680	}
+681	.endgame-title--victory { color: #fcd34d; text-shadow: 0 0 12px rgba(252, 211, 77, 0.5); }
+682	.endgame-title--defeat  { color: #f87171; text-shadow: 0 0 12px rgba(248, 113, 113, 0.5); }
+683	.endgame-title--draw    { color: var(--muted); }
+684	.endgame-title--red     { color: var(--red); }
+685	.endgame-title--black   { color: #f4d2a3; }
+686	.endgame-title--green   { color: #6ad28d; }
+687	.endgame-reason {
+688	    margin: 0.5rem 0 0;
+689	    color: var(--muted);
+690	    font-size: 0.95rem;
+691	}
+692	
+693	/* Confetti — pure CSS particles. The container fills the viewport so
+694	 * particles can fall past the board edge naturally. Each particle reads
+695	 * `--x` (start x %), `--drift` (lateral drift in px), `--delay` (stagger),
+696	 * `--rotate-end` (final rotation), `--color` (fill). */
+697	.confetti-container {
+698	    position: fixed;
+699	    inset: 0;
+700	    pointer-events: none;
+701	    z-index: 60;
+702	    overflow: hidden;
+703	}
+704	.confetti-particle {
+705	    position: absolute;
+706	    top: -16px;
+707	    left: var(--x);
+708	    width: 8px;
+709	    height: 14px;
+710	    background: var(--color);
+711	    border-radius: 1px;
+712	    transform-origin: 50% 50%;
+713	    animation: confetti-fall 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+714	    animation-delay: var(--delay);
+715	    opacity: 0.95;
+716	}
+717	
+718	@keyframes confetti-fall {
+719	    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+720	    80%  { opacity: 1; }
+721	    100% { transform: translate(var(--drift), 110vh) rotate(var(--rotate-end)); opacity: 0; }
+722	}
+723	
+724	@keyframes pulse-banner {
+725	    0%, 100% { transform: scale(1.0); }
+726	    50%      { transform: scale(1.04); }
+727	}
+728	
+729	@keyframes endgame-fade-in {
+730	    from { opacity: 0; }
+731	    to   { opacity: 1; }
+732	}
+733	
+734	/* "將軍 / CHECK" sidebar badge — only mounts when the side-to-move's
+735	 * general is under attack (xiangqi only) and the user hasn't disabled it. */
+736	.check-badge {
+737	    margin: 0.4rem 0 0.6rem;
+738	    padding: 0.3rem 0.6rem;
+739	    background: rgba(178, 34, 34, 0.18);
+740	    border-left: 3px solid var(--red);
+741	    color: #ffd3d3;
+742	    font-weight: 700;
+743	    border-radius: 0.25rem;
+744	    animation: pulse-banner 1.4s ease-in-out infinite;
+745	}
+746	
+747	/* FX toggle row in the sidebar footer. Compact so it doesn't crowd the
+748	 * action buttons. */
+749	.fx-toggles {
+750	    margin-top: 0.6rem;
+751	    display: flex;
+752	    flex-direction: column;
+753	    gap: 0.25rem;
+754	    font-size: 0.85rem;
+755	    color: var(--muted);
+756	}
+757	.fx-toggles label {
+758	    display: flex;
+759	    align-items: center;
+760	    gap: 0.4rem;
+761	    cursor: pointer;
+762	}
+763	
+764	/* Move history panel — sits between action buttons and FX toggles in
+765	 * the sidebar. Scrollable so a long game doesn't push the rest of the
+766	 * sidebar off-screen. ICCS notation is short (4 chars) so a 22ch
+767	 * column fits comfortably with the side glyph + ply number prefix. */
+768	.move-history {
+769	    margin-top: 0.8rem;
+770	    padding-top: 0.6rem;
+771	    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+772	}
+773	.move-history__title {
+774	    font-size: 0.95rem;
+775	    margin: 0 0 0.4rem 0;
+776	    color: var(--muted);
+777	    font-weight: 600;
+778	}
+779	.move-history__empty {
+780	    font-size: 0.85rem;
+781	    margin: 0;
+782	}
+783	.move-history__list {
+784	    list-style: none;
+785	    margin: 0;
+786	    padding: 0;
+787	    max-height: 16rem;
+788	    overflow-y: auto;
+789	    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+790	    font-size: 0.8rem;
+791	    line-height: 1.5;
+792	}
+793	.move-history__entry {
+794	    display: grid;
+795	    grid-template-columns: 2.4rem 1.4rem 1fr;
+796	    gap: 0.3rem;
+797	    padding: 0.05rem 0.2rem;
+798	    border-radius: 3px;
+799	}
+800	.move-history__entry:hover {
+801	    background: rgba(255, 255, 255, 0.04);
+802	}
+803	.move-history__entry--red .move-history__side {
+804	    color: var(--red);
+805	}
+806	.move-history__entry--black .move-history__side {
+807	    color: var(--muted);
+808	}
+809	.move-history__num {
+810	    color: var(--muted);
+811	    text-align: right;
+812	}
+813	.move-history__side {
+814	    text-align: center;
+815	    font-weight: 600;
+816	}
+817	.move-history__text {
+818	    text-align: left;
+819	    color: var(--text);
+820	}
+821	
+822	/* AI debug panel — shown only when ?debug=1 is in the URL. Sits as a
+823	 * third column to the right of the sidebar (or wraps under the board
+824	 * on narrow viewports). The panel itself is scrollable so a 40-move
+825	 * scored list doesn't push the layout. */
+826	.debug-panel {
+827	    border: 1px dashed rgba(245, 166, 35, 0.4);
+828	    border-radius: 0.6rem;
+829	    padding: 0.8rem 0.9rem;
+830	    background: rgba(245, 166, 35, 0.04);
+831	    min-width: 16rem;
+832	    max-width: 22rem;
+833	    color: var(--fg);
+834	    align-self: start;
+835	}
+836	.debug-panel__title {
+837	    margin: 0 0 0.2rem 0;
+838	    font-size: 1rem;
+839	    color: var(--accent);
+840	}
+841	.debug-panel__subtitle {
+842	    margin: 0 0 0.6rem 0;
+843	    font-size: 0.78rem;
+844	    color: var(--muted);
+845	    font-style: italic;
+846	}
+847	.debug-panel__empty {
+848	    font-size: 0.85rem;
+849	    margin: 0;
+850	}
+851	.debug-panel__meta {
+852	    display: grid;
+853	    grid-template-columns: max-content 1fr;
+854	    gap: 0.15rem 0.6rem;
+855	    margin: 0 0 0.6rem 0;
+856	    font-size: 0.8rem;
+857	}
+858	.debug-panel__meta > div {
+859	    display: contents;
+860	}
+861	.debug-panel__meta dt {
+862	    color: var(--muted);
+863	}
+864	.debug-panel__meta dd {
+865	    margin: 0;
+866	    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+867	}
+868	.debug-panel__table {
+869	    width: 100%;
+870	    border-collapse: collapse;
+871	    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+872	    font-size: 0.78rem;
+873	    max-height: 26rem;
+874	    display: block;
+875	    overflow-y: auto;
+876	}
+877	.debug-panel__table thead th {
+878	    text-align: left;
+879	    color: var(--muted);
+880	    font-weight: 600;
+881	    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+882	    padding: 0.2rem 0.4rem;
+883	    position: sticky;
+884	    top: 0;
+885	    background: rgba(40, 30, 20, 0.92);
+886	}
+887	.debug-panel__row {
+888	    cursor: pointer;
+889	    transition: background 0.05s ease;
+890	}
+891	.debug-panel__row:hover {
+892	    background: rgba(245, 166, 35, 0.16);
+893	}
+894	.debug-panel__row td {
+895	    padding: 0.18rem 0.4rem;
+896	    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+897	}
+898	.debug-panel__row--chosen {
+899	    background: rgba(245, 166, 35, 0.1);
+900	    font-weight: 600;
+901	}
+902	.debug-panel__row--good .debug-panel__score {
+903	    color: #6ade8a;
+904	}
+905	.debug-panel__row--blunder .debug-panel__score {
+906	    color: #f06464;
+907	}
+908	.debug-panel__rank {
+909	    color: var(--muted);
+910	    text-align: right;
+911	    width: 2.2rem;
+912	}
+913	.debug-panel__mv {
+914	    text-align: left;
+915	}
+916	.debug-panel__score {
+917	    text-align: right;
+918	    width: 5rem;
+919	}
+920	
+921	/* Board overlay highlights for the debug panel: dashed connector +
+922	 * yellow rings on from / to. Pure visual; SVG layer doesn't capture
+923	 * pointer events so click-through still works. */
+924	.board .debug-from {
+925	    fill: none;
+926	    stroke: rgba(245, 166, 35, 0.85);
+927	    stroke-width: 2;
+928	    stroke-dasharray: 3 3;
+929	    pointer-events: none;
+930	}
+931	.board .debug-to {
+932	    fill: rgba(245, 166, 35, 0.18);
+933	    stroke: rgba(245, 166, 35, 0.85);
+934	    stroke-width: 2;
+935	    pointer-events: none;
+936	}
+937	.board .debug-line {
+938	    stroke: rgba(245, 166, 35, 0.7);
+939	    stroke-width: 2.5;
+940	    stroke-dasharray: 6 4;
+941	    pointer-events: none;
+942	}
+943	/* PV continuation chain: thinner + bluish so it visually subordinates
+944	 * to the chosen move. Opacity is set per-element from the search
+945	 * depth so the predicted line fades as it gets deeper. */
+946	.board .debug-pv-from {
+947	    fill: none;
+948	    stroke: rgba(116, 184, 255, 0.7);
+949	    stroke-width: 1.5;
+950	    stroke-dasharray: 2 2;
+951	    pointer-events: none;
+952	}
+953	.board .debug-pv-to {
+954	    fill: rgba(116, 184, 255, 0.14);
+955	    stroke: rgba(116, 184, 255, 0.7);
+956	    stroke-width: 1.5;
+957	    pointer-events: none;
+958	}
+959	.board .debug-pv-line {
+960	    stroke: rgba(116, 184, 255, 0.55);
+961	    stroke-width: 1.5;
+962	    stroke-dasharray: 4 3;
+963	    pointer-events: none;
+964	}
+965	
+966	/* PV continuation rendered inline next to each row's main move. */
+967	.debug-panel__mv-main {
+968	    font-weight: 600;
+969	}
+970	.debug-panel__mv-pv {
+971	    color: var(--muted);
+972	    font-size: 0.72rem;
+973	    font-weight: 400;
+974	}
+975	
+976	/* Game-page layout already grid-positions board + sidebar. When the
+977	 * debug panel mounts, it becomes a third grid column. The page falls
+978	 * back to 1 column on narrow viewports. */
+979	.game-page:has(.debug-panel) {
+980	    grid-template-columns: minmax(0, 1fr) auto auto;
+981	}
+982	
+983	/* Picker hero — a tiny header above the variant grid so the page feels
+984	 * like a landing screen rather than a bare form. SVG icon scales with
+985	 * the heading; tagline stays muted. */
+986	.picker-hero {
+987	    display: flex;
+988	    align-items: center;
+989	    gap: 1rem;
+990	    margin-bottom: 1.5rem;
+991	    padding: 1rem 1.25rem;
+992	    background: linear-gradient(135deg, rgba(212, 165, 92, 0.15), rgba(178, 34, 34, 0.05));
+993	    border: 1px solid rgba(212, 165, 92, 0.25);
+994	    border-radius: 0.6rem;
+995	}
+996	.picker-hero__glyph {
+997	    flex: 0 0 auto;
+998	    width: 64px;
+999	    height: 64px;
+1000	    border: 2px solid var(--red);
+1001	    border-radius: 50%;
+1002	    display: grid;
+1003	    place-items: center;
+1004	    background: var(--bg);
+1005	    color: var(--red);
+1006	    font-size: 2.2rem;
+1007	    font-weight: 700;
+1008	    box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
+1009	}
+1010	.picker-hero__copy h1 {
+1011	    margin: 0 0 0.25rem;
+1012	    font-size: 1.6rem;
+1013	    color: var(--accent);
+1014	    letter-spacing: 0.05em;
+1015	}
+1016	.picker-hero__copy p {
+1017	    margin: 0;
+1018	    color: var(--muted);
+1019	    font-size: 0.9rem;
+1020	}
+1021	.picker-hero__source {
+1022	    flex: 0 0 auto;
+1023	    margin-left: auto;
+1024	    align-self: flex-start;
+1025	    display: inline-flex;
+1026	    align-items: center;
+1027	    justify-content: center;
+1028	    width: 36px;
+1029	    height: 36px;
+1030	    border-radius: 50%;
+1031	    color: var(--muted);
+1032	    text-decoration: none;
+1033	    transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+1034	}
+1035	.picker-hero__source:hover,
+1036	.picker-hero__source:focus-visible {
+1037	    color: var(--accent);
+1038	    background: rgba(212, 165, 92, 0.18);
+1039	    transform: translateY(-1px);
+1040	}
+1041	.picker-hero__source svg { display: block; }
+1042	
+1043	/* ---- PWA install / update / offline UI -------------------------- */
+1044	
+1045	/* Install banner — shown above the picker hero on devices that can
+1046	   install (Chrome/Edge fired beforeinstallprompt, or iOS Safari needs
+1047	   the manual instruction variant). */
+1048	.pwa-banner {
+1049	    display: flex;
+1050	    align-items: center;
+1051	    gap: 0.85rem;
+1052	    margin: 0 0 1.4rem;
+1053	    padding: 0.9rem 1rem;
+1054	    border-radius: 12px;
+1055	    border: 1px solid rgba(212, 165, 92, 0.35);
+1056	    background: linear-gradient(135deg, rgba(178, 34, 34, 0.18), rgba(212, 165, 92, 0.10));
+1057	    color: var(--fg);
+1058	}
+1059	.pwa-banner__icon {
+1060	    flex: 0 0 auto;
+1061	    width: 44px;
+1062	    height: 44px;
+1063	    display: flex;
+1064	    align-items: center;
+1065	    justify-content: center;
+1066	    border-radius: 50%;
+1067	    background: var(--tile-back);
+1068	    color: var(--red);
+1069	    font-weight: 900;
+1070	    font-size: 1.6rem;
+1071	    font-family: "Noto Serif TC", "Songti SC", serif;
+1072	}
+1073	.pwa-banner__copy {
+1074	    flex: 1 1 auto;
+1075	    min-width: 0;
+1076	}
+1077	.pwa-banner__copy strong {
+1078	    display: block;
+1079	    color: var(--accent);
+1080	    font-size: 1rem;
+1081	    margin-bottom: 0.15rem;
+1082	}
+1083	.pwa-banner__copy p {
+1084	    margin: 0;
+1085	    color: var(--muted);
+1086	    font-size: 0.88rem;
+1087	    line-height: 1.4;
+1088	}
+1089	.pwa-banner__share {
+1090	    display: inline-block;
+1091	    padding: 0 0.3rem;
+1092	    border: 1px solid var(--accent);
+1093	    border-radius: 4px;
+1094	    color: var(--accent);
+1095	    font-size: 0.85rem;
+1096	}
+1097	.pwa-banner__actions {
+1098	    display: flex;
+1099	    align-items: center;
+1100	    gap: 0.4rem;
+1101	}
+1102	.pwa-banner__dismiss {
+1103	    border: none;
+1104	    background: transparent;
+1105	    color: var(--muted);
+1106	    cursor: pointer;
+1107	    font-size: 1rem;
+1108	    padding: 0.25rem 0.5rem;
+1109	}
+1110	.pwa-banner__dismiss:hover { color: var(--fg); }
+1111	.pwa-banner--ios { background: linear-gradient(135deg, rgba(34, 139, 34, 0.18), rgba(212, 165, 92, 0.10)); }
+1112	
+1113	/* Sidebar install button — match other .btn styles, just with a
+1114	   primary tint when the prompt is hot. */
+1115	.pwa-install-btn {
+1116	    margin-top: 0.4rem;
+1117	    border-color: rgba(178, 34, 34, 0.55);
+1118	    color: var(--fg);
+1119	    background: rgba(178, 34, 34, 0.18);
+1120	}
+1121	.pwa-install-btn:hover {
+1122	    background: rgba(178, 34, 34, 0.32);
+1123	    border-color: var(--red);
+1124	}
+1125	
+1126	/* Update toast — fixed bottom-centre. The whole strip is clickable
+1127	   for a fat-finger-friendly hit target on mobile. */
+1128	.pwa-toast {
+1129	    position: fixed;
+1130	    left: 50%;
+1131	    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+1132	    transform: translateX(-50%);
+1133	    z-index: 1000;
+1134	    display: flex;
+1135	    align-items: center;
+1136	    gap: 0.6rem;
+1137	    padding: 0.6rem 0.8rem 0.6rem 1rem;
+1138	    border-radius: 999px;
+1139	    background: rgba(26, 22, 20, 0.96);
+1140	    border: 1px solid var(--accent);
+1141	    color: var(--fg);
+1142	    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+1143	    font-size: 0.9rem;
+1144	    max-width: calc(100vw - 2rem);
+1145	}
+1146	.pwa-toast__msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+1147	.pwa-toast__btn {
+1148	    border: 1px solid var(--accent);
+1149	    background: var(--accent);
+1150	    color: #1a1614;
+1151	    border-radius: 999px;
+1152	    padding: 0.3rem 0.8rem;
+1153	    font-weight: 600;
+1154	    cursor: pointer;
+1155	}
+1156	.pwa-toast__btn:hover { background: #e7bd72; }
+1157	.pwa-toast__close {
+1158	    border: none;
+1159	    background: transparent;
+1160	    color: var(--muted);
+1161	    cursor: pointer;
+1162	    font-size: 0.95rem;
+1163	    padding: 0.25rem 0.4rem;
+1164	}
+1165	.pwa-toast__close:hover { color: var(--fg); }
+1166	
+1167	/* Online / offline indicator — tucked into a corner of the shell so
+1168	   it's visible from any route but not in the way. The label is hidden
+1169	   when online (a green pip is enough); offline expands to text. */
+1170	.pwa-online-dot {
+1171	    position: fixed;
+1172	    right: 0.8rem;
+1173	    bottom: 0.8rem;
+1174	    z-index: 900;
+1175	    display: inline-flex;
+1176	    align-items: center;
+1177	    gap: 0.35rem;
+1178	    padding: 0.25rem 0.55rem;
+1179	    border-radius: 999px;
+1180	    font-size: 0.78rem;
+1181	    color: var(--muted);
+1182	    background: rgba(26, 22, 20, 0.7);
+1183	    border: 1px solid rgba(122, 108, 90, 0.35);
+1184	    pointer-events: auto;
+1185	}
+1186	.pwa-online-dot__pip {
+1187	    width: 8px;
+1188	    height: 8px;
+1189	    border-radius: 50%;
+1190	    background: var(--green);
+1191	    box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.18);
+1192	}
+1193	.pwa-online-dot--off .pwa-online-dot__pip {
+1194	    background: var(--red);
+1195	    box-shadow: 0 0 0 3px rgba(178, 34, 34, 0.22);
+1196	}
+1197	.pwa-online-dot--on .pwa-online-dot__label { display: none; }
+1198	.pwa-online-dot--off { color: var(--fg); border-color: rgba(178, 34, 34, 0.5); }
+1199	
+1200	@media (max-width: 480px) {
+1201	    .pwa-banner { flex-direction: column; align-items: stretch; text-align: left; }
+1202	    .pwa-banner__actions { justify-content: flex-start; }
+1203	}
+1204
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/orient.rs`
+
+```text
+1	//! Display orientation. Engine coords are physical (Red on rank 0); the
+2	//! renderer rotates / transposes per shape so each observer sees their own
+3	//! pieces at the bottom of the screen, and banqi displays in traditional
+4	//! 8×4 layout.
+5	//!
+6	//! Verbatim copy of `clients/chess-tui/src/orient.rs` — `backlog/promote-client-shared.md`
+7	//! tracks promoting both copies into a shared crate once a third client appears
+8	//! or the copies first diverge. CI catches drift because the round-trip tests
+9	//! are duplicated here too.
+10	
+11	use chess_core::board::BoardShape;
+12	use chess_core::coord::Square;
+13	use chess_core::piece::Side;
+14	
+15	/// Dimensions of the display grid in (rows, cols). Banqi transposes; xiangqi
+16	/// keeps model dimensions as-is.
+17	pub fn display_dims(shape: BoardShape) -> (u8, u8) {
+18	    let (w, h) = shape.dimensions();
+19	    match shape {
+20	        BoardShape::Banqi4x8 => (w, h), // 4 rows × 8 cols
+21	        _ => (h, w),                    // 10 rows × 9 cols for xiangqi
+22	    }
+23	}
+24	
+25	/// Square (model coord) → (display_row, display_col).
+26	#[allow(dead_code)]
+27	pub fn project_cell(sq: Square, observer: Side, shape: BoardShape) -> (u8, u8) {
+28	    let (w, h) = shape.dimensions();
+29	    let f = (sq.0 as u8) % w;
+30	    let r = (sq.0 as u8) / w;
+31	    match shape {
+32	        BoardShape::Xiangqi9x10 => match observer {
+33	            Side::RED => (h - 1 - r, f),   // rank 9 at top, rank 0 at bottom
+34	            Side::BLACK => (r, w - 1 - f), // rank 0 at top, files reversed
+35	            _ => (h - 1 - r, f),           // 三國暗棋 fallback
+36	        },
+37	        BoardShape::Banqi4x8 => (f, r), // transpose: rank → col, file → row
+38	        BoardShape::ThreeKingdom => (h - 1 - r, f),
+39	        BoardShape::Custom { .. } => (h - 1 - r, f),
+40	    }
+41	}
+42	
+43	/// Display (row, col) → Square. Returns `None` when out of bounds or the
+44	/// shape masks that cell off (Custom / ThreeKingdom).
+45	pub fn square_at_display(row: u8, col: u8, observer: Side, shape: BoardShape) -> Option<Square> {
+46	    let (w, h) = shape.dimensions();
+47	    let (dr, dc) = display_dims(shape);
+48	    if row >= dr || col >= dc {
+49	        return None;
+50	    }
+51	    let (f, r) = match shape {
+52	        BoardShape::Xiangqi9x10 => match observer {
+53	            Side::RED => (col, h - 1 - row),
+54	            Side::BLACK => (w - 1 - col, row),
+55	            _ => (col, h - 1 - row),
+56	        },
+57	        BoardShape::Banqi4x8 => (row, col),
+58	        BoardShape::ThreeKingdom => (col, h - 1 - row),
+59	        BoardShape::Custom { .. } => (col, h - 1 - row),
+60	    };
+61	    if f >= w || r >= h {
+62	        return None;
+63	    }
+64	    let idx = (r as u16) * (w as u16) + (f as u16);
+65	    if !shape.is_playable(idx as usize) {
+66	        return None;
+67	    }
+68	    Some(Square(idx))
+69	}
+70	
+71	#[cfg(test)]
+72	mod tests {
+73	    use super::*;
+74	
+75	    fn all_squares(shape: BoardShape) -> impl Iterator<Item = Square> {
+76	        let n = shape.cell_count() as u16;
+77	        (0..n).map(Square).filter(move |s| shape.is_playable(s.0 as usize))
+78	    }
+79	
+80	    #[test]
+81	    fn xiangqi_red_round_trip() {
+82	        let shape = BoardShape::Xiangqi9x10;
+83	        for sq in all_squares(shape) {
+84	            let (r, c) = project_cell(sq, Side::RED, shape);
+85	            assert_eq!(square_at_display(r, c, Side::RED, shape), Some(sq));
+86	        }
+87	    }
+88	
+89	    #[test]
+90	    fn xiangqi_black_round_trip() {
+91	        let shape = BoardShape::Xiangqi9x10;
+92	        for sq in all_squares(shape) {
+93	            let (r, c) = project_cell(sq, Side::BLACK, shape);
+94	            assert_eq!(square_at_display(r, c, Side::BLACK, shape), Some(sq));
+95	        }
+96	    }
+97	
+98	    #[test]
+99	    fn xiangqi_red_and_black_are_180_rotations() {
+100	        let shape = BoardShape::Xiangqi9x10;
+101	        let (dr, dc) = display_dims(shape);
+102	        for sq in all_squares(shape) {
+103	            let (rr, rc) = project_cell(sq, Side::RED, shape);
+104	            let (br, bc) = project_cell(sq, Side::BLACK, shape);
+105	            assert_eq!(rr + br, dr - 1);
+106	            assert_eq!(rc + bc, dc - 1);
+107	        }
+108	    }
+109	
+110	    #[test]
+111	    fn xiangqi_red_corner_layout() {
+112	        let shape = BoardShape::Xiangqi9x10;
+113	        let sq = Square(0);
+114	        let (r, c) = project_cell(sq, Side::RED, shape);
+115	        assert_eq!((r, c), (9, 0));
+116	
+117	        let sq = Square(9 * 9);
+118	        let (r, c) = project_cell(sq, Side::RED, shape);
+119	        assert_eq!((r, c), (0, 0));
+120	    }
+121	
+122	    #[test]
+123	    fn banqi_round_trip_and_dims() {
+124	        let shape = BoardShape::Banqi4x8;
+125	        assert_eq!(display_dims(shape), (4, 8));
+126	        for sq in all_squares(shape) {
+127	            let (r, c) = project_cell(sq, Side::RED, shape);
+128	            assert!(r < 4 && c < 8, "banqi cell out of display: ({}, {})", r, c);
+129	            assert_eq!(square_at_display(r, c, Side::RED, shape), Some(sq));
+130	        }
+131	    }
+132	
+133	    #[test]
+134	    fn out_of_bounds_returns_none() {
+135	        let shape = BoardShape::Xiangqi9x10;
+136	        assert!(square_at_display(10, 0, Side::RED, shape).is_none());
+137	        assert!(square_at_display(0, 9, Side::RED, shape).is_none());
+138	    }
+139	}
+140
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/routes.rs`
+
+```text
+1	//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+2	//!
+3	//! Pure logic — native-testable. The picker page builds a query string from
+4	//! its form state via [`build_local_query`]; the local page parses it back
+5	//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
+6	
+7	use chess_ai::{Difficulty, Randomness, Strategy};
+8	use chess_core::piece::Side;
+9	use chess_core::rules::{
+10	    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+11	};
+12	
+13	/// Local-page play mode. `Pvp` is the default pass-and-play; `VsAi`
+14	/// drives the in-process alpha-beta engine (xiangqi only).
+15	#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+16	pub enum PlayMode {
+17	    #[default]
+18	    Pvp,
+19	    VsAi,
+20	}
+21	
+22	pub fn hosting_mode() -> &'static str {
+23	    env!("CHESS_WEB_HOSTING")
+24	}
+25	
+26	pub fn is_static_hosting() -> bool {
+27	    hosting_mode() == "static"
+28	}
+29	
+30	pub fn base_path() -> &'static str {
+31	    env!("CHESS_WEB_BASE_PATH")
+32	}
+33	
+34	pub fn router_base() -> Option<&'static str> {
+35	    let base = base_path();
+36	    if base.is_empty() {
+37	        None
+38	    } else {
+39	        Some(base)
+40	    }
+41	}
+42	
+43	pub fn app_href(path: &str) -> String {
+44	    app_href_with_base(base_path(), path)
+45	}
+46	
+47	pub fn app_href_with_base(base: &str, path: &str) -> String {
+48	    let path = if path.is_empty() { "/" } else { path };
+49	    let path = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
+50	    let base = normalize_base_path(base);
+51	    if base.is_empty() {
+52	        path
+53	    } else if path == "/" {
+54	        format!("{base}/")
+55	    } else {
+56	        format!("{base}{path}")
+57	    }
+58	}
+59	
+60	fn normalize_base_path(base: &str) -> String {
+61	    let trimmed = base.trim().trim_matches('/');
+62	    if trimmed.is_empty() {
+63	        String::new()
+64	    } else {
+65	        format!("/{trimmed}")
+66	    }
+67	}
+68	
+69	#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+70	pub enum WsBaseError {
+71	    Empty,
+72	    BadScheme,
+73	}
+74	
+75	pub fn normalize_ws_base(raw: &str) -> Result<String, WsBaseError> {
+76	    let trimmed = raw.trim().trim_end_matches('/');
+77	    if trimmed.is_empty() {
+78	        return Err(WsBaseError::Empty);
+79	    }
+80	    if !(trimmed.starts_with("ws://") || trimmed.starts_with("wss://")) {
+81	        return Err(WsBaseError::BadScheme);
+82	    }
+83	    Ok(trimmed.to_string())
+84	}
+85	
+86	pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+87	    match slug {
+88	        "xiangqi" => Some(Variant::Xiangqi),
+89	        "banqi" => Some(Variant::Banqi),
+90	        "three-kingdom" => Some(Variant::ThreeKingdomBanqi),
+91	        _ => None,
+92	    }
+93	}
+94	
+95	pub fn variant_slug(variant: Variant) -> &'static str {
+96	    match variant {
+97	        Variant::Xiangqi => "xiangqi",
+98	        Variant::Banqi => "banqi",
+99	        Variant::ThreeKingdomBanqi => "three-kingdom",
+100	    }
+101	}
+102	
+103	/// URL-derived rule choices for `/local/:variant`. Used as an intermediate
+104	/// between the picker form and the engine `RuleSet`.
+105	#[derive(Clone, Eq, PartialEq, Debug)]
+106	pub struct LocalRulesParams {
+107	    /// Xiangqi only. `false` (default) = casual / no self-check filter;
+108	    /// `true` = standard rules where leaving your general in check is illegal.
+109	    pub strict: bool,
+110	    /// Banqi only. Bitflag set; `DARK_CAPTURE_TRADE` auto-implies
+111	    /// `DARK_CAPTURE` after [`house::normalize`] in the parser.
+112	    pub house: HouseRules,
+113	    /// Banqi only. `None` = engine picks (non-deterministic on native;
+114	    /// browser uses `getrandom` JS feature).
+115	    pub seed: Option<u64>,
+116	    /// Xiangqi only (banqi/three-kingdom ignore). Default `Pvp`.
+117	    pub mode: PlayMode,
+118	    /// `VsAi` only — which side the AI plays. Default Black (player is Red,
+119	    /// the traditional first-mover). Ignored when `mode == Pvp`.
+120	    pub ai_side: Side,
+121	    /// `VsAi` only — search difficulty. Ignored when `mode == Pvp`.
+122	    pub ai_difficulty: Difficulty,
+123	    /// `VsAi` only — engine version. Defaults to [`Strategy::default`]
+124	    /// (v2 since 2026-05-08). Versioned, switchable, non-overwriting:
+125	    /// older strategies stay reachable via `?engine=v1`.
+126	    pub ai_strategy: Strategy,
+127	    /// `VsAi` only — randomness preset. `None` = use the difficulty
+128	    /// default (`Difficulty::default_randomness`); `Some(_)` = explicit
+129	    /// override (typically a [`Randomness`] preset like
+130	    /// [`Randomness::STRICT`]). URL token: `&variation=strict|subtle|varied|chaotic`.
+131	    pub ai_variation: Option<Randomness>,
+132	    /// `VsAi` only — search depth override. `None` = use
+133	    /// `Difficulty::default_depth` (Easy=1, Normal=3, Hard=4); `Some(N)`
+134	    /// = explicit. Capped at `MAX_AI_DEPTH` to keep the worst-case
+135	    /// browser response under ~10 s. URL token: `&depth=N`.
+136	    pub ai_depth: Option<u8>,
+137	    /// `VsAi` only — opens the AI debug panel showing the engine's full
+138	    /// scored root-move list, hover-to-highlight on the board, and
+139	    /// search metadata (depth, nodes, strategy, randomness). URL token:
+140	    /// `&debug=1`. Default off (consumes ~no extra search cost — the
+141	    /// scored list is computed regardless; `&debug=1` just exposes it).
+142	    pub ai_debug: bool,
+143	    /// User-facing alias for [`Self::ai_debug`]: opens the same AI
+144	    /// hint / debug panel via the friendlier URL token `&hints=1`.
+145	    /// Local mode treats `ai_debug || ai_hints` as the trigger to
+146	    /// mount the panel — both flags are functionally equivalent
+147	    /// offline (e.g. on the GitHub Pages build). In net mode (`/play/`)
+148	    /// neither flag is enough on its own — the server's
+149	    /// `hints_allowed` (set at room creation by the first joiner's
+150	    /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:14Z)**_
+
+Now let me read more of routes.rs and check state.rs and prefs.rs:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/routes.rs`
+
+```text
+150	    /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
+151	    pub ai_hints: bool,
+152	}
+153	
+154	/// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
+155	/// at depth 8 (~5 s) is the worst tolerable response time. Higher than
+156	/// 8 essentially demands iterative deepening + time budget — that's the
+157	/// v5 roadmap entry, not a knob to twist.
+158	pub const MAX_AI_DEPTH: u8 = 10;
+159	
+160	impl Default for LocalRulesParams {
+161	    fn default() -> Self {
+162	        Self {
+163	            strict: false,
+164	            house: HouseRules::empty(),
+165	            seed: None,
+166	            mode: PlayMode::Pvp,
+167	            ai_side: Side::BLACK,
+168	            ai_difficulty: Difficulty::Normal,
+169	            ai_strategy: Strategy::default(),
+170	            ai_variation: None,
+171	            ai_depth: None,
+172	            ai_debug: false,
+173	            ai_hints: false,
+174	        }
+175	    }
+176	}
+177	
+178	/// Parse `?strict=1&house=chain,rush&preset=taiwan&seed=42` into a
+179	/// [`LocalRulesParams`]. Unknown tokens are silently dropped — this is a
+180	/// best-effort decoder for shareable URLs.
+181	///
+182	/// `house=` overrides `preset=` when both are present; the picker only
+183	/// emits `house=` so this just covers manually-typed URLs.
+184	pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesParams {
+185	    let strict = matches!(get("strict").as_deref(), Some("1") | Some("true"));
+186	    let preset = get("preset").as_deref().and_then(parse_preset_token);
+187	    let house_csv = get("house").as_deref().map(parse_house_csv);
+188	    let house = house_csv.or(preset).unwrap_or_else(HouseRules::empty);
+189	    let seed = get("seed").and_then(|s| s.parse::<u64>().ok());
+190	    let mode = match get("mode").as_deref() {
+191	        Some("ai") | Some("vsai") => PlayMode::VsAi,
+192	        _ => PlayMode::Pvp,
+193	    };
+194	    let ai_side = match get("ai").as_deref() {
+195	        Some("red") => Side::RED,
+196	        _ => Side::BLACK,
+197	    };
+198	    let ai_difficulty =
+199	        get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
+200	    let ai_strategy = get("engine").as_deref().and_then(Strategy::parse).unwrap_or_default();
+201	    let ai_variation = get("variation").as_deref().and_then(Randomness::parse);
+202	    let ai_depth = get("depth")
+203	        .and_then(|s| s.parse::<u32>().ok())
+204	        .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
+205	    let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
+206	    let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
+207	    LocalRulesParams {
+208	        strict,
+209	        house: house::normalize(house),
+210	        seed,
+211	        mode,
+212	        ai_side,
+213	        ai_difficulty,
+214	        ai_strategy,
+215	        ai_variation,
+216	        ai_depth,
+217	        ai_debug,
+218	        ai_hints,
+219	    }
+220	}
+221	
+222	/// Inverse of [`parse_local_rules`] — emits a stable canonical query string
+223	/// (no leading `?`). Empty result means "use defaults" — the picker drops the
+224	/// `?` entirely so `/local/xiangqi` with no query is the default-casual URL.
+225	pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String {
+226	    let mut parts: Vec<String> = Vec::new();
+227	    match variant {
+228	        Variant::Xiangqi => {
+229	            if params.strict {
+230	                parts.push("strict=1".to_string());
+231	            }
+232	            if params.mode == PlayMode::VsAi {
+233	                parts.push("mode=ai".to_string());
+234	                parts.push(format!(
+235	                    "ai={}",
+236	                    if params.ai_side == Side::RED { "red" } else { "black" }
+237	                ));
+238	                parts.push(format!("diff={}", params.ai_difficulty.as_str()));
+239	                // Only emit engine= when the user picked a non-default
+240	                // strategy. Keeps the canonical short URL unchanged for
+241	                // the recommended setup.
+242	                if params.ai_strategy != Strategy::default() {
+243	                    parts.push(format!("engine={}", params.ai_strategy.as_str()));
+244	                }
+245	                // Only emit variation= when the user explicitly overrode
+246	                // the difficulty default (and the override is one of the
+247	                // known presets — custom Randomness values can't be
+248	                // round-tripped through the URL).
+249	                if let Some(name) = params.ai_variation.and_then(|r| r.preset_name()) {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/state.rs`
+
+```text
+1	//! Pure-logic helpers for the client's view of a game. Native-testable —
+2	//! no Leptos signals or browser deps live here.
+3	
+4	use chess_core::board::{Board, BoardShape};
+5	use chess_core::coord::Square;
+6	use chess_core::moves::Move;
+7	use chess_core::piece::{Piece, PieceKind, Side};
+8	use chess_core::rules::RuleSet;
+9	use chess_core::state::{GameState, GameStatus};
+10	use chess_core::view::{PlayerView, VisibleCell};
+11	
+12	/// Role assigned by the server on `Hello` (player) or `Spectating`
+13	/// (read-only). Drives whether the play page renders move/resign/rematch
+14	/// affordances and whether the chat input is enabled.
+15	#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+16	pub enum ClientRole {
+17	    Player(Side),
+18	    Spectator,
+19	}
+20	
+21	impl ClientRole {
+22	    pub fn is_player(self) -> bool {
+23	        matches!(self, ClientRole::Player(_))
+24	    }
+25	
+26	    pub fn is_spectator(self) -> bool {
+27	        matches!(self, ClientRole::Spectator)
+28	    }
+29	
+30	    pub fn observer(self) -> Side {
+31	        // Spectators render from RED's POV — matches what chess-net's
+32	        // `broadcast_update` projects for spectator updates.
+33	        match self {
+34	            ClientRole::Player(s) => s,
+35	            ClientRole::Spectator => Side::RED,
+36	        }
+37	    }
+38	}
+39	
+40	/// Trim a vec from the front so it holds at most `max` entries. Used for
+41	/// the per-page chat ring buffer that mirrors the server's 50-line cap.
+42	pub fn truncate_front<T>(buf: &mut Vec<T>, max: usize) {
+43	    if buf.len() > max {
+44	        let drop_count = buf.len() - max;
+45	        buf.drain(0..drop_count);
+46	    }
+47	}
+48	
+49	/// Find the legal `Move` (if any) whose origin is `from` and whose final
+50	/// destination is `to`. Reveal moves match when `from == to == at`.
+51	pub fn find_move(view: &PlayerView, from: Square, to: Square) -> Option<Move> {
+52	    view.legal_moves.iter().find(|m| matches_endpoints(m, from, to)).cloned()
+53	}
+54	
+55	fn matches_endpoints(mv: &Move, from: Square, to: Square) -> bool {
+56	    if mv.origin_square() != from {
+57	        return false;
+58	    }
+59	    match mv.to_square() {
+60	        Some(t) => t == to,
+61	        None => matches!(mv, Move::Reveal { at, .. } if *at == to),
+62	    }
+63	}
+64	
+65	/// All legal destination squares for a piece on `from` (used to render
+66	/// move dots). In banqi 連吃 chain mode the engine adds
+67	/// `Move::EndChain { at: chain_lock }` to `legal_moves`; that move has
+68	/// `origin == chain_lock` and `to == None`, and is intentionally NOT a
+69	/// movement target — it's the explicit "release the lock" gesture
+70	/// triggered by clicking the locked piece. Excluding it here keeps
+71	/// the dot/ring layer accurate during chain mode (and crucially keeps
+72	/// this closure from panicking, which would freeze the leptos DOM
+73	/// updates and leave stale markers on the board).
+74	pub fn legal_targets(view: &PlayerView, from: Square) -> Vec<Square> {
+75	    view.legal_moves
+76	        .iter()
+77	        .filter(|m| m.origin_square() == from)
+78	        .filter_map(|m| match m {
+79	            Move::Reveal { at, .. } => Some(*at),
+80	            Move::EndChain { .. } => None,
+81	            other => other.to_square(),
+82	        })
+83	        .collect()
+84	}
+85	
+86	/// True if `view.chain_lock` is set and the click on `sq` should commit
+87	/// `Move::EndChain` (e.g. user clicks the locked piece itself to release
+88	/// the chain). Otherwise the click should attempt a further capture.
+89	pub fn end_chain_move(view: &PlayerView) -> Option<Move> {
+90	    view.chain_lock.map(|at| Move::EndChain { at })
+91	}
+92	
+93	/// Sort order for the sidebar "captured pieces" panel.
+94	#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+95	pub enum CapturedSort {
+96	    /// Chronological — order returned by `GameState::captured_pieces()`.
+97	    #[default]
+98	    Time,
+99	    /// Largest piece first (General > Advisor > Elephant > Chariot >
+100	    /// Horse > Cannon > Soldier).
+101	    Rank,
+102	}
+103	
+104	impl CapturedSort {
+105	    pub fn toggled(self) -> Self {
+106	        match self {
+107	            CapturedSort::Time => CapturedSort::Rank,
+108	            CapturedSort::Rank => CapturedSort::Time,
+109	        }
+110	    }
+111	
+112	    pub fn label(self) -> &'static str {
+113	        match self {
+114	            CapturedSort::Time => "time",
+115	            CapturedSort::Rank => "rank",
+116	        }
+117	    }
+118	}
+119	
+120	/// Rank value used by `CapturedSort::Rank`. Higher = stronger piece.
+121	pub fn piece_rank_value(kind: PieceKind) -> u8 {
+122	    match kind {
+123	        PieceKind::General => 6,
+124	        PieceKind::Advisor => 5,
+125	        PieceKind::Elephant => 4,
+126	        PieceKind::Chariot => 3,
+127	        PieceKind::Horse => 2,
+128	        PieceKind::Cannon => 1,
+129	        PieceKind::Soldier => 0,
+130	    }
+131	}
+132	
+133	/// Split `pieces` (chronological from the engine) into per-side rows
+134	/// for the sidebar panel, sorting each row according to `sort`.
+135	pub fn split_and_sort_captured(pieces: &[Piece], sort: CapturedSort) -> (Vec<Piece>, Vec<Piece>) {
+136	    let mut red: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::RED).copied().collect();
+137	    let mut black: Vec<Piece> = pieces.iter().filter(|p| p.side == Side::BLACK).copied().collect();
+138	    if sort == CapturedSort::Rank {
+139	        red.sort_by_key(|p| std::cmp::Reverse(piece_rank_value(p.kind)));
+140	        black.sort_by_key(|p| std::cmp::Reverse(piece_rank_value(p.kind)));
+141	    }
+142	    (red, black)
+143	}
+144	
+145	/// Reconstruct a (best-effort) `GameState` from a `PlayerView` for the
+146	/// sole purpose of running `chess_ai::analyze` client-side in Net mode
+147	/// (debug overlay).
+148	///
+149	/// **Xiangqi only** — banqi has hidden tiles which we can't reveal
+150	/// without cheating, so we refuse to reconstruct (returns `None`).
+151	/// Three-Kingdom too.
+152	///
+153	/// The reconstructed state is good enough for `chess_ai::analyze` (the
+154	/// search reads `board`, `side_to_move`, `legal_moves`, `make_move`,
+155	/// `unmake_move`) but is NOT a faithful replay — `history` is empty,
+156	/// `no_progress_plies` is 0, `chain_lock` mirrors the view, etc. Don't
+157	/// try to roundtrip this back to a server.
+158	pub fn reconstruct_xiangqi_state_for_analysis(view: &PlayerView) -> Option<GameState> {
+159	    if !matches!(view.shape, BoardShape::Xiangqi9x10) {
+160	        // Banqi / three-kingdom: hidden info or unsupported. The chess-ai
+161	        // engine is xiangqi-only anyway.
+162	        return None;
+163	    }
+164	    if !matches!(view.status, GameStatus::Ongoing) {
+165	        // analyze() returns None on terminated games anyway.
+166	        return None;
+167	    }
+168	    // Build a fresh xiangqi-casual state and overwrite its board.
+169	    // Xiangqi rules don't mutate per-game; only the board + side-to-move
+170	    // matter for search.
+171	    let mut state = GameState::new(RuleSet::xiangqi_casual());
+172	    let mut board = Board::new(view.shape);
+173	    for (idx, cell) in view.cells.iter().enumerate() {
+174	        let sq = Square(idx as u16);
+175	        let pos = match cell {
+176	            VisibleCell::Empty => None,
+177	            VisibleCell::Hidden => return None, // shouldn't happen for xiangqi
+178	            VisibleCell::Revealed(p) => Some(*p),
+179	        };
+180	        board.set(sq, pos);
+181	    }
+182	    state.board = board;
+183	    state.side_to_move = view.side_to_move;
+184	    state.status = view.status;
+185	    state.chain_lock = view.chain_lock;
+186	    Some(state)
+187	}
+188	
+189	#[cfg(test)]
+190	mod tests {
+191	    use super::*;
+192	    use chess_core::rules::RuleSet;
+193	    use chess_core::state::GameState;
+194	
+195	    #[test]
+196	    fn find_move_locates_xiangqi_step() {
+197	        let state = GameState::new(RuleSet::xiangqi_casual());
+198	        let view = PlayerView::project(&state, state.side_to_move);
+199	        // Red soldier at file 0 rank 3 should have a step forward to rank 4.
+200	        let from = Square(3 * 9); // rank 3, file 0
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:15Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/prefs.rs`
+
+```text
+1	//! User-facing FX preferences, persisted in `localStorage`.
+2	//!
+3	//! Two switches, both default ON:
+4	//! * `fx_confetti` — show end-of-game confetti + VICTORY/DEFEAT/DRAW overlay.
+5	//! * `fx_check_banner` — show the "將軍 / CHECK" badge in the sidebar when
+6	//!   the side-to-move is in check (xiangqi only).
+7	//!
+8	//! Storage keys are stable (`chess.fx.confetti`, `chess.fx.checkBanner`)
+9	//! so a user toggling once carries the choice across sessions. Missing
+10	//! values read as `true`. We persist `"1"` / `"0"` rather than booleans
+11	//! so future debugging via DevTools is obvious.
+12	//!
+13	//! All `web_sys` calls are wrapped in `Option`/`Result` chains so a
+14	//! sandboxed context with no `window` (or storage disabled) silently
+15	//! falls back to in-memory defaults — no panics.
+16	//!
+17	//! This module is wasm32-only; the workspace native check skips it.
+18	
+19	use leptos::*;
+20	
+21	use crate::state::CapturedSort;
+22	
+23	const KEY_CONFETTI: &str = "chess.fx.confetti";
+24	const KEY_CHECK_BANNER: &str = "chess.fx.checkBanner";
+25	const KEY_CAPTURED_SORT: &str = "chess.ui.capturedSort";
+26	
+27	#[derive(Copy, Clone)]
+28	pub struct Prefs {
+29	    pub fx_confetti: RwSignal<bool>,
+30	    pub fx_check_banner: RwSignal<bool>,
+31	    /// Sort order for the sidebar captured-pieces panel. Persists
+32	    /// across sessions; toggled via the panel header button.
+33	    pub captured_sort: RwSignal<CapturedSort>,
+34	}
+35	
+36	impl Prefs {
+37	    /// Hydrate from `localStorage` and arm `create_effect` watchers that
+38	    /// persist any future change. Designed to be called once at app
+39	    /// boot and `provide_context`-shared with all routes.
+40	    pub fn hydrate() -> Self {
+41	        let fx_confetti = create_rw_signal(read_bool(KEY_CONFETTI, true));
+42	        let fx_check_banner = create_rw_signal(read_bool(KEY_CHECK_BANNER, true));
+43	        let captured_sort = create_rw_signal(read_captured_sort());
+44	
+45	        // Persist on change. The closures only run inside the browser, so
+46	        // calling `localStorage` on every flip is safe and cheap.
+47	        create_effect(move |_| {
+48	            let v = fx_confetti.get();
+49	            write_bool(KEY_CONFETTI, v);
+50	        });
+51	        create_effect(move |_| {
+52	            let v = fx_check_banner.get();
+53	            write_bool(KEY_CHECK_BANNER, v);
+54	        });
+55	        create_effect(move |_| {
+56	            let v = captured_sort.get();
+57	            write_captured_sort(v);
+58	        });
+59	
+60	        Self { fx_confetti, fx_check_banner, captured_sort }
+61	    }
+62	}
+63	
+64	fn local_storage() -> Option<web_sys::Storage> {
+65	    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+66	}
+67	
+68	fn read_bool(key: &str, default_value: bool) -> bool {
+69	    let Some(storage) = local_storage() else { return default_value };
+70	    match storage.get_item(key) {
+71	        Ok(Some(s)) => s != "0",
+72	        _ => default_value,
+73	    }
+74	}
+75	
+76	fn write_bool(key: &str, value: bool) {
+77	    if let Some(storage) = local_storage() {
+78	        let _ = storage.set_item(key, if value { "1" } else { "0" });
+79	    }
+80	}
+81	
+82	fn read_captured_sort() -> CapturedSort {
+83	    let Some(storage) = local_storage() else { return CapturedSort::default() };
+84	    match storage.get_item(KEY_CAPTURED_SORT) {
+85	        Ok(Some(s)) if s == "rank" => CapturedSort::Rank,
+86	        _ => CapturedSort::Time,
+87	    }
+88	}
+89	
+90	fn write_captured_sort(value: CapturedSort) {
+91	    if let Some(storage) = local_storage() {
+92	        let s = match value {
+93	            CapturedSort::Time => "time",
+94	            CapturedSort::Rank => "rank",
+95	        };
+96	        let _ = storage.set_item(KEY_CAPTURED_SORT, s);
+97	    }
+98	}
+99
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:17Z)**_
+
+Now let me search for the text input styles related to the Banqi seed field and understand the CSS grid layout:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`grep -n "max-width\|box-sizing\|picker-grid\|variant-card--form" /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css | head -30`
+
+```text
+20:* { box-sizing: border-box; }
+80:    max-width: 30rem;
+101:    max-width: 34rem;
+125:.picker-grid {
+147:.variant-card--form {
+153:.variant-card--form:hover { background: rgba(244, 210, 163, 0.06); border-color: var(--grid); }
+204:@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+372:    max-width: 80%;
+560:@media (max-width: 600px) {
+579:    box-sizing: border-box;
+832:    max-width: 22rem;
+1144:    max-width: calc(100vw - 2rem);
+1200:@media (max-width: 480px) {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:20Z)**_
+
+Perfect. Now let me check the app.rs and look for the play page structure to understand the state management:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:20Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src -name "*.rs" | grep -E "(pages|app)" | head -10`
+
+```text
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/app.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/play.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/mod.rs
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/lobby.rs
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:21Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+1	use chess_ai::{AiAnalysis, AiOptions, Difficulty, Randomness, Strategy};
+2	use chess_core::coord::Square;
+3	use chess_core::moves::Move;
+4	use chess_core::piece::Side;
+5	use chess_core::rules::{RuleSet, Variant};
+6	use chess_core::state::{GameState, GameStatus};
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	use leptos::*;
+9	use leptos_router::{use_params_map, use_query_map};
+10	
+11	use crate::components::board::Board;
+12	use crate::components::captured::CapturedStrip;
+13	use crate::components::debug_panel::DebugPanel;
+14	use crate::components::end_overlay::EndOverlay;
+15	use crate::components::move_history::HistoryEntry;
+16	use crate::components::sidebar::Sidebar;
+17	use crate::prefs::Prefs;
+18	use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
+19	use crate::state::{end_chain_move, find_move};
+20	
+21	/// Resolved local-page configuration. `Some(VsAiConfig)` only when the URL
+22	/// asked for vs-AI on a supported variant (xiangqi).
+23	#[derive(Clone, Copy, Debug)]
+24	struct VsAiConfig {
+25	    ai_side: Side,
+26	    difficulty: Difficulty,
+27	    strategy: Strategy,
+28	    /// `None` = use difficulty default; `Some(_)` = explicit override.
+29	    randomness: Option<Randomness>,
+30	    /// `None` = use difficulty default depth; `Some(N)` = explicit override.
+31	    depth: Option<u8>,
+32	}
+33	
+34	/// AI insight panel configuration — independent of `VsAiConfig` so
+35	/// pass-and-play (PvP, two humans) can also surface hint analyses.
+36	///
+37	/// `debug` and `hints` are decoupled URL flags:
+38	///
+39	/// - **Debug** (`?debug=1`): sticky always-on panel showing analysis
+40	///   for the current side-to-move. The label says "🔍 AI Debug" so
+41	///   the user knows they're peeking at the engine.
+42	/// - **Hint** (`?hints=1`): on-demand toggle button (default hidden)
+43	///   in the sidebar. Same analysis under the hood, but the panel
+44	///   labels itself "🧠 AI Hint" — phrased for a player asking the
+45	///   bot for advice on their move.
+46	///
+47	/// When BOTH flags are set, debug wins on layout (sticky panel, no
+48	/// toggle button) but the title shows both badges so the user knows
+49	/// they're seeing whatever the side-to-move would consider.
+50	#[derive(Clone, Copy, Debug, Default)]
+51	struct InsightConfig {
+52	    debug: bool,
+53	    hints: bool,
+54	}
+55	
+56	#[component]
+57	pub fn LocalPage() -> impl IntoView {
+58	    let params = use_params_map();
+59	    let query = use_query_map();
+60	    let resolved =
+61	        move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>, InsightConfig), String> {
+62	            let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
+63	            let variant =
+64	                parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
+65	            let parsed = query.with(|q| parse_local_rules(|k| q.get(k).cloned()));
+66	            let rules = build_rule_set(variant, &parsed);
+67	            // Three-kingdom: engine ships an empty 4×8 board. Render it but
+68	            // disable interaction and overlay a "WIP" banner — see
+69	            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
+70	            let wip = matches!(variant, Variant::ThreeKingdomBanqi);
+71	            // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
+72	            // pass-and-play (the picker hides the toggle there too — see plan).
+73	            let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
+74	                Some(VsAiConfig {
+75	                    ai_side: parsed.ai_side,
+76	                    difficulty: parsed.ai_difficulty,
+77	                    strategy: parsed.ai_strategy,
+78	                    randomness: parsed.ai_variation,
+79	                    depth: parsed.ai_depth,
+80	                })
+81	            } else {
+82	                None
+83	            };
+84	            // AI insight panel works for both vs-AI AND pass-and-play —
+85	            // it's just an on-demand bot analysis, no AI opponent required.
+86	            // Xiangqi-only because the chess-ai engine is xiangqi-scoped.
+87	            let insight = if matches!(variant, Variant::Xiangqi) {
+88	                InsightConfig { debug: parsed.ai_debug, hints: parsed.ai_hints }
+89	            } else {
+90	                InsightConfig::default()
+91	            };
+92	            Ok((variant, rules, wip, ai, insight))
+93	        };
+94	
+95	    move || match resolved() {
+96	        Ok((variant, rules, wip, ai, insight)) => view! {
+97	            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight/>
+98	        }
+99	        .into_view(),
+100	        Err(msg) => view! {
+101	            <section class="game-page game-page--single">
+102	                <div>
+103	                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+104	                    <h2>"Variant unavailable"</h2>
+105	                    <p class="subtitle">{msg}</p>
+106	                </div>
+107	            </section>
+108	        }
+109	        .into_view(),
+110	    }
+111	}
+112	
+113	#[component]
+114	fn LocalGame(
+115	    variant: Variant,
+116	    rules: RuleSet,
+117	    wip: bool,
+118	    ai: Option<VsAiConfig>,
+119	    insight: InsightConfig,
+120	) -> impl IntoView {
+121	    let initial_rules = rules.clone();
+122	    let state = create_rw_signal(GameState::new(rules));
+123	    let selected = create_rw_signal::<Option<Square>>(None);
+124	    let ai_thinking = create_rw_signal(false);
+125	    // Two SEPARATE analysis caches — they MUST NOT share storage,
+126	    // otherwise the freshest writer (typically the hint pump after the
+127	    // AI moves) clobbers the other and the user can't compare AI's POV
+128	    // vs. their own POV. The panel chooses which cache to render based
+129	    // on `hint_view_active` below.
+130	    //
+131	    // - `debug_analysis`: cached AI's POV after each AI move. Sticky
+132	    //   between turns; only the AI pump writes it. Empty in PvP (no AI
+133	    //   pump runs there).
+134	    // - `hint_analysis`: live re-analysis from the side-to-move's POV.
+135	    //   The hint pump rewrites it on every relevant state change.
+136	    let debug_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+137	    let hint_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+138	    // Hover-driven PV chain for the AI debug panel: when the user
+139	    // hovers a row, board renders a faded chain of from→to overlays.
+140	    // Empty Vec = no highlight.
+141	    let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
+142	    // Bumped on every state change (player move, AI move, undo, new game).
+143	    // The AI task captures the epoch when it starts and discards its result
+144	    // if the epoch has changed by the time it returns — prevents stale AI
+145	    // moves landing after the player undid or restarted.
+146	    let move_epoch = create_rw_signal::<u32>(0);
+147	
+148	    // ---- Debug vs Hint panel state ----
+149	    //
+150	    // `?debug=1` and `?hints=1` are independent URL flags. They drive
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:23Z)**_
+
+Perfect. Now let me check the glyph rendering to understand how pieces are rendered:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:24Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/glyph.rs`
+
+```text
+1	//! Piece glyph tables. Two render styles: traditional CJK (帥/將 etc.) and
+2	//! ASCII single-letter (uppercase = Red, lowercase = Black). The engine has
+3	//! no concept of glyphs — presentation lives entirely in the client.
+4	//!
+5	//! Verbatim copy of `clients/chess-tui/src/glyph.rs` (see orient.rs note).
+6	
+7	use chess_core::piece::{PieceKind, Side};
+8	
+9	#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+10	pub enum Style {
+11	    Cjk,
+12	    Ascii,
+13	}
+14	
+15	pub fn glyph(kind: PieceKind, side: Side, style: Style) -> &'static str {
+16	    match style {
+17	        Style::Cjk => cjk(kind, side),
+18	        Style::Ascii => ascii(kind, side),
+19	    }
+20	}
+21	
+22	fn cjk(kind: PieceKind, side: Side) -> &'static str {
+23	    match (side, kind) {
+24	        (Side::RED, PieceKind::General) => "帥",
+25	        (Side::RED, PieceKind::Advisor) => "仕",
+26	        (Side::RED, PieceKind::Elephant) => "相",
+27	        (Side::RED, PieceKind::Chariot) => "俥",
+28	        (Side::RED, PieceKind::Horse) => "傌",
+29	        (Side::RED, PieceKind::Cannon) => "炮",
+30	        (Side::RED, PieceKind::Soldier) => "兵",
+31	        (Side::BLACK, PieceKind::General) => "將",
+32	        (Side::BLACK, PieceKind::Advisor) => "士",
+33	        (Side::BLACK, PieceKind::Elephant) => "象",
+34	        (Side::BLACK, PieceKind::Chariot) => "車",
+35	        (Side::BLACK, PieceKind::Horse) => "馬",
+36	        (Side::BLACK, PieceKind::Cannon) => "砲",
+37	        (Side::BLACK, PieceKind::Soldier) => "卒",
+38	        (_, PieceKind::General) => "將",
+39	        (_, PieceKind::Advisor) => "士",
+40	        (_, PieceKind::Elephant) => "象",
+41	        (_, PieceKind::Chariot) => "車",
+42	        (_, PieceKind::Horse) => "馬",
+43	        (_, PieceKind::Cannon) => "砲",
+44	        (_, PieceKind::Soldier) => "卒",
+45	    }
+46	}
+47	
+48	fn ascii(kind: PieceKind, side: Side) -> &'static str {
+49	    match (side, kind) {
+50	        (Side::RED, PieceKind::General) => "K",
+51	        (Side::RED, PieceKind::Advisor) => "A",
+52	        (Side::RED, PieceKind::Elephant) => "B",
+53	        (Side::RED, PieceKind::Chariot) => "R",
+54	        (Side::RED, PieceKind::Horse) => "N",
+55	        (Side::RED, PieceKind::Cannon) => "C",
+56	        (Side::RED, PieceKind::Soldier) => "P",
+57	        (Side::BLACK, PieceKind::General) => "k",
+58	        (Side::BLACK, PieceKind::Advisor) => "a",
+59	        (Side::BLACK, PieceKind::Elephant) => "b",
+60	        (Side::BLACK, PieceKind::Chariot) => "r",
+61	        (Side::BLACK, PieceKind::Horse) => "n",
+62	        (Side::BLACK, PieceKind::Cannon) => "c",
+63	        (Side::BLACK, PieceKind::Soldier) => "p",
+64	        (_, PieceKind::General) => "K*",
+65	        (_, PieceKind::Advisor) => "A*",
+66	        (_, PieceKind::Elephant) => "B*",
+67	        (_, PieceKind::Chariot) => "R*",
+68	        (_, PieceKind::Horse) => "N*",
+69	        (_, PieceKind::Cannon) => "C*",
+70	        (_, PieceKind::Soldier) => "P*",
+71	    }
+72	}
+73	
+74	/// Hidden / face-down piece (banqi pre-flip).
+75	pub fn hidden(style: Style) -> &'static str {
+76	    match style {
+77	        Style::Cjk => "暗",
+78	        Style::Ascii => "?",
+79	    }
+80	}
+81	
+82	/// Human-readable side label.
+83	pub fn side_name(side: Side, style: Style) -> &'static str {
+84	    match (side, style) {
+85	        (Side::RED, Style::Cjk) => "Red 紅",
+86	        (Side::BLACK, Style::Cjk) => "Black 黑",
+87	        (Side::RED, Style::Ascii) => "Red",
+88	        (Side::BLACK, Style::Ascii) => "Black",
+89	        (_, Style::Cjk) => "Green 綠",
+90	        (_, Style::Ascii) => "Green",
+91	    }
+92	}
+93	
+94	#[cfg(test)]
+95	mod tests {
+96	    use super::*;
+97	
+98	    #[test]
+99	    fn glyph_table_total_for_red_and_black() {
+100	        for kind in PieceKind::ALL {
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:25Z)**_
+
+Excellent! Now let me check if there's a CLAUDE.md in the project:
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+
+`find /Users/david/Documents/Program/Chinese-Chess_Xiangqi -name "CLAUDE.md" -o -name "claude.md" | head -5`
+
+```text
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/CLAUDE.md
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:27Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./CLAUDE.md`
+
+```text
+1	# CLAUDE.md
+2	
+3	This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+4	
+5	## Project at a glance
+6	
+7	Rust + WASM Chinese chess engine supporting standard xiangqi (象棋), banqi (暗棋), and three-kingdoms banqi (三國暗棋). The foundational `chess-core` crate is shipped end-to-end, `chess-tui` is wired up for local play (xiangqi + banqi, vim cursor + mouse, CJK or ASCII glyphs), `chess-net` ships a multi-room websocket server (`chess-net-server`) with an in-TUI lobby browser, optional per-room password, and live `Rooms` push to lobby viewers, and `chess-web` (Leptos + Trunk + SVG-only rendering) is a single-page browser client that handles both local pass-and-play (pure WASM, no server) and online play (WS to chess-net). AI (`chess-ai`) is still a stub tracked in [`TODO.md`](TODO.md).
+8	
+9	For the tech-selection rationale see [`docs/architecture.md`](docs/architecture.md); for the chess-web Rust+web stack (Leptos + Trunk + WASM) see [`docs/trunk-leptos-wasm.md`](docs/trunk-leptos-wasm.md); for locked-in design decisions see [`docs/adr/`](docs/adr/).
+10	
+11	## Common commands
+12	
+13	```bash
+14	# Workspace sanity (all 8 crates compile)
+15	cargo check --workspace
+16	
+17	# Format + lint (CI requires both clean; clippy uses -D warnings)
+18	cargo fmt --check
+19	cargo clippy --workspace --all-targets -- -D warnings
+20	
+21	# Engine tests (~71 fast + 1 slow ignored). Default if you change rules.
+22	cargo test -p chess-core
+23	
+24	# Run a single test
+25	cargo test -p chess-core --lib coord::tests::direction_deltas_consistent
+26	
+27	# Slow xiangqi perft depth-3 — runs in release for speed
+28	cargo test --release -p chess-core --test xiangqi_perft -- --ignored
+29	
+30	# WASM cleanliness — proves chess-core has no platform deps
+31	cargo build --target wasm32-unknown-unknown -p chess-core
+32	
+33	# Run the REPL test harness (proves the engine end-to-end)
+34	cargo run -p chess-cli
+35	> xiangqi
+36	> moves
+37	> play h2e2
+38	> banqi --preset taiwan --seed 42
+39	> view 0
+40	> quit
+41	
+42	# Interactive TUI (default render: CJK glyphs + color)
+43	cargo run -p chess-tui                                    # variant picker
+44	cargo run -p chess-tui -- xiangqi                         # casual mode (default)
+45	cargo run -p chess-tui -- xiangqi --strict                # standard self-check rules
+46	cargo run -p chess-tui -- banqi --preset taiwan --seed 42
+47	cargo run -p chess-tui -- --style ascii xiangqi           # letter glyphs
+48	cargo run -p chess-tui -- --no-color xiangqi              # monochrome
+49	cargo run -p chess-tui -- --as black xiangqi              # render as Black
+50	cargo run -p chess-tui -- --no-confetti xiangqi           # disable end-of-game FX
+51	cargo run -p chess-tui -- --no-check-banner xiangqi       # hide 將軍/CHECK warning
+52	
+53	# Networked play (multi-room — see ADR-0005; spectator + chat — see ADR-0006)
+54	cargo run -p chess-net -- --port 7878 xiangqi             # server, all rooms = xiangqi
+55	cargo run -p chess-net -- --port 7878 xiangqi --strict    # strict self-check
+56	cargo run -p chess-net -- --port 7878 banqi --preset taiwan --seed 42
+57	cargo run -p chess-net -- --port 7878 --max-spectators 32 xiangqi  # raise spectator cap (default 16)
+58	
+59	# Client — entry points to the same server:
+60	cargo run -p chess-tui -- --lobby   ws://127.0.0.1:7878            # browse rooms (Enter join / w watch / c create)
+61	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878             # default room "main" (back-compat)
+62	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/myroom   # named room
+63	cargo run -p chess-tui -- --connect ws://127.0.0.1:7878/ws/locked --password secret  # locked room
+64	cargo run -p chess-tui -- --connect 'ws://127.0.0.1:7878/ws/myroom?role=spectator'   # watch read-only
+65	
+66	curl -s http://127.0.0.1:7878/rooms | jq                   # JSON room snapshot (incl. spectator counts)
+67	
+68	# tmux harnesses
+69	make play-local                                           # 1 server + 2 --connect clients (default room)
+70	make play-lobby                                           # 1 server + 3 panes (2 lobby flow + 1 watcher)
+71	make play-web                                             # 1 server + Trunk dev-server (SPA on :8080)
+72	make play-spectator                                       # 1 server + 2 players + 1 spectator (chat / role demo)
+73	make play-local VARIANT=banqi                             # banqi
+74	make play-local PORT=9000 VARIANT=xiangqi                 # custom port
+75	make stop-local / make stop-lobby / make stop-web / make stop-spectator   # tear down each session
+76	
+77	# Web client (Leptos + Trunk + SVG)
+78	cargo install trunk                                       # one-time
+79	rustup target add wasm32-unknown-unknown                  # one-time
+80	make play-web                                             # full dev loop (server + Trunk hot-reload)
+81	make build-web                                            # trunk build --release → clients/chess-web/dist
+82	make build-web-static WEB_BASE=Chinese-Chess_Xiangqi      # GitHub Pages dist (subpath baked in) → clients/chess-web/dist-static
+83	make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi      # local PWA verify (python http.server on :4173)
+84	cargo run -p chess-net -- --port 7878 \
+85	    --static-dir clients/chess-web/dist xiangqi           # single-binary prod (chess-net serves dist/)
+86	```
+87	
+88	TUI input map: `hjkl` / arrows move cursor, `Enter` / `Space` select-or-commit,
+89	`Esc` cancel, `u` undo, `f` flip (banqi), `n` new game (back to picker),
+90	`r` toggle rules overlay, `?` toggle keymap help, `q` / `Ctrl-C` quit. `:`
+91	opens an instant coord-input prompt (type ICCS like `h2e2` / `a3xb3xc3` /
+92	`flip a0`, Enter commits, Esc cancels); `m` opens the same with live preview
+93	— each keystroke updates the selected-square highlight, and a complete move
+94	also previews the destination via the cursor. In Net mode, `t` opens chat
+95	input (players only — Enter sends, Esc cancels); in the lobby, `w` watches
+96	the highlighted room as a spectator. Mouse left-click selects or commits.
+97	When the game ends, a banner appears in the sidebar and move attempts are
+98	gated; `n` returns to the picker, `u` takes back the losing move.
+99	
+100	`rustup target add wasm32-unknown-unknown` once per machine. If your rustup mirror lacks the target (e.g. tuna), prefix the command with `RUSTUP_DIST_SERVER=https://static.rust-lang.org` — see [`pitfalls/wasm-getrandom-unresolved-imp.md`](pitfalls/wasm-getrandom-unresolved-imp.md) for the related `js`-feature gotcha.
+101	
+102	## Architecture quick reference
+103	
+104	The engine lives entirely in `crates/chess-core`. `chess-tui` consumes it for local play and (via `--connect`) talks to `chess-net`'s axum-ws server, which holds the authoritative `GameState` and broadcasts per-side `PlayerView` after each move. `chess-engine`, `chess-ai`, and `xtask` are stubs; `chess-web` is shipped. Eight non-obvious decisions are locked in — full rationale in `docs/adr/` (see [`adr/README.md`](docs/adr/README.md) for the index):
+105	
+106	1. **`Square(u16)` linear index** (ADR-0002), not `(file, rank)` tuples. `Board` knows its `BoardShape` and converts. Scales to 19×19 + irregular topology via per-shape mask.
+107	2. **`Move` is a flat enum** (ADR-0004). `Move::Reveal { at, revealed: Option<Piece> }` is the network ABI boundary: clients send `revealed: None`, the authoritative engine fills in `Some(piece)` post-flip. All variants serde clean.
+108	3. **`RuleSet` is plain data + `bitflags`, not a trait** (ADR-0003). Move-gen is free functions in `rules/{xiangqi,banqi,three_kingdom}.rs` dispatching on `Variant` and consulting `HouseRules` flags. Trait-object rule layering was rejected — kills inlining, fights serde.
+109	4. **`GameState` is one concrete struct.** `TurnOrder` holds `SmallVec<[Side; 3]>` so 3-player isn't a special case. `Side(u8)` (not a fixed enum) carries this.
+110	5. **`PlayerView::project(&GameState, observer)` is the only externally-visible state.** Hidden pieces become `VisibleCell::Hidden` with no identity. `tests/view_projection.rs` proptest enforces no-leak in serialized JSON. The future network layer must ship `PlayerView`, never `GameState`.
+111	
+112	Move generation pipeline (xiangqi): `pseudo_legal_moves` (geometry only) → clone-the-state-and-probe legality filter → emit. Cheap enough for 9×10; a future AI hot path should switch to make/unmake without cloning.
+113	
+114	## Gotchas worth knowing
+115	
+116	- **`make_move` does NOT auto-refresh `status`.** The xiangqi legality filter calls `make_move` on a clone to test self-check; auto-refresh would recurse via `legal_moves`. Callers (CLI / TUI / future server) invoke `state.refresh_status()` after each move when they want to know if the game ended. `refresh_status` covers no-progress draws + no-legal-moves; threefold repetition is a TODO.
+117	
+118	- **One house rule still no-op**: `CANNON_FAST_MOVE`. The other five (`CHAIN_CAPTURE`, `DARK_CAPTURE`, `DARK_CAPTURE_TRADE`, `CHARIOT_RUSH`, `HORSE_DIAGONAL`) are wired end-to-end. Don't assume code that consumes `HouseRules` handles every flag — grep `rules/banqi.rs::generate` to confirm. (`DARK_CHAIN` was renamed to `DARK_CAPTURE` in 2026-05; `dark-chain` is still recognised on parse for back-compat. Chains-with-dark-hops — atomic chain captures that pass through hidden tiles — is a Phase 2 follow-up tracked in `TODO.md`.)
+119	
+120	- **`Variant::ThreeKingdomBanqi` exists but produces an empty 4×8 board.** The types are ready (3-seat `TurnOrder`, `Side(2)`, `BoardShape::ThreeKingdom`), but the actual mask + capture rules ship in PR 2. The setup builder is `setup.rs::build_three_kingdom_stub`. See `backlog/three-kingdoms-banqi.md` for what the implementation needs to settle.
+121	
+122	- **WASM build needs `getrandom = { features = ["js"] }`** for `wasm32-unknown-unknown` browser builds. `chess-core/Cargo.toml` adds this as a target-specific dep. Symptom and root cause documented in `pitfalls/wasm-getrandom-unresolved-imp.md`.
+123	
+124	- **Move list is `SmallVec<[Move; 32]>`.** Positions exceeding 32 legal moves spill to heap once — fine for correctness but watch when doing AI work.
+125	
+126	- **Banqi shuffle determinism.** `RuleSet::banqi_with_seed(house, seed)` uses `ChaCha8Rng` (deterministic). `RuleSet::banqi(house)` falls back to `rand::thread_rng()` for the seed — fine on native; in browser WASM works because of the `js`-feature dep above.
+127	
+128	- **Perft is the canary** for move-gen regressions. `tests/xiangqi_perft.rs` locks depth 1 = 44, depth 2 = 1920, depth 3 = 79666 (matches published values). If any of those change, audit the rule edit before assuming the test is wrong.
+129	
+130	- **Test fixtures use `.pos` DSL.** Hand-written positions live in `tests/fixtures/<variant>/*.pos` and load via `GameState::from_pos_text(&str)`. `tests/end_conditions.rs` shows the pattern. Format spec: [`docs/snapshot-format.md`](docs/snapshot-format.md). Don't put new test positions inline as Rust code if a fixture file would do — fixtures are editable, diff-friendly, and double as endgame-puzzle source files.
+131	
+132	- **Replay = `(initial, moves[])` not `Vec<MoveRecord>`.** `Replay::from_game(state, meta)` walks `state.history` back to the start via `unmake_move` and records the moves. `Replay::play_to(step)` is the single primitive behind animation playback, multi-ply takeback, fork-from-midpoint, and endgame puzzle "start at this position" — don't reinvent any of those.
+133	
+134	- **chess-tui orientation lives in `clients/chess-tui/src/orient.rs`, not chess-core.** The engine stays presentation-free; the renderer transposes banqi (4×8 model → 8×4 display) and flips xiangqi (rank 0 at the bottom for Red observer, top for Black) entirely client-side. When `chess-net` lands, the same `project_cell` / `square_at_display` pair handles per-player perspective without any engine change.
+135	
+136	- **chess-tui board uses an intersection layout, not boxed cells.** Pieces sit on grid crossings (rendered as `┼` for empty intersections, `╳` at palace centers, or the piece glyph). Rank rows are interleaved with between-rows containing `│` verticals plus `╲ ╱` palace diagonals. The river replaces the between-row at index 4 with a stylised text band — no vertical lines pass through it. Each terminal "cell" spans 4 cols × 2 rows; mouse hit-test in `app.rs::hit_test` divides by these constants. ASCII fallback (`--style ascii`) maps the same layout onto `+ - | \ / X` chars.
+137	
+138	- **Casual xiangqi (`RuleSet::xiangqi_casual()` / `xiangqi_allow_self_check: true`)** disables the standard self-check legality filter. Moves that leave your general capturable are accepted; the game ends with `WinReason::GeneralCaptured` when the general is physically taken. `refresh_status` detects the missing general unconditionally — keep the existing checkmate-by-zero-legal-moves path intact (it's still reachable in standard mode). When adding a new RuleSet field, mark it `#[serde(default)]` so older snapshots still deserialize. The TUI defaults to casual; the engine `RuleSet::xiangqi()` factory is still strict (so existing engine tests / snapshots stay correct) — only the chess-tui picker / `Cmd::Xiangqi` selection picks `xiangqi_casual()` by default.
+139	
+140	- **`chess-net` is multi-room (ADR-0005) with v3 spectator + chat (ADR-0006).** `crates/chess-net/src/protocol.rs` defines `ServerMsg`/`ClientMsg` (JSON over text frames, `#[serde(tag = "type")]`). Routes: `GET /` and `GET /ws` upgrade into the default room `main` (backwards compat with v1 clients); `GET /ws/<room-id>` upgrades into a named room (auto-created on first arrival, GC'd when the last seat **and** spectator leaves — except `main`, which is permanent); `GET /lobby` is a non-seated subscription that receives `Rooms` pushes on every state change; `GET /rooms` returns the same snapshot as JSON for `curl`/debugging. Optional `?password=<secret>` locks the room (applies to seats and spectators); wrong password → `ServerMsg::Error{"bad password"}` before any welcome. **Password is plain-text friend-lock, not security** — there's no WSS or auth in the loop. Server holds `Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>` + parallel `summaries` cache so `notify_lobby` builds `Rooms` snapshots without holding inner locks. Within a room, first seat = Red, second = Black; third+ joiner without `?role=spectator` still gets `room full` (v2 back-compat). `chess-tui` joins via `--connect` (direct URL) or `--lobby <host>` (room browser); the lobby spawns a second sync `tungstenite` worker — no tokio in the TUI binary. `Move::Reveal` stays `revealed: None` on the wire end-to-end (the server fills `Some(...)` only inside its local state). Reconnect / time controls / takeback / mixed-variant rooms / TLS are deferred (see `TODO.md`).
+141	
+142	- **chess-net v3 spectator opt-in is `?role=spectator` (explicit only).** Joining a room with the param routes to the spectator branch in `server.rs::handle_room_socket`: server sends `ServerMsg::Spectating { protocol, rules, view }` (`PlayerView::project(&state, Side::RED)`), then `ChatHistory { lines }` from the room's ring buffer. Spectators receive `Update` from RED's perspective on every move — banqi hidden tiles stay opaque per ADR-0004. Move / Resign / Rematch / Chat from a spectator returns the appropriate `Error{"spectators cannot ..."}`. **Cap defaults to 16 per room**; override with `--max-spectators N` / `CHESS_NET_MAX_SPECTATORS` env. The (cap+1)th spectator gets `Error{"room watch capacity reached"}`. Spectators of a `?password=`-locked room must present the same password as players (validated before role branching). `RoomSummary.spectators: u16` is `#[serde(default)]` for v2 lobby back-compat. Auto-fallback (silently upgrading a third joiner to spectator) was rejected in ADR-0006 because v2 chess-tui clients would crash on the `Spectating` JSON tag — explicit opt-in keeps the v2 path byte-identical.
+143	
+144	- **chess-net chat is players-only with a 50-line per-room ring buffer.** `ClientMsg::Chat { text }` from a seat: trimmed, control chars (`\n` / `\t`) collapsed to space, capped at 256 chars, server-stamps `ts_ms`, pushes to `RoomState.chat: VecDeque<ChatLine>` (oldest dropped at cap), then `broadcast_to_all` fans `ServerMsg::Chat { line }` to seats + spectators with the same payload (chat is a single broadcast, unlike `Update` which projects per-seat). Same `text` from a spectator → `Error{"spectators cannot chat"}`. Late joiners get the buffer in their welcome `ChatHistory { lines }`. **No rate limit, no moderation, no encryption** — this is a friend-only channel; production-grade primitives are sketched at `backlog/chess-net-chat-moderation.md`. System messages (player joined / left) are `ChatLine.from`'s next axis — see `backlog/chess-net-system-messages.md` (will bump to v4 when shipped).
+145	
+146	- **chess-tui chat-input mode hijacks the keymap.** Pressing `t` in Net mode sets `NetView.chat_input = Some(String::new())`; `app.input_mode()` then returns `InputMode::Text` so the dispatcher treats printable keys as edits. `Enter` sends `ClientMsg::Chat`; `Esc` (Action::Back) cancels. The chat region in `draw_sidebar_net` reserves the bottom rows of the sidebar (`MIN_CHAT_ROWS = 6`); the log auto-scrolls by always rendering the last `log_h` lines from the `VecDeque`. Spectators see "(spectator — read-only)" instead of the input row and pressing `t` shows a hint. Lobby key `w` triggers `Action::LobbyWatch` → connects with `?role=spectator` (locked rooms still prompt for the password via the existing `PendingJoin` flow, now extended with an `as_spectator: bool` field).
+147	
+148	- **chess-tui coord-input mode also hijacks the keymap, in both Game and Net.** Pressing `:` opens an *instant* prompt (no live preview); `m` opens a *live preview* prompt that re-parses on every keystroke and snapshots `(cursor, selected)` on entry so `Esc` can restore them. Both set `coord_input = Some(CoordInputState { … })` on the active view; `app.input_mode()` returns `InputMode::Text` so printable keys append. **Coord-input and chat-input are mutually exclusive in Net** — opening one with the other active is rejected via `last_msg`. Decoding goes through `chess_core::notation::iccs::decode_move` (Local) or `decode_move_from_view` (Net) — the latter operates on `&PlayerView` and shares its inner with the former via `decode_move_with(&Board, &[Move], &str)`. Live-preview's destination-cursor jump uses `orient::project_cell` (the long-`#[allow(dead_code)]` helper finally pulls its weight). Submit on bad notation keeps the prompt open with `last_msg = "Bad move: …"`; success closes the prompt and either calls `apply_move` (Local) or sends `ClientMsg::Move` (Net). Net spectator / not-your-turn / game-over gates are checked at submit time; `m` snapshot is `None` for `Instant`, so the Esc-restore arms in `dispatch_back` no-op there.
+149	
+150	- **chess-web chat lives below the sidebar in a `right-column` grid.** `clients/chess-web/src/components/chat_panel.rs` renders the log + an input row (uncontrolled `<input>` read on submit) and auto-scrolls via a `create_effect` that sets `el.set_scroll_top(el.scroll_height())` on every `log.get()`. `ClientRole` enum (`state.rs`) replaces the previous `Option<Side>` observer in `<PlayPage>`; move / resign / rematch / chat-input are gated on `role.is_player()`. Spectator entry: lobby Watch button builds `/play/<id>?role=spectator` (and adds `&password=` when set); the play page reads `?role` and passes it to `room_url(...)`. Chat from a spectator hits the disabled-input path so `ClientMsg::Chat` never goes out from a spectator client (the server gate is the authoritative check).
+151	
+152	- **chess-net has two opt-in features.** Default is `["server", "static-serve"]`. `default-features = false` exposes only the `protocol` module — that's how `chess-web` consumes the crate so axum/tokio don't end up in the WASM build. `static-serve` adds `tower-http` and the `--static-dir <path>` CLI flag (also reads `CHESS_NET_STATIC_DIR`); when set, `tower_http::services::ServeDir` is mounted as the route fallback so a single binary serves `clients/chess-web/dist/` + WS endpoints. **Enabling `--static-dir` re-routes `GET /` to serve `index.html`**, which means v1 chess-tui clients pointing at `ws://host` (no path) break — they must switch to `--connect ws://host/ws`. The default `make play-local` / `make play-lobby` flows do not enable `--static-dir`, so v1 back-compat is preserved unless you opt in.
+153	
+154	- **chess-web compiles natively as a tiny stub.** `clients/chess-web/Cargo.toml` puts leptos + gloo-net + web-sys in `[target.'cfg(target_arch = "wasm32")'.dependencies]`. The crate's `lib.rs` `#[cfg(target_arch = "wasm32")]`-gates `app`, `components`, `pages`, `ws`, `config`. Native (`cargo check --workspace`) sees only `orient`, `glyph`, `routes`, `state` — pure-logic modules with their own tests (15 of them). The leptos UI compiles only via `cargo build --target wasm32-unknown-unknown -p chess-web` or `trunk serve`. Don't put leptos imports inside the pure modules or the workspace native check breaks.
+155	
+156	- **chess-web duplicates `orient.rs` and `glyph.rs` from chess-tui verbatim.** This is intentional — promoting them into chess-core would violate ADR-0001 (presentation lives client-side). A shared crate (`clients/chess-client-shared`) is premature for two consumers; the duplicated tests catch drift in CI. See `backlog/promote-client-shared.md` for the trigger and recipe. If you edit one copy, edit the other.
+157	
+158	- **chess-web routing is path-based with axum SPA fallback.** Routes: `/` (picker), `/local/:variant` (xiangqi/banqi/three-kingdom — three-kingdom renders the empty 4×8 stub board with a "WIP" overlay since the engine isn't shipped), `/lobby`, `/play/:room`. Trunk dev-server serves all paths to `index.html`; chess-net's `ServeDir` does the same via its `.fallback(ServeFile::new(dir/"index.html"))`. The same `<Board>` component renders local `GameState`-projected `PlayerView` and remote server-pushed `PlayerView` — local mode just runs `PlayerView::project(&state, state.side_to_move)` after each move (the same projection the server does), so hidden-cell behaviour matches across modes.
+159	
+160	- **Rules are configured via URL query string on `/local/:variant`.** The picker page (`pages/picker.rs`) builds these from a reactive form; manually-typed URLs are also valid. Encoding lives in `routes.rs::{parse_local_rules, build_local_query, build_rule_set}` (pure-logic, native-tested): `?strict=1` for strict xiangqi (default = casual), `?house=chain,rush&seed=42` for banqi house rules + deterministic shuffle, `?preset=taiwan|aggressive|purist` as an alt to `house=`. Tokens: `chain`/`dark`/`rush`/`horse`/`cannon` map 1:1 to `HouseRules` flags (only `chain` + `rush` are wired in move-gen — see banqi gotcha above). Unknown tokens are dropped silently. Three-kingdom ignores all params. In-game rule editing (gear icon) is a P2 follow-up — see `backlog/web-ingame-rules-modal.md`.
+161	
+162	- **chess-web is also a PWA — `dist/sw.js` and `dist/manifest.webmanifest` are *generated* by `clients/chess-web/scripts/build-pwa.sh`, not committed.** Trunk runs the script as a `[[hooks]] stage = "post_build"` step (see `clients/chess-web/Trunk.toml`); it scans the just-built dist, writes the precache list (every hashed JS/WASM/CSS/HTML/icon), computes a content-hash `APP_VERSION`, and substitutes `__BASE_PATH__` from `TRUNK_PUBLIC_URL` so the manifest's `start_url` / `scope` match the deploy target (server root via `make build-web`, GitHub Pages subpath like `/Chinese-Chess_Xiangqi/` via `make build-web-static WEB_BASE=...`). **Do not edit dist/sw.js by hand** — the hook overwrites it on every build. The templates live under `clients/chess-web/public/{sw.js.tmpl,manifest.webmanifest.tmpl}`. PWA glue (install prompt capture, SW lifecycle messaging, online detection) is in `clients/chess-web/public/pwa.js`; the Leptos UI on top is in `clients/chess-web/src/components/pwa.rs` (`PwaState`, `PwaInstallBanner`, `PwaInstallButton`, `PwaUpdateToast`, `OfflineIndicator`). Update UX is opt-in: a new SW is precached but won't activate until the user clicks the "Reload" toast (skipWaiting → controllerchange → reload) — chosen so an in-progress 對局 isn't reloaded out from under the player. SW deliberately bypasses `/ws*`, `/lobby`, `/rooms`, `/api/*` so online play retains its existing failure surface. Full takeaway in [`docs/pwa.md`](docs/pwa.md); common traps in [`pitfalls/pwa-base-path-and-stale-cache.md`](pitfalls/pwa-base-path-and-stale-cache.md).
+163	
+164	- **End-game FX (confetti + VICTORY/DEFEAT/DRAW banner) and the 將軍/CHECK warning are user-toggleable, default ON.** Wire change: `PlayerView` gains `pub in_check: bool` (`#[serde(default)]`, ADR-0007, protocol v4). chess-tui CLI: `--no-confetti` and `--no-check-banner` (preserved across screen transitions via `AppState::replace_preserving_prefs`). chess-tui hand-rolled ASCII art lives in `clients/chess-tui/src/banner.rs` (`BannerKind::{Victory,Defeat,Draw,Outcome,AppTitle}`, two glyph styles); particle physics in `confetti.rs` (xorshift32, no `rand` dep). chess-web localStorage keys are `chess.fx.confetti` and `chess.fx.checkBanner`, hydrated by `Prefs::hydrate()` in `clients/chess-web/src/prefs.rs` and `provide_context`-shared with all routes; sidebar footer ships two checkboxes. Spectators (and Local pass-and-play, which has no `ClientRole`) always see neutral "Red Wins" / "Black Wins" copy — never `VICTORY` / `DEFEAT`. Banqi never shows the check badge (no general → `is_in_check` returns false). The TUI confetti animation runs at ~20 fps via `poll_ms = 50` while `confetti_anim.is_some() || confetti_pending` (otherwise the existing 60 ms Net / 200 ms Local rates apply). Big TUI banner is skipped when the board area is narrower than the ASCII art + 2 cols of padding; confetti still plays.
+165	
+166	## Where to put new work
+167	
+168	| Kind | Where |
+169	|---|---|
+170	| Deferred features / "maybe later" | `TODO.md` via `scripts/add-todo.sh` (script lives in the [`project-knowledge-harness`](https://github.com/daviddwlee84/agent-skills) skill) |
+171	| Research/design notes for a TODO item | `backlog/<slug>.md` (use `--backlog` on `add-todo.sh`) |
+172	| Past traps you encountered | `pitfalls/<slug>.md` — **title by symptom** (verbatim error), not by root cause |
+173	| Locked-in design decisions | `docs/adr/000N-<slug>.md` |
+174	| Game rules reference | `docs/rules/<variant>.md` |
+175	| Architectural overview / tech analysis | `docs/architecture.md` |
+176	
+177	[`AGENTS.md`](AGENTS.md) describes the full backlog/pitfalls workflow with examples. Do **not** create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index, validated by `scripts/todo-kanban.sh`.
+178	
+179	When implementing a `TODO.md` item, in the same commit run:
+180	
+181	```bash
+182	scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"
+183	```
+184	
+185	## Rule changes touch three places at once
+186	
+187	Any edit that changes a game rule, move-gen, `RuleSet` semantics, or
+188	the meaning of a `HouseRules` flag MUST move the following together
+189	**in the same commit** — this repo treats `docs/rules/` as the
+190	single source of truth for *behavior*, but the only thing actually
+191	enforced by CI is `crates/chess-core/`. So humans have to keep the
+192	three in sync; if they drift, the docs lie.
+193	
+194	1. **Code** — `crates/chess-core/src/rules/{xiangqi,banqi,three_kingdom}.rs` for move-gen; `state/mod.rs` for outcome resolvers like `dark_capture_outcome` / `compute_chain_lock_after`; `rules/house.rs` for new flags.
+195	2. **Tests** — `crates/chess-core/tests/<rule>.rs`. Add a positive case (the rule fires when expected) AND a negative case (the rule does NOT fire under the wrong flags / piece kind / direction). Round-trip the move via `make_move`/`unmake_move` if it's a new variant or capture path, and exercise chain-mode interaction if the rule emits captures.
+196	3. **Spec** — `docs/rules/<variant>.md` for base rules; `docs/rules/banqi-house.md` for house-rule flags. Describe player-facing behavior, list all rank bypasses, and link emission paths in the move generator. If you renamed a flag, leave a "renamed from X" sentence so the bit position note carries forward.
+197	
+198	If a rule edit is shipping a new bit on `HouseRules`, also touch:
+199	the URL token list in `clients/chess-web/src/routes.rs`, the CLI parser
+200	in `clients/chess-tui/src/main.rs::build_banqi_rules`, and the picker
+201	checkboxes in `clients/chess-web/src/pages/picker.rs`. Otherwise the
+202	flag is unreachable from the UIs.
+203	
+204	A commit that updates only one of the three (code without tests, or
+205	code without docs) is a yellow flag in review — call it out
+206	explicitly in the commit body if the omission is intentional
+207	(e.g. "docs deferred — see TODO.md").
+208	
+209	## Pre-push checklist
+210	
+211	CI runs all four. Run them locally before pushing:
+212	
+213	```bash
+214	cargo fmt --check
+215	cargo clippy --workspace --all-targets -- -D warnings
+216	cargo test --workspace
+217	cargo build --target wasm32-unknown-unknown -p chess-core
+218	```
+219	
+220	The depth-3 perft (`cargo test --release -p chess-core --test xiangqi_perft -- --ignored`) also runs in CI.
+221
+```
+</details></tool-use>
+
+_**Agent - sidechain (claude-haiku-4-5-20251001 2026-05-10 09:10:59Z)**_
+
+Perfect! Now I have comprehensive information. Let me create a summary report of my findings.
+
+## Summary: Code Locations and Patterns for Your Three Changes
+
+Based on my analysis of `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web`, here are the exact file locations and patterns you need:
+
+### **Change 1: Banqi Seed Input Overflow (picker.rs)**
+
+**Banqi seed input markup:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs`, lines 419–430
+- **Pattern:** The `<fieldset>` with legend "Seed (optional)" wraps a text input with class `.text-input` and a hint paragraph
+- **Input state:** `seed_text: RwSignal<String>` created at line 338; bound to input via `prop:value` and `on:input` handlers
+
+**CSS findings:**
+- **Global `box-sizing`:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`, line 20: `* { box-sizing: border-box; }` ✓ All elements use border-box
+- **`.text-input` base styles:** lines 563–570 — has `padding: 0.5rem 0.75rem` and `border-radius: 0.4rem` but **NO explicit `max-width`**
+- **`.depth-input` override:** lines 576–580 — sets `width: 100%; min-width: 6rem; box-sizing: border-box;` for number fields specifically
+- **Fieldset styling:** lines 154–159 — `.card-fieldset` has `padding: 0.5rem 0.75rem` and `border: 1px solid var(--grid)` but no width constraint
+- **Grid container (picker-grid):** lines 125–128 — `grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));` with `gap: 1rem`
+- **Card flex layout:** lines 147–152 — `.variant-card--form` uses `display: flex; flex-direction: column; gap: 0.6rem;`
+
+**Issue:** The seed `.text-input` has no `max-width` constraint and inherits `width: auto` in the flex column, allowing it to overflow on narrow viewports.
+
+---
+
+### **Change 2: Mirror Black Side for Xiangqi Pass-and-play**
+
+**Piece rendering (SVG):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs`, lines 253–295
+- **Glyph rendering:** line 284 — `glyph::glyph(p.piece.kind, p.piece.side, style)` — glyph table is side-aware
+- **Piece side determination:** lines 274–278 — reads `p.piece.side` (Type: `Side` from chess-core)
+- **SVG group transform:** line 281 — `transform=format!("translate({}, {})", cx, cy)` applies per-piece positioning
+- **Note:** Comment at line 1 says "SVG-only rendering" as CLAUDE.md notes
+
+**Glyph module:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/glyph.rs`, lines 15–46
+- **Side-based mapping:** `cjk()` function (lines 22–46) maps `(Side, PieceKind)` → glyph string
+- **Side enum:** `Side::RED` (line 24) and `Side::BLACK` (line 31) — derive from `chess_core::piece::Side`
+
+**Orientation module (existing transforms):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/orient.rs`, lines 27–69
+- **Current transforms:** `project_cell()` (lines 27–41) rotates xiangqi board 180° for Black observer (lines 33–34)
+- **Banqi transpose:** lines 37–38 transform 4×8 board to display 8×4 layout
+- **Note:** The tests (lines 99–108) verify Red and Black projections are 180° rotations of each other
+
+**Picker form state pattern (model for mirror checkbox):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs`, lines 46–87 (XiangqiCard)
+- **Signal creation:** line 48 — `let strict = create_rw_signal(false);`
+- **Checkbox binding:** lines 281–286 — pattern for `ai_show_hints` checkbox with `prop:checked` and `on:change`
+- **URL params passed:** lines 74–85 — LocalRulesParams struct gets populated and passed to `build_local_href()`
+
+**URL query encoding:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs`, lines 105–176
+- **LocalRulesParams struct:** lines 106–152 — has fields for all URL-encodable options
+- **Parse function:** lines 184–220 — `parse_local_rules()` reads query params via `get(key)` closure
+- **Build function:** lines 225–250+ — `build_local_query()` encodes params back to URL (reads variant and emits parts)
+- **Example encoding:** line 230 — `if params.strict { parts.push("strict=1".to_string()); }`
+
+**Pattern for new "mirror" field:**
+- Add `mirror: bool` to `LocalRulesParams` (around line 110)
+- Add parsing in `parse_local_rules()` (around line 206): `let mirror = matches!(get("mirror").as_deref(), Some("1") | Some("true"));`
+- Add encoding in `build_local_query()` (around line 250): `if params.mirror { parts.push("mirror=1".to_string()); }`
+- Add to Default impl (around line 167): `mirror: false,`
+
+**Local page state struct:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs`, lines 23–54
+- **VsAiConfig struct:** lines 24–32 — holds per-game settings (passed to LocalGame)
+- **LocalGame component:** lines 114–120 — receives variant, rules, wip, ai, insight as signals
+- **State initialization:** line 122 — `let state = create_rw_signal(GameState::new(rules));`
+- **Pattern:** Game runtime state lives as RwSignals created in LocalGame; mirror flag should live here as `create_rw_signal(bool)` and be threaded through the Board component
+
+**Prefs shared context (reference for similar pattern):**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/prefs.rs`, lines 27–61
+- **Pattern:** `Prefs` struct holds multiple `RwSignal` fields, hydrated once in app init, `provide_context`-shared to all routes
+- **Suggestion:** Mirror flag could live here (global per session) OR as a local signal in LocalGame (scoped to that game) — depends on whether you want to persist the choice across games
+
+---
+
+### **Change 3: Split Captured Pieces by Side**
+
+**Captured strip component:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs`, lines 17–62
+- **Current structure:** Lines 57–58 render two `<CapturedRow>` components — one for Black pieces (label="黑"), one for Red (label="紅")
+- **Row split logic:** lines 23–32 — `split_and_sort_captured()` helper already returns `(red, black)` tuple
+- **Layout:** lines 46–59 show the captured-strip section with header + two rows stacked vertically
+
+**CSS styles for captured pieces:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css`, lines 287–354
+- **Container:** `.captured-strip` (lines 290–296) — `margin-top: 0.6rem` below board, `display: grid; gap: 0.35rem`
+- **Header:** `.captured-header` (lines 297–302) — flexbox with title + toggle button
+- **Row:** `.captured-row` (lines 316–320) — `display: flex; gap: 0.45rem;` horizontal layout
+- **Pieces container:** `.captured-pieces` (lines 330–336) — `display: flex; flex-wrap: wrap;` with `flex: 1` to fill width
+- **Current layout:** Both rows stack vertically in a single column under the board
+
+**To split by side on edges (mirror mode):**
+- Captured Red pieces should appear on Red's side edge
+- Captured Black pieces should appear on Black's side edge
+- Suggestion: Modify `.game-page` grid (line 199) or add a new layout wrapper when mirror is active
+- **Game page layout:** lines 198–203 — currently `grid-template-columns: minmax(0, 1fr) 280px;` for board + sidebar
+- You'd need a mirror-mode layout that places captured rows left/right of the board in a 3-column or different structure
+
+**State module split/sort helper:**
+- **File:** `/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/state.rs`, lines 133–143
+- **Function:** `split_and_sort_captured()` already separates by side; already used by CapturedStrip
+- **No changes needed** — just consume the split results differently in the layout based on mirror flag
+
+---
+
+### **Key Patterns Summary**
+
+| Item | File | Lines | Pattern |
+|------|------|-------|---------|
+| Banqi seed input | picker.rs | 419–430 | Fieldset with `.text-input` class |
+| Fieldset base styles | style.css | 154–159 | `.card-fieldset` — padding + border, no width |
+| Text input styles | style.css | 563–580 | `.text-input` lacks `max-width`; `.depth-input` overrides with `100%` |
+| Picker grid | style.css | 125–128 | `repeat(auto-fit, minmax(220px, 1fr))` — flexible columns |
+| SVG piece rendering | board.rs | 253–295 | Per-piece `<g transform>` with `.tile-glyph` text element |
+| Glyph side mapping | glyph.rs | 15–46 | `glyph(kind, side, style)` — 14 CJK strings per side |
+| Orient transforms | orient.rs | 27–69 | `project_cell()` for 180° board flip; banqi transpose |
+| URL params struct | routes.rs | 105–176 | `LocalRulesParams` with parse/build functions |
+| Picker form signals | picker.rs | 46–87 | `create_rw_signal()` + `prop:checked` + `on:change` |
+| Captured split | captured.rs | 17–62 | Two `CapturedRow` instances from `split_and_sort_captured()` |
+| Captured styles | style.css | 287–354 | `.captured-strip` grid, `.captured-row` flex row layout |
+| Game page grid | style.css | 198–203 | `grid-template-columns: minmax(0, 1fr) 280px;` |
+
+All files are read-only for now. Ready to write the detailed plan?
+
+_**Agent (claude-opus-4-7 2026-05-10 09:11:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:12:07Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Picker polish: Banqi seed overflow fix + Xiangqi pass-and-play mirror mode
+
+## Context
+
+Three small UX gaps in `clients/chess-web` surfaced during PWA mobile testing:
+
+1. **Banqi "Seed (optional)" input overflows** the fieldset on tablet/phone-width
+   viewports — the `<input>` extends past its parent column (visible in the
+   user's iPad screenshot). Root cause: `.text-input` (style.css:563) has no
+   `max-width`, and the input's intrinsic width can exceed the column when the
+   picker grid hits its `minmax(220px, 1fr)` lower bound.
+
+2. **Xiangqi pass-and-play needs a mirror mode.** Two players sharing one phone
+   sitting opposite each other currently both see the board with Red at the
+   bottom — fine for Red, upside-down for Black. Adding an opt-in "Mirror Black
+   side" toggle rotates Black's piece glyphs 180° so the player on the far seat
+   reads their pieces upright. Scoped to xiangqi pass-and-play (not vs-AI, not
+   banqi, not online).
+
+3. **In mirror mode, captured pieces should sit on each player's side** rather
+   than stacked together below the board. With one player on each end of the
+   device, each player's "trophy shelf" (the opponent's pieces they've taken)
+   should be visible directly in front of them.
+
+Out of scope: real per-side seat orientation when both sides are local humans
+(would also rotate the *board grid* 180° on Black's turn — too disruptive
+mid-game). Mirror mode here only flips piece glyphs, not the coordinate system.
+
+## Approach
+
+### 1. Banqi seed input overflow — pure CSS fix
+
+`.text-input` should never grow past its container. Add `max-width: 100%` and
+`width: 100%` to the base rule so all picker inputs honour their column.
+
+- **`clients/chess-web/style.css:563-570`** — extend `.text-input`:
+  \```css
+  .text-input {
+    background: var(--bg-elev);
+    color: var(--ink);
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  \```
+  (`.depth-input` at :576 already does this — promoting it to the base avoids
+  per-input duplication.) No markup change needed in `picker.rs:419-430`.
+
+### 2. Mirror mode — opt-in checkbox + Black-glyph 180° rotation
+
+**Picker UI** — `clients/chess-web/src/pages/picker.rs`
+
+- Add `mirror: RwSignal<bool>` next to `strict` / `ai_show_hints` in the
+  `XiangqiCard` component (mirrors the pattern at picker.rs:46-87).
+- Add a checkbox **inside** the existing "Mode" radio group, gated on
+  `mode == PassAndPlay`. Label: "鏡像黑方 — flip Black's pieces 180° for a
+  player sitting opposite (pass-and-play only)."
+- Pass `mirror.get()` into the existing `LocalRulesParams` builder so the URL
+  query carries it.
+
+**URL plumbing** — `clients/chess-web/src/routes.rs`
+
+- Add `pub mirror: bool` to `LocalRulesParams` (~routes.rs:110) with
+  `mirror: false` in the `Default` impl.
+- `parse_local_rules()` (~routes.rs:206): parse `?mirror=1` / `mirror=true`
+  via the existing `get(...)` closure.
+- `build_local_query()` (~routes.rs:250): emit `mirror=1` only when true.
+- Add a unit test in the existing `mod tests` to round-trip `mirror=1`.
+
+**Render path** — `clients/chess-web/src/components/board.rs:253-295`
+
+- Thread a `mirror: Memo<bool>` (or `Signal<bool>`) into the `<Board>`
+  component props (alongside the existing `style` / `observer` / etc.).
+- In the per-piece `<g transform=...>` block (~board.rs:281), when
+  `mirror.get() && piece.side == Side::BLACK`, append `rotate(180 cx cy)`
+  to the existing translate so just that glyph spins in place. SVG transform
+  composition handles this cleanly without restructuring the group.
+- This keeps `orient::project_cell` untouched — coordinate math is unchanged;
+  only the visual glyph for Black pieces flips.
+
+**State plumbing** — `clients/chess-web/src/pages/local.rs`
+
+- Add a `mirror: bool` field to `VsAiConfig` (or a sibling `PassAndPlayConfig`
+  if you prefer keeping vs-AI clean) at local.rs:24-32.
+- `LocalGame` (local.rs:114-120) accepts the flag and passes it into
+  `<Board mirror=... />` and `<CapturedStrip mirror=... />`.
+
+Banqi and three-kingdom paths ignore the flag entirely (banqi never benefits
+from mirroring — pieces are face-down or face-up by tile, not by glyph
+orientation; and the variant doesn't apply).
+
+### 3. Captured pieces split to opposing edges in mirror mode
+
+Today, `<CapturedStrip>` (`clients/chess-web/src/components/captured.rs:17-62`)
+renders both rows stacked under the board. We add a mirror-aware variant that
+splits the two rows to opposite sides.
+
+**Component change** — `components/captured.rs`
+
+- Accept a `mirror: Signal<bool>` prop.
+- Refactor so the existing markup is the default (mirror off — single strip
+  below the board, today's behaviour).
+- When `mirror.get() == true`, expose two slot components (or a tagged
+  variant that the page layout consumes): `CapturedAbove` (Red pieces taken,
+  shown above the board, **rotated 180°** so the Black player reads them
+  upright) and `CapturedBelow` (Black pieces taken, shown below as today).
+
+**Layout change** — `clients/chess-web/src/pages/local.rs` (LocalGame's view
+tree) or wherever the play page composes `<Board>` + `<CapturedStrip>`:
+
+- When mirror is off → keep current vertical order: `<Board>` then
+  `<CapturedStrip>`.
+- When mirror is on → render `<CapturedAbove>` *before* `<Board>`, then
+  `<Board>`, then `<CapturedBelow>`. Both captured rows sit immediately
+  adjacent to the board, each visible to its facing player.
+
+**CSS** — `clients/chess-web/style.css:287-354`
+
+- Add a `.captured-row--mirrored` modifier with `transform: rotate(180deg);
+  transform-origin: center;` so glyphs in the top strip read upright when
+  viewed from the opposite end of the device.
+- No grid-template change needed on `.game-page` — the captured rows live
+  inside the same column as the board, just placed before/after it.
+
+`split_and_sort_captured()` (`state.rs:133-143`) already returns `(red, black)`
+— no engine-side change required.
+
+## Critical files
+
+| File | Change |
+| --- | --- |
+| `clients/chess-web/style.css:563-570` | `.text-input` width/max-width fix |
+| `clients/chess-web/style.css:287-354` | `.captured-row--mirrored` rotation modifier |
+| `clients/chess-web/src/routes.rs:105-176` | `LocalRulesParams::mirror` + parse/build |
+| `clients/chess-web/src/pages/picker.rs:46-87,~280` | XiangqiCard mirror checkbox (gated on pass-and-play) |
+| `clients/chess-web/src/pages/local.rs:23-32,114-120` | thread `mirror` flag into LocalGame |
+| `clients/chess-web/src/components/board.rs:253-295` | rotate Black piece glyphs when `mirror && side == BLACK` |
+| `clients/chess-web/src/components/captured.rs:17-62` | mirror-aware split rendering |
+
+Reuses (no change):
+- `state.rs::split_and_sort_captured()` — already side-split.
+- `orient::project_cell` — coordinates untouched; mirror only affects glyph
+  rotation, not board layout.
+- `glyph::glyph()` — same glyph table; rotation is an SVG transform on top.
+- `Prefs` context — mirror is per-game (URL param), not a global persisted
+  preference, so it doesn't go through `prefs.rs`.
+
+## Verification
+
+\```bash
+# Unit tests (routes round-trip)
+cargo test -p chess-web --lib routes::tests
+
+# Native workspace check (pure-logic modules of chess-web)
+cargo check --workspace
+
+# WASM build still clean
+cargo build --target wasm32-unknown-unknown -p chess-web
+
+# Manual UI verification
+make play-web
+# 1. Open http://localhost:8080/  — pick Banqi column, narrow the window
+#    until the column is at its 220px minimum. Seed input must stay inside
+#    its fieldset (no horizontal overflow, no scrollbar on the column).
+# 2. Pick Xiangqi → Mode: Pass-and-play → check "鏡像黑方" → Start.
+#    URL has ?mirror=1. After Red's first move, all Black pieces render
+#    upside-down (still on their original squares). Captured strip above
+#    board shows captured RED pieces rotated 180°; below board shows
+#    captured BLACK pieces upright. Make a capture from each side to
+#    confirm both strips populate correctly.
+# 3. Vs-AI mode: mirror checkbox should NOT appear (pass-and-play only).
+# 4. Banqi/three-kingdom picker: no mirror checkbox at all.
+# 5. Pre-push gates
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+\```
+
+```
+
+```text
+<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:12:11Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md`
+
+```text
+1	# Wrap chess-web (Rust + Leptos + WASM) as an installable PWA
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:12:51Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```md
+# Picker polish: Banqi seed overflow fix + Xiangqi pass-and-play mirror mode
+
+## Context
+
+Three small UX gaps in `clients/chess-web` surfaced during PWA mobile testing:
+
+1. **Banqi "Seed (optional)" input overflows** the fieldset on tablet/phone-width
+   viewports — the `<input>` extends past its parent column (visible in the
+   user's iPad screenshot). Root cause: `.text-input` (style.css:563) has no
+   `max-width`, and the input's intrinsic width can exceed the column when the
+   picker grid hits its `minmax(220px, 1fr)` lower bound.
+
+2. **Xiangqi pass-and-play needs a mirror mode.** Two players sharing one phone
+   sitting opposite each other currently both see the board with Red at the
+   bottom — fine for Red, upside-down for Black. Adding an opt-in "Mirror Black
+   side" toggle rotates Black's piece glyphs 180° so the player on the far seat
+   reads their pieces upright. Scoped to xiangqi pass-and-play (not vs-AI, not
+   banqi, not online).
+
+3. **In mirror mode, captured pieces should sit on each player's side** rather
+   than stacked together below the board. With one player on each end of the
+   device, each player's "trophy shelf" (the opponent's pieces they've taken)
+   should be visible directly in front of them.
+
+Out of scope: rotating the *board grid* 180° on Black's turn (more disruptive
+mid-game). Mirror mode here only flips piece glyphs, not the coordinate system.
+
+## Approach
+
+### 1. Banqi seed input overflow — pure CSS fix
+
+`.text-input` should never grow past its container. Add `width: 100%` +
+`max-width: 100%` + explicit `box-sizing: border-box` to the base rule so all
+picker inputs honour their column.
+
+- **`clients/chess-web/style.css:563-570`** — extend `.text-input`:
+  \```css
+  .text-input {
+    background: var(--bg-elev);
+    color: var(--ink);
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  \```
+  (`.depth-input` at :576 already does this — promoting to the base avoids
+  per-input duplication.) No markup change needed in `picker.rs:419-430`.
+
+### 2. Mirror mode — opt-in checkbox + Black-glyph 180° rotation
+
+**Picker UI** — `clients/chess-web/src/pages/picker.rs`
+
+- Add `mirror: RwSignal<bool>` next to `strict` / `ai_show_hints` in
+  `XiangqiCard` (mirrors the pattern at picker.rs:46-87).
+- Add a checkbox **inside** the existing Mode group, gated on
+  `mode == PassAndPlay`. Label: "鏡像黑方 — flip Black's pieces 180° for a
+  player sitting opposite (pass-and-play only)."
+- Pass `mirror.get()` into `LocalRulesParams` so the URL query carries it.
+
+**URL plumbing** — `clients/chess-web/src/routes.rs`
+
+- Add `pub mirror: bool` to `LocalRulesParams` (~routes.rs:110) with
+  `mirror: false` in `Default`.
+- `parse_local_rules()` (~routes.rs:206): parse `?mirror=1` / `mirror=true`.
+- `build_local_query()` (~routes.rs:250): emit `mirror=1` only when true.
+- Round-trip unit test in the existing `mod tests`.
+
+**Render path** — `clients/chess-web/src/components/board.rs:253-295`
+
+- Thread `mirror: Signal<bool>` into the `<Board>` component props.
+- In the per-piece `<g transform=...>` block (~:281), when
+  `mirror.get() && piece.side == Side::BLACK`, append `rotate(180 cx cy)`
+  to the existing translate so just that glyph spins in place. SVG transform
+  composition handles this without restructuring the group.
+- `orient::project_cell` is untouched — coordinate math unchanged; only the
+  visual glyph for Black pieces flips.
+
+**State plumbing** — `clients/chess-web/src/pages/local.rs:23-32,114-120`
+
+- Add a `mirror: bool` field to `VsAiConfig` (or a sibling `PassAndPlayConfig`).
+- `LocalGame` accepts the flag, threads into `<Board mirror=... />` and
+  `<CapturedStrip mirror=... />`.
+
+Banqi and three-kingdom ignore the flag.
+
+### 3. Captured pieces split to opposing edges in mirror mode
+
+`<CapturedStrip>` (`components/captured.rs:17-62`) currently stacks both rows
+under the board. We add a mirror-aware variant that splits them.
+
+**Component change** — `components/captured.rs`
+
+- Accept `mirror: Signal<bool>`.
+- Default (mirror off) → keep current single-strip-below behaviour.
+- Mirror on → expose two slot components: `CapturedAbove` (Red pieces taken
+  by Black, rendered above the board, **rotated 180°** so the Black player
+  reads them upright) and `CapturedBelow` (Black pieces taken by Red, below
+  the board, upright as today).
+
+**Layout change** — `clients/chess-web/src/pages/local.rs`
+
+- Mirror off: `<Board>` then `<CapturedStrip>` (today).
+- Mirror on: `<CapturedAbove>`, `<Board>`, `<CapturedBelow>` — each captured
+  row directly adjacent to the side facing its player.
+
+**CSS** — `clients/chess-web/style.css:287-354`
+
+- Add `.captured-row--mirrored` modifier with `transform: rotate(180deg);
+  transform-origin: center;` so glyphs in the top strip read upright from the
+  opposite end of the device.
+- No `.game-page` grid-template change — captured rows stay in the board
+  column, just placed before/after it.
+
+`split_and_sort_captured()` (`state.rs:133-143`) already returns `(red, black)`
+— no engine-side change.
+
+## Critical files
+
+| File | Change |
+| --- | --- |
+| `clients/chess-web/style.css:563-570` | `.text-input` width/max-width fix |
+| `clients/chess-web/style.css:287-354` | `.captured-row--mirrored` rotation modifier |
+| `clients/chess-web/src/routes.rs:105-176` | `LocalRulesParams::mirror` + parse/build |
+| `clients/chess-web/src/pages/picker.rs:46-87,~280` | XiangqiCard mirror checkbox (pass-and-play gate) |
+| `clients/chess-web/src/pages/local.rs:23-32,114-120` | thread `mirror` flag into LocalGame |
+| `clients/chess-web/src/components/board.rs:253-295` | rotate Black piece glyphs when `mirror && side == BLACK` |
+| `clients/chess-web/src/components/captured.rs:17-62` | mirror-aware split rendering |
+
+Reuses (no change):
+- `state.rs::split_and_sort_captured()` — already side-split.
+- `orient::project_cell` — coordinates untouched; mirror is glyph-only.
+- `glyph::glyph()` — same glyph table; rotation is an SVG transform on top.
+- `Prefs` context — mirror is per-game (URL param), not a persisted global.
+
+## Verification
+
+\```bash
+# Unit tests (routes round-trip)
+cargo test -p chess-web --lib routes::tests
+
+# Native workspace check
+cargo check --workspace
+
+# WASM build still clean
+cargo build --target wasm32-unknown-unknown -p chess-web
+
+# Manual UI
+make play-web
+# 1. http://localhost:8080/ — Banqi column, narrow window to ~220px. Seed
+#    input must stay inside its fieldset (no overflow, no column scrollbar).
+# 2. Xiangqi → Pass-and-play → check 鏡像黑方 → Start. URL has ?mirror=1.
+#    Black pieces render 180°-rotated. Captured strip above the board shows
+#    captured RED pieces rotated 180°; strip below shows captured BLACK
+#    upright. Make a capture from each side to confirm both populate.
+# 3. Vs-AI mode: mirror checkbox MUST NOT appear.
+# 4. Banqi / three-kingdom picker: no mirror checkbox.
+# 5. Pre-push
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+\```
+
+```
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:12:55Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ToolSearch"><details>
+<summary>Tool use: **ToolSearch**</summary>
+
+**Input:**
+
+- max_results: `1`
+- query: `select:ExitPlanMode`
+
+**Result:**
+
+```
+
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:31Z)**_
+
+<tool-use data-tool-type="generic" data-tool-name="ExitPlanMode"><details>
+<summary>Tool use: **ExitPlanMode**</summary>
+
+```text
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/david/Documents/Program/Chinese-Chess_Xiangqi/.claude/plans/rust-wasm-pwa-mobile-streamed-wall.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan:
+# Picker polish: Banqi seed overflow fix + Xiangqi pass-and-play mirror mode
+
+## Context
+
+Three small UX gaps in `clients/chess-web` surfaced during PWA mobile testing:
+
+1. **Banqi "Seed (optional)" input overflows** the fieldset on tablet/phone-width
+   viewports — the `<input>` extends past its parent column (visible in the
+   user's iPad screenshot). Root cause: `.text-input` (style.css:563) has no
+   `max-width`, and the input's intrinsic width can exceed the column when the
+   picker grid hits its `minmax(220px, 1fr)` lower bound.
+
+2. **Xiangqi pass-and-play needs a mirror mode.** Two players sharing one phone
+   sitting opposite each other currently both see the board with Red at the
+   bottom — fine for Red, upside-down for Black. Adding an opt-in "Mirror Black
+   side" toggle rotates Black's piece glyphs 180° so the player on the far seat
+   reads their pieces upright. Scoped to xiangqi pass-and-play (not vs-AI, not
+   banqi, not online).
+
+3. **In mirror mode, captured pieces should sit on each player's side** rather
+   than stacked together below the board. With one player on each end of the
+   device, each player's "trophy shelf" (the opponent's pieces they've taken)
+   should be visible directly in front of them.
+
+Out of scope: rotating the *board grid* 180° on Black's turn (more disruptive
+mid-game). Mirror mode here only flips piece glyphs, not the coordinate system.
+
+## Approach
+
+### 1. Banqi seed input overflow — pure CSS fix
+
+`.text-input` should never grow past its container. Add `width: 100%` +
+`max-width: 100%` + explicit `box-sizing: border-box` to the base rule so all
+picker inputs honour their column.
+
+- **`clients/chess-web/style.css:563-570`** — extend `.text-input`:
+  ```css
+  .text-input {
+    background: var(--bg-elev);
+    color: var(--ink);
+    border: 1px solid var(--grid);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  ```
+  (`.depth-input` at :576 already does this — promoting to the base avoids
+  per-input duplication.) No markup change needed in `picker.rs:419-430`.
+
+### 2. Mirror mode — opt-in checkbox + Black-glyph 180° rotation
+
+**Picker UI** — `clients/chess-web/src/pages/picker.rs`
+
+- Add `mirror: RwSignal<bool>` next to `strict` / `ai_show_hints` in
+  `XiangqiCard` (mirrors the pattern at picker.rs:46-87).
+- Add a checkbox **inside** the existing Mode group, gated on
+  `mode == PassAndPlay`. Label: "鏡像黑方 — flip Black's pieces 180° for a
+  player sitting opposite (pass-and-play only)."
+- Pass `mirror.get()` into `LocalRulesParams` so the URL query carries it.
+
+**URL plumbing** — `clients/chess-web/src/routes.rs`
+
+- Add `pub mirror: bool` to `LocalRulesParams` (~routes.rs:110) with
+  `mirror: false` in `Default`.
+- `parse_local_rules()` (~routes.rs:206): parse `?mirror=1` / `mirror=true`.
+- `build_local_query()` (~routes.rs:250): emit `mirror=1` only when true.
+- Round-trip unit test in the existing `mod tests`.
+
+**Render path** — `clients/chess-web/src/components/board.rs:253-295`
+
+- Thread `mirror: Signal<bool>` into the `<Board>` component props.
+- In the per-piece `<g transform=...>` block (~:281), when
+  `mirror.get() && piece.side == Side::BLACK`, append `rotate(180 cx cy)`
+  to the existing translate so just that glyph spins in place. SVG transform
+  composition handles this without restructuring the group.
+- `orient::project_cell` is untouched — coordinate math unchanged; only the
+  visual glyph for Black pieces flips.
+
+**State plumbing** — `clients/chess-web/src/pages/local.rs:23-32,114-120`
+
+- Add a `mirror: bool` field to `VsAiConfig` (or a sibling `PassAndPlayConfig`).
+- `LocalGame` accepts the flag, threads into `<Board mirror=... />` and
+  `<CapturedStrip mirror=... />`.
+
+Banqi and three-kingdom ignore the flag.
+
+### 3. Captured pieces split to opposing edges in mirror mode
+
+`<CapturedStrip>` (`components/captured.rs:17-62`) currently stacks both rows
+under the board. We add a mirror-aware variant that splits them.
+
+**Component change** — `components/captured.rs`
+
+- Accept `mirror: Signal<bool>`.
+- Default (mirror off) → keep current single-strip-below behaviour.
+- Mirror on → expose two slot components: `CapturedAbove` (Red pieces taken
+  by Black, rendered above the board, **rotated 180°** so the Black player
+  reads them upright) and `CapturedBelow` (Black pieces taken by Red, below
+  the board, upright as today).
+
+**Layout change** — `clients/chess-web/src/pages/local.rs`
+
+- Mirror off: `<Board>` then `<CapturedStrip>` (today).
+- Mirror on: `<CapturedAbove>`, `<Board>`, `<CapturedBelow>` — each captured
+  row directly adjacent to the side facing its player.
+
+**CSS** — `clients/chess-web/style.css:287-354`
+
+- Add `.captured-row--mirrored` modifier with `transform: rotate(180deg);
+  transform-origin: center;` so glyphs in the top strip read upright from the
+  opposite end of the device.
+- No `.game-page` grid-template change — captured rows stay in the board
+  column, just placed before/after it.
+
+`split_and_sort_captured()` (`state.rs:133-143`) already returns `(red, black)`
+— no engine-side change.
+
+## Critical files
+
+| File | Change |
+| --- | --- |
+| `clients/chess-web/style.css:563-570` | `.text-input` width/max-width fix |
+| `clients/chess-web/style.css:287-354` | `.captured-row--mirrored` rotation modifier |
+| `clients/chess-web/src/routes.rs:105-176` | `LocalRulesParams::mirror` + parse/build |
+| `clients/chess-web/src/pages/picker.rs:46-87,~280` | XiangqiCard mirror checkbox (pass-and-play gate) |
+| `clients/chess-web/src/pages/local.rs:23-32,114-120` | thread `mirror` flag into LocalGame |
+| `clients/chess-web/src/components/board.rs:253-295` | rotate Black piece glyphs when `mirror && side == BLACK` |
+| `clients/chess-web/src/components/captured.rs:17-62` | mirror-aware split rendering |
+
+Reuses (no change):
+- `state.rs::split_and_sort_captured()` — already side-split.
+- `orient::project_cell` — coordinates untouched; mirror is glyph-only.
+- `glyph::glyph()` — same glyph table; rotation is an SVG transform on top.
+- `Prefs` context — mirror is per-game (URL param), not a persisted global.
+
+## Verification
+
+```bash
+# Unit tests (routes round-trip)
+cargo test -p chess-web --lib routes::tests
+
+# Native workspace check
+cargo check --workspace
+
+# WASM build still clean
+cargo build --target wasm32-unknown-unknown -p chess-web
+
+# Manual UI
+make play-web
+# 1. http://localhost:8080/ — Banqi column, narrow window to ~220px. Seed
+#    input must stay inside its fieldset (no overflow, no column scrollbar).
+# 2. Xiangqi → Pass-and-play → check 鏡像黑方 → Start. URL has ?mirror=1.
+#    Black pieces render 180°-rotated. Captured strip above the board shows
+#    captured RED pieces rotated 180°; strip below shows captured BLACK
+#    upright. Make a capture from each side to confirm both populate.
+# 3. Vs-AI mode: mirror checkbox MUST NOT appear.
+# 4. Banqi / three-kingdom picker: no mirror checkbox.
+# 5. Pre-push
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:34Z)**_
+
+Starting with the CSS fix and URL plumbing, then UI wiring.
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:35Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+555	    display: grid;
+556	    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+557	    gap: 0.5rem;
+558	    align-items: stretch;
+559	}
+560	@media (max-width: 600px) {
+561	    .lobby-form { grid-template-columns: 1fr; }
+562	}
+563	.text-input {
+564	    background: rgba(244, 210, 163, 0.06);
+565	    color: var(--fg);
+566	    border: 1px solid var(--grid);
+567	    border-radius: 0.4rem;
+568	    padding: 0.5rem 0.75rem;
+569	    font: inherit;
+570	}
+571	.text-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+572	/* Search-depth number input: by default <input type=number> in the
+573	 * variant card uses 100% of grid width (which is narrow). Force a
+574	 * comfortable minimum so placeholder + 2-digit values fit without
+575	 * clipping. */
+576	.depth-input {
+577	    width: 100%;
+578	    min-width: 6rem;
+579	    box-sizing: border-box;
+580	}
+581	
+582	.rooms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+583	.room-row {
+584	    display: grid;
+585	    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto auto auto;
+586	    gap: 0.75rem;
+587	    align-items: center;
+588	    padding: 0.6rem 0.9rem;
+589	    background: rgba(244, 210, 163, 0.04);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:42Z)**_
+
+Now the routes plumbing.
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:42Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/routes.rs`
+
+```text
+1	//! Variant-slug parsing for `/local/:variant` plus URL-query rule encoding.
+2	//!
+3	//! Pure logic — native-testable. The picker page builds a query string from
+4	//! its form state via [`build_local_query`]; the local page parses it back
+5	//! into a [`RuleSet`] via [`parse_local_rules`] + [`build_rule_set`].
+6	
+7	use chess_ai::{Difficulty, Randomness, Strategy};
+8	use chess_core::piece::Side;
+9	use chess_core::rules::{
+10	    house, HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+11	};
+12	
+13	/// Local-page play mode. `Pvp` is the default pass-and-play; `VsAi`
+14	/// drives the in-process alpha-beta engine (xiangqi only).
+15	#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+16	pub enum PlayMode {
+17	    #[default]
+18	    Pvp,
+19	    VsAi,
+20	}
+21	
+22	pub fn hosting_mode() -> &'static str {
+23	    env!("CHESS_WEB_HOSTING")
+24	}
+25	
+26	pub fn is_static_hosting() -> bool {
+27	    hosting_mode() == "static"
+28	}
+29	
+30	pub fn base_path() -> &'static str {
+31	    env!("CHESS_WEB_BASE_PATH")
+32	}
+33	
+34	pub fn router_base() -> Option<&'static str> {
+35	    let base = base_path();
+36	    if base.is_empty() {
+37	        None
+38	    } else {
+39	        Some(base)
+40	    }
+41	}
+42	
+43	pub fn app_href(path: &str) -> String {
+44	    app_href_with_base(base_path(), path)
+45	}
+46	
+47	pub fn app_href_with_base(base: &str, path: &str) -> String {
+48	    let path = if path.is_empty() { "/" } else { path };
+49	    let path = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
+50	    let base = normalize_base_path(base);
+51	    if base.is_empty() {
+52	        path
+53	    } else if path == "/" {
+54	        format!("{base}/")
+55	    } else {
+56	        format!("{base}{path}")
+57	    }
+58	}
+59	
+60	fn normalize_base_path(base: &str) -> String {
+61	    let trimmed = base.trim().trim_matches('/');
+62	    if trimmed.is_empty() {
+63	        String::new()
+64	    } else {
+65	        format!("/{trimmed}")
+66	    }
+67	}
+68	
+69	#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+70	pub enum WsBaseError {
+71	    Empty,
+72	    BadScheme,
+73	}
+74	
+75	pub fn normalize_ws_base(raw: &str) -> Result<String, WsBaseError> {
+76	    let trimmed = raw.trim().trim_end_matches('/');
+77	    if trimmed.is_empty() {
+78	        return Err(WsBaseError::Empty);
+79	    }
+80	    if !(trimmed.starts_with("ws://") || trimmed.starts_with("wss://")) {
+81	        return Err(WsBaseError::BadScheme);
+82	    }
+83	    Ok(trimmed.to_string())
+84	}
+85	
+86	pub fn parse_variant_slug(slug: &str) -> Option<Variant> {
+87	    match slug {
+88	        "xiangqi" => Some(Variant::Xiangqi),
+89	        "banqi" => Some(Variant::Banqi),
+90	        "three-kingdom" => Some(Variant::ThreeKingdomBanqi),
+91	        _ => None,
+92	    }
+93	}
+94	
+95	pub fn variant_slug(variant: Variant) -> &'static str {
+96	    match variant {
+97	        Variant::Xiangqi => "xiangqi",
+98	        Variant::Banqi => "banqi",
+99	        Variant::ThreeKingdomBanqi => "three-kingdom",
+100	    }
+101	}
+102	
+103	/// URL-derived rule choices for `/local/:variant`. Used as an intermediate
+104	/// between the picker form and the engine `RuleSet`.
+105	#[derive(Clone, Eq, PartialEq, Debug)]
+106	pub struct LocalRulesParams {
+107	    /// Xiangqi only. `false` (default) = casual / no self-check filter;
+108	    /// `true` = standard rules where leaving your general in check is illegal.
+109	    pub strict: bool,
+110	    /// Banqi only. Bitflag set; `DARK_CAPTURE_TRADE` auto-implies
+111	    /// `DARK_CAPTURE` after [`house::normalize`] in the parser.
+112	    pub house: HouseRules,
+113	    /// Banqi only. `None` = engine picks (non-deterministic on native;
+114	    /// browser uses `getrandom` JS feature).
+115	    pub seed: Option<u64>,
+116	    /// Xiangqi only (banqi/three-kingdom ignore). Default `Pvp`.
+117	    pub mode: PlayMode,
+118	    /// `VsAi` only — which side the AI plays. Default Black (player is Red,
+119	    /// the traditional first-mover). Ignored when `mode == Pvp`.
+120	    pub ai_side: Side,
+121	    /// `VsAi` only — search difficulty. Ignored when `mode == Pvp`.
+122	    pub ai_difficulty: Difficulty,
+123	    /// `VsAi` only — engine version. Defaults to [`Strategy::default`]
+124	    /// (v2 since 2026-05-08). Versioned, switchable, non-overwriting:
+125	    /// older strategies stay reachable via `?engine=v1`.
+126	    pub ai_strategy: Strategy,
+127	    /// `VsAi` only — randomness preset. `None` = use the difficulty
+128	    /// default (`Difficulty::default_randomness`); `Some(_)` = explicit
+129	    /// override (typically a [`Randomness`] preset like
+130	    /// [`Randomness::STRICT`]). URL token: `&variation=strict|subtle|varied|chaotic`.
+131	    pub ai_variation: Option<Randomness>,
+132	    /// `VsAi` only — search depth override. `None` = use
+133	    /// `Difficulty::default_depth` (Easy=1, Normal=3, Hard=4); `Some(N)`
+134	    /// = explicit. Capped at `MAX_AI_DEPTH` to keep the worst-case
+135	    /// browser response under ~10 s. URL token: `&depth=N`.
+136	    pub ai_depth: Option<u8>,
+137	    /// `VsAi` only — opens the AI debug panel showing the engine's full
+138	    /// scored root-move list, hover-to-highlight on the board, and
+139	    /// search metadata (depth, nodes, strategy, randomness). URL token:
+140	    /// `&debug=1`. Default off (consumes ~no extra search cost — the
+141	    /// scored list is computed regardless; `&debug=1` just exposes it).
+142	    pub ai_debug: bool,
+143	    /// User-facing alias for [`Self::ai_debug`]: opens the same AI
+144	    /// hint / debug panel via the friendlier URL token `&hints=1`.
+145	    /// Local mode treats `ai_debug || ai_hints` as the trigger to
+146	    /// mount the panel — both flags are functionally equivalent
+147	    /// offline (e.g. on the GitHub Pages build). In net mode (`/play/`)
+148	    /// neither flag is enough on its own — the server's
+149	    /// `hints_allowed` (set at room creation by the first joiner's
+150	    /// `?hints=1`) gates the panel for fairness; see `pages/play.rs`.
+151	    pub ai_hints: bool,
+152	}
+153	
+154	/// Hard cap on user-supplied depth. Picked so that browser WASM v3 Hard
+155	/// at depth 8 (~5 s) is the worst tolerable response time. Higher than
+156	/// 8 essentially demands iterative deepening + time budget — that's the
+157	/// v5 roadmap entry, not a knob to twist.
+158	pub const MAX_AI_DEPTH: u8 = 10;
+159	
+160	impl Default for LocalRulesParams {
+161	    fn default() -> Self {
+162	        Self {
+163	            strict: false,
+164	            house: HouseRules::empty(),
+165	            seed: None,
+166	            mode: PlayMode::Pvp,
+167	            ai_side: Side::BLACK,
+168	            ai_difficulty: Difficulty::Normal,
+169	            ai_strategy: Strategy::default(),
+170	            ai_variation: None,
+171	            ai_depth: None,
+172	            ai_debug: false,
+173	            ai_hints: false,
+174	        }
+175	    }
+176	}
+177	
+178	/// Parse `?strict=1&house=chain,rush&preset=taiwan&seed=42` into a
+179	/// [`LocalRulesParams`]. Unknown tokens are silently dropped — this is a
+180	/// best-effort decoder for shareable URLs.
+181	///
+182	/// `house=` overrides `preset=` when both are present; the picker only
+183	/// emits `house=` so this just covers manually-typed URLs.
+184	pub fn parse_local_rules(get: impl Fn(&str) -> Option<String>) -> LocalRulesParams {
+185	    let strict = matches!(get("strict").as_deref(), Some("1") | Some("true"));
+186	    let preset = get("preset").as_deref().and_then(parse_preset_token);
+187	    let house_csv = get("house").as_deref().map(parse_house_csv);
+188	    let house = house_csv.or(preset).unwrap_or_else(HouseRules::empty);
+189	    let seed = get("seed").and_then(|s| s.parse::<u64>().ok());
+190	    let mode = match get("mode").as_deref() {
+191	        Some("ai") | Some("vsai") => PlayMode::VsAi,
+192	        _ => PlayMode::Pvp,
+193	    };
+194	    let ai_side = match get("ai").as_deref() {
+195	        Some("red") => Side::RED,
+196	        _ => Side::BLACK,
+197	    };
+198	    let ai_difficulty =
+199	        get("diff").as_deref().and_then(Difficulty::parse).unwrap_or(Difficulty::Normal);
+200	    let ai_strategy = get("engine").as_deref().and_then(Strategy::parse).unwrap_or_default();
+201	    let ai_variation = get("variation").as_deref().and_then(Randomness::parse);
+202	    let ai_depth = get("depth")
+203	        .and_then(|s| s.parse::<u32>().ok())
+204	        .map(|d| d.clamp(1, MAX_AI_DEPTH as u32) as u8);
+205	    let ai_debug = matches!(get("debug").as_deref(), Some("1") | Some("true") | Some("on"));
+206	    let ai_hints = matches!(get("hints").as_deref(), Some("1") | Some("true") | Some("on"));
+207	    LocalRulesParams {
+208	        strict,
+209	        house: house::normalize(house),
+210	        seed,
+211	        mode,
+212	        ai_side,
+213	        ai_difficulty,
+214	        ai_strategy,
+215	        ai_variation,
+216	        ai_depth,
+217	        ai_debug,
+218	        ai_hints,
+219	    }
+220	}
+221	
+222	/// Inverse of [`parse_local_rules`] — emits a stable canonical query string
+223	/// (no leading `?`). Empty result means "use defaults" — the picker drops the
+224	/// `?` entirely so `/local/xiangqi` with no query is the default-casual URL.
+225	pub fn build_local_query(variant: Variant, params: &LocalRulesParams) -> String {
+226	    let mut parts: Vec<String> = Vec::new();
+227	    match variant {
+228	        Variant::Xiangqi => {
+229	            if params.strict {
+230	                parts.push("strict=1".to_string());
+231	            }
+232	            if params.mode == PlayMode::VsAi {
+233	                parts.push("mode=ai".to_string());
+234	                parts.push(format!(
+235	                    "ai={}",
+236	                    if params.ai_side == Side::RED { "red" } else { "black" }
+237	                ));
+238	                parts.push(format!("diff={}", params.ai_difficulty.as_str()));
+239	                // Only emit engine= when the user picked a non-default
+240	                // strategy. Keeps the canonical short URL unchanged for
+241	                // the recommended setup.
+242	                if params.ai_strategy != Strategy::default() {
+243	                    parts.push(format!("engine={}", params.ai_strategy.as_str()));
+244	                }
+245	                // Only emit variation= when the user explicitly overrode
+246	                // the difficulty default (and the override is one of the
+247	                // known presets — custom Randomness values can't be
+248	                // round-tripped through the URL).
+249	                if let Some(name) = params.ai_variation.and_then(|r| r.preset_name()) {
+250	                    parts.push(format!("variation={}", name));
+251	                }
+252	                // Only emit depth= when the user overrode the difficulty's
+253	                // default. Allows the canonical short URL for the
+254	                // recommended setup to stay short.
+255	                if let Some(d) = params.ai_depth {
+256	                    parts.push(format!("depth={}", d));
+257	                }
+258	                // Debug panel toggle (vs-AI only — debug shows the AI's
+259	                // own POV cached after each AI move; meaningless in PvP
+260	                // where there's no AI move pump to fill the cache).
+261	                if params.ai_debug {
+262	                    parts.push("debug=1".to_string());
+263	                }
+264	            }
+265	            // Hint mode toggle is emitted REGARDLESS of mode — hints
+266	            // work in both vs-AI (analysis from human's POV when it's
+267	            // their turn) AND pass-and-play (analysis from current
+268	            // side-to-move's POV — both humans can ask the bot for
+269	            // advice on every move). If we only emitted hints=1 inside
+270	            // the VsAi block above, the picker's PvP-mode + checked
+271	            // hints box would silently drop the flag and the player
+272	            // would see no panel after clicking Start.
+273	            if params.ai_hints {
+274	                parts.push("hints=1".to_string());
+275	            }
+276	        }
+277	        Variant::Banqi => {
+278	            let csv = house_csv(params.house);
+279	            if !csv.is_empty() {
+280	                parts.push(format!("house={}", csv));
+281	            }
+282	            if let Some(seed) = params.seed {
+283	                parts.push(format!("seed={}", seed));
+284	            }
+285	        }
+286	        Variant::ThreeKingdomBanqi => {}
+287	    }
+288	    parts.join("&")
+289	}
+290	
+291	/// Build the full path for the picker's "Start" link given the current form.
+292	/// Always returns `"/local/<slug>"` with the query string appended only when
+293	/// non-empty.
+294	pub fn build_local_href(variant: Variant, params: &LocalRulesParams) -> String {
+295	    let q = build_local_query(variant, params);
+296	    if q.is_empty() {
+297	        format!("/local/{}", variant_slug(variant))
+298	    } else {
+299	        format!("/local/{}?{}", variant_slug(variant), q)
+300	    }
+301	}
+302	
+303	/// Convert parsed [`LocalRulesParams`] into the engine `RuleSet` for the
+304	/// chosen variant. The picker → URL → page flow is the only call site.
+305	pub fn build_rule_set(variant: Variant, params: &LocalRulesParams) -> RuleSet {
+306	    match variant {
+307	        Variant::Xiangqi => {
+308	            if params.strict {
+309	                RuleSet::xiangqi()
+310	            } else {
+311	                RuleSet::xiangqi_casual()
+312	            }
+313	        }
+314	        Variant::Banqi => match params.seed {
+315	            Some(seed) => RuleSet::banqi_with_seed(params.house, seed),
+316	            None => RuleSet::banqi(params.house),
+317	        },
+318	        Variant::ThreeKingdomBanqi => RuleSet::three_kingdom(),
+319	    }
+320	}
+321	
+322	fn parse_house_csv(s: &str) -> HouseRules {
+323	    let mut out = HouseRules::empty();
+324	    for tok in s.split(',').map(str::trim).filter(|t| !t.is_empty()) {
+325	        if let Some(flag) = parse_house_token(tok) {
+326	            out.insert(flag);
+327	        }
+328	    }
+329	    out
+330	}
+331	
+332	fn house_csv(rules: HouseRules) -> String {
+333	    let mut parts: Vec<&'static str> = Vec::new();
+334	    for (flag, tok) in HOUSE_TOKENS {
+335	        if rules.contains(*flag) {
+336	            parts.push(tok);
+337	        }
+338	    }
+339	    parts.join(",")
+340	}
+341	
+342	fn parse_house_token(tok: &str) -> Option<HouseRules> {
+343	    HOUSE_TOKENS
+344	        .iter()
+345	        .chain(HOUSE_TOKEN_ALIASES.iter())
+346	        .find(|(_, t)| t.eq_ignore_ascii_case(tok))
+347	        .map(|(f, _)| *f)
+348	}
+349	
+350	fn parse_preset_token(tok: &str) -> Option<HouseRules> {
+351	    match tok.to_ascii_lowercase().as_str() {
+352	        "purist" => Some(PRESET_PURIST),
+353	        "taiwan" => Some(PRESET_TAIWAN),
+354	        "aggressive" => Some(PRESET_AGGRESSIVE),
+355	        _ => None,
+356	    }
+357	}
+358	
+359	const HOUSE_TOKENS: &[(HouseRules, &str)] = &[
+360	    (HouseRules::CHAIN_CAPTURE, "chain"),
+361	    (HouseRules::DARK_CAPTURE, "dark"),
+362	    (HouseRules::CHARIOT_RUSH, "rush"),
+363	    (HouseRules::HORSE_DIAGONAL, "horse"),
+364	    (HouseRules::CANNON_FAST_MOVE, "cannon"),
+365	    (HouseRules::DARK_CAPTURE_TRADE, "dark-trade"),
+366	];
+367	
+368	/// Aliases recognised on parse only (older URLs / pre-rename snapshots).
+369	/// Encoding uses the canonical `HOUSE_TOKENS` only.
+370	const HOUSE_TOKEN_ALIASES: &[(HouseRules, &str)] = &[(HouseRules::DARK_CAPTURE, "dark-chain")];
+371	
+372	#[cfg(test)]
+373	mod tests {
+374	    use super::*;
+375	
+376	    fn from_pairs<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
+377	        move |k: &str| pairs.iter().find(|(pk, _)| *pk == k).map(|(_, v)| v.to_string())
+378	    }
+379	
+380	    #[test]
+381	    fn known_slugs_parse() {
+382	        assert!(matches!(parse_variant_slug("xiangqi"), Some(Variant::Xiangqi)));
+383	        assert!(matches!(parse_variant_slug("banqi"), Some(Variant::Banqi)));
+384	        assert!(matches!(parse_variant_slug("three-kingdom"), Some(Variant::ThreeKingdomBanqi)));
+385	    }
+386	
+387	    #[test]
+388	    fn unknown_slug_returns_none() {
+389	        assert!(parse_variant_slug("chess").is_none());
+390	        assert!(parse_variant_slug("").is_none());
+391	        assert!(parse_variant_slug("XIANGQI").is_none());
+392	    }
+393	
+394	    #[test]
+395	    fn slug_round_trip() {
+396	        for v in [Variant::Xiangqi, Variant::Banqi, Variant::ThreeKingdomBanqi] {
+397	            assert_eq!(parse_variant_slug(variant_slug(v)), Some(v));
+398	        }
+399	    }
+400	
+401	    #[test]
+402	    fn xiangqi_default_is_casual() {
+403	        let p = parse_local_rules(from_pairs(&[]));
+404	        assert!(!p.strict);
+405	        let r = build_rule_set(Variant::Xiangqi, &p);
+406	        assert!(r.xiangqi_allow_self_check);
+407	    }
+408	
+409	    #[test]
+410	    fn xiangqi_strict_query_yields_strict_ruleset() {
+411	        let p = parse_local_rules(from_pairs(&[("strict", "1")]));
+412	        assert!(p.strict);
+413	        let r = build_rule_set(Variant::Xiangqi, &p);
+414	        assert!(!r.xiangqi_allow_self_check);
+415	    }
+416	
+417	    #[test]
+418	    fn banqi_house_csv_round_trips() {
+419	        let p = parse_local_rules(from_pairs(&[("house", "chain,rush"), ("seed", "42")]));
+420	        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+421	        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+422	        assert_eq!(p.seed, Some(42));
+423	        let q = build_local_query(Variant::Banqi, &p);
+424	        assert!(q.contains("house=chain,rush"));
+425	        assert!(q.contains("seed=42"));
+426	    }
+427	
+428	    #[test]
+429	    fn banqi_dark_capture_token_parses() {
+430	        let p = parse_local_rules(from_pairs(&[("house", "dark")]));
+431	        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
+432	    }
+433	
+434	    #[test]
+435	    fn banqi_dark_chain_alias_still_parses_to_dark_capture() {
+436	        let p = parse_local_rules(from_pairs(&[("house", "dark-chain")]));
+437	        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
+438	    }
+439	
+440	    #[test]
+441	    fn banqi_dark_trade_implies_dark_capture() {
+442	        let p = parse_local_rules(from_pairs(&[("house", "dark-trade")]));
+443	        assert!(p.house.contains(HouseRules::DARK_CAPTURE_TRADE));
+444	        assert!(p.house.contains(HouseRules::DARK_CAPTURE));
+445	    }
+446	
+447	    #[test]
+448	    fn banqi_preset_taiwan_picks_chain_and_rush() {
+449	        let p = parse_local_rules(from_pairs(&[("preset", "taiwan")]));
+450	        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+451	        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+452	    }
+453	
+454	    #[test]
+455	    fn banqi_house_overrides_preset_when_both_set() {
+456	        let p = parse_local_rules(from_pairs(&[("preset", "taiwan"), ("house", "")]));
+457	        // Empty house= still wins → no flags.
+458	        assert!(p.house.is_empty());
+459	    }
+460	
+461	    #[test]
+462	    fn unknown_house_token_is_dropped_silently() {
+463	        let p = parse_local_rules(from_pairs(&[("house", "chain,bogus,rush")]));
+464	        assert!(p.house.contains(HouseRules::CHAIN_CAPTURE));
+465	        assert!(p.house.contains(HouseRules::CHARIOT_RUSH));
+466	    }
+467	
+468	    #[test]
+469	    fn build_local_href_skips_query_when_defaults() {
+470	        let p = LocalRulesParams::default();
+471	        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi");
+472	        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi");
+473	    }
+474	
+475	    #[test]
+476	    fn app_href_adds_base_path() {
+477	        assert_eq!(app_href_with_base("", "/local/xiangqi"), "/local/xiangqi");
+478	        assert_eq!(app_href_with_base("/", "/local/xiangqi"), "/local/xiangqi");
+479	        assert_eq!(
+480	            app_href_with_base("/chinese-chess", "/local/xiangqi"),
+481	            "/chinese-chess/local/xiangqi"
+482	        );
+483	        assert_eq!(app_href_with_base("chinese-chess", "lobby"), "/chinese-chess/lobby");
+484	        assert_eq!(app_href_with_base("/chinese-chess/", "/"), "/chinese-chess/");
+485	        assert_eq!(
+486	            app_href_with_base("/chinese-chess", "/local/banqi?seed=7"),
+487	            "/chinese-chess/local/banqi?seed=7"
+488	        );
+489	    }
+490	
+491	    #[test]
+492	    fn ws_base_normalizes_websocket_urls_only() {
+493	        assert_eq!(
+494	            normalize_ws_base(" wss://example.com/ws-root/ "),
+495	            Ok("wss://example.com/ws-root".to_string())
+496	        );
+497	        assert_eq!(normalize_ws_base("ws://127.0.0.1:7878"), Ok("ws://127.0.0.1:7878".to_string()));
+498	        assert_eq!(normalize_ws_base(""), Err(WsBaseError::Empty));
+499	        assert_eq!(normalize_ws_base("https://example.com"), Err(WsBaseError::BadScheme));
+500	        assert_eq!(normalize_ws_base("/ws"), Err(WsBaseError::BadScheme));
+501	    }
+502	
+503	    #[test]
+504	    fn build_local_href_includes_query_when_non_default() {
+505	        let p = LocalRulesParams { strict: true, ..Default::default() };
+506	        assert_eq!(build_local_href(Variant::Xiangqi, &p), "/local/xiangqi?strict=1");
+507	        let p = LocalRulesParams {
+508	            house: HouseRules::CHAIN_CAPTURE | HouseRules::CHARIOT_RUSH,
+509	            seed: Some(7),
+510	            ..Default::default()
+511	        };
+512	        assert_eq!(build_local_href(Variant::Banqi, &p), "/local/banqi?house=chain,rush&seed=7");
+513	    }
+514	
+515	    #[test]
+516	    fn xiangqi_vs_ai_query_round_trips() {
+517	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("ai", "red"), ("diff", "hard")]));
+518	        assert_eq!(p.mode, PlayMode::VsAi);
+519	        assert_eq!(p.ai_side, Side::RED);
+520	        assert_eq!(p.ai_difficulty, Difficulty::Hard);
+521	        assert_eq!(p.ai_strategy, Strategy::default(), "missing engine= → default");
+522	        let q = build_local_query(Variant::Xiangqi, &p);
+523	        assert!(q.contains("mode=ai"));
+524	        assert!(q.contains("ai=red"));
+525	        assert!(q.contains("diff=hard"));
+526	        assert!(!q.contains("engine="), "default strategy should be omitted from query");
+527	    }
+528	
+529	    #[test]
+530	    fn xiangqi_engine_v1_round_trips() {
+531	        let p = parse_local_rules(from_pairs(&[
+532	            ("mode", "ai"),
+533	            ("ai", "black"),
+534	            ("diff", "normal"),
+535	            ("engine", "v1"),
+536	        ]));
+537	        assert_eq!(p.ai_strategy, Strategy::MaterialV1);
+538	        let q = build_local_query(Variant::Xiangqi, &p);
+539	        assert!(q.contains("engine=v1"), "non-default strategy must round-trip; got {:?}", q);
+540	    }
+541	
+542	    #[test]
+543	    fn xiangqi_engine_v2_alias_parses() {
+544	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "material-pst")]));
+545	        assert_eq!(p.ai_strategy, Strategy::MaterialPstV2);
+546	    }
+547	
+548	    #[test]
+549	    fn xiangqi_engine_v3_alias_parses() {
+550	        let p = parse_local_rules(from_pairs(&[
+551	            ("mode", "ai"),
+552	            ("engine", "material-king-safety-pst"),
+553	        ]));
+554	        assert_eq!(p.ai_strategy, Strategy::MaterialKingSafetyPstV3);
+555	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "king-safety")]));
+556	        assert_eq!(p.ai_strategy, Strategy::MaterialKingSafetyPstV3);
+557	    }
+558	
+559	    #[test]
+560	    fn xiangqi_engine_unknown_token_falls_back_to_default() {
+561	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("engine", "v999")]));
+562	        assert_eq!(p.ai_strategy, Strategy::default());
+563	    }
+564	
+565	    #[test]
+566	    fn xiangqi_variation_round_trips() {
+567	        for (token, expected) in &[
+568	            ("strict", Randomness::STRICT),
+569	            ("subtle", Randomness::SUBTLE),
+570	            ("varied", Randomness::VARIED),
+571	            ("chaotic", Randomness::CHAOTIC),
+572	        ] {
+573	            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("variation", token)]));
+574	            assert_eq!(p.ai_variation, Some(*expected));
+575	            let q = build_local_query(Variant::Xiangqi, &p);
+576	            assert!(
+577	                q.contains(&format!("variation={}", token)),
+578	                "round-trip failed for {}: {}",
+579	                token,
+580	                q
+581	            );
+582	        }
+583	    }
+584	
+585	    #[test]
+586	    fn xiangqi_variation_omitted_when_default() {
+587	        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+588	        let q = build_local_query(Variant::Xiangqi, &p);
+589	        assert!(
+590	            !q.contains("variation="),
+591	            "default (None) variation should not be emitted; got {}",
+592	            q
+593	        );
+594	    }
+595	
+596	    #[test]
+597	    fn xiangqi_variation_unknown_token_falls_back_to_none() {
+598	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("variation", "garbage")]));
+599	        assert_eq!(p.ai_variation, None);
+600	    }
+601	
+602	    #[test]
+603	    fn xiangqi_depth_round_trips() {
+604	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "6")]));
+605	        assert_eq!(p.ai_depth, Some(6));
+606	        let q = build_local_query(Variant::Xiangqi, &p);
+607	        assert!(q.contains("depth=6"), "depth round-trip: {}", q);
+608	    }
+609	
+610	    #[test]
+611	    fn xiangqi_depth_clamped_to_max() {
+612	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "999")]));
+613	        assert_eq!(p.ai_depth, Some(MAX_AI_DEPTH));
+614	    }
+615	
+616	    #[test]
+617	    fn xiangqi_depth_zero_clamped_to_one() {
+618	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "0")]));
+619	        assert_eq!(p.ai_depth, Some(1));
+620	    }
+621	
+622	    #[test]
+623	    fn xiangqi_depth_omitted_when_default() {
+624	        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+625	        let q = build_local_query(Variant::Xiangqi, &p);
+626	        assert!(!q.contains("depth="), "default (None) depth should not be emitted; got {}", q);
+627	    }
+628	
+629	    #[test]
+630	    fn xiangqi_depth_garbage_falls_back_to_none() {
+631	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("depth", "abc")]));
+632	        assert_eq!(p.ai_depth, None);
+633	    }
+634	
+635	    #[test]
+636	    fn xiangqi_debug_round_trips() {
+637	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", "1")]));
+638	        assert!(p.ai_debug);
+639	        let q = build_local_query(Variant::Xiangqi, &p);
+640	        assert!(q.contains("debug=1"), "debug= round-trip: {}", q);
+641	    }
+642	
+643	    #[test]
+644	    fn xiangqi_debug_default_off_omitted_from_query() {
+645	        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+646	        assert!(!p.ai_debug);
+647	        let q = build_local_query(Variant::Xiangqi, &p);
+648	        assert!(!q.contains("debug="), "off should not be emitted; got {}", q);
+649	    }
+650	
+651	    #[test]
+652	    fn xiangqi_debug_accepts_truthy_aliases() {
+653	        for token in ["1", "true", "on"] {
+654	            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", token)]));
+655	            assert!(p.ai_debug, "token {:?} should enable debug", token);
+656	        }
+657	        for token in ["0", "false", "off", "garbage"] {
+658	            let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", token)]));
+659	            assert!(!p.ai_debug, "token {:?} should NOT enable debug", token);
+660	        }
+661	    }
+662	
+663	    #[test]
+664	    fn xiangqi_hints_round_trips() {
+665	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("hints", "1")]));
+666	        assert!(p.ai_hints);
+667	        // ai_debug stays independent (hint is its own URL flag).
+668	        assert!(!p.ai_debug);
+669	        let q = build_local_query(Variant::Xiangqi, &p);
+670	        assert!(q.contains("hints=1"), "hints= round-trip: {}", q);
+671	    }
+672	
+673	    #[test]
+674	    fn xiangqi_hints_and_debug_can_coexist() {
+675	        // Both URL tokens together → both flags set; canonical
+676	        // emission preserves both. In local.rs the panel mounts when
+677	        // either is true.
+678	        let p = parse_local_rules(from_pairs(&[("mode", "ai"), ("debug", "1"), ("hints", "1")]));
+679	        assert!(p.ai_debug && p.ai_hints);
+680	        let q = build_local_query(Variant::Xiangqi, &p);
+681	        assert!(q.contains("debug=1") && q.contains("hints=1"), "both kept: {}", q);
+682	    }
+683	
+684	    #[test]
+685	    fn xiangqi_hints_default_off_omitted_from_query() {
+686	        let p = LocalRulesParams { mode: PlayMode::VsAi, ..Default::default() };
+687	        assert!(!p.ai_hints);
+688	        let q = build_local_query(Variant::Xiangqi, &p);
+689	        assert!(!q.contains("hints="), "off should not be emitted; got {}", q);
+690	    }
+691	
+692	    #[test]
+693	    fn xiangqi_pvp_hints_emitted_even_without_ai_mode() {
+694	        // Regression: previously `hints=1` lived inside the
+695	        // `if mode == VsAi` block in build_local_query, so a user
+696	        // checking the picker's "🧠 Allow AI hints" box in PvP mode
+697	        // would get a `/local/xiangqi` URL with no `hints=1`, and the
+698	        // game page would show no panel. Hints work in PvP (analysis
+699	        // for current side-to-move) so the flag must round-trip.
+700	        let p = LocalRulesParams { mode: PlayMode::Pvp, ai_hints: true, ..Default::default() };
+701	        let q = build_local_query(Variant::Xiangqi, &p);
+702	        assert!(q.contains("hints=1"), "PvP+hints must round-trip; got {:?}", q);
+703	        // mode=ai must NOT appear (we're in Pvp).
+704	        assert!(!q.contains("mode=ai"), "PvP must not emit mode=ai; got {:?}", q);
+705	    }
+706	
+707	    #[test]
+708	    fn xiangqi_pvp_hints_round_trips() {
+709	        // Full encode → decode round-trip for PvP+hints (the no-AI
+710	        // pass-and-play path that was previously broken).
+711	        let p = LocalRulesParams { mode: PlayMode::Pvp, ai_hints: true, ..Default::default() };
+712	        let q = build_local_query(Variant::Xiangqi, &p);
+713	        let pairs: Vec<(String, String)> = q
+714	            .split('&')
+715	            .filter_map(|kv| kv.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())))
+716	            .collect();
+717	        let p2 =
+718	            parse_local_rules(|k| pairs.iter().find(|(pk, _)| pk == k).map(|(_, v)| v.clone()));
+719	        assert!(p2.ai_hints);
+720	        assert_eq!(p2.mode, PlayMode::Pvp);
+721	    }
+722	
+723	    #[test]
+724	    fn xiangqi_default_mode_omits_ai_query() {
+725	        let p = LocalRulesParams::default();
+726	        let q = build_local_query(Variant::Xiangqi, &p);
+727	        assert!(q.is_empty(), "default mode should not emit query, got {:?}", q);
+728	    }
+729	
+730	    #[test]
+731	    fn three_kingdom_ignores_query() {
+732	        let p =
+733	            parse_local_rules(from_pairs(&[("strict", "1"), ("house", "chain"), ("seed", "5")]));
+734	        let r = build_rule_set(Variant::ThreeKingdomBanqi, &p);
+735	        assert_eq!(r.variant, Variant::ThreeKingdomBanqi);
+736	        assert!(r.house.is_empty());
+737	        assert!(build_local_query(Variant::ThreeKingdomBanqi, &p).is_empty());
+738	    }
+739	}
+740
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:47Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:13:57Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:04Z)**_
+
+Now emit `mirror=1` from build_local_query for xiangqi only when mode==Pvp:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:09Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:11Z)**_
+
+Now add tests:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/routes.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:22Z)**_
+
+Now the picker. Let me check the XiangqiCard structure:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/picker.rs`
+
+```text
+40	                <OnlineCard/>
+41	            </div>
+42	        </section>
+43	    }
+44	}
+45	
+46	#[component]
+47	fn XiangqiCard() -> impl IntoView {
+48	    let strict = create_rw_signal(false);
+49	    let mode = create_rw_signal(PlayMode::Pvp);
+50	    let player_red = create_rw_signal(true);
+51	    let difficulty = create_rw_signal(Difficulty::Normal);
+52	    let ai_strategy = create_rw_signal(Strategy::default());
+53	    // None = "use difficulty default"; Some(_) = explicit override.
+54	    // Encoded into the URL via `&variation=`.
+55	    let ai_variation = create_rw_signal::<Option<Randomness>>(None);
+56	    // Empty = use difficulty default depth; numeric = override (clamped
+57	    // 1..=MAX_AI_DEPTH on parse).
+58	    let ai_depth_text = create_rw_signal(String::new());
+59	    // Two independent advanced toggles — see the corresponding fields
+60	    // on `LocalRulesParams` for the semantic split:
+61	    //   - ai_show_hints → URL `hints=1` → in-game 🧠 toggle button,
+62	    //     default hidden, runs analyze from the human's POV when
+63	    //     opened (player-friendly).
+64	    //   - ai_show_debug → URL `debug=1` → sticky always-on panel
+65	    //     showing the AI's POV after each AI move (power-user).
+66	    // Both can be enabled together; `pages/local.rs` mounts a single
+67	    // `<DebugPanel>` and lets either source feed it.
+68	    let ai_show_hints = create_rw_signal(false);
+69	    let ai_show_debug = create_rw_signal(false);
+70	    let href = move || {
+71	        let ai_side = if player_red.get() { Side::BLACK } else { Side::RED };
+72	        let ai_depth =
+73	            ai_depth_text.with(|s| s.trim().parse::<u8>().ok().map(|d| d.clamp(1, MAX_AI_DEPTH)));
+74	        let params = LocalRulesParams {
+75	            strict: strict.get(),
+76	            mode: mode.get(),
+77	            ai_side,
+78	            ai_difficulty: difficulty.get(),
+79	            ai_strategy: ai_strategy.get(),
+80	            ai_variation: ai_variation.get(),
+81	            ai_depth,
+82	            ai_debug: ai_show_debug.get(),
+83	            ai_hints: ai_show_hints.get(),
+84	            ..Default::default()
+85	        };
+86	        app_href(&build_local_href(Variant::Xiangqi, &params))
+87	    };
+88	    view! {
+89	        <div class="variant-card variant-card--form">
+90	            <h2>"Xiangqi 象棋"</h2>
+91	            <p>"Standard 9×10 Chinese chess."</p>
+92	            <fieldset class="card-fieldset">
+93	                <legend>"Mode"</legend>
+94	                <label class="radio-row">
+95	                    <input
+96	                        type="radio"
+97	                        name="xiangqi-mode"
+98	                        prop:checked=move || mode.get() == PlayMode::Pvp
+99	                        on:change=move |_| mode.set(PlayMode::Pvp)
+100	                    />
+101	                    <span>"Pass-and-play — two humans share this device."</span>
+102	                </label>
+103	                <label class="radio-row">
+104	                    <input
+105	                        type="radio"
+106	                        name="xiangqi-mode"
+107	                        prop:checked=move || mode.get() == PlayMode::VsAi
+108	                        on:change=move |_| mode.set(PlayMode::VsAi)
+109	                    />
+110	                    <span>"vs Computer — alpha-beta engine, runs entirely in your browser."</span>
+111	                </label>
+112	            </fieldset>
+113	            <Show when=move || mode.get() == PlayMode::VsAi>
+114	                <fieldset class="card-fieldset">
+115	                    <legend>"You play"</legend>
+116	                    <label class="radio-row">
+117	                        <input
+118	                            type="radio"
+119	                            name="xiangqi-player-side"
+120	                            prop:checked=move || player_red.get()
+121	                            on:change=move |_| player_red.set(true)
+122	                        />
+123	                        <span>"紅 Red — moves first."</span>
+124	                    </label>
+125	                    <label class="radio-row">
+126	                        <input
+127	                            type="radio"
+128	                            name="xiangqi-player-side"
+129	                            prop:checked=move || !player_red.get()
+130	                            on:change=move |_| player_red.set(false)
+131	                        />
+132	                        <span>"黑 Black — AI moves first."</span>
+133	                    </label>
+134	                </fieldset>
+135	                <fieldset class="card-fieldset">
+136	                    <legend>"Difficulty"</legend>
+137	                    <label class="radio-row">
+138	                        <input
+139	                            type="radio"
+140	                            name="xiangqi-difficulty"
+141	                            prop:checked=move || difficulty.get() == Difficulty::Easy
+142	                            on:change=move |_| difficulty.set(Difficulty::Easy)
+143	                        />
+144	                        <span>"Easy — depth 1, picks at random from the top three replies."</span>
+145	                    </label>
+146	                    <label class="radio-row">
+147	                        <input
+148	                            type="radio"
+149	                            name="xiangqi-difficulty"
+150	                            prop:checked=move || difficulty.get() == Difficulty::Normal
+151	                            on:change=move |_| difficulty.set(Difficulty::Normal)
+152	                        />
+153	                        <span>"Normal — depth 3, mostly plays the best line."</span>
+154	                    </label>
+155	                    <label class="radio-row">
+156	                        <input
+157	                            type="radio"
+158	                            name="xiangqi-difficulty"
+159	                            prop:checked=move || difficulty.get() == Difficulty::Hard
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:28Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:32Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:35Z)**_
+
+Now find a good place to insert the checkbox — gated on PvP mode. Let me look at the rest of the XiangqiCard to find where pass-and-play-only options would naturally live and where the AI hints checkbox is:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:36Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/picker.rs`
+
+```text
+270	                        />
+271	                        <span>"Varied — top-5 within ±60 cp."</span>
+272	                    </label>
+273	                    <label class="radio-row">
+274	                        <input
+275	                            type="radio"
+276	                            name="xiangqi-variation"
+277	                            prop:checked=move || ai_variation.get() == Some(Randomness::CHAOTIC)
+278	                            on:change=move |_| ai_variation.set(Some(Randomness::CHAOTIC))
+279	                        />
+280	                        <span>"Chaotic — top-10 within ±150 cp (weak Hard, fun for learners)."</span>
+281	                    </label>
+282	                </fieldset>
+283	            </Show>
+284	            <fieldset class="card-fieldset">
+285	                <legend>"AI insight panels (advanced)"</legend>
+286	                <label class="check-row">
+287	                    <input
+288	                        type="checkbox"
+289	                        prop:checked=move || ai_show_hints.get()
+290	                        on:change=move |ev| ai_show_hints.set(event_target_checked(&ev))
+291	                    />
+292	                    <span>"🧠 Allow AI hints — adds a toggle button in the sidebar during play. Click it on your turn to see what the bot would play in your shoes (analysis from the side-to-move's POV). Hidden by default; you stay in control. Works in both vs-Computer and Pass-and-play."</span>
+293	                </label>
+294	                // Debug checkbox is vs-Computer ONLY: it shows the AI's
+295	                // own POV cached after each AI move. In Pass-and-play
+296	                // there's no AI move pump to fill that cache so the
+297	                // panel would be permanently empty — confusing UX.
+298	                // Hint mode covers PvP analysis needs.
+299	                <Show when=move || mode.get() == PlayMode::VsAi>
+300	                    <label class="check-row">
+301	                        <input
+302	                            type="checkbox"
+303	                            prop:checked=move || ai_show_debug.get()
+304	                            on:change=move |ev| ai_show_debug.set(event_target_checked(&ev))
+305	                        />
+306	                        <span>"🔍 AI debug panel — sticky always-on panel showing why the bot picked its move (analysis cached from the bot's POV after each AI turn). For development / curiosity. When combined with hints, the sidebar button toggles the panel between debug content (default) and live hint content."</span>
+307	                    </label>
+308	                </Show>
+309	            </fieldset>
+310	            <fieldset class="card-fieldset">
+311	                <legend>"Rules"</legend>
+312	                <label class="radio-row">
+313	                    <input
+314	                        type="radio"
+315	                        name="xiangqi-strict"
+316	                        prop:checked=move || !strict.get()
+317	                        on:change=move |_| strict.set(false)
+318	                    />
+319	                    <span>"Casual — leaving your general in check is allowed; you lose if it's actually captured."</span>
+320	                </label>
+321	                <label class="radio-row">
+322	                    <input
+323	                        type="radio"
+324	                        name="xiangqi-strict"
+325	                        prop:checked=move || strict.get()
+326	                        on:change=move |_| strict.set(true)
+327	                    />
+328	                    <span>"Strict — standard rules; self-check moves are illegal."</span>
+329	                </label>
+330	            </fieldset>
+331	            <a href=href rel="external" class="btn btn-primary card-cta">"Start Xiangqi →"</a>
+332	        </div>
+333	    }
+334	}
+335	
+336	#[component]
+337	fn BanqiCard() -> impl IntoView {
+338	    let chain = create_rw_signal(false);
+339	    let dark = create_rw_signal(false);
+340	    let dark_trade = create_rw_signal(false);
+341	    let rush = create_rw_signal(false);
+342	    let horse = create_rw_signal(false);
+343	    let seed_text = create_rw_signal(String::new());
+344	
+345	    let house = move || {
+346	        let mut h = HouseRules::empty();
+347	        if chain.get() {
+348	            h.insert(HouseRules::CHAIN_CAPTURE);
+349	        }
+350	        if dark.get() {
+351	            h.insert(HouseRules::DARK_CAPTURE);
+352	        }
+353	        if dark_trade.get() {
+354	            h.insert(HouseRules::DARK_CAPTURE_TRADE);
+355	        }
+356	        if rush.get() {
+357	            h.insert(HouseRules::CHARIOT_RUSH);
+358	        }
+359	        if horse.get() {
+360	            h.insert(HouseRules::HORSE_DIAGONAL);
+361	        }
+362	        h
+363	    };
+364	    let apply_preset = move |preset: HouseRules| {
+365	        chain.set(preset.contains(HouseRules::CHAIN_CAPTURE));
+366	        dark.set(preset.contains(HouseRules::DARK_CAPTURE));
+367	        dark_trade.set(preset.contains(HouseRules::DARK_CAPTURE_TRADE));
+368	        rush.set(preset.contains(HouseRules::CHARIOT_RUSH));
+369	        horse.set(preset.contains(HouseRules::HORSE_DIAGONAL));
+370	    };
+371	    let href = move || {
+372	        let seed = seed_text.with(|s| s.trim().parse::<u64>().ok());
+373	        let params = LocalRulesParams { house: house(), seed, ..Default::default() };
+374	        app_href(&build_local_href(Variant::Banqi, &params))
+375	    };
+376	
+377	    view! {
+378	        <div class="variant-card variant-card--form">
+379	            <h2>"Banqi 暗棋"</h2>
+380	            <p>"Hidden-piece variant on a 4×8 board. Whoever flips first plays that color."</p>
+381	            <fieldset class="card-fieldset">
+382	                <legend>"Preset"</legend>
+383	                <div class="preset-row">
+384	                    <button class="btn btn-ghost" type="button"
+385	                        on:click=move |_| apply_preset(PRESET_PURIST)>"Purist"</button>
+386	                    <button class="btn btn-ghost" type="button"
+387	                        on:click=move |_| apply_preset(PRESET_TAIWAN)>"Taiwan"</button>
+388	                    <button class="btn btn-ghost" type="button"
+389	                        on:click=move |_| apply_preset(PRESET_AGGRESSIVE)>"Aggressive"</button>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:39Z)**_
+
+I'll insert the mirror checkbox right after the Mode fieldset, gated on Pvp:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:44Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/picker.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:46Z)**_
+
+Now thread the flag into local.rs and the board. Let me read the relevant pieces:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:48Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+1	use chess_ai::{AiAnalysis, AiOptions, Difficulty, Randomness, Strategy};
+2	use chess_core::coord::Square;
+3	use chess_core::moves::Move;
+4	use chess_core::piece::Side;
+5	use chess_core::rules::{RuleSet, Variant};
+6	use chess_core::state::{GameState, GameStatus};
+7	use chess_core::view::{PlayerView, VisibleCell};
+8	use leptos::*;
+9	use leptos_router::{use_params_map, use_query_map};
+10	
+11	use crate::components::board::Board;
+12	use crate::components::captured::CapturedStrip;
+13	use crate::components::debug_panel::DebugPanel;
+14	use crate::components::end_overlay::EndOverlay;
+15	use crate::components::move_history::HistoryEntry;
+16	use crate::components::sidebar::Sidebar;
+17	use crate::prefs::Prefs;
+18	use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
+19	use crate::state::{end_chain_move, find_move};
+20	
+21	/// Resolved local-page configuration. `Some(VsAiConfig)` only when the URL
+22	/// asked for vs-AI on a supported variant (xiangqi).
+23	#[derive(Clone, Copy, Debug)]
+24	struct VsAiConfig {
+25	    ai_side: Side,
+26	    difficulty: Difficulty,
+27	    strategy: Strategy,
+28	    /// `None` = use difficulty default; `Some(_)` = explicit override.
+29	    randomness: Option<Randomness>,
+30	    /// `None` = use difficulty default depth; `Some(N)` = explicit override.
+31	    depth: Option<u8>,
+32	}
+33	
+34	/// AI insight panel configuration — independent of `VsAiConfig` so
+35	/// pass-and-play (PvP, two humans) can also surface hint analyses.
+36	///
+37	/// `debug` and `hints` are decoupled URL flags:
+38	///
+39	/// - **Debug** (`?debug=1`): sticky always-on panel showing analysis
+40	///   for the current side-to-move. The label says "🔍 AI Debug" so
+41	///   the user knows they're peeking at the engine.
+42	/// - **Hint** (`?hints=1`): on-demand toggle button (default hidden)
+43	///   in the sidebar. Same analysis under the hood, but the panel
+44	///   labels itself "🧠 AI Hint" — phrased for a player asking the
+45	///   bot for advice on their move.
+46	///
+47	/// When BOTH flags are set, debug wins on layout (sticky panel, no
+48	/// toggle button) but the title shows both badges so the user knows
+49	/// they're seeing whatever the side-to-move would consider.
+50	#[derive(Clone, Copy, Debug, Default)]
+51	struct InsightConfig {
+52	    debug: bool,
+53	    hints: bool,
+54	}
+55	
+56	#[component]
+57	pub fn LocalPage() -> impl IntoView {
+58	    let params = use_params_map();
+59	    let query = use_query_map();
+60	    let resolved =
+61	        move || -> Result<(Variant, RuleSet, bool, Option<VsAiConfig>, InsightConfig), String> {
+62	            let slug = params.with(|p| p.get("variant").cloned().unwrap_or_default());
+63	            let variant =
+64	                parse_variant_slug(&slug).ok_or_else(|| format!("Unknown variant: {}", slug))?;
+65	            let parsed = query.with(|q| parse_local_rules(|k| q.get(k).cloned()));
+66	            let rules = build_rule_set(variant, &parsed);
+67	            // Three-kingdom: engine ships an empty 4×8 board. Render it but
+68	            // disable interaction and overlay a "WIP" banner — see
+69	            // `backlog/three-kingdoms-banqi.md` and the gotcha in CLAUDE.md.
+70	            let wip = matches!(variant, Variant::ThreeKingdomBanqi);
+71	            // vs-AI is xiangqi-only; banqi/three-kingdom silently fall back to
+72	            // pass-and-play (the picker hides the toggle there too — see plan).
+73	            let ai = if parsed.mode == PlayMode::VsAi && matches!(variant, Variant::Xiangqi) {
+74	                Some(VsAiConfig {
+75	                    ai_side: parsed.ai_side,
+76	                    difficulty: parsed.ai_difficulty,
+77	                    strategy: parsed.ai_strategy,
+78	                    randomness: parsed.ai_variation,
+79	                    depth: parsed.ai_depth,
+80	                })
+81	            } else {
+82	                None
+83	            };
+84	            // AI insight panel works for both vs-AI AND pass-and-play —
+85	            // it's just an on-demand bot analysis, no AI opponent required.
+86	            // Xiangqi-only because the chess-ai engine is xiangqi-scoped.
+87	            let insight = if matches!(variant, Variant::Xiangqi) {
+88	                InsightConfig { debug: parsed.ai_debug, hints: parsed.ai_hints }
+89	            } else {
+90	                InsightConfig::default()
+91	            };
+92	            Ok((variant, rules, wip, ai, insight))
+93	        };
+94	
+95	    move || match resolved() {
+96	        Ok((variant, rules, wip, ai, insight)) => view! {
+97	            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight/>
+98	        }
+99	        .into_view(),
+100	        Err(msg) => view! {
+101	            <section class="game-page game-page--single">
+102	                <div>
+103	                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+104	                    <h2>"Variant unavailable"</h2>
+105	                    <p class="subtitle">{msg}</p>
+106	                </div>
+107	            </section>
+108	        }
+109	        .into_view(),
+110	    }
+111	}
+112	
+113	#[component]
+114	fn LocalGame(
+115	    variant: Variant,
+116	    rules: RuleSet,
+117	    wip: bool,
+118	    ai: Option<VsAiConfig>,
+119	    insight: InsightConfig,
+120	) -> impl IntoView {
+121	    let initial_rules = rules.clone();
+122	    let state = create_rw_signal(GameState::new(rules));
+123	    let selected = create_rw_signal::<Option<Square>>(None);
+124	    let ai_thinking = create_rw_signal(false);
+125	    // Two SEPARATE analysis caches — they MUST NOT share storage,
+126	    // otherwise the freshest writer (typically the hint pump after the
+127	    // AI moves) clobbers the other and the user can't compare AI's POV
+128	    // vs. their own POV. The panel chooses which cache to render based
+129	    // on `hint_view_active` below.
+130	    //
+131	    // - `debug_analysis`: cached AI's POV after each AI move. Sticky
+132	    //   between turns; only the AI pump writes it. Empty in PvP (no AI
+133	    //   pump runs there).
+134	    // - `hint_analysis`: live re-analysis from the side-to-move's POV.
+135	    //   The hint pump rewrites it on every relevant state change.
+136	    let debug_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+137	    let hint_analysis = create_rw_signal::<Option<AiAnalysis>>(None);
+138	    // Hover-driven PV chain for the AI debug panel: when the user
+139	    // hovers a row, board renders a faded chain of from→to overlays.
+140	    // Empty Vec = no highlight.
+141	    let highlighted_pv = create_rw_signal::<Vec<Move>>(Vec::new());
+142	    // Bumped on every state change (player move, AI move, undo, new game).
+143	    // The AI task captures the epoch when it starts and discards its result
+144	    // if the epoch has changed by the time it returns — prevents stale AI
+145	    // moves landing after the player undid or restarted.
+146	    let move_epoch = create_rw_signal::<u32>(0);
+147	
+148	    // ---- Debug vs Hint panel state ----
+149	    //
+150	    // `?debug=1` and `?hints=1` are independent URL flags. They drive
+151	    // a single `<DebugPanel>` mount but with different content per the
+152	    // matrix below (effective_debug = debug_enabled && ai.is_some()
+153	    // because PvP has no AI to debug — flag is silently ignored there):
+154	    //
+155	    // | flags        | mode  | panel visible        | content        | button             |
+156	    // |--------------|-------|----------------------|----------------|--------------------|
+157	    // | hints        | any   | when button ON       | hint_analysis  | 🧠 Show / Hide     |
+158	    // | debug        | vs-AI | always               | debug_analysis | hidden             |
+159	    // | debug        | PvP   | never                | —              | hidden             |
+160	    // | hints+debug  | vs-AI | always               | toggled below  | 🧠 Show / Hide     |
+161	    // | hints+debug  | PvP   | when button ON       | hint_analysis  | 🧠 Show / Hide     |
+162	    //
+163	    // In hints+debug+vs-AI: button OFF → debug_analysis (cached, sticky
+164	    // — user can study it as long as they want); button ON → switch to
+165	    // hint_analysis (live, the user's own POV). Critical UX point: the
+166	    // AI debug content was previously "稍縱即逝" (gone in a flash) when
+167	    // the hint pump immediately overwrote it after each AI move. Two
+168	    // separate caches + button-driven view selection fixes that — the
+169	    // user can flip between the two views without losing either.
+170	    let debug_enabled = insight.debug;
+171	    let hints_enabled = insight.hints;
+172	    let effective_debug = debug_enabled && ai.is_some();
+173	    let hint_view_active = create_rw_signal::<bool>(false);
+174	    let panel_visible =
+175	        Signal::derive(move || effective_debug || (hints_enabled && hint_view_active.get()));
+176	    // Sidebar gets the toggle whenever hints is enabled. In debug-only
+177	    // mode it's hidden (the panel is sticky, no toggle needed). In
+178	    // hints-only mode it shows/hides the panel. In hints+debug+vs-AI
+179	    // mode it switches the panel CONTENT between debug and hint views.
+180	    let sidebar_hint_toggle: Option<RwSignal<bool>> =
+181	        if hints_enabled { Some(hint_view_active) } else { None };
+182	    // Title reflects which content is currently being displayed, not
+183	    // which flags are set. Cleaner than the previous "🔍 + 🧠" combined
+184	    // header which was ambiguous about what the user was actually seeing.
+185	    let panel_title = Signal::derive(move || {
+186	        if hints_enabled && hint_view_active.get() {
+187	            "🧠 AI Hint".to_string()
+188	        } else {
+189	            "🔍 AI Debug".to_string()
+190	        }
+191	    });
+192	    // Subtitle clarifies whose POV the analysis is from. For hint
+193	    // content this matches side-to-move (hint pump only runs on
+194	    // human's turn). For debug content it's the AI's last move POV —
+195	    // which equals the *previous* side-to-move; shown as "Last AI:
+196	    // Red 紅" to be unambiguous.
+197	    let panel_subtitle = Signal::derive(move || {
+198	        if hints_enabled && hint_view_active.get() {
+199	            let stm = state.with(|s| s.side_to_move);
+200	            match stm {
+201	                Side::RED => "Red 紅 to move".to_string(),
+202	                Side::BLACK => "Black 黑 to move".to_string(),
+203	                _ => "Green 綠 to move".to_string(),
+204	            }
+205	        } else if let Some(cfg) = ai {
+206	            // Debug view shows the AI's own POV.
+207	            match cfg.ai_side {
+208	                Side::RED => "AI POV: Red 紅".to_string(),
+209	                Side::BLACK => "AI POV: Black 黑".to_string(),
+210	                _ => "AI POV: Green 綠".to_string(),
+211	            }
+212	        } else {
+213	            String::new()
+214	        }
+215	    });
+216	    // The signal the panel actually reads. Mirrors `panel_title` /
+217	    // `panel_subtitle` logic so all three stay in sync.
+218	    let analysis_signal: Signal<Option<AiAnalysis>> = Signal::derive(move || {
+219	        if hints_enabled && hint_view_active.get() {
+220	            hint_analysis.get()
+221	        } else {
+222	            debug_analysis.get()
+223	        }
+224	    });
+225	
+226	    // Render from the human player's POV when in vs-AI mode so the player's
+227	    // pieces sit on the bottom; in pass-and-play the board is fixed Red-side.
+228	    let observer = match ai {
+229	        Some(cfg) => cfg.ai_side.opposite(),
+230	        None => Side::RED,
+231	    };
+232	    let shape = state.with_untracked(|s| s.board.shape());
+233	
+234	    let view = create_memo(move |_| state.with(|s| PlayerView::project(s, s.side_to_move)));
+235	
+236	    // Clear any held selection when the seat-to-move flips. Catches the
+237	    // chain-mode tail where the last hop ends the chain and switches
+238	    // sides — the previous player's `selected` is meaningless for the
+239	    // next one. Also a safety net for any future click path that
+240	    // forgets its own `selected.set(None)`.
+241	    let side_signal = Signal::derive(move || view.with(|v| v.side_to_move));
+242	    create_effect(move |prev: Option<Side>| {
+243	        let cur = side_signal.get();
+244	        if prev.is_some_and(|p| p != cur) {
+245	            selected.set(None);
+246	        }
+247	        cur
+248	    });
+249	
+250	    // The chain-locked piece (if any) renders with the same affordance as
+251	    // a manually-selected piece, so the user sees it visually highlighted.
+252	    let chain_locked_signal: Signal<Option<Square>> =
+253	        Signal::derive(move || view.with(|v| v.chain_lock));
+254	
+255	    let effective_selected: Signal<Option<Square>> = Signal::derive(move || {
+256	        // In chain mode the engine dictates which piece moves; surface
+257	        // chain_lock as the selected square so the legal-target dots
+258	        // render around it.
+259	        chain_locked_signal.get().or_else(|| selected.get())
+260	    });
+261	
+262	    // Whether the human can act right now. In vs-AI mode the human is
+263	    // locked out while it's AI's turn or while the AI is computing.
+264	    let player_can_act = Signal::derive(move || {
+265	        if wip {
+266	            return false;
+267	        }
+268	        match ai {
+269	            None => true,
+270	            Some(cfg) => {
+271	                if ai_thinking.get() {
+272	                    return false;
+273	                }
+274	                view.with(|v| v.side_to_move != cfg.ai_side)
+275	            }
+276	        }
+277	    });
+278	
+279	    let on_end_chain: Callback<()> = Callback::new(move |_| {
+280	        if !player_can_act.get_untracked() {
+281	            return;
+282	        }
+283	        let v = view.get();
+284	        if let Some(mv) = end_chain_move(&v) {
+285	            state.update(|s| {
+286	                s.make_move(&mv).expect("legal end-chain");
+287	                s.refresh_status();
+288	            });
+289	            selected.set(None);
+290	            move_epoch.update(|n| *n = n.wrapping_add(1));
+291	        }
+292	    });
+293	
+294	    let on_click: Callback<Square> = Callback::new(move |sq: Square| {
+295	        if !player_can_act.get_untracked() {
+296	            return;
+297	        }
+298	        let v = view.get();
+299	
+300	        // Chain mode is engine-driven: when chain_lock is set, only the
+301	        // locked piece can move (captures only). Clicking the locked
+302	        // piece itself is the explicit "end chain" gesture.
+303	        if let Some(locked) = v.chain_lock {
+304	            if sq == locked {
+305	                if let Some(mv) = end_chain_move(&v) {
+306	                    state.update(|s| {
+307	                        s.make_move(&mv).expect("legal end-chain");
+308	                        s.refresh_status();
+309	                    });
+310	                    move_epoch.update(|n| *n = n.wrapping_add(1));
+311	                }
+312	                selected.set(None);
+313	                return;
+314	            }
+315	            if let Some(mv) = find_move(&v, locked, sq) {
+316	                state.update(|s| {
+317	                    s.make_move(&mv).expect("legal chain capture");
+318	                    s.refresh_status();
+319	                });
+320	                selected.set(None);
+321	                move_epoch.update(|n| *n = n.wrapping_add(1));
+322	                return;
+323	            }
+324	            // Click somewhere else during chain mode: ignore (the user
+325	            // must end the chain or capture). Selection is irrelevant.
+326	            return;
+327	        }
+328	
+329	        let cur = selected.get();
+330	
+331	        if cur == Some(sq) {
+332	            selected.set(None);
+333	            return;
+334	        }
+335	
+336	        if let Some(from) = cur {
+337	            if let Some(mv) = find_move(&v, from, sq) {
+338	                state.update(|s| {
+339	                    s.make_move(&mv).expect("legal move from view");
+340	                    s.refresh_status();
+341	                });
+342	                selected.set(None);
+343	                move_epoch.update(|n| *n = n.wrapping_add(1));
+344	                return;
+345	            }
+346	        }
+347	
+348	        let cell = v.cells[sq.0 as usize];
+349	        // Selectable iff the engine emits a legal move from this square — this
+350	        // works regardless of `side_assignment` remapping (banqi after the
+351	        // first flip), since `legal_moves` is already filtered by piece-color.
+352	        let is_selectable_revealed = matches!(cell, VisibleCell::Revealed(_))
+353	            && v.legal_moves.iter().any(|m| m.origin_square() == sq);
+354	        if is_selectable_revealed {
+355	            selected.set(Some(sq));
+356	        } else if matches!(cell, VisibleCell::Hidden) {
+357	            // Banqi flip — engine emits `Reveal { at }` whose origin and
+358	            // target both equal `sq`. Apply directly.
+359	            if let Some(mv) = find_move(&v, sq, sq) {
+360	                state.update(|s| {
+361	                    s.make_move(&mv).expect("legal reveal");
+362	                    s.refresh_status();
+363	                });
+364	                selected.set(None);
+365	                move_epoch.update(|n| *n = n.wrapping_add(1));
+366	            }
+367	        } else {
+368	            selected.set(None);
+369	        }
+370	    });
+371	
+372	    let on_undo: Callback<()> = Callback::new(move |_| {
+373	        if wip {
+374	            return;
+375	        }
+376	        // In vs-AI mode, undo two plies so the player is back on move.
+377	        // (Undoing only one would put the AI on the move and the AI effect
+378	        // would just re-play immediately — defeating the purpose.) If
+379	        // there's only one ply on the stack — typical when the AI moved
+380	        // first because the player picked Black — fall back to a single
+381	        // undo, which returns to the empty initial state.
+382	        let plies = match ai {
+383	            Some(_) => 2,
+384	            None => 1,
+385	        };
+386	        state.update(|s| {
+387	            for _ in 0..plies {
+388	                if s.unmake_move().is_err() {
+389	                    break;
+390	                }
+391	            }
+392	            s.refresh_status();
+393	        });
+394	        selected.set(None);
+395	        ai_thinking.set(false);
+396	        debug_analysis.set(None);
+397	        hint_analysis.set(None);
+398	        highlighted_pv.set(Vec::new());
+399	        move_epoch.update(|n| *n = n.wrapping_add(1));
+400	    });
+401	
+402	    let on_new_game: Callback<()> = Callback::new({
+403	        let initial_rules = initial_rules.clone();
+404	        move |_| {
+405	            state.set(GameState::new(initial_rules.clone()));
+406	            selected.set(None);
+407	            ai_thinking.set(false);
+408	            debug_analysis.set(None);
+409	            hint_analysis.set(None);
+410	            highlighted_pv.set(Vec::new());
+411	            move_epoch.update(|n| *n = n.wrapping_add(1));
+412	        }
+413	    });
+414	
+415	    // AI move pump. Fires whenever the side-to-move flips to the AI in a
+416	    // vs-AI game. The async task captures the current epoch and the
+417	    // engine snapshot; if the player undoes/restarts mid-think the epoch
+418	    // mismatch causes us to drop the result on the floor.
+419	    if let Some(cfg) = ai {
+420	        create_effect(move |_| {
+421	            // Only `move_epoch` is tracked. `view` is read untracked so the
+422	            // effect doesn't re-fire on the intermediate `state.update(...)`
+423	            // before `move_epoch.update(...)` lands — that ordering would
+424	            // otherwise let the effect capture a stale epoch and immediately
+425	            // bail out on the post-task epoch check. Click handlers bump the
+426	            // epoch *after* every state change, so by the time this fires,
+427	            // both signals are in sync.
+428	            let cur_epoch = move_epoch.get();
+429	            let v = view.get_untracked();
+430	            if !matches!(v.status, GameStatus::Ongoing) {
+431	                return;
+432	            }
+433	            if v.side_to_move != cfg.ai_side {
+434	                return;
+435	            }
+436	            if ai_thinking.get_untracked() {
+437	                return;
+438	            }
+439	            ai_thinking.set(true);
+440	            let snapshot = state.get_untracked();
+441	            let opts = AiOptions {
+442	                difficulty: cfg.difficulty,
+443	                max_depth: cfg.depth,
+444	                seed: Some(cur_epoch as u64 ^ 0xA5A5_5A5A_u64),
+445	                strategy: cfg.strategy,
+446	                randomness: cfg.randomness,
+447	            };
+448	            wasm_bindgen_futures::spawn_local(async move {
+449	                // One animation frame's worth of yield so the "AI thinking…"
+450	                // banner paints before the search blocks the main thread.
+451	                gloo_timers::future::TimeoutFuture::new(80).await;
+452	                if move_epoch.get_untracked() != cur_epoch {
+453	                    ai_thinking.set(false);
+454	                    return;
+455	                }
+456	                // Always go through `analyze` so the debug panel can
+457	                // surface the full scored list. The cost is the same —
+458	                // `choose_move` internally calls `analyze` and discards
+459	                // everything but the chosen move. When `cfg.debug` is
+460	                // off and `cfg.hints` is off we just don't mount the
+461	                // `<DebugPanel>`. When hints is on we still cache the
+462	                // analysis so opening the toggle mid-game has data
+463	                // ready immediately.
+464	                let analysis = chess_ai::analyze(&snapshot, &opts);
+465	                if move_epoch.get_untracked() != cur_epoch {
+466	                    ai_thinking.set(false);
+467	                    return;
+468	                }
+469	                if let Some(a) = analysis {
+470	                    let chosen_mv = a.chosen.mv.clone();
+471	                    // Cache AI's POV analysis ONLY for ?debug=1 mode.
+472	                    // Goes into `debug_analysis` (separate from
+473	                    // `hint_analysis`) so the hint pump's later writes
+474	                    // don't clobber what the user might want to study
+475	                    // on the sticky debug panel. The two caches are
+476	                    // toggled into the panel by `hint_view_active`.
+477	                    if effective_debug {
+478	                        debug_analysis.set(Some(a));
+479	                    }
+480	                    state.update(|s| {
+481	                        if s.make_move(&chosen_mv).is_ok() {
+482	                            s.refresh_status();
+483	                        }
+484	                    });
+485	                    move_epoch.update(|n| *n = n.wrapping_add(1));
+486	                }
+487	                ai_thinking.set(false);
+488	            });
+489	        });
+490	    }
+491	
+492	    // ---- Hint pump (side-to-move's POV analysis) ----
+493	    //
+494	    // Distinct from the AI move pump above: that one runs `analyze`
+495	    // from the AI's POV at the moment the AI picks a move, caching
+496	    // what the AI considered. THIS pump runs `analyze` from the
+497	    // **side-to-move's** POV — "what would the bot play if it were
+498	    // me?". Works for both vs-AI and pass-and-play (PvP, two humans).
+499	    //
+500	    // Crucially this pump runs WHENEVER hints are enabled, including
+501	    // hints+debug "both" mode — keeping `hint_analysis` warm so the
+502	    // user can flip the sidebar button and instantly see fresh hint
+503	    // content without waiting for a re-search.
+504	    //
+505	    // Skipped when:
+506	    // - hints disabled (no `?hints=1`)
+507	    // - vs-AI mode AND it's the AI's turn (the AI pump will run its
+508	    //   own analyze for the AI's POV; spawning a duplicate would race
+509	    //   and the result wouldn't be the side-to-move's POV anyway)
+510	    // - AI is mid-think (avoid racing the AI pump)
+511	    if hints_enabled {
+512	        // Difficulty/strategy/randomness for the hint search. For PvP we
+513	        // pick sensible defaults (Hard + STRICT) since there's no AI
+514	        // config to inherit. For vs-AI we mirror the AI's own knobs so
+515	        // the hint quality matches what the user is up against.
+516	        let hint_difficulty = ai.map(|c| c.difficulty).unwrap_or(Difficulty::Hard);
+517	        let hint_strategy = ai.map(|c| c.strategy).unwrap_or_else(Strategy::default);
+518	        let hint_depth = ai.and_then(|c| c.depth);
+519	        let hint_ai_side = ai.map(|c| c.ai_side);
+520	
+521	        create_effect(move |_| {
+522	            // All three reads are tracked so the effect re-fires when
+523	            // ANY of them change. Critical: `ai_thinking` flips false
+524	            // AFTER `state.update()` in the AI pump, so the first
+525	            // reactive fire (from state change) sees thinking still
+526	            // true and bails. We need the second fire (from
+527	            // ai_thinking → false) to actually run analyze.
+528	            //
+529	            // We do NOT track `panel_visible` / `hint_view_active`
+530	            // here — the hint cache should stay fresh whether or not
+531	            // the user has the panel open, so flipping the toggle is
+532	            // instant. Cost is one extra ~100-300 ms search per turn
+533	            // when hints are enabled but the toggle is off; acceptable
+534	            // given we already pay that cost in vs-AI mode for the AI
+535	            // move itself.
+536	            let s = state.get();
+537	            let thinking = ai_thinking.get();
+538	            if !matches!(s.status, GameStatus::Ongoing) {
+539	                hint_analysis.set(None);
+540	                return;
+541	            }
+542	            // vs-AI mode: skip when it's the AI's turn — the AI pump
+543	            // is already searching the same position from a different
+544	            // POV (the AI's own side, not the side-to-move).
+545	            if let Some(ai_side) = hint_ai_side {
+546	                if s.side_to_move == ai_side {
+547	                    return;
+548	                }
+549	            }
+550	            if thinking {
+551	                // AI mid-think; will re-fire when ai_thinking → false.
+552	                return;
+553	            }
+554	            // Snapshot the position hash for invalidation. Using
+555	            // `position_hash` (from chess-core v5) lets us cancel
+556	            // stale tasks WITHOUT depending on `move_epoch` — which
+557	            // is bumped AFTER `state.update(...)` in the AI pump,
+558	            // racing any effect that captured the pre-bump value.
+559	            let snapshot = s;
+560	            let snapshot_hash = snapshot.position_hash;
+561	            let opts = AiOptions {
+562	                difficulty: hint_difficulty,
+563	                max_depth: hint_depth,
+564	                seed: Some(snapshot_hash ^ 0xC0FFEE_BABE_u64),
+565	                strategy: hint_strategy,
+566	                randomness: Some(chess_ai::Randomness::STRICT),
+567	            };
+568	            wasm_bindgen_futures::spawn_local(async move {
+569	                // Yield a frame so the UI repaints before the search
+570	                // blocks the main thread.
+571	                gloo_timers::future::TimeoutFuture::new(40).await;
+572	                // Bail if state moved on while we yielded.
+573	                let current_hash = state.with_untracked(|cur| cur.position_hash);
+574	                if current_hash != snapshot_hash {
+575	                    return;
+576	                }
+577	                let analysis = chess_ai::analyze(&snapshot, &opts);
+578	                // Bail if state moved on during the search itself.
+579	                let current_hash = state.with_untracked(|cur| cur.position_hash);
+580	                if current_hash != snapshot_hash {
+581	                    return;
+582	                }
+583	                if let Some(a) = analysis {
+584	                    hint_analysis.set(Some(a));
+585	                }
+586	            });
+587	        });
+588	    }
+589	
+590	    let prefs = expect_context::<Prefs>();
+591	    let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
+592	    // Local pass-and-play: no `ClientRole`, so the overlay falls back to
+593	    // the neutral "Red Wins" / "Black Wins" framing.
+594	    let role_signal: Signal<Option<crate::state::ClientRole>> = Signal::derive(|| None);
+595	
+596	    let chain_active = Signal::derive(move || chain_locked_signal.get().is_some());
+597	
+598	    // Derive a pre-encoded history list for the sidebar's MoveHistory
+599	    // panel. ICCS notation is short and grep-friendly for debugging
+600	    // (user takes a screenshot, pastes the move list — much easier than
+601	    // describing positions). Recomputes on every state change because
+602	    // it depends on `state` directly, not just `view`.
+603	    let history_signal: Signal<Vec<HistoryEntry>> = Signal::derive(move || {
+604	        state.with(|s| {
+605	            s.history
+606	                .iter()
+607	                .enumerate()
+608	                .map(|(i, rec)| HistoryEntry {
+609	                    ply: i + 1,
+610	                    side: rec.mover,
+611	                    text: chess_core::notation::iccs::encode_move(&s.board, &rec.the_move),
+612	                })
+613	                .collect()
+614	        })
+615	    });
+616	
+617	    let highlighted_pv_signal: Signal<Vec<Move>> = highlighted_pv.into();
+618	    let on_debug_hover: Callback<Vec<Move>> =
+619	        Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
+620	    let board_for_debug = state.with_untracked(|s| s.board.clone());
+621	    // `analysis_signal` is the derived signal declared above that
+622	    // toggles between `debug_analysis` (sticky cache) and
+623	    // `hint_analysis` (live cache) based on `hint_view_active`.
+624	
+625	    view! {
+626	        <section class="game-page">
+627	            <div class="board-pane">
+628	                <Board
+629	                    shape=shape
+630	                    observer=observer
+631	                    view=view
+632	                    selected=effective_selected
+633	                    on_click=on_click
+634	                    highlighted_pv=highlighted_pv_signal
+635	                />
+636	                <Show when=move || chain_active.get()>
+637	                    <div class="chain-banner">
+638	                        <span>"連吃 — 繼續吃 or "</span>
+639	                        <button class="btn btn-ghost btn-sm" on:click=move |_| on_end_chain.call(())>
+640	                            "End chain"
+641	                        </button>
+642	                    </div>
+643	                </Show>
+644	                <Show when=move || ai_thinking.get()>
+645	                    <div class="chain-banner ai-thinking-banner">
+646	                        <span>"⏳ AI thinking…"</span>
+647	                    </div>
+648	                </Show>
+649	                <Show when=move || wip>
+650	                    <div class="wip-overlay">
+651	                        <div class="wip-banner">
+652	                            <h3>"Three-Kingdom Banqi 三國暗棋"</h3>
+653	                            <p>
+654	                                "Engine still WIP — pieces, rules, and 3-seat turn order land in PR-2. "
+655	                                "See "
+656	                                <code>"backlog/three-kingdoms-banqi.md"</code>
+657	                                "."
+658	                            </p>
+659	                        </div>
+660	                    </div>
+661	                </Show>
+662	                <Show when=move || !wip>
+663	                    <EndOverlay view=view role=role_signal enabled=fx_confetti/>
+664	                </Show>
+665	                <Show when=move || !wip>
+666	                    <CapturedStrip view=view/>
+667	                </Show>
+668	            </div>
+669	            <Sidebar
+670	                variant=variant
+671	                view=view
+672	                on_new_game=on_new_game
+673	                on_undo=on_undo
+674	                wip=wip
+675	                history=history_signal
+676	                hint_toggle=sidebar_hint_toggle
+677	            />
+678	            <Show when=move || panel_visible.get()>
+679	                <DebugPanel
+680	                    analysis=analysis_signal
+681	                    board=board_for_debug.clone()
+682	                    on_hover=on_debug_hover
+683	                    title=panel_title
+684	                    subtitle=panel_subtitle
+685	                />
+686	            </Show>
+687	        </section>
+688	    }
+689	}
+690
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:53Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:14:54Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/board.rs`
+
+```text
+1	//! SVG board renderer. Variant-agnostic: takes a `PlayerView` + observer +
+2	//! a click callback, and lays cells on the intersection grid that the TUI
+3	//! also uses (see `crate::orient`).
+4	
+5	use chess_core::board::BoardShape;
+6	use chess_core::coord::Square;
+7	use chess_core::moves::Move;
+8	use chess_core::piece::Side;
+9	use chess_core::view::{PlayerView, VisibleCell};
+10	use leptos::*;
+11	
+12	use crate::glyph::{self, Style};
+13	use crate::orient::{display_dims, square_at_display};
+14	use crate::state::legal_targets;
+15	
+16	pub const CELL: i32 = 60;
+17	pub const PAD: i32 = 30;
+18	const RIVER_TOP_ROW: u8 = 4;
+19	const RIVER_BOT_ROW: u8 = 5;
+20	const TILE_RADIUS: i32 = 24;
+21	/// Extra space reserved OUTSIDE the existing PAD for ICCS-style coord
+22	/// labels (a..i / 0..9). Lives in negative-coord territory so we don't
+23	/// shrink the playing area or change piece geometry. Without this, an
+24	/// edge-rank piece (e.g. 俥 on a0) overlaps the label — PAD=30 vs
+25	/// piece radius=24 only leaves 6 px of clearance, not enough to fit a
+26	/// readable label outside the disc.
+27	const LABEL_MARGIN: i32 = 18;
+28	
+29	#[component]
+30	pub fn Board(
+31	    shape: BoardShape,
+32	    observer: Side,
+33	    #[prop(into)] view: Signal<PlayerView>,
+34	    #[prop(into)] selected: Signal<Option<Square>>,
+35	    #[prop(into)] on_click: Callback<Square>,
+36	    /// Optional debug-overlay highlight for an arbitrary move chain
+37	    /// (no commitment — purely visual). Used by the AI debug panel:
+38	    /// element 0 is the AI's chosen move, elements 1..N are the
+39	    /// principal variation continuation. Renders as a sequence of
+40	    /// from→to arrows with the first move bright and later moves
+41	    /// progressively faded so the user can trace the AI's predicted
+42	    /// line. Empty Vec = no highlight.
+43	    #[prop(optional, into)]
+44	    highlighted_pv: Option<Signal<Vec<Move>>>,
+45	) -> impl IntoView {
+46	    let (rows, cols) = display_dims(shape);
+47	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+48	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+49	    // Extend the viewBox into negative space on all sides for coord
+50	    // labels. Pieces still live at their original positive-coord
+51	    // centers — only the SVG canvas grows. Bg rect grows to match so
+52	    // the labels render on the wood-tone board frame, not on the dark
+53	    // page background.
+54	    let total_w = view_w + LABEL_MARGIN * 2;
+55	    let total_h = view_h + LABEL_MARGIN * 2;
+56	    let viewbox = format!("{} {} {} {}", -LABEL_MARGIN, -LABEL_MARGIN, total_w, total_h);
+57	    let style = Style::Cjk;
+58	    let highlighted_pv: Signal<Vec<Move>> =
+59	        highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
+60	
+61	    view! {
+62	        <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
+63	            <rect
+64	                class="board-bg"
+65	                x=-LABEL_MARGIN
+66	                y=-LABEL_MARGIN
+67	                width=total_w
+68	                height=total_h
+69	            />
+70	            <g class="grid-layer">{grid_lines(shape, rows, cols)}</g>
+71	            <g class="coord-layer">{coord_labels(shape, rows, cols, observer)}</g>
+72	            <g class="river-layer">{river_text(shape, cols)}</g>
+73	            <g class="palace-layer">{palace_diagonals(shape)}</g>
+74	            <g class="overlay-layer">
+75	                {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
+76	            </g>
+77	            <g class="pieces-layer">
+78	                {move || pieces_view(&view.get(), observer, shape, style)}
+79	            </g>
+80	            <g class="overlay-top-layer">
+81	                {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
+82	                {move || selection_marker(selected.get(), observer, shape)}
+83	                {move || debug_pv_marker(highlighted_pv.get(), observer, shape)}
+84	            </g>
+85	            <g class="cells-layer">
+86	                {hit_cells(rows, cols, observer, shape, on_click)}
+87	            </g>
+88	        </svg>
+89	    }
+90	}
+91	
+92	#[inline]
+93	fn intersection(row: u8, col: u8) -> (i32, i32) {
+94	    (PAD + col as i32 * CELL, PAD + row as i32 * CELL)
+95	}
+96	
+97	fn grid_lines(shape: BoardShape, rows: u8, cols: u8) -> View {
+98	    let is_xiangqi = matches!(shape, BoardShape::Xiangqi9x10);
+99	    let mut out: Vec<View> = Vec::with_capacity(rows as usize + cols as usize * 2);
+100	    for r in 0..rows {
+101	        let y = PAD + r as i32 * CELL;
+102	        let x1 = PAD;
+103	        let x2 = PAD + (cols as i32 - 1) * CELL;
+104	        out.push(view! { <line class="grid" x1=x1 y1=y x2=x2 y2=y/> }.into_view());
+105	    }
+106	    for c in 0..cols {
+107	        let x = PAD + c as i32 * CELL;
+108	        let is_border = c == 0 || c == cols - 1;
+109	        let y_top = PAD;
+110	        let y_bot = PAD + (rows as i32 - 1) * CELL;
+111	        if is_xiangqi && !is_border {
+112	            let y_river_top = PAD + RIVER_TOP_ROW as i32 * CELL;
+113	            let y_river_bot = PAD + RIVER_BOT_ROW as i32 * CELL;
+114	            out.push(
+115	                view! {
+116	                    <line class="grid" x1=x y1=y_top x2=x y2=y_river_top/>
+117	                    <line class="grid" x1=x y1=y_river_bot x2=x y2=y_bot/>
+118	                }
+119	                .into_view(),
+120	            );
+121	        } else {
+122	            out.push(view! { <line class="grid" x1=x y1=y_top x2=x y2=y_bot/> }.into_view());
+123	        }
+124	    }
+125	    out.into_view()
+126	}
+127	
+128	fn river_text(shape: BoardShape, cols: u8) -> View {
+129	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+130	        return ().into_view();
+131	    }
+132	    let cx = PAD + (cols as i32 - 1) * CELL / 2;
+133	    let cy = PAD + (RIVER_TOP_ROW as i32 * CELL + RIVER_BOT_ROW as i32 * CELL) / 2;
+134	    view! {
+135	        <text class="river-text" x=cx y=cy text-anchor="middle" dominant-baseline="central">
+136	            "楚 河 漢 界"
+137	        </text>
+138	    }
+139	    .into_view()
+140	}
+141	
+142	/// Algebraic-style coordinate labels around the board: file letters
+143	/// (`a..i`) along the top + bottom edges, rank digits (`0..9`) along
+144	/// the left + right edges. Same notation as the ICCS-encoded moves
+145	/// shown in the AI hint / debug panel and the move-history sidebar
+146	/// (e.g. `h2g2` = move from h2 to g2). Without these labels users
+147	/// can't visually map the table entries to board squares.
+148	///
+149	/// Observer-aware: looks up file/rank via `square_at_display` then
+150	/// asks the board for the chess-coord of that square. This way the
+151	/// labels respect Red-at-bottom vs Black-at-bottom orientation
+152	/// automatically (Red sees `a..i` left-to-right, Black sees `i..a`).
+153	///
+154	/// Labels live in the LABEL_MARGIN strip OUTSIDE the original PAD
+155	/// area (negative coords for top/left, beyond view_w/view_h for
+156	/// bottom/right). The previous version put them at PAD-16, which
+157	/// landed *inside* the disc of any edge-rank/edge-file piece (PAD=30
+158	/// vs piece radius=24 → only 6 px clearance) so the corner labels
+159	/// were invisible whenever a 俥/車 sat on a0/i0/a9/i9. Negative-coord
+160	/// placement keeps them clear of all piece geometry.
+161	///
+162	/// Xiangqi only — banqi has no algebraic-style notation in this codebase.
+163	fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
+164	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+165	        return ().into_view();
+166	    }
+167	    let board = chess_core::board::Board::new(shape);
+168	    let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
+169	
+170	    // File labels (a..i) — read the file from the bottom-edge cell of
+171	    // each column (any row would do; bottom-edge avoids needing to
+172	    // worry about non-rectangular shapes), then mirror at the top edge.
+173	    let bottom_row = rows - 1;
+174	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+175	    // Halfway up the top margin (negative coords): well clear of
+176	    // top-edge piece discs (whose top edge is at y = PAD - TILE_RADIUS = 6).
+177	    let label_y_top = -LABEL_MARGIN / 2;
+178	    // Halfway down the bottom margin (beyond view_h): clear of
+179	    // bottom-edge piece discs (whose bottom edge is at y = view_h - PAD + TILE_RADIUS).
+180	    let label_y_bot = view_h + LABEL_MARGIN / 2;
+181	    for col in 0..cols {
+182	        let Some(sq) = square_at_display(bottom_row, col, observer, shape) else { continue };
+183	        let (f, _) = board.file_rank(sq);
+184	        let ch = (b'a' + f.0) as char;
+185	        let x = PAD + col as i32 * CELL;
+186	        out.push(
+187	            view! {
+188	                <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+189	                    {ch.to_string()}
+190	                </text>
+191	            }
+192	            .into_view(),
+193	        );
+194	        out.push(
+195	            view! {
+196	                <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
+197	                    {ch.to_string()}
+198	                </text>
+199	            }
+200	            .into_view(),
+201	        );
+202	    }
+203	
+204	    // Rank labels (0..9) — read the rank from the left-edge cell of
+205	    // each row, then mirror at the right edge.
+206	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+207	    let label_x_left = -LABEL_MARGIN / 2; // ≈ -9
+208	    let label_x_right = view_w + LABEL_MARGIN / 2; // ≈ view_w + 9
+209	    for row in 0..rows {
+210	        let Some(sq) = square_at_display(row, 0, observer, shape) else { continue };
+211	        let (_, r) = board.file_rank(sq);
+212	        let digit = r.0;
+213	        let y = PAD + row as i32 * CELL;
+214	        out.push(
+215	            view! {
+216	                <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
+217	                    {digit.to_string()}
+218	                </text>
+219	            }
+220	            .into_view(),
+221	        );
+222	        out.push(
+223	            view! {
+224	                <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+225	                    {digit.to_string()}
+226	                </text>
+227	            }
+228	            .into_view(),
+229	        );
+230	    }
+231	    out.into_view()
+232	}
+233	
+234	fn palace_diagonals(shape: BoardShape) -> View {
+235	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+236	        return ().into_view();
+237	    }
+238	    // Files 3..5; top palace = display rows 0..2; bottom palace = rows 7..9.
+239	    // Symmetric for both observers because the palace box is centered on the file axis.
+240	    let segments = [
+241	        (intersection(0, 3), intersection(2, 5)),
+242	        (intersection(0, 5), intersection(2, 3)),
+243	        (intersection(7, 3), intersection(9, 5)),
+244	        (intersection(7, 5), intersection(9, 3)),
+245	    ];
+246	    segments
+247	        .into_iter()
+248	        .map(|(a, b)| view! { <line class="palace" x1=a.0 y1=a.1 x2=b.0 y2=b.1/> }.into_view())
+249	        .collect::<Vec<View>>()
+250	        .into_view()
+251	}
+252	
+253	fn pieces_view(view: &PlayerView, observer: Side, shape: BoardShape, style: Style) -> View {
+254	    let (rows, cols) = display_dims(shape);
+255	    let mut out: Vec<View> = Vec::new();
+256	    for row in 0..rows {
+257	        for col in 0..cols {
+258	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+259	            let cell = view.cells[sq.0 as usize];
+260	            let (cx, cy) = intersection(row, col);
+261	            match cell {
+262	                VisibleCell::Empty => {}
+263	                VisibleCell::Hidden => {
+264	                    out.push(
+265	                        view! {
+266	                            <g class="tile hidden" transform=format!("translate({}, {})", cx, cy)>
+267	                                <circle class="tile-back" r=TILE_RADIUS cx="0" cy="0"/>
+268	                            </g>
+269	                        }
+270	                        .into_view(),
+271	                    );
+272	                }
+273	                VisibleCell::Revealed(p) => {
+274	                    let side_class = match p.piece.side {
+275	                        Side::RED => "red",
+276	                        Side::BLACK => "black",
+277	                        _ => "green",
+278	                    };
+279	                    out.push(
+280	                        view! {
+281	                            <g class=format!("tile piece {}", side_class) transform=format!("translate({}, {})", cx, cy)>
+282	                                <circle class="tile-disc" r=TILE_RADIUS cx="0" cy="0"/>
+283	                                <text class="tile-glyph" text-anchor="middle" dominant-baseline="central">
+284	                                    {glyph::glyph(p.piece.kind, p.piece.side, style)}
+285	                                </text>
+286	                            </g>
+287	                        }
+288	                        .into_view(),
+289	                    );
+290	                }
+291	            }
+292	        }
+293	    }
+294	    out.into_view()
+295	}
+296	
+297	fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape) -> View {
+298	    let Some(sq) = selected else { return ().into_view() };
+299	    let (rows, cols) = display_dims(shape);
+300	    for row in 0..rows {
+301	        for col in 0..cols {
+302	            if square_at_display(row, col, observer, shape) == Some(sq) {
+303	                let (cx, cy) = intersection(row, col);
+304	                return view! { <circle class="selection" cx=cx cy=cy r="28"/> }.into_view();
+305	            }
+306	        }
+307	    }
+308	    ().into_view()
+309	}
+310	
+311	/// Debug overlay: render a sequence of `from→to` arrows for an entire
+312	/// principal variation, with the first move bright (the AI's chosen
+313	/// move) and later moves progressively faded (the predicted line).
+314	/// Used by the AI debug panel's hover-to-highlight. Empty Vec renders
+315	/// nothing.
+316	fn debug_pv_marker(pv: Vec<Move>, observer: Side, shape: BoardShape) -> View {
+317	    if pv.is_empty() {
+318	        return ().into_view();
+319	    }
+320	    let (rows, cols) = display_dims(shape);
+321	    let mut out: Vec<View> = Vec::with_capacity(pv.len() * 3);
+322	    let total = pv.len();
+323	    for (i, mv) in pv.iter().enumerate() {
+324	        // Opacity fades from 1.0 (chosen) to ~0.35 (deepest PV move).
+325	        let alpha = 1.0 - (i as f32 / total.max(2) as f32) * 0.65;
+326	        let alpha_str = format!("{:.2}", alpha);
+327	        // Step 0 (the AI's chosen move) gets the "from" / "to" classes;
+328	        // PV continuations get the "pv" variant which is dashed-thinner.
+329	        let from_class = if i == 0 { "debug-from" } else { "debug-pv-from" };
+330	        let to_class = if i == 0 { "debug-to" } else { "debug-pv-to" };
+331	        let line_class = if i == 0 { "debug-line" } else { "debug-pv-line" };
+332	
+333	        let from_sq = mv.origin_square();
+334	        let to_sq = mv.to_square();
+335	        let mut from_xy: Option<(i32, i32)> = None;
+336	        let mut to_xy: Option<(i32, i32)> = None;
+337	        for row in 0..rows {
+338	            for col in 0..cols {
+339	                if square_at_display(row, col, observer, shape) == Some(from_sq) {
+340	                    from_xy = Some(intersection(row, col));
+341	                }
+342	                if let Some(t) = to_sq {
+343	                    if square_at_display(row, col, observer, shape) == Some(t) {
+344	                        to_xy = Some(intersection(row, col));
+345	                    }
+346	                }
+347	            }
+348	        }
+349	        let Some((fx, fy)) = from_xy else { continue };
+350	        out.push(
+351	            view! { <circle class=from_class cx=fx cy=fy r="32" opacity=alpha_str.clone()/> }
+352	                .into_view(),
+353	        );
+354	        if let Some((tx, ty)) = to_xy {
+355	            out.push(
+356	                view! {
+357	                    <line class=line_class x1=fx y1=fy x2=tx y2=ty opacity=alpha_str.clone()/>
+358	                }
+359	                .into_view(),
+360	            );
+361	            out.push(
+362	                view! { <circle class=to_class cx=tx cy=ty r="32" opacity=alpha_str/> }.into_view(),
+363	            );
+364	        }
+365	    }
+366	    out.into_view()
+367	}
+368	
+369	fn chain_lock_marker(locked: Option<Square>, observer: Side, shape: BoardShape) -> View {
+370	    let Some(sq) = locked else { return ().into_view() };
+371	    let (rows, cols) = display_dims(shape);
+372	    for row in 0..rows {
+373	        for col in 0..cols {
+374	            if square_at_display(row, col, observer, shape) == Some(sq) {
+375	                let (cx, cy) = intersection(row, col);
+376	                return view! { <circle class="chain-lock" cx=cx cy=cy r="30"/> }.into_view();
+377	            }
+378	        }
+379	    }
+380	    ().into_view()
+381	}
+382	
+383	fn move_dots_view(
+384	    view: &PlayerView,
+385	    selected: Option<Square>,
+386	    observer: Side,
+387	    shape: BoardShape,
+388	) -> View {
+389	    let Some(from) = selected else { return ().into_view() };
+390	    let targets = legal_targets(view, from);
+391	    if targets.is_empty() {
+392	        return ().into_view();
+393	    }
+394	    let (rows, cols) = display_dims(shape);
+395	    let mut out: Vec<View> = Vec::new();
+396	    for row in 0..rows {
+397	        for col in 0..cols {
+398	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+399	            if !targets.contains(&sq) {
+400	                continue;
+401	            }
+402	            let (cx, cy) = intersection(row, col);
+403	            // Empty target → small dot. Capturable target (revealed
+404	            // enemy piece OR face-down tile under DARK_CAPTURE) →
+405	            // larger ring framing the piece, so the player sees at a
+406	            // glance which enemies / hidden tiles can be taken — not
+407	            // just where to slide to. Same data the TUI surfaces with
+408	            // its green-highlighted attackable squares.
+409	            let cell = view.cells[sq.0 as usize];
+410	            let class = match cell {
+411	                VisibleCell::Empty => "move-dot",
+412	                _ => "move-target",
+413	            };
+414	            let r = if class == "move-dot" { "9" } else { "26" };
+415	            out.push(view! { <circle class=class cx=cx cy=cy r=r/> }.into_view());
+416	        }
+417	    }
+418	    out.into_view()
+419	}
+420	
+421	fn hit_cells(
+422	    rows: u8,
+423	    cols: u8,
+424	    observer: Side,
+425	    shape: BoardShape,
+426	    on_click: Callback<Square>,
+427	) -> View {
+428	    let mut out: Vec<View> = Vec::with_capacity(rows as usize * cols as usize);
+429	    for row in 0..rows {
+430	        for col in 0..cols {
+431	            let Some(sq) = square_at_display(row, col, observer, shape) else { continue };
+432	            let x = col as i32 * CELL;
+433	            let y = row as i32 * CELL;
+434	            out.push(
+435	                view! {
+436	                    <rect
+437	                        class="cell-hit"
+438	                        x=x y=y width=CELL height=CELL
+439	                        on:pointerup=move |_| on_click.call(sq)
+440	                    />
+441	                }
+442	                .into_view(),
+443	            );
+444	        }
+445	    }
+446	    out.into_view()
+447	}
+448
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:04Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:05Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/captured.rs`
+
+```text
+1	//! Below-board "captured pieces" strip ("graveyard").
+2	//!
+3	//! Renders as two horizontal rows directly under the Board: each side's
+4	//! dead pieces shown as small disc-icons styled like the board pieces
+5	//! (red glyph on a paler tile-back). A tiny toggle in the header flips
+6	//! the sort order between chronological (default) and rank. The signal
+7	//! lives on `Prefs` so the choice persists in `localStorage`.
+8	
+9	use chess_core::piece::Piece;
+10	use chess_core::view::PlayerView;
+11	use leptos::*;
+12	
+13	use crate::glyph::{self, Style};
+14	use crate::prefs::Prefs;
+15	use crate::state::{split_and_sort_captured, CapturedSort};
+16	
+17	#[component]
+18	pub fn CapturedStrip(#[prop(into)] view: Signal<PlayerView>) -> impl IntoView {
+19	    let prefs = expect_context::<Prefs>();
+20	    let sort_signal = prefs.captured_sort;
+21	    let style = Style::Cjk;
+22	
+23	    let red_pieces = move || {
+24	        let v = view.get();
+25	        let (red, _black) = split_and_sort_captured(&v.captured, sort_signal.get());
+26	        red
+27	    };
+28	    let black_pieces = move || {
+29	        let v = view.get();
+30	        let (_red, black) = split_and_sort_captured(&v.captured, sort_signal.get());
+31	        black
+32	    };
+33	
+34	    // Hide the strip entirely until at least one piece has died — keeps
+35	    // the board area uncluttered for opening positions.
+36	    let any_captured = move || !view.get().captured.is_empty();
+37	
+38	    let toggle_label = move || match sort_signal.get() {
+39	        CapturedSort::Time => "⏱ time",
+40	        CapturedSort::Rank => "📊 rank",
+41	    };
+42	    let on_toggle = move |_| sort_signal.update(|s| *s = s.toggled());
+43	
+44	    view! {
+45	        <Show when=any_captured>
+46	            <section class="captured-strip" aria-label="Captured pieces">
+47	                <div class="captured-header">
+48	                    <h4>"Captured 死亡"</h4>
+49	                    <button
+50	                        class="captured-toggle btn"
+51	                        on:click=on_toggle
+52	                        title="Toggle sort: time / rank"
+53	                    >
+54	                        {toggle_label}
+55	                    </button>
+56	                </div>
+57	                <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style/>
+58	                <CapturedRow side_class="red"   label="紅" pieces=Signal::derive(red_pieces)   style=style/>
+59	            </section>
+60	        </Show>
+61	    }
+62	}
+63	
+64	#[component]
+65	fn CapturedRow(
+66	    side_class: &'static str,
+67	    label: &'static str,
+68	    #[prop(into)] pieces: Signal<Vec<Piece>>,
+69	    style: Style,
+70	) -> impl IntoView {
+71	    let row_class = format!("captured-row {side_class}");
+72	    let glyphs = move || {
+73	        let ps = pieces.get();
+74	        if ps.is_empty() {
+75	            view! { <span class="captured-empty">"—"</span> }.into_view()
+76	        } else {
+77	            ps.into_iter()
+78	                .map(|p| {
+79	                    let g = glyph::glyph(p.kind, p.side, style).to_string();
+80	                    view! {
+81	                        <span class="captured-piece" aria-label=format!("{:?}", p.kind)>
+82	                            <span class="captured-piece-glyph">{g}</span>
+83	                        </span>
+84	                    }
+85	                })
+86	                .collect_view()
+87	        }
+88	    };
+89	    view! {
+90	        <div class=row_class>
+91	            <span class="captured-label">{label}</span>
+92	            <div class="captured-pieces">{glyphs}</div>
+93	        </div>
+94	    }
+95	}
+96
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:20Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:21Z)**_
+
+Now I'll wire the mirror flag through and refactor CapturedStrip to support split slots. First update Board to add the mirror prop:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:55Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:15:57Z)**_
+
+Now refactor CapturedStrip to support split rendering:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Below-board "captured pieces" strip ("graveyard").
+//!
+//! Renders as two horizontal rows directly under the Board: each side's
+//! dead pieces shown as small disc-icons styled like the board pieces
+//! (red glyph on a paler tile-back). A tiny toggle in the header flips
+//! the sort order between chronological (default) and rank. The signal
+//! lives on `Prefs` so the choice persists in `localStorage`.
+//!
+//! Mirror-mode split: in pass-and-play mirror mode the two players sit
+//! on opposite sides of the device. Each player's captured-pieces shelf
+//! ("trophies") sits directly in front of them — the strip splits into
+//! two slot positions ([`CapturedSlot::MirroredAbove`] /
+//! [`CapturedSlot::MirroredBelow`]) and the page mounts one of each
+//! flanking the board. The above-strip is rotated 180° via CSS so the
+//! glyphs read upright when viewed from the far seat.
+
+use chess_core::piece::Piece;
+use chess_core::view::PlayerView;
+use leptos::*;
+
+use crate::glyph::{self, Style};
+use crate::prefs::Prefs;
+use crate::state::{split_and_sort_captured, CapturedSort};
+
+/// Which row(s) this `<CapturedStrip>` instance renders.
+///
+/// - `Combined` (default — non-mirror layout) renders both rows under
+///   the board with a shared header + sort toggle.
+/// - `MirroredAbove` renders only Red captured pieces (Black's
+///   trophies), positioned ABOVE the board and flipped 180° so the
+///   Black player on the opposite seat reads them upright.
+/// - `MirroredBelow` renders only Black captured pieces (Red's
+///   trophies), positioned BELOW the board with the shared header
+///   (sort toggle stays on this strip — Red has access to it; Black's
+///   inverted strip omits the header to avoid duplicating the toggle).
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CapturedSlot {
+    #[default]
+    Combined,
+    MirroredAbove,
+    MirroredBelow,
+}
+
+#[component]
+pub fn CapturedStrip(
+    #[prop(into)] view: Signal<PlayerView>,
+    #[prop(optional)] slot: CapturedSlot,
+) -> impl IntoView {
+    let prefs = expect_context::<Prefs>();
+    let sort_signal = prefs.captured_sort;
+    let style = Style::Cjk;
+
+    let red_pieces = move || {
+        let v = view.get();
+        let (red, _black) = split_and_sort_captured(&v.captured, sort_signal.get());
+        red
+    };
+    let black_pieces = move || {
+        let v = view.get();
+        let (_red, black) = split_and_sort_captured(&v.captured, sort_signal.get());
+        black
+    };
+
+    // Hide the strip entirely until at least one piece has died — keeps
+    // the board area uncluttered for opening positions.
+    let any_captured = move || !view.get().captured.is_empty();
+
+    let toggle_label = move || match sort_signal.get() {
+        CapturedSort::Time => "⏱ time",
+        CapturedSort::Rank => "📊 rank",
+    };
+    let on_toggle = move |_| sort_signal.update(|s| *s = s.toggled());
+
+    match slot {
+        CapturedSlot::Combined => view! {
+            <Show when=any_captured>
+                <section class="captured-strip" aria-label="Captured pieces">
+                    <div class="captured-header">
+                        <h4>"Captured 死亡"</h4>
+                        <button
+                            class="captured-toggle btn"
+                            on:click=on_toggle
+                            title="Toggle sort: time / rank"
+                        >
+                            {toggle_label}
+                        </button>
+                    </div>
+                    <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
+                    <CapturedRow side_class="red"   label="紅" pieces=Signal::derive(red_pieces)   style=style mirrored=false/>
+                </section>
+            </Show>
+        }
+        .into_view(),
+        CapturedSlot::MirroredAbove => view! {
+            <Show when=any_captured>
+                <section class="captured-strip captured-strip--mirrored-above" aria-label="Captured Red pieces (Black's trophies)">
+                    // No header on the top strip — sort toggle lives on the bottom strip
+                    // so it isn't duplicated. Black player can still see/sort via the
+                    // bottom (Red's) toggle indirectly since sort affects both rows.
+                    <CapturedRow side_class="red" label="紅" pieces=Signal::derive(red_pieces) style=style mirrored=true/>
+                </section>
+            </Show>
+        }
+        .into_view(),
+        CapturedSlot::MirroredBelow => view! {
+            <Show when=any_captured>
+                <section class="captured-strip captured-strip--mirrored-below" aria-label="Captured Black pieces (Red's trophies)">
+                    <div class="captured-header">
+                        <h4>"Captured 死亡"</h4>
+                        <button
+                            class="captured-toggle btn"
+                            on:click=on_toggle
+                            title="Toggle sort: time / rank"
+                        >
+                            {toggle_label}
+                        </button>
+                    </div>
+                    <CapturedRow side_class="black" label="黑" pieces=Signal::derive(black_pieces) style=style mirrored=false/>
+                </section>
+            </Show>
+        }
+        .into_view(),
+    }
+}
+
+#[component]
+fn CapturedRow(
+    side_class: &'static str,
+    label: &'static str,
+    #[prop(into)] pieces: Signal<Vec<Piece>>,
+    style: Style,
+    mirrored: bool,
+) -> impl IntoView {
+    let row_class = if mirrored {
+        format!("captured-row captured-row--mirrored {side_class}")
+    } else {
+        format!("captured-row {side_class}")
+    };
+    let glyphs = move || {
+        let ps = pieces.get();
+        if ps.is_empty() {
+            view! { <span class="captured-empty">"—"</span> }.into_view()
+        } else {
+            ps.into_iter()
+                .map(|p| {
+                    let g = glyph::glyph(p.kind, p.side, style).to_string();
+                    view! {
+                        <span class="captured-piece" aria-label=format!("{:?}", p.kind)>
+                            <span class="captured-piece-glyph">{g}</span>
+                        </span>
+                    }
+                })
+                .collect_view()
+        }
+    };
+    view! {
+        <div class=row_class>
+            <span class="captured-label">{label}</span>
+            <div class="captured-pieces">{glyphs}</div>
+        </div>
+    }
+}
+
+```
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:29Z)**_
+
+Now wire the mirror flag through local.rs:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:34Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:42Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:48Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:16:51Z)**_
+
+Now update the view to use mirror — pass mirror_black to Board, and split CapturedStrip into above/below:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:05Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:08Z)**_
+
+Now add CSS for the mirror modifier:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:09Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+285	}
+286	
+287	/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+288	 * Two stacked rows — Black dead on top (Red's trophies), Red dead below
+289	 * (Black's trophies) — each piece a small disc-icon mirroring board style. */
+290	.captured-strip {
+291	    margin-top: 0.6rem;
+292	    padding: 0.55rem 0.75rem 0.65rem;
+293	    border-top: 1px dashed var(--grid);
+294	    display: grid;
+295	    gap: 0.35rem;
+296	}
+297	.captured-header {
+298	    display: flex;
+299	    justify-content: space-between;
+300	    align-items: baseline;
+301	    gap: 0.5rem;
+302	}
+303	.captured-header h4 {
+304	    margin: 0;
+305	    font-size: 0.85rem;
+306	    color: var(--muted);
+307	    font-weight: 600;
+308	    letter-spacing: 0.04em;
+309	    text-transform: uppercase;
+310	}
+311	.captured-toggle {
+312	    font-size: 0.75rem;
+313	    padding: 0.1rem 0.55rem;
+314	    line-height: 1.25;
+315	}
+316	.captured-row {
+317	    display: flex;
+318	    align-items: center;
+319	    gap: 0.45rem;
+320	    min-height: 1.7rem;
+321	}
+322	.captured-label {
+323	    color: var(--muted);
+324	    font-size: 0.85rem;
+325	    width: 1.4rem;
+326	    flex-shrink: 0;
+327	    text-align: center;
+328	}
+329	.captured-row.red .captured-label { color: var(--red); }
+330	.captured-pieces {
+331	    display: flex;
+332	    flex-wrap: wrap;
+333	    gap: 0.25rem;
+334	    align-items: center;
+335	    flex: 1;
+336	}
+337	.captured-piece {
+338	    display: inline-grid;
+339	    place-items: center;
+340	    width: 1.65rem;
+341	    height: 1.65rem;
+342	    border-radius: 50%;
+343	    background: var(--tile-disc);
+344	    border: 1px solid var(--grid);
+345	    line-height: 1;
+346	}
+347	.captured-piece-glyph {
+348	    font-size: 0.95rem;
+349	    font-weight: 700;
+350	    user-select: none;
+351	}
+352	.captured-row.red .captured-piece-glyph { color: var(--red); }
+353	.captured-row.black .captured-piece-glyph { color: var(--black); }
+354	.captured-empty { color: var(--muted); font-size: 0.85rem; }
+355	
+356	/* Three-kingdom WIP overlay. */
+357	.wip-overlay {
+358	    position: absolute;
+359	    inset: 0;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:18Z)**_
+
+Now run cargo check to catch errors:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check chess-web wasm build
+
+`cargo check -p chess-web --target wasm32-unknown-unknown 2>&1 | tail -60`
+
+```text
+    |
+    = note: the full name for the type has been written to '/Users/david/Documents/Program/Chinese-Chess_Xiangqi/target/wasm32-unknown-unknown/debug/deps/chess_web-1806ed8654401a30.long-type-16843090657284363545.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared type `CapturedStrip`
+   --> clients/chess-web/src/pages/local.rs:644:22
+    |
+644 |                     <CapturedStrip view=view slot=CapturedSlot::MirroredAbove/>
+    |                      ^^^^^^^^^^^^^ use of undeclared type `CapturedStrip`
+    |
+help: an enum with a similar name exists
+    |
+644 -                     <CapturedStrip view=view slot=CapturedSlot::MirroredAbove/>
+644 +                     <CapturedSlot view=view slot=CapturedSlot::MirroredAbove/>
+    |
+help: `CapturedStrip` is defined here, but is not a type
+    |
+ 12 - use crate::components::captured::{CapturedSlot, CapturedStrip};
+ 12 + use crate::components::captured::{CapturedSlot, };
+    |
+
+error[E0599]: no method named `captured_strip` found for struct `ShowPropsBuilder<W, TypedBuilderFields>` in the current scope
+   --> clients/chess-web/src/pages/local.rs:640:5
+    |
+640 |       view! {
+    |  _____^
+641 | |         <section class="game-page">
+642 | |             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
+643 | |                 <Show when=move || mirror && !wip>
+...   |
+709 | |         </section>
+710 | |     }
+    | |_____^ method not found in `ShowPropsBuilder<{closure@local.rs:687:28}, ((), (...,), ())>`
+    |
+    = note: the full name for the type has been written to '/Users/david/Documents/Program/Chinese-Chess_Xiangqi/target/wasm32-unknown-unknown/debug/deps/chess_web-1806ed8654401a30.long-type-6792094115397265646.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared type `CapturedStrip`
+   --> clients/chess-web/src/pages/local.rs:688:22
+    |
+688 |                     <CapturedStrip view=view slot=CapturedSlot::MirroredBelow/>
+    |                      ^^^^^^^^^^^^^ use of undeclared type `CapturedStrip`
+    |
+help: an enum with a similar name exists
+    |
+688 -                     <CapturedStrip view=view slot=CapturedSlot::MirroredBelow/>
+688 +                     <CapturedSlot view=view slot=CapturedSlot::MirroredBelow/>
+    |
+help: `CapturedStrip` is defined here, but is not a type
+    |
+ 12 - use crate::components::captured::{CapturedSlot, CapturedStrip};
+ 12 + use crate::components::captured::{CapturedSlot, };
+    |
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.
+warning: `chess-web` (lib) generated 1 warning
+error: could not compile `chess-web` (lib) due to 4 previous errors; 1 warning emitted
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:43Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find prop(optional) usage in chess-web
+
+`grep -rn 'prop(optional)' /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src --include='*.rs' | head -20`
+
+```text
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/ws_setup.rs:12:    #[prop(optional)] detail: Option<&'static str>,
+/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs:47:    #[prop(optional)] slot: CapturedSlot,
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:52Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:54Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:17:58Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:04Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check chess-web wasm build
+
+`cargo check -p chess-web --target wasm32-unknown-unknown 2>&1 | tail -40`
+
+```text
+    |
+
+error[E0599]: no method named `captured_strip` found for struct `ShowPropsBuilder<W, TypedBuilderFields>` in the current scope
+   --> clients/chess-web/src/pages/local.rs:640:5
+    |
+640 |       view! {
+    |  _____^
+641 | |         <section class="game-page">
+642 | |             <div class=move || if mirror { "board-pane board-pane--mirror" } else { "board-pane" }>
+643 | |                 <Show when=move || mirror && !wip>
+...   |
+709 | |         </section>
+710 | |     }
+    | |_____^ method not found in `ShowPropsBuilder<{closure@local.rs:687:28}, ((), (...,), ())>`
+    |
+    = note: the full name for the type has been written to '/Users/david/Documents/Program/Chinese-Chess_Xiangqi/target/wasm32-unknown-unknown/debug/deps/chess_web-1806ed8654401a30.long-type-1417729983829624710.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared type `CapturedStrip`
+   --> clients/chess-web/src/pages/local.rs:688:22
+    |
+688 |                     <CapturedStrip view=view slot={CapturedSlot::MirroredBelow}/>
+    |                      ^^^^^^^^^^^^^ use of undeclared type `CapturedStrip`
+    |
+help: an enum with a similar name exists
+    |
+688 -                     <CapturedStrip view=view slot={CapturedSlot::MirroredBelow}/>
+688 +                     <CapturedSlot view=view slot={CapturedSlot::MirroredBelow}/>
+    |
+help: `CapturedStrip` is defined here, but is not a type
+    |
+ 12 - use crate::components::captured::{CapturedSlot, CapturedStrip};
+ 12 + use crate::components::captured::{CapturedSlot, };
+    |
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.
+warning: `chess-web` (lib) generated 1 warning
+error: could not compile `chess-web` (lib) due to 4 previous errors; 1 warning emitted
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:12Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:12Z)**_
+
+`slot` is a reserved name in Leptos's view macro. Renaming to `placement`:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:13Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs has been updated. All occurrences were successfully replaced. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:16Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/captured.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:20Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated. All occurrences were successfully replaced. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:23Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/local.rs has been updated. All occurrences were successfully replaced. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check chess-web wasm build
+
+`cargo check -p chess-web --target wasm32-unknown-unknown 2>&1 | tail -30`
+
+```text
+    Checking chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.52s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:32Z)**_
+
+Clean. Now run tests, fmt, clippy:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run chess-web routes tests
+
+`cargo test -p chess-web --lib routes::tests 2>&1 | tail -25`
+
+```text
+test routes::tests::xiangqi_depth_garbage_falls_back_to_none ... ok
+test routes::tests::xiangqi_default_mode_omits_ai_query ... ok
+test routes::tests::xiangqi_depth_omitted_when_default ... ok
+test routes::tests::xiangqi_depth_round_trips ... ok
+test routes::tests::xiangqi_depth_zero_clamped_to_one ... ok
+test routes::tests::xiangqi_engine_unknown_token_falls_back_to_default ... ok
+test routes::tests::xiangqi_engine_v1_round_trips ... ok
+test routes::tests::xiangqi_engine_v2_alias_parses ... ok
+test routes::tests::xiangqi_engine_v3_alias_parses ... ok
+test routes::tests::xiangqi_hints_and_debug_can_coexist ... ok
+test routes::tests::xiangqi_hints_default_off_omitted_from_query ... ok
+test routes::tests::xiangqi_hints_round_trips ... ok
+test routes::tests::xiangqi_mirror_default_off_omitted ... ok
+test routes::tests::xiangqi_mirror_dropped_in_vs_ai_emission ... ok
+test routes::tests::xiangqi_mirror_round_trips_in_pvp ... ok
+test routes::tests::xiangqi_pvp_hints_emitted_even_without_ai_mode ... ok
+test routes::tests::xiangqi_pvp_hints_round_trips ... ok
+test routes::tests::xiangqi_strict_query_yields_strict_ruleset ... ok
+test routes::tests::xiangqi_variation_omitted_when_default ... ok
+test routes::tests::xiangqi_variation_round_trips ... ok
+test routes::tests::xiangqi_variation_unknown_token_falls_back_to_none ... ok
+test routes::tests::xiangqi_vs_ai_query_round_trips ... ok
+
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + clippy check
+
+`cargo fmt --check 2>&1 | tail -20 && echo "---CLIPPY---" && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -30`
+
+```text
+Diff in /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs:62:
+     let style = Style::Cjk;
+     let highlighted_pv: Signal<Vec<Move>> =
+         highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
+-    let mirror_black: Signal<bool> =
+-        mirror_black.unwrap_or_else(|| Signal::derive(|| false));
++    let mirror_black: Signal<bool> = mirror_black.unwrap_or_else(|| Signal::derive(|| false));
+ 
+     view! {
+         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
+---CLIPPY---
+    Checking chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.22s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:18:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Apply rustfmt
+
+`cargo fmt 2>&1 | tail -5`
+
+```text
+[This command modified 1 file you've previously read: clients/chess-web/src/components/board.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:19:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt check + workspace tests
+
+`cargo fmt --check 2>&1 | tail -5 && echo "---FULL TESTS---" && cargo test --workspace 2>&1 | tail -15`
+
+```text
+---FULL TESTS---
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:19:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Test summary
+
+`cargo test --workspace 2>&1 | grep -E "(test result|FAILED|error)" | head -20`
+
+```text
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.97s
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test replay::tests::play_to_out_of_range_errors ... ok
+test result: ok. 89 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:19:21Z)**_
+
+All green. Let me verify the wasm build cleanly compiles too and check for any clippy warnings on wasm:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:19:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM build verification
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -5 && echo "---CHESS-CORE WASM---" && cargo build --target wasm32-unknown-unknown -p chess-core 2>&1 | tail -3`
+
+```text
+   Compiling chess-web v0.1.0 (/Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.16s
+---CHESS-CORE WASM---
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:19:50Z)**_
+
+Build clean across native, wasm, fmt, clippy. All 4 pre-push gates green plus 3 new routes round-trip tests.
+
+Summary of changes:
+
+**Banqi seed overflow** — `clients/chess-web/style.css:563-573`: added `width: 100%; max-width: 100%; box-sizing: border-box` to `.text-input` so the input respects its column on narrow viewports.
+
+**Mirror mode** — opt-in URL param `?mirror=1`, scoped to xiangqi pass-and-play:
+- `routes.rs`: new `mirror: bool` field on `LocalRulesParams`, parsed from `?mirror=1`, only emitted when `mode == Pvp` (silent drop in vs-AI). 3 new round-trip tests.
+- `pages/picker.rs`: new `mirror_black` checkbox in a "Seat layout" fieldset, gated on `mode == PassAndPlay`.
+- `components/board.rs`: new `mirror_black: Option<Signal<bool>>` prop. When set + piece is Black, the per-piece SVG `<g>` transform appends `rotate(180)` around the local origin so just the glyph rotates (disc unchanged, hit-test untouched).
+- `components/captured.rs`: refactored to take a `placement: CapturedSlot` prop (`Combined` default, `MirroredAbove` red trophies above, `MirroredBelow` black trophies below). The above-strip uses `.captured-row--mirrored` (rotated 180° in CSS) so glyphs read upright for the player on the far seat.
+- `pages/local.rs`: threads `mirror` through `LocalGame`, mounting `<CapturedStrip placement=MirroredAbove/>` before the board and `<CapturedStrip placement=MirroredBelow/>` after when active.
+
+**Reserved-name gotcha**: Leptos's `view!` macro treats `slot=` as a directive — the prop had to be renamed to `placement`.
+
+Try it locally: `make play-web` → Xiangqi → Pass-and-play → check 鏡像黑方 → Start. URL gains `?mirror=1`; Black pieces render upside-down; captured pieces split with red trophies above (rotated for Black) and black trophies below.
+
+---
+
+_**User (2026-05-10 09:22:23Z)**_
+
+不錯 目前小建議是可以把上和右的坐標展示也鏡像 這樣 雙方都能有顯示爲正的坐標
+然後可以 git commit & push & check gh CI
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-10 09:22:36Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-10 09:22:37Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/board.rs`
+
+```text
+163	/// landed *inside* the disc of any edge-rank/edge-file piece (PAD=30
+164	/// vs piece radius=24 → only 6 px clearance) so the corner labels
+165	/// were invisible whenever a 俥/車 sat on a0/i0/a9/i9. Negative-coord
+166	/// placement keeps them clear of all piece geometry.
+167	///
+168	/// Xiangqi only — banqi has no algebraic-style notation in this codebase.
+169	fn coord_labels(shape: BoardShape, rows: u8, cols: u8, observer: Side) -> View {
+170	    if !matches!(shape, BoardShape::Xiangqi9x10) {
+171	        return ().into_view();
+172	    }
+173	    let board = chess_core::board::Board::new(shape);
+174	    let mut out: Vec<View> = Vec::with_capacity((cols as usize + rows as usize) * 2);
+175	
+176	    // File labels (a..i) — read the file from the bottom-edge cell of
+177	    // each column (any row would do; bottom-edge avoids needing to
+178	    // worry about non-rectangular shapes), then mirror at the top edge.
+179	    let bottom_row = rows - 1;
+180	    let view_h = (rows as i32 - 1) * CELL + PAD * 2;
+181	    // Halfway up the top margin (negative coords): well clear of
+182	    // top-edge piece discs (whose top edge is at y = PAD - TILE_RADIUS = 6).
+183	    let label_y_top = -LABEL_MARGIN / 2;
+184	    // Halfway down the bottom margin (beyond view_h): clear of
+185	    // bottom-edge piece discs (whose bottom edge is at y = view_h - PAD + TILE_RADIUS).
+186	    let label_y_bot = view_h + LABEL_MARGIN / 2;
+187	    for col in 0..cols {
+188	        let Some(sq) = square_at_display(bottom_row, col, observer, shape) else { continue };
+189	        let (f, _) = board.file_rank(sq);
+190	        let ch = (b'a' + f.0) as char;
+191	        let x = PAD + col as i32 * CELL;
+192	        out.push(
+193	            view! {
+194	                <text class="board-coord" x=x y=label_y_top text-anchor="middle" dominant-baseline="central">
+195	                    {ch.to_string()}
+196	                </text>
+197	            }
+198	            .into_view(),
+199	        );
+200	        out.push(
+201	            view! {
+202	                <text class="board-coord" x=x y=label_y_bot text-anchor="middle" dominant-baseline="central">
+203	                    {ch.to_string()}
+204	                </text>
+205	            }
+206	            .into_view(),
+207	        );
+208	    }
+209	
+210	    // Rank labels (0..9) — read the rank from the left-edge cell of
+211	    // each row, then mirror at the right edge.
+212	    let view_w = (cols as i32 - 1) * CELL + PAD * 2;
+213	    let label_x_left = -LABEL_MARGIN / 2; // ≈ -9
+214	    let label_x_right = view_w + LABEL_MARGIN / 2; // ≈ view_w + 9
+215	    for row in 0..rows {
+216	        let Some(sq) = square_at_display(row, 0, observer, shape) else { continue };
+217	        let (_, r) = board.file_rank(sq);
+218	        let digit = r.0;
+219	        let y = PAD + row as i32 * CELL;
+220	        out.push(
+221	            view! {
+222	                <text class="board-coord" x=label_x_left y=y text-anchor="middle" dominant-baseline="central">
+223	                    {digit.to_string()}
+224	                </text>
+225	            }
+226	            .into_view(),
+227	        );
+228	        out.push(
+229	            view! {
+230	                <text class="board-coord" x=label_x_right y=y text-anchor="middle" dominant-baseline="central">
+231	                    {digit.to_string()}
+232	                </text>
+233	            }
+234	            .into_view(),
+235	        );
+236	    }
+237	    out.into_view()
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:22:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Users/david/Documents/Program/Chinese-Chess_Xiangqi/clients/chess-web/src/components/board.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:07Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + clippy
+
+`cargo fmt && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -10`
+
+```text
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.73s
+[This command modified 1 file you've previously read: clients/chess-web/src/components/board.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:24Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + tests
+
+`cargo fmt --check 2>&1 | head -20 && echo "---" && cargo test --workspace 2>&1 | grep -E "(FAILED|error|test result: ok)" | head -5`
+
+```text
+---
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.72s
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test replay::tests::play_to_out_of_range_errors ... ok
+test result: ok. 89 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM build
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.29s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:31Z)**_
+
+All gates green. Committing and pushing:
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+git status + diff stat
+
+`git status && echo "---DIFF STAT---" && git diff --stat`
+
+```text
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .claude/plans/rust-wasm-pwa-mobile-streamed-wall.md
+	modified:   .specstory/history/2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md
+	modified:   clients/chess-web/src/components/board.rs
+	modified:   clients/chess-web/src/components/captured.rs
+	modified:   clients/chess-web/src/pages/local.rs
+	modified:   clients/chess-web/src/pages/picker.rs
+	modified:   clients/chess-web/src/routes.rs
+	modified:   clients/chess-web/style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+---DIFF STAT---
+ .../plans/rust-wasm-pwa-mobile-streamed-wall.md    |  414 +-
+ .../2026-05-10_04-44-58Z-rust-wasm-pwa-mobile.md   | 8776 ++++++++++++++++++++
+ clients/chess-web/src/components/board.rs          |   48 +-
+ clients/chess-web/src/components/captured.rs       |  105 +-
+ clients/chess-web/src/pages/local.rs               |   38 +-
+ clients/chess-web/src/pages/picker.rs              |   18 +
+ clients/chess-web/src/routes.rs                    |   41 +
+ clients/chess-web/style.css                        |   19 +
+ 8 files changed, 9165 insertions(+), 294 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+recent commits
+
+`git log -5 --oneline`
+
+```text
+a67907c docs(pitfalls): three local-serve traps from the PWA shake-down
+0b3bbdd feat(chess-web): PWA — installable, offline-capable, version-aware
+bbaf9e1 docs(backlog): add v6 pondering + opening book + sound fx + hint spinner
+ae9d417 fix(chess-web): board coord labels — extend viewBox into negative space
+caf6365 fix(chess-web): hint mode UX overhaul (PvP emit, button-toggle, coords)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit the changes
+
+```bash
+git add clients/chess-web/src/components/board.rs clients/chess-web/src/components/captured.rs clients/chess-web/src/pages/local.rs clients/chess-web/src/pages/picker.rs clients/chess-web/src/routes.rs clients/chess-web/style.css && git commit -m "$(cat <<'EOF'
+feat(chess-web): pass-and-play mirror mode + banqi seed input fix
+
+- New `?mirror=1` opt-in for xiangqi pass-and-play: rotates Black piece
+  glyphs 180° (per-piece SVG transform) so a player on the opposite seat
+  reads them upright. Top file labels and right rank labels also rotate
+  so both players see upright coordinates. Picker exposes a "Seat
+  layout" checkbox gated on PassAndPlay.
+- CapturedStrip refactored to take a `placement: CapturedSlot` prop.
+  In mirror mode, captured Red pieces (Black's trophies) sit ABOVE the
+  board with row rotated 180° via CSS; captured Black pieces (Red's
+  trophies) sit BELOW. Sort toggle stays on the bottom strip to avoid
+  duplication. Note: `slot=` is reserved by Leptos's view! macro —
+  rename to `placement` if naming a similar prop.
+- `.text-input` gets `width: 100%; max-width: 100%; box-sizing: border-box`
+  so the Banqi Seed input no longer overflows its column on narrow
+  viewports (visible on tablet/phone widths at the picker's
+  `minmax(220px, 1fr)` lower bound).
+
+Routes: 3 new round-trip tests for `mirror=1` (PvP round-trip,
+default-off omit, vs-AI silent drop on emission).
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -10
+```
+
+```text
+[main 057d792] feat(chess-web): pass-and-play mirror mode + banqi seed input fix
+ 6 files changed, 235 insertions(+), 34 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:23:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Push to origin
+
+`git push origin main 2>&1 | tail -10`
+
+```text
+To github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
+   a67907c..057d792  main -> main
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:24:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check CI runs
+
+`sleep 8 && gh run list --branch main --limit 4 2>&1 | head -10`
+
+```text
+in_progress		feat(chess-web): pass-and-play mirror mode + banqi seed input fix	ci	main	push	25625123786	9s	2026-05-10T09:23:58Z
+in_progress		feat(chess-web): pass-and-play mirror mode + banqi seed input fix	pages	main	push	25625123787	9s	2026-05-10T09:23:58Z
+completed	success	docs(pitfalls): three local-serve traps from the PWA shake-down	pages	main	push	25624455144	1m5s	2026-05-10T08:49:41Z
+completed	success	docs(pitfalls): three local-serve traps from the PWA shake-down	ci	main	push	25624455153	1m22s	2026-05-10T08:49:41Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:25:28Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Watch CI runs to completion
+
+`gh run watch 25625123786 --exit-status 2>&1 | tail -5 ; echo "---PAGES---" ; gh run watch 25625123787 --exit-status 2>&1 | tail -5`
+
+```text
+  ✓ Run actions/checkout@v5
+  ✓ Run dtolnay/rust-toolchain@stable
+  ✓ Run cargo fmt --all -- --check
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+---PAGES---
+Run pages (25625123787) has already completed with 'success'
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:25:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+final CI status
+
+`gh run list --branch main --limit 2 2>&1 | head -5`
+
+```text
+completed	success	feat(chess-web): pass-and-play mirror mode + banqi seed input fix	pages	main	push	25625123787	1m0s	2026-05-10T09:23:58Z
+completed	success	feat(chess-web): pass-and-play mirror mode + banqi seed input fix	ci	main	push	25625123786	1m22s	2026-05-10T09:23:58Z
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-10 09:25:39Z)**_
+
+Both CI runs ✅ green (`ci` 1m22s, `pages` 1m00s). Live at https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/ — pick Xiangqi → Pass-and-play → 鏡像黑方 → both seats now see upright glyphs *and* upright file/rank labels on their facing edges.
