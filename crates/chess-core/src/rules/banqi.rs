@@ -317,6 +317,156 @@ pub fn can_capture(attacker: PieceKind, defender: PieceKind) -> bool {
     }
 }
 
+// ---- Threat detection (UI Display setting helpers) -------------------------
+
+/// Whether `from` (a revealed `attacker`-side piece) can capture
+/// whatever sits on `target` in a single ply, under the active
+/// banqi rules. Used by both `attackers_of` (SEE) and
+/// `attacked_pieces` (the "被攻擊" highlight set).
+///
+/// **Hidden-piece policy**: hidden attackers never count — we treat
+/// face-down pieces as "no information available", consistent with
+/// banqi's information-set semantics. Hidden TARGETS still count
+/// (the opponent could still reveal-and-take you on their turn),
+/// but the threat-highlight UI is concerned with "is THIS REVEALED
+/// piece of mine in danger", so the upstream loop in
+/// `attacked_pieces` already filters to revealed defenders.
+fn can_attack(
+    board: &Board,
+    from: Square,
+    attacker: Piece,
+    target: Square,
+    house: HouseRules,
+) -> bool {
+    use crate::coord::Direction;
+    let target_pos = match board.get(target) {
+        Some(p) => p,
+        None => return false,
+    };
+    if target_pos.piece.side == attacker.side {
+        return false;
+    }
+
+    // Cannon: jump-over-screen only. Rank ignored on the capture.
+    if attacker.kind == PieceKind::Cannon {
+        for &dir in &Direction::ORTHOGONAL {
+            let (_walked, screen) = board.ray(from, dir);
+            let Some(screen_sq) = screen else { continue };
+            let mut cursor = screen_sq;
+            while let Some(next) = board.step(cursor, dir) {
+                match board.get(next) {
+                    None => cursor = next,
+                    Some(_) => {
+                        if next == target {
+                            return true;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // Chariot rush — multi-square ray, rank-ignoring once a gap
+    // exists (with-gap captures any piece per the house rule).
+    if attacker.kind == PieceKind::Chariot && house.contains(HouseRules::CHARIOT_RUSH) {
+        for &dir in &Direction::ORTHOGONAL {
+            let (walked, blocker) = board.ray(from, dir);
+            if blocker == Some(target) && !walked.is_empty() {
+                return true;
+            }
+        }
+    }
+
+    // 馬斜 — diagonal one-step capture, any rank.
+    if attacker.kind == PieceKind::Horse && house.contains(HouseRules::HORSE_DIAGONAL) {
+        for &dir in &Direction::DIAGONAL {
+            if board.step(from, dir) == Some(target) {
+                return true;
+            }
+        }
+    }
+
+    // Standard 1-step orthogonal capture (rank rules apply).
+    for &dir in &Direction::ORTHOGONAL {
+        if board.step(from, dir) == Some(target)
+            && can_capture(attacker.kind, target_pos.piece.kind)
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Every revealed `attacker`-side piece that can capture the contents
+/// of `target` in one ply. Mirrors the xiangqi version but applies
+/// banqi's rank rules and excludes face-down pieces (which carry no
+/// public-information attack threat).
+pub fn attackers_of(
+    board: &Board,
+    target: Square,
+    attacker: Side,
+    house: HouseRules,
+) -> Vec<(Square, Piece)> {
+    let mut out = Vec::new();
+    for sq in board.squares() {
+        let Some(pos) = board.get(sq) else { continue };
+        if !pos.revealed || pos.piece.side != attacker {
+            continue;
+        }
+        if can_attack(board, sq, pos.piece, target, house) {
+            out.push((sq, pos.piece));
+        }
+    }
+    out
+}
+
+/// Revealed `defender`-side pieces that any revealed opponent piece
+/// can capture in one ply (banqi "被攻擊"). Hidden defenders are
+/// excluded (the upstream UI doesn't have a stable identity for
+/// them) and hidden attackers don't count as threats — see
+/// `can_attack` rationale.
+pub fn attacked_pieces(state: &GameState, defender: Side) -> Vec<Square> {
+    let board = &state.board;
+    let house = state.rules.house;
+    let attacker_side = defender.opposite();
+    let mut out = Vec::new();
+    for sq in board.squares() {
+        let Some(pos) = board.get(sq) else { continue };
+        if !pos.revealed || pos.piece.side != defender {
+            continue;
+        }
+        if attackers_of(board, sq, attacker_side, house).is_empty() {
+            continue;
+        }
+        out.push(sq);
+    }
+    out
+}
+
+/// Subset of [`attacked_pieces`] whose Static Exchange Evaluation
+/// predicts a net loss for `defender` (banqi "被捉").
+///
+/// Cannon defenders are conservatively flagged whenever attacked
+/// even if SEE returns 0 — the rank-asymmetric capture rules
+/// (cannon-only-via-jump means it can't recapture orthogonally) make
+/// the SEE value misleading in some chain shapes. Better to err
+/// toward "warn the user" than miss a hung cannon.
+pub fn net_loss_pieces(state: &GameState, defender: Side) -> Vec<Square> {
+    let attacker = defender.opposite();
+    attacked_pieces(state, defender)
+        .into_iter()
+        .filter(|&sq| {
+            let Some(pos) = state.board.get(sq) else { return false };
+            if pos.piece.kind == PieceKind::Cannon {
+                return true;
+            }
+            crate::eval::see(state, sq, attacker) > 0
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

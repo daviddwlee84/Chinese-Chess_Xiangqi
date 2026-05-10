@@ -8,6 +8,7 @@
 pub mod board;
 pub mod coord;
 pub mod error;
+pub mod eval;
 pub mod moves;
 pub mod notation;
 pub mod piece;

@@ -246,6 +246,27 @@ pub fn is_attacked(board: &Board, target: Square, attacker: Side) -> bool {
     false
 }
 
+/// Every `attacker`-side piece that can capture the contents of
+/// `target` in a single ply. Returns `(from_square, piece)` pairs;
+/// callers (notably [`crate::eval::see`]) typically pick the
+/// least-valuable to simulate optimal exchanges.
+///
+/// Walks the same per-piece geometry as `is_attacked`, but collects
+/// every match instead of short-circuiting on the first.
+pub fn attackers_of(board: &Board, target: Square, attacker: Side) -> Vec<(Square, Piece)> {
+    let mut out = Vec::new();
+    for sq in board.squares() {
+        let Some(pos) = board.get(sq) else { continue };
+        if pos.piece.side != attacker || !pos.revealed {
+            continue;
+        }
+        if attacks_square(board, sq, pos.piece, target) {
+            out.push((sq, pos.piece));
+        }
+    }
+    out
+}
+
 fn attacks_square(board: &Board, from: Square, piece: Piece, target: Square) -> bool {
     let mut moves: MoveList = SmallVec::new();
     gen_for_piece(board, from, piece, &mut moves);
@@ -302,6 +323,124 @@ fn generals_face(board: &Board, my_general: Square) -> bool {
         }
         cursor = next;
     }
+}
+
+// ---- Threat detection (UI Display setting helpers) -------------------------
+
+/// Every `defender`-side piece that an opponent piece could capture
+/// in a single ply (rule-A "被攻擊"). Walks the board once and asks
+/// `is_attacked` per square. Empty for sides without any pieces.
+///
+/// In casual xiangqi (`xiangqi_allow_self_check`) this still uses the
+/// strict attack relation — the casual ruleset only loosens move
+/// *legality*, not the underlying attack geometry.
+pub fn attacked_pieces(state: &GameState, defender: Side) -> Vec<Square> {
+    let board = &state.board;
+    let mut out = Vec::new();
+    for sq in board.squares() {
+        let Some(pos) = board.get(sq) else { continue };
+        if pos.piece.side != defender || !pos.revealed {
+            continue;
+        }
+        if is_attacked(board, sq, defender.opposite()) {
+            out.push(sq);
+        }
+    }
+    out
+}
+
+/// Subset of [`attacked_pieces`] whose Static Exchange Evaluation
+/// predicts a net material loss for `defender` if the opponent
+/// initiates the trade — i.e. the "被捉" (truly threatened) set.
+///
+/// Generals never appear here even when in check: the
+/// [`SEE_GENERAL_VALUE`] sentinel makes any general-on-the-table SEE
+/// astronomical, and check is already surfaced via
+/// [`crate::view::PlayerView::in_check`]. A general's threat surface
+/// is rendered separately by the in-check banner / ring.
+///
+/// [`SEE_GENERAL_VALUE`]: crate::eval::SEE_GENERAL_VALUE
+pub fn net_loss_pieces(state: &GameState, defender: Side) -> Vec<Square> {
+    let attacker = defender.opposite();
+    attacked_pieces(state, defender)
+        .into_iter()
+        .filter(|&sq| {
+            // Skip the general — its in-check status is handled via
+            // `is_in_check` / the dedicated banner. Including it here
+            // would always trip (general value 10000 dwarfs any
+            // recapture) and clutter the highlight set.
+            let Some(pos) = state.board.get(sq) else { return false };
+            if pos.piece.kind == PieceKind::General {
+                return false;
+            }
+            crate::eval::see(state, sq, attacker) > 0
+        })
+        .collect()
+}
+
+/// Opponent piece-squares that participate in a checkmate-in-1 threat
+/// against `threatened`'s general — the strict 叫殺 / mate-threat
+/// concept. Empty when no such mate exists, when `threatened` has no
+/// general (banqi/three-kingdom), or when the game is already
+/// finished.
+///
+/// Implementation: simulate the opponent's turn (skipping the
+/// defender's move if it's currently the defender's move) and check
+/// whether any opponent reply leaves `threatened` checkmated. The
+/// `from` square of every such move is reported.
+///
+/// Search cost: O(opp_pseudo_moves × per-move legality probe). On a
+/// typical xiangqi middlegame this is ~30×30 ≈ 900 cloned-state
+/// `make_move` calls; ~10 ms order. Compute once per turn (cached
+/// via `PlayerView`); not appropriate to call from every render.
+pub fn mate_threat_pieces(state: &GameState, threatened: Side) -> Vec<Square> {
+    use crate::state::GameStatus;
+    if !matches!(state.status, GameStatus::Ongoing) {
+        return Vec::new();
+    }
+    // Defender must actually have a general (xiangqi only).
+    if crate::state::find_piece(&state.board, |p| {
+        p.kind == PieceKind::General && p.side == threatened
+    })
+    .is_none()
+    {
+        return Vec::new();
+    }
+
+    // Build the probe state where the OPPONENT is to move. If it's
+    // already their turn we use the state directly; otherwise we
+    // simulate "I pass" by flipping the side-to-move.
+    let attacker = threatened.opposite();
+    let mut probe = state.clone();
+    if probe.side_to_move != attacker {
+        // Manual flip: keep history pristine (we're a pure read), but
+        // advance the turn pointer + zobrist via the existing helpers.
+        let prev_side = probe.side_to_move;
+        probe.turn_order.advance();
+        probe.side_to_move = probe.turn_order.current_side();
+        probe.position_hash ^= crate::state::zobrist_side_to_move(prev_side);
+        probe.position_hash ^= crate::state::zobrist_side_to_move(probe.side_to_move);
+    }
+
+    let mut out = Vec::new();
+    let opp_moves = probe.legal_moves();
+    for m in opp_moves.iter() {
+        let mut after = probe.clone();
+        if after.make_move(m).is_err() {
+            continue;
+        }
+        // Defender to move now; check + no replies = mate.
+        if !is_in_check(&after, threatened) {
+            continue;
+        }
+        if after.legal_moves().is_empty() {
+            out.push(m.origin_square());
+        }
+    }
+    // Deduplicate (multiple mate-paths can share an origin).
+    out.sort_by_key(|sq| sq.0);
+    out.dedup();
+    out
 }
 
 #[cfg(test)]

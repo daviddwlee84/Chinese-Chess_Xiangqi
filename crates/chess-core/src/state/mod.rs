@@ -561,6 +561,43 @@ impl GameState {
         crate::rules::xiangqi::is_in_check(self, side)
     }
 
+    /// All `defender`-side revealed pieces that an opponent could
+    /// capture in a single ply. Variant-aware: xiangqi uses ray
+    /// attacks + cannon screens; banqi limits attackers to revealed
+    /// pieces (hidden tiles carry no public attack threat).
+    ///
+    /// Powers Display-setting Mode A (被攻擊). Returns empty for
+    /// three-kingdom (no per-variant attack relation defined yet).
+    pub fn attacked_pieces(&self, defender: Side) -> Vec<crate::coord::Square> {
+        match self.rules.variant {
+            Variant::Xiangqi => crate::rules::xiangqi::attacked_pieces(self, defender),
+            Variant::Banqi => crate::rules::banqi::attacked_pieces(self, defender),
+            Variant::ThreeKingdomBanqi => Vec::new(),
+        }
+    }
+
+    /// Subset of [`Self::attacked_pieces`] that would lose material
+    /// in a Static Exchange Evaluation — the "被捉" set powering
+    /// Display-setting Mode B (the recommended default).
+    pub fn net_loss_pieces(&self, defender: Side) -> Vec<crate::coord::Square> {
+        match self.rules.variant {
+            Variant::Xiangqi => crate::rules::xiangqi::net_loss_pieces(self, defender),
+            Variant::Banqi => crate::rules::banqi::net_loss_pieces(self, defender),
+            Variant::ThreeKingdomBanqi => Vec::new(),
+        }
+    }
+
+    /// Opponent piece-squares constituting a checkmate-in-1 threat
+    /// against `threatened`. Empty for variants without a general
+    /// (banqi/three-kingdom) and for finished games. Powers
+    /// Display-setting Mode C (叫殺).
+    pub fn mate_threat_pieces(&self, threatened: Side) -> Vec<crate::coord::Square> {
+        match self.rules.variant {
+            Variant::Xiangqi => crate::rules::xiangqi::mate_threat_pieces(self, threatened),
+            Variant::Banqi | Variant::ThreeKingdomBanqi => Vec::new(),
+        }
+    }
+
     /// Recompute `status` based on legal moves and draw counters.
     /// Caller invokes this after `make_move`; we don't auto-call to avoid
     /// recursing into move generation during legality filtering.
