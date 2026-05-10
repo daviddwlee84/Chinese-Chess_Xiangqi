@@ -186,6 +186,64 @@ pub fn reconstruct_xiangqi_state_for_analysis(view: &PlayerView) -> Option<GameS
     Some(state)
 }
 
+/// Compute the squares a 'what-if' threat-hover preview should ring,
+/// given that the user is hovering one of their own pieces at
+/// `hovered_sq`.
+///
+/// The hover preview answers: "which of my OTHER pieces would
+/// become newly vulnerable if I moved this hovered piece away?"
+/// Computed as the delta between `attacked_pieces(observer)` before
+/// and after removing the hovered piece from the board:
+///
+/// ```text
+/// hover_squares = attacked_after_removal − attacked_before_removal
+/// ```
+///
+/// This gives the user a 'this piece is currently defending these
+/// others — moving it exposes them' nudge that the static
+/// `view.threats.attacked` list never surfaces (those pieces are
+/// safe right now, until the defender moves).
+///
+/// Returns empty when:
+/// * `view` reconstructs to a state we can't analyse (banqi /
+///   three-kingdom — see `reconstruct_xiangqi_state_for_analysis`),
+/// * the hovered square doesn't host one of `observer`'s revealed
+///   pieces, or
+/// * the game is finished.
+///
+/// Compute cost: two `attacked_pieces` calls (~2 ms on 9×10), safe
+/// to run on every hover change. We do clone the board for the
+/// remove-and-recompute step, but a 9×10 board clone is sub-µs.
+pub fn hover_threat_squares(
+    view: &PlayerView,
+    observer: chess_core::piece::Side,
+    hovered_sq: Square,
+) -> Vec<Square> {
+    // The reconstructed state is xiangqi-only by design; banqi would
+    // need hidden info we can't legitimately recover client-side.
+    let Some(state) = reconstruct_xiangqi_state_for_analysis(view) else {
+        return Vec::new();
+    };
+    // Only meaningful when hovering one of the observer's own pieces.
+    let Some(pos) = state.board.get(hovered_sq) else { return Vec::new() };
+    if pos.piece.side != observer {
+        return Vec::new();
+    }
+    // Already-finished game has no "next turn" to ask about.
+    if !matches!(state.status, GameStatus::Ongoing) {
+        return Vec::new();
+    }
+    let before: std::collections::HashSet<Square> =
+        state.attacked_pieces(observer).into_iter().collect();
+    let mut without = state.clone();
+    without.board.set(hovered_sq, None);
+    without
+        .attacked_pieces(observer)
+        .into_iter()
+        .filter(|sq| !before.contains(sq) && *sq != hovered_sq)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

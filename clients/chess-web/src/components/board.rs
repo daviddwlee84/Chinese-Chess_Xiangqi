@@ -13,6 +13,33 @@ use crate::glyph::{self, Style};
 use crate::orient::{display_dims, square_at_display};
 use crate::state::legal_targets;
 
+/// Squares the renderer should ring with the threat-highlight overlay.
+///
+/// Three independent buckets so the parent can mix-and-match without
+/// forcing the renderer to re-derive anything from prefs:
+///
+/// * `static_squares` — the mode A (Attacked) or mode B (NetLoss)
+///   selection from `view.threats`. Drawn as a solid red ring
+///   (`.threat-mark`).
+/// * `mate_squares` — opponent piece-squares from
+///   `view.threats.mate_threats` when mode C is active. Drawn as a
+///   thicker magenta dashed ring (`.threat-mark--mate`) so the user
+///   can tell at a glance "this is the attacker, not my defender".
+/// * `hover_squares` — what-if preview from the orthogonal hover
+///   toggle: opponent squares that could capture targets the
+///   currently-hovered own piece is defending. Soft red dashed
+///   (`.threat-mark--hover`); stacks visually on top of the static
+///   buckets without obliterating them.
+///
+/// All three default to empty; callers that don't opt into the
+/// feature simply pass the default and pay zero rendering cost.
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub struct ThreatOverlay {
+    pub static_squares: Vec<Square>,
+    pub mate_squares: Vec<Square>,
+    pub hover_squares: Vec<Square>,
+}
+
 pub const CELL: i32 = 60;
 pub const PAD: i32 = 30;
 const RIVER_TOP_ROW: u8 = 4;
@@ -47,6 +74,12 @@ pub fn Board(
     /// reads their pieces upright. Coordinates / hit-testing unchanged.
     #[prop(optional, into)]
     mirror_black: Option<Signal<bool>>,
+    /// Threat-highlight overlay (Display setting). Three buckets —
+    /// see [`ThreatOverlay`] for the visual + semantic split. Default
+    /// empty: when the parent doesn't compute or pass anything, no
+    /// threat rings render.
+    #[prop(optional, into)]
+    threats: Option<Signal<ThreatOverlay>>,
 ) -> impl IntoView {
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
@@ -63,6 +96,8 @@ pub fn Board(
     let highlighted_pv: Signal<Vec<Move>> =
         highlighted_pv.unwrap_or_else(|| Signal::derive(Vec::new));
     let mirror_black: Signal<bool> = mirror_black.unwrap_or_else(|| Signal::derive(|| false));
+    let threats: Signal<ThreatOverlay> =
+        threats.unwrap_or_else(|| Signal::derive(ThreatOverlay::default));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
@@ -86,6 +121,10 @@ pub fn Board(
                 {move || pieces_view(&view.get(), observer, shape, style, mirror_black.get())}
             </g>
             <g class="overlay-top-layer">
+                // Threat overlay sits *under* selection / chain-lock /
+                // debug-PV so user-driven highlights remain visually
+                // dominant. Order matters: SVG renders last-on-top.
+                {move || threat_overlay_view(&threats.get(), observer, shape)}
                 {move || chain_lock_marker(view.get().chain_lock, observer, shape)}
                 {move || selection_marker(selected.get(), observer, shape)}
                 {move || debug_pv_marker(highlighted_pv.get(), observer, shape)}
@@ -340,6 +379,57 @@ fn selection_marker(selected: Option<Square>, observer: Side, shape: BoardShape)
         }
     }
     ().into_view()
+}
+
+/// Render the three threat-highlight buckets (`static_squares`,
+/// `mate_squares`, `hover_squares`) as concentric SVG circles. Layer
+/// order within the function controls visual stacking — static
+/// (mode A/B) is drawn first, hover next so it overlays nicely, mate
+/// last so the magenta "this is THE threat" ring sits on top.
+///
+/// Each bucket maps display row/col via `square_at_display`, the same
+/// observer-aware helper used by `selection_marker` and the rest of
+/// the overlay layer; this keeps the rings aligned with the actual
+/// piece positions regardless of Red-at-bottom vs Black-at-bottom
+/// orientation.
+fn threat_overlay_view(threats: &ThreatOverlay, observer: Side, shape: BoardShape) -> View {
+    if threats.static_squares.is_empty()
+        && threats.mate_squares.is_empty()
+        && threats.hover_squares.is_empty()
+    {
+        return ().into_view();
+    }
+    let (rows, cols) = display_dims(shape);
+
+    // Build an index of display (row, col) → Square once so we don't
+    // do the orientation lookup three times per highlighted square.
+    let mut coords: Vec<(Square, i32, i32)> = Vec::with_capacity(rows as usize * cols as usize);
+    for row in 0..rows {
+        for col in 0..cols {
+            if let Some(sq) = square_at_display(row, col, observer, shape) {
+                let (cx, cy) = intersection(row, col);
+                coords.push((sq, cx, cy));
+            }
+        }
+    }
+
+    let render_set = |squares: &[Square], class: &'static str, radius: i32| -> Vec<View> {
+        squares
+            .iter()
+            .filter_map(|target| {
+                coords.iter().find(|(s, _, _)| s == target).map(|(_, cx, cy)| {
+                    let (cx, cy, r) = (*cx, *cy, radius);
+                    view! { <circle class=class cx=cx cy=cy r=r/> }.into_view()
+                })
+            })
+            .collect()
+    };
+
+    let mut out: Vec<View> = Vec::new();
+    out.extend(render_set(&threats.static_squares, "threat-mark", 27));
+    out.extend(render_set(&threats.hover_squares, "threat-mark threat-mark--hover", 30));
+    out.extend(render_set(&threats.mate_squares, "threat-mark threat-mark--mate", 32));
+    out.into_view()
 }
 
 /// Debug overlay: render a sequence of `from→to` arrows for an entire

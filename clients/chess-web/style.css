@@ -551,6 +551,45 @@ body {
     stroke-dasharray: 5 3;
     pointer-events: none;
 }
+/* Threat highlight (Display setting). Three flavors so the user can
+ * tell which mode is firing without consulting the picker:
+ *   .threat-mark         — base ring for modes A (Attacked) and B
+ *                          (NetLoss). Red, similar geometry to
+ *                          .move-target so it reads as a 'warning'
+ *                          version of the same affordance.
+ *   .threat-mark--attack — same as base; alias kept for class-list
+ *                          clarity in the SVG renderer if a future
+ *                          revision wants to differentiate A vs B
+ *                          visually (e.g. dashed for A) without
+ *                          touching the renderer.
+ *   .threat-mark--mate   — magenta, thicker — only shown when mode C
+ *                          (MateThreat) is active and points at the
+ *                          opponent piece(s) participating in the
+ *                          checkmate-in-1 threat.
+ *   .threat-mark--hover  — softer red, semi-transparent — used by the
+ *                          'hover preview' secondary toggle to show
+ *                          what an opponent could take if the
+ *                          hovered/selected piece stayed put. Drawn
+ *                          on top of the static threat ring so both
+ *                          can stack without one swallowing the other. */
+.threat-mark {
+    fill: none;
+    stroke: #d63838;
+    stroke-width: 3;
+    pointer-events: none;
+    opacity: 0.85;
+}
+.threat-mark--mate {
+    stroke: #b300b3;
+    stroke-width: 4;
+    stroke-dasharray: 4 2;
+}
+.threat-mark--hover {
+    stroke: #ff7a7a;
+    stroke-width: 2.5;
+    stroke-dasharray: 3 3;
+    opacity: 0.7;
+}
 /* Floating toast — overlays the board top-center so its mount/unmount
  * doesn't reflow the flex column and snap the SVG to a different size. */
 .chain-banner {
@@ -965,6 +1004,31 @@ body {
     align-items: center;
     gap: 0.4rem;
     cursor: pointer;
+}
+/* Threat-highlight selector lives inside the same .fx-toggles
+ * container as the FX checkboxes; it gets its own row layout so the
+ * select-box doesn't squish the bilingual label onto two lines on
+ * narrow screens. The dropdown styling matches the captured-sort
+ * toggle elsewhere in the sidebar. */
+.threat-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    cursor: default;
+}
+.threat-mode-select {
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.threat-mode-select:focus {
+    outline: 2px solid rgba(255, 140, 26, 0.55);
+    outline-offset: 1px;
 }
 
 /* Move history panel — sits between action buttons and FX toggles in

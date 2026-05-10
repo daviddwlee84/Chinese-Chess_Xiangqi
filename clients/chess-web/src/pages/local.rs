@@ -8,15 +8,15 @@ use chess_core::view::{PlayerView, VisibleCell};
 use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
-use crate::components::board::Board;
+use crate::components::board::{Board, ThreatOverlay};
 use crate::components::captured::{CapturedSlot, CapturedStrip};
 use crate::components::debug_panel::DebugPanel;
 use crate::components::end_overlay::{EndOverlay, MirrorHalf};
 use crate::components::move_history::HistoryEntry;
 use crate::components::sidebar::Sidebar;
-use crate::prefs::Prefs;
+use crate::prefs::{Prefs, ThreatMode};
 use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
-use crate::state::{end_chain_move, find_move};
+use crate::state::{end_chain_move, find_move, hover_threat_squares};
 use crate::time::perf_now_ms;
 
 /// Resolved local-page configuration. `Some(VsAiConfig)` only when the URL
@@ -278,6 +278,47 @@ fn LocalGame(
         // chain_lock as the selected square so the legal-target dots
         // render around it.
         chain_locked_signal.get().or_else(|| selected.get())
+    });
+
+    // ---- Threat-highlight overlay (Display setting) ----
+    //
+    // Hover state for the orthogonal "what-if" preview: when the user
+    // hovers (or selects, in the absence of pointer hover) one of
+    // their own pieces, we ring any *other* piece that becomes newly
+    // vulnerable if the hovered piece moves away. We start with
+    // `effective_selected` as the trigger source (selection is a
+    // superset of hover semantically — the user committed enough to
+    // single this piece out) so the feature works on touch / keyboard
+    // too. A future enhancement can wire actual `pointerover` events
+    // for desktop-only mouse refinement; selection-driven covers the
+    // common case without needing per-cell pointer plumbing.
+    let prefs_threat = expect_context::<Prefs>();
+    let fx_threat_mode = prefs_threat.fx_threat_mode;
+    let fx_threat_hover = prefs_threat.fx_threat_hover;
+    let threat_overlay: Signal<ThreatOverlay> = Signal::derive(move || {
+        let v = view.get();
+        let mode = fx_threat_mode.get();
+        // Mode A/B/C → static_squares (red) and mate_squares (magenta)
+        // populated from the engine-computed `view.threats`.
+        let (static_squares, mate_squares): (Vec<Square>, Vec<Square>) = match mode {
+            ThreatMode::Off => (Vec::new(), Vec::new()),
+            ThreatMode::Attacked => (v.threats.attacked.clone(), Vec::new()),
+            ThreatMode::NetLoss => (v.threats.net_loss.clone(), Vec::new()),
+            ThreatMode::MateThreat => (Vec::new(), v.threats.mate_threats.clone()),
+        };
+        // Hover preview is independent of the mode selector; it ONLY
+        // fires when the user has a piece selected AND the toggle is
+        // on AND the selected piece belongs to the observer.
+        let hover_squares = if fx_threat_hover.get() {
+            if let Some(sq) = effective_selected.get() {
+                hover_threat_squares(&v, observer, sq)
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+        ThreatOverlay { static_squares, mate_squares, hover_squares }
     });
 
     // Whether the human can act right now. In vs-AI mode the human is
@@ -703,6 +744,7 @@ fn LocalGame(
                     on_click=on_click
                     highlighted_pv=highlighted_pv_signal
                     mirror_black=mirror_signal
+                    threats=threat_overlay
                 />
                 <Show when=move || chain_active.get()>
                     <div class="chain-banner">

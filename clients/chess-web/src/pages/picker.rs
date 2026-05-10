@@ -4,7 +4,7 @@ use chess_core::rules::{HouseRules, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, P
 use leptos::*;
 
 use crate::components::pwa::PwaInstallBanner;
-use crate::prefs::Prefs;
+use crate::prefs::{Prefs, ThreatMode};
 use crate::routes::{
     app_href, build_local_href, LocalRulesParams, PlayMode, MAX_AI_DEPTH, MAX_AI_NODE_BUDGET,
 };
@@ -52,6 +52,15 @@ fn DisplaySettings() -> impl IntoView {
     let prefs = expect_context::<Prefs>();
     let fx_confetti = prefs.fx_confetti;
     let fx_check_banner = prefs.fx_check_banner;
+    let fx_threat_mode = prefs.fx_threat_mode;
+    let fx_threat_hover = prefs.fx_threat_hover;
+    // The `<select>` reports value-strings; we map back to ThreatMode
+    // via `ThreatMode::from_str` (unknown → recommended NetLoss
+    // default — keeps the UI graceful if a future option is added).
+    let on_mode_change = move |ev: leptos::ev::Event| {
+        let s = event_target_value(&ev);
+        fx_threat_mode.set(ThreatMode::from_str(&s));
+    };
     view! {
         <details class="picker-settings">
             <summary>"⚙ Display settings"</summary>
@@ -71,6 +80,33 @@ fn DisplaySettings() -> impl IntoView {
                         on:change=move |ev| fx_check_banner.set(event_target_checked(&ev))
                     />
                     <span>"將軍 / CHECK warning"</span>
+                </label>
+                // Threat highlight mode selector. Default `NetLoss`
+                // ('被捉') — visually clean enough to leave on. The
+                // user-visible labels are bilingual so first-time
+                // viewers can guess the semantic without diving into
+                // docs; the option values are the lowercase camelCase
+                // that `ThreatMode::as_str` writes to localStorage.
+                <label class="threat-mode-row">
+                    <span>"威脅提示 / Threat highlight:"</span>
+                    <select
+                        class="threat-mode-select"
+                        on:change=on_mode_change
+                        prop:value=move || fx_threat_mode.get().as_str()
+                    >
+                        <option value="off">"關閉 / Off"</option>
+                        <option value="attacked">"被攻擊 / Attacked (busy)"</option>
+                        <option value="netLoss">"被捉 / Net loss (recommended)"</option>
+                        <option value="mateThreat">"叫殺 / Mate threat"</option>
+                    </select>
+                </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_threat_hover.get()
+                        on:change=move |ev| fx_threat_hover.set(event_target_checked(&ev))
+                    />
+                    <span>"Hover preview — show what an opponent could capture if my hovered/selected piece doesn't move"</span>
                 </label>
             </div>
         </details>

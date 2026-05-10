@@ -22,6 +22,41 @@ pub enum VisibleCell {
     Revealed(PieceOnSquare),
 }
 
+/// Per-square threat-detection results, projected from `observer`'s
+/// vantage point. Powers the Display-settings "Threat highlight"
+/// feature (xiangqi + banqi) — clients pick which sub-list to render
+/// based on the user's mode preference.
+///
+/// All three lists are mutually independent; in particular `attacked`
+/// is a strict superset of `net_loss`, but the client may choose to
+/// render only one. See `crate::eval` and the per-variant
+/// `attacked_pieces` / `net_loss_pieces` / `mate_threat_pieces`
+/// helpers in `crate::rules` for the source-of-truth definitions.
+///
+/// Computed once per `PlayerView::project()` call and cached on the
+/// view; clients never need to recompute. Empty for variants without
+/// the relevant concept (e.g. `mate_threats` is always empty in
+/// banqi/three-kingdom; all three are empty in three-kingdom).
+///
+/// Added in protocol v6; older clients see the empty default via
+/// `serde(default)`.
+#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ThreatInfo {
+    /// All revealed observer-side pieces an opponent could capture
+    /// in one ply (mode A — "被攻擊").
+    #[serde(default)]
+    pub attacked: Vec<Square>,
+    /// Subset of `attacked` whose SEE predicts net material loss
+    /// (mode B — "被捉", the recommended default).
+    #[serde(default)]
+    pub net_loss: Vec<Square>,
+    /// Opponent piece-squares participating in a checkmate-in-1
+    /// threat against the observer's general (mode C — "叫殺").
+    /// Always empty for banqi/three-kingdom.
+    #[serde(default)]
+    pub mate_threats: Vec<Square>,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PlayerView {
     pub observer: Side,
@@ -69,6 +104,13 @@ pub struct PlayerView {
     /// `serde(default)`.
     #[serde(default)]
     pub captured: Vec<Piece>,
+    /// Threat-detection summary for this observer's pieces / general.
+    /// Powers the Display-settings "Threat highlight" feature; clients
+    /// select which sub-list to render via the user's mode preference.
+    /// Added in protocol v6; older clients see the empty default via
+    /// `serde(default)`.
+    #[serde(default)]
+    pub threats: ThreatInfo,
 }
 
 fn default_red_side() -> Side {
@@ -101,6 +143,17 @@ impl PlayerView {
         // so `is_in_check` returns false naturally — no variant gate needed.
         let in_check = state.is_in_check(observer);
 
+        // Pre-compute the threat highlight sets so clients don't have
+        // to round-trip through engine code on every render. Cheap
+        // enough on the 9×10 / 4×8 boards to run unconditionally —
+        // the user's mode pref decides which list (if any) actually
+        // renders. See `crate::eval` for SEE / mate-threat docs.
+        let threats = ThreatInfo {
+            attacked: state.attacked_pieces(observer),
+            net_loss: state.net_loss_pieces(observer),
+            mate_threats: state.mate_threat_pieces(observer),
+        };
+
         Self {
             observer,
             shape: board.shape(),
@@ -114,6 +167,7 @@ impl PlayerView {
             chain_lock: state.chain_lock,
             current_color: state.current_color(),
             captured: state.captured_pieces(),
+            threats,
         }
     }
 }

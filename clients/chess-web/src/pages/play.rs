@@ -10,7 +10,7 @@ use chess_net::protocol::{ChatLine, ClientMsg, ServerMsg};
 use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
 
-use crate::components::board::Board;
+use crate::components::board::{Board, ThreatOverlay};
 use crate::components::captured::CapturedStrip;
 use crate::components::chat_panel::ChatPanel;
 use crate::components::debug_panel::DebugPanel;
@@ -20,10 +20,11 @@ use crate::config::{
     append_query_pairs, resolve_ws_base, room_url, ws_query_pair, WsBase, WsBaseChoiceError,
     WS_QUERY_KEY,
 };
-use crate::prefs::Prefs;
+use crate::prefs::{Prefs, ThreatMode};
 use crate::routes::{app_href, variant_slug, WsBaseError};
 use crate::state::{
-    end_chain_move, find_move, reconstruct_xiangqi_state_for_analysis, truncate_front, ClientRole,
+    end_chain_move, find_move, hover_threat_squares, reconstruct_xiangqi_state_for_analysis,
+    truncate_front, ClientRole,
 };
 use crate::ws::{connect, ConnState, WsHandle};
 
@@ -487,6 +488,34 @@ fn BoardWrapper(
         }
     };
 
+    // Threat-highlight overlay (Display setting). Mirrors local.rs's
+    // derivation — see that file for the rationale and the hover-vs-mode
+    // semantics. We compute even for spectators (they may want to see
+    // who's hung what); they just can't click anything.
+    let prefs_threat = expect_context::<Prefs>();
+    let fx_threat_mode = prefs_threat.fx_threat_mode;
+    let fx_threat_hover = prefs_threat.fx_threat_hover;
+    let threat_overlay: Signal<ThreatOverlay> = Signal::derive(move || {
+        let v = view.get();
+        let mode = fx_threat_mode.get();
+        let (static_squares, mate_squares): (Vec<Square>, Vec<Square>) = match mode {
+            ThreatMode::Off => (Vec::new(), Vec::new()),
+            ThreatMode::Attacked => (v.threats.attacked.clone(), Vec::new()),
+            ThreatMode::NetLoss => (v.threats.net_loss.clone(), Vec::new()),
+            ThreatMode::MateThreat => (Vec::new(), v.threats.mate_threats.clone()),
+        };
+        let hover_squares = if fx_threat_hover.get() {
+            if let Some(sq) = effective_selected.get() {
+                hover_threat_squares(&v, obs, sq)
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+        ThreatOverlay { static_squares, mate_squares, hover_squares }
+    });
+
     view! {
         <Board
             shape=shape
@@ -495,6 +524,7 @@ fn BoardWrapper(
             selected=effective_selected
             on_click=on_click
             highlighted_pv=highlighted_pv
+            threats=threat_overlay
         />
         <Show when=move || chain_active.get() && !is_spectator>
             <div class="chain-banner">
