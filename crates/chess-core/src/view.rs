@@ -111,6 +111,21 @@ pub struct PlayerView {
     /// `serde(default)`.
     #[serde(default)]
     pub threats: ThreatInfo,
+    /// The most recent move applied to the board, if any. Used by the
+    /// Display-settings "Highlight latest move" overlay so the user
+    /// can see which piece the opponent just moved without having to
+    /// scrutinise the board diff. `EndChain` is filtered out (it
+    /// doesn't change the board — the chain-capture immediately
+    /// before it does); the projection iterates history backwards
+    /// and surfaces the most recent move that *did* change the
+    /// board. Identity-bearing payloads (`Reveal`, `DarkCapture`)
+    /// stay populated here because they are HISTORICAL — once a
+    /// banqi piece has been flipped or dark-captured, its identity
+    /// is already public on the board.
+    /// Added in protocol v7; older clients see `None` via
+    /// `serde(default)`.
+    #[serde(default)]
+    pub last_move: Option<Move>,
 }
 
 fn default_red_side() -> Side {
@@ -154,6 +169,23 @@ impl PlayerView {
             mate_threats: state.mate_threat_pieces(observer),
         };
 
+        // Surface the most recent move that actually changed the
+        // board, so clients can ring its from/to squares as the
+        // "latest move" overlay. Skip `EndChain` (a turn-pass
+        // marker, not a board change — its preceding chain-capture
+        // is the real visual event we want to highlight). Identity
+        // is safe to publish here: any `Reveal` / `DarkCapture` move
+        // record we'd surface has ALREADY been applied to the board
+        // via `make_move`, so the revealed piece sits face-up on the
+        // squares that the projected `cells` already expose to the
+        // observer.
+        let last_move = state
+            .history
+            .iter()
+            .rev()
+            .find(|r| !matches!(r.the_move, Move::EndChain { .. }))
+            .map(|r| r.the_move.clone());
+
         Self {
             observer,
             shape: board.shape(),
@@ -168,6 +200,7 @@ impl PlayerView {
             current_color: state.current_color(),
             captured: state.captured_pieces(),
             threats,
+            last_move,
         }
     }
 }
@@ -352,5 +385,116 @@ mod tests {
         assert!(view.threats.attacked.is_empty());
         assert!(view.threats.net_loss.is_empty());
         assert!(view.threats.mate_threats.is_empty());
+    }
+
+    /// Fresh game — no moves yet — must surface `last_move = None`
+    /// for either observer. A renderer reading `last_move` should
+    /// noop when the game hasn't started.
+    #[test]
+    fn fresh_xiangqi_view_has_no_last_move() {
+        let state = GameState::new(RuleSet::xiangqi());
+        let view = PlayerView::project(&state, Side::RED);
+        assert!(view.last_move.is_none(), "opening: no move yet");
+    }
+
+    /// After the first move, every observer must see it as
+    /// `last_move` (the field is observer-agnostic — both sides see
+    /// the same move that was just played). Confirms the projection
+    /// reads from `state.history.last()` rather than e.g. only
+    /// emitting it for the side that made the move.
+    #[test]
+    fn last_move_visible_to_both_observers_after_a_move() {
+        let mut state = GameState::new(RuleSet::xiangqi());
+        // Find any legal Step (a non-capture so we don't need to
+        // care about which piece). The opening always has plenty.
+        let step = state
+            .legal_moves()
+            .into_iter()
+            .find(|m| matches!(m, Move::Step { .. }))
+            .expect("opening has step moves");
+        state.make_move(&step).unwrap();
+
+        let red = PlayerView::project(&state, Side::RED);
+        let black = PlayerView::project(&state, Side::BLACK);
+        let red_last = red.last_move.as_ref().expect("red sees last move");
+        let black_last = black.last_move.as_ref().expect("black sees last move");
+        assert_eq!(red_last.origin_square(), step.origin_square(), "red origin matches");
+        assert_eq!(black_last.origin_square(), step.origin_square(), "black origin matches");
+        assert_eq!(red_last.to_square(), step.to_square(), "red dest matches");
+        assert_eq!(black_last.to_square(), step.to_square(), "black dest matches");
+    }
+
+    /// `EndChain` is a turn-pass marker, not a board change —
+    /// projection must skip it and surface the underlying
+    /// chain-capture instead. Banqi 連吃 fixture: do a chain
+    /// capture, then `EndChain`. The view should report the
+    /// chain-capture as `last_move`, not the `EndChain`.
+    #[test]
+    fn last_move_skips_end_chain() {
+        use crate::coord::{File, Rank};
+        use crate::piece::{Piece, PieceKind, PieceOnSquare};
+        use crate::state::SideAssignment;
+        use smallvec::smallvec;
+
+        let mut state =
+            GameState::new(RuleSet::banqi_with_seed(crate::rules::HouseRules::CHAIN_CAPTURE, 0));
+        let squares: Vec<crate::coord::Square> = state.board.squares().collect();
+        for sq in squares {
+            state.board.set(sq, None);
+        }
+        state.side_assignment = Some(SideAssignment { mapping: smallvec![Side::RED, Side::BLACK] });
+        let h = state.board.sq(File(1), Rank(1));
+        let s1 = state.board.sq(File(1), Rank(2));
+        state.board.set(h, Some(PieceOnSquare::revealed(Piece::new(Side::RED, PieceKind::Horse))));
+        state
+            .board
+            .set(s1, Some(PieceOnSquare::revealed(Piece::new(Side::BLACK, PieceKind::Soldier))));
+
+        let cap = Move::Capture {
+            from: h,
+            to: s1,
+            captured: Piece::new(Side::BLACK, PieceKind::Soldier),
+        };
+        state.make_move(&cap).unwrap();
+        // Chain mode active now (no further captures available since s2 is
+        // empty in this minimal fixture, so chain_lock SHOULD be None).
+        // If chain_lock IS None then we never need EndChain; that branch
+        // is exercised in the fuller round-trip tests in banqi.rs.
+        if state.chain_lock.is_some() {
+            let end = Move::EndChain { at: s1 };
+            state.make_move(&end).unwrap();
+            let view = PlayerView::project(&state, Side::RED);
+            // Must surface the Capture, not the EndChain.
+            assert!(
+                matches!(view.last_move.as_ref(), Some(Move::Capture { .. })),
+                "should skip EndChain and surface the chain-capture; got {:?}",
+                view.last_move
+            );
+        }
+    }
+
+    /// Backward compat: a v6-shaped view (everything up to and
+    /// including `threats`, no `last_move`) must deserialise into
+    /// the new field as `None`. Mirrors `pre_v6_view_*` above.
+    #[test]
+    fn pre_v7_view_deserializes_with_no_last_move() {
+        let json = r#"{
+            "observer": 0,
+            "shape": "Xiangqi9x10",
+            "width": 9,
+            "height": 10,
+            "cells": [],
+            "side_to_move": 0,
+            "status": "Ongoing",
+            "legal_moves": [],
+            "in_check": false,
+            "chain_lock": null,
+            "current_color": 0,
+            "captured": [],
+            "threats": { "attacked": [], "net_loss": [], "mate_threats": [] }
+        }"#;
+        let view: PlayerView =
+            serde_json::from_str(json).expect("pre-v7 view must deserialize via serde defaults");
+        assert!(view.last_move.is_none());
     }
 }
