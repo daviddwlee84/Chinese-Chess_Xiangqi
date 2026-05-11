@@ -148,6 +148,7 @@ fn draw_game(frame: &mut Frame, area: Rect, app: &mut AppState) {
         app.threat_on_select,
         effective_selected,
         &g_ref.state,
+        app.show_last_move,
     );
     draw_board(
         frame,
@@ -229,6 +230,7 @@ fn draw_net(frame: &mut Frame, area: Rect, app: &mut AppState) {
                 app.threat_mode,
                 app.threat_on_select,
                 effective_selected,
+                app.show_last_move,
             );
             draw_board(
                 frame,
@@ -550,6 +552,7 @@ fn compute_threat_sets_local(
     hover_on: bool,
     selected: Option<Square>,
     state: &chess_core::state::GameState,
+    show_last_move: bool,
 ) -> ThreatSets {
     use crate::app::ThreatMode;
     let (static_squares, mate_squares) = match mode {
@@ -567,10 +570,13 @@ fn compute_threat_sets_local(
     } else {
         Vec::new()
     };
+    let (last_move_from, last_move_to) = last_move_endpoints(view, show_last_move);
     ThreatSets {
         static_squares: static_squares.into_iter().collect(),
         mate_squares: mate_squares.into_iter().collect(),
         hover_squares: hover_squares.into_iter().collect(),
+        last_move_from,
+        last_move_to,
     }
 }
 
@@ -586,6 +592,7 @@ fn compute_threat_sets_view(
     mode: crate::app::ThreatMode,
     hover_on: bool,
     selected: Option<Square>,
+    show_last_move: bool,
 ) -> ThreatSets {
     use crate::app::ThreatMode;
     let (static_squares, mate_squares) = match mode {
@@ -603,11 +610,41 @@ fn compute_threat_sets_view(
     } else {
         Vec::new()
     };
+    let (last_move_from, last_move_to) = last_move_endpoints(view, show_last_move);
     ThreatSets {
         static_squares: static_squares.into_iter().collect(),
         mate_squares: mate_squares.into_iter().collect(),
         hover_squares: hover_squares.into_iter().collect(),
+        last_move_from,
+        last_move_to,
     }
+}
+
+/// Extract the `(from, to)` pair from `view.last_move` for the
+/// "highlight latest move" overlay. Returns `(None, None)` when the
+/// pref is off or the projected view has no last move yet. Reveal
+/// moves report just `to` (the just-flipped square); EndChain
+/// shouldn't reach us (filtered out by the engine projection) but is
+/// defended-against by reporting both as `None`.
+fn last_move_endpoints(
+    view: &PlayerView,
+    show_last_move: bool,
+) -> (Option<Square>, Option<Square>) {
+    use chess_core::moves::Move;
+    if !show_last_move {
+        return (None, None);
+    }
+    let Some(m) = view.last_move.as_ref() else { return (None, None) };
+    if matches!(m, Move::EndChain { .. }) {
+        return (None, None);
+    }
+    if matches!(m, Move::Reveal { .. }) {
+        // Reveal: only the `at` square is interesting (the just-flipped
+        // tile). origin_square() returns `at` for Reveal — surface as `to`
+        // so the renderer paints the brighter tint there.
+        return (None, Some(m.origin_square()));
+    }
+    (Some(m.origin_square()), m.to_square())
 }
 
 /// Newly-vulnerable observer pieces if the piece at `selected` were
@@ -846,12 +883,26 @@ fn rank_row<'a>(
 ///
 /// Passed as `&ThreatSets` rather than three loose params so adding
 /// a fourth bucket later only touches the struct, not every
-/// signature in the render path.
+/// signature in the render path. Now also carries the
+/// "highlight latest move" payload (`last_move_from` /
+/// `last_move_to`) since it threads the same plumbing path; logically
+/// it's a separate concept (history-driven, not threat-driven) but
+/// physically it shares the cell-bg paint stack so we co-locate.
 #[derive(Default)]
 pub(crate) struct ThreatSets {
     pub static_squares: std::collections::HashSet<Square>,
     pub mate_squares: std::collections::HashSet<Square>,
     pub hover_squares: std::collections::HashSet<Square>,
+    /// From-square of the most recent applied move. `None` when no
+    /// moves have been played, when the user has disabled
+    /// `--no-last-move`, or when the most recent record was a
+    /// `Reveal` (which has no "from" — see `last_move_to` for the
+    /// flip square instead).
+    pub last_move_from: Option<Square>,
+    /// Destination square of the most recent applied move. For
+    /// `Reveal` and the chain-capture's last hop this is the
+    /// just-changed square. `None` otherwise.
+    pub last_move_to: Option<Square>,
 }
 
 /// Per-cell content for a rank row.
@@ -933,6 +984,22 @@ fn intersection_or_piece(
     }
     if debug_to.contains(&sq) {
         s = s.bg(Color::Rgb(30, 70, 100));
+    }
+    // "Highlight latest move" tint — applied BEFORE the threat
+    // tints below so threat (the more urgent signal) wins when a
+    // piece is both the destination of opponent's last move AND
+    // currently threatened. The from-square gets a duller indigo;
+    // the to-square gets a slightly stronger blue so direction is
+    // readable. Both lose to selection / cursor (the cells the user
+    // is actually interacting with). Mirrors the web `.last-move-*`
+    // CSS classes (sky-blue family).
+    let is_last_move_from = threats.last_move_from == Some(sq);
+    let is_last_move_to = threats.last_move_to == Some(sq);
+    if is_last_move_from {
+        s = s.bg(Color::Rgb(35, 50, 95));
+    }
+    if is_last_move_to {
+        s = s.bg(Color::Rgb(55, 80, 140));
     }
     // Threat tints — also applied before selection/cursor so the
     // user's interactive choices visually win. Stack order chosen so

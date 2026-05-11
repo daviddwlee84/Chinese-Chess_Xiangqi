@@ -64,6 +64,14 @@ struct Cli {
     #[arg(long)]
     no_check_banner: bool,
 
+    /// Disable the "highlight latest move" board overlay. ON by
+    /// default — rings the from/to of the most recent move with a
+    /// dimmer fg color so you can see what was just played without
+    /// scrutinising the diff. Mirrors the web Display-settings
+    /// "標注最近一手" toggle.
+    #[arg(long)]
+    no_last_move: bool,
+
     /// Initial sort order for the sidebar captured-pieces panel
     /// ("graveyard"). Toggle in-game with `g`. Default `time`
     /// (chronological — useful for following 暗連 chains live).
@@ -417,6 +425,7 @@ fn main() -> Result<()> {
     app.captured_sort = captured_sort;
     app.threat_mode = cli.threat_mode.into_threat_mode();
     app.threat_on_select = cli.threat_on_select;
+    app.show_last_move = !cli.no_last_move;
     run(app)
 }
 

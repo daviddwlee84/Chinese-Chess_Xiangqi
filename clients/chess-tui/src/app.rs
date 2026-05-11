@@ -548,6 +548,12 @@ pub struct AppState {
     /// in `TODO.md` if it gets requested). Mirrors the web's
     /// `Prefs::fx_threat_hover` semantically.
     pub threat_on_select: bool,
+    /// User pref: highlight the from/to squares of the most recent
+    /// move so you can see what was just played at a glance. ON by
+    /// default; disable with `--no-last-move`. Mirrors the web's
+    /// `Prefs::fx_last_move`. Reads `view.last_move` (engine-projected;
+    /// `EndChain` is filtered out by the projection).
+    pub show_last_move: bool,
 }
 
 /// Sort order for the sidebar "captured pieces" panel. `Time` keeps
@@ -691,6 +697,7 @@ impl AppState {
             captured_sort: CapturedSort::Time,
             threat_mode: ThreatMode::default(),
             threat_on_select: false,
+            show_last_move: true,
         }
     }
 
@@ -917,6 +924,7 @@ impl AppState {
         let evalbar_open = self.evalbar_open;
         let threat_mode = self.threat_mode;
         let threat_on_select = self.threat_on_select;
+        let show_last_move = self.show_last_move;
         *self = fresh;
         self.show_confetti = confetti;
         self.show_check_banner = check;
@@ -927,6 +935,7 @@ impl AppState {
         self.evalbar_open = evalbar_open;
         self.threat_mode = threat_mode;
         self.threat_on_select = threat_on_select;
+        self.show_last_move = show_last_move;
         // debug_cursor is NOT preserved — fresh game = different scored
         // moves, so the cursor must reset.
     }
