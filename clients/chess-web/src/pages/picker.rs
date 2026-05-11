@@ -92,12 +92,35 @@ fn DisplaySettings() -> impl IntoView {
                     <select
                         class="threat-mode-select"
                         on:change=on_mode_change
-                        prop:value=move || fx_threat_mode.get().as_str()
                     >
-                        <option value="off">"關閉 / Off"</option>
-                        <option value="attacked">"被攻擊 / Attacked (busy)"</option>
-                        <option value="netLoss">"被捉 / Net loss (recommended)"</option>
-                        <option value="mateThreat">"叫殺 / Mate threat"</option>
+                        // `prop:selected` on each option (rather than
+                        // `prop:value` on the <select>) is the
+                        // reliable way to bind a <select>'s current
+                        // choice to a signal in leptos. With
+                        // `prop:value` the browser sometimes ignores
+                        // the initial value and shows the first option
+                        // instead — visually "Off" while the underlying
+                        // signal is still the recommended default
+                        // (NetLoss). That mismatch caused the user to
+                        // believe Threat=Off had been applied while
+                        // the game still rendered NetLoss rings.
+                        // See pitfalls/leptos-select-prop-value-vs-prop-selected.md.
+                        <option
+                            value="off"
+                            prop:selected=move || fx_threat_mode.get() == ThreatMode::Off
+                        >"關閉 / Off"</option>
+                        <option
+                            value="attacked"
+                            prop:selected=move || fx_threat_mode.get() == ThreatMode::Attacked
+                        >"被攻擊 / Attacked (busy)"</option>
+                        <option
+                            value="netLoss"
+                            prop:selected=move || fx_threat_mode.get() == ThreatMode::NetLoss
+                        >"被捉 / Net loss (recommended)"</option>
+                        <option
+                            value="mateThreat"
+                            prop:selected=move || fx_threat_mode.get() == ThreatMode::MateThreat
+                        >"叫殺 / Mate threat"</option>
                     </select>
                 </label>
                 <label>
