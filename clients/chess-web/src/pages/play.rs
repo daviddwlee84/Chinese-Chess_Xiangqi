@@ -495,6 +495,7 @@ fn BoardWrapper(
     let prefs_threat = expect_context::<Prefs>();
     let fx_threat_mode = prefs_threat.fx_threat_mode;
     let fx_threat_hover = prefs_threat.fx_threat_hover;
+    let fx_last_move = prefs_threat.fx_last_move;
     let threat_overlay: Signal<ThreatOverlay> = Signal::derive(move || {
         let v = view.get();
         let mode = fx_threat_mode.get();
@@ -516,6 +517,16 @@ fn BoardWrapper(
         ThreatOverlay { static_squares, mate_squares, hover_squares }
     });
 
+    // "Highlight latest move" — see local.rs for the same derivation.
+    // Spectators benefit equally from this: they often arrive
+    // mid-game and need to see what was just played to catch up.
+    let last_move_signal: Signal<Option<chess_core::moves::Move>> = Signal::derive(move || {
+        if !fx_last_move.get() {
+            return None;
+        }
+        view.with(|v| v.last_move.clone())
+    });
+
     view! {
         <Board
             shape=shape
@@ -525,6 +536,7 @@ fn BoardWrapper(
             on_click=on_click
             highlighted_pv=highlighted_pv
             threats=threat_overlay
+            last_move=last_move_signal
         />
         <Show when=move || chain_active.get() && !is_spectator>
             <div class="chain-banner">

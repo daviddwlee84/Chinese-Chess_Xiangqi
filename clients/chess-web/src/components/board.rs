@@ -80,6 +80,17 @@ pub fn Board(
     /// threat rings render.
     #[prop(optional, into)]
     threats: Option<Signal<ThreatOverlay>>,
+    /// "Highlight latest move" overlay (Display setting). When
+    /// `Some(move)` rings the move's from + to squares with a soft
+    /// sky-blue tint so the user can see what the opponent just
+    /// played without scrutinising the board diff. `None` (or no
+    /// signal) renders nothing — the parent gates on the
+    /// `Prefs::fx_last_move` toggle and passes `view.last_move` (or
+    /// `None`) accordingly. `Reveal` moves render only the `at`
+    /// square; `EndChain` is filtered out by the engine projection
+    /// before it reaches us.
+    #[prop(optional, into)]
+    last_move: Option<Signal<Option<Move>>>,
 ) -> impl IntoView {
     let (rows, cols) = display_dims(shape);
     let view_w = (cols as i32 - 1) * CELL + PAD * 2;
@@ -98,6 +109,7 @@ pub fn Board(
     let mirror_black: Signal<bool> = mirror_black.unwrap_or_else(|| Signal::derive(|| false));
     let threats: Signal<ThreatOverlay> =
         threats.unwrap_or_else(|| Signal::derive(ThreatOverlay::default));
+    let last_move: Signal<Option<Move>> = last_move.unwrap_or_else(|| Signal::derive(|| None));
 
     view! {
         <svg class="board" viewBox=viewbox preserveAspectRatio="xMidYMid meet">
@@ -115,6 +127,14 @@ pub fn Board(
             <g class="river-layer">{river_text(shape, cols)}</g>
             <g class="palace-layer">{palace_diagonals(shape)}</g>
             <g class="overlay-layer">
+                // Last-move tint draws FIRST in this layer so the
+                // (later) move-dots render on top of it — matters when
+                // the user has selected a piece that's also the
+                // destination of the most recent move (rare but
+                // possible). The whole `overlay-layer` is rendered
+                // before the pieces-layer, so both this and move-dots
+                // sit visually behind the piece glyph.
+                {move || last_move_marker(last_move.get(), observer, shape)}
                 {move || move_dots_view(&view.get(), selected.get(), observer, shape)}
             </g>
             <g class="pieces-layer">
@@ -502,6 +522,56 @@ fn chain_lock_marker(locked: Option<Square>, observer: Side, shape: BoardShape) 
         }
     }
     ().into_view()
+}
+
+/// Render the "highlight latest move" overlay: a soft sky-blue
+/// disc behind the from square and a slightly stronger one behind
+/// the to square. Reveal moves render only `at` (no from/to). The
+/// engine projection already filters `EndChain` out, so we treat
+/// "no move" / `EndChain` as a no-op.
+///
+/// Direction is communicated by the stronger fill on the
+/// destination — no explicit arrow, keeping the visual quiet
+/// enough to leave on by default.
+fn last_move_marker(last_move: Option<Move>, observer: Side, shape: BoardShape) -> View {
+    let Some(m) = last_move else { return ().into_view() };
+    let from_sq = m.origin_square();
+    let to_sq = m.to_square();
+    // EndChain has no `to_square` and no real board change — bail
+    // (the projection should never surface it, but defend in depth).
+    if matches!(m, Move::EndChain { .. }) {
+        return ().into_view();
+    }
+    let (rows, cols) = display_dims(shape);
+    // One pass over the display grid to locate both endpoints.
+    let mut from_xy: Option<(i32, i32)> = None;
+    let mut to_xy: Option<(i32, i32)> = None;
+    for row in 0..rows {
+        for col in 0..cols {
+            let sq = square_at_display(row, col, observer, shape);
+            if sq == Some(from_sq) {
+                from_xy = Some(intersection(row, col));
+            }
+            if let Some(t) = to_sq {
+                if sq == Some(t) {
+                    to_xy = Some(intersection(row, col));
+                }
+            }
+        }
+    }
+    let mut out: Vec<View> = Vec::with_capacity(2);
+    if let Some((fx, fy)) = from_xy {
+        // Reveal moves use origin_square() == at; we want the same
+        // single highlight as a "to" (the just-revealed square),
+        // not a faint "from" (there's nothing to leave behind).
+        let class =
+            if matches!(m, Move::Reveal { .. }) { "last-move-to" } else { "last-move-from" };
+        out.push(view! { <circle class=class cx=fx cy=fy r="30"/> }.into_view());
+    }
+    if let Some((tx, ty)) = to_xy {
+        out.push(view! { <circle class="last-move-to" cx=tx cy=ty r="30"/> }.into_view());
+    }
+    out.into_view()
 }
 
 fn move_dots_view(

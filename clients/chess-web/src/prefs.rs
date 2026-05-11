@@ -12,11 +12,15 @@
 //!   hovered/selected, recompute and show what the opponent could
 //!   capture if that piece *didn't move* (a 'what-if I leave this here?'
 //!   helper). Default OFF — orthogonal to the mode selector above.
+//! * `fx_last_move` — soft blue ring around the from/to squares of the
+//!   most recent move so you can see what the opponent just did
+//!   without having to scrutinise the board diff. Default ON
+//!   (high-value, low-noise — only ever rings two squares at a time).
 //!
 //! Storage keys are stable so a user toggling once carries the choice
 //! across sessions. Missing values read as the recommended default
-//! (true / `NetLoss` / false). We persist `"1"` / `"0"` rather than
-//! booleans so future debugging via DevTools is obvious.
+//! (true / `NetLoss` / false / true). We persist `"1"` / `"0"` rather
+//! than booleans so future debugging via DevTools is obvious.
 //!
 //! All `web_sys` calls are wrapped in `Option`/`Result` chains so a
 //! sandboxed context with no `window` (or storage disabled) silently
@@ -33,6 +37,7 @@ const KEY_CHECK_BANNER: &str = "chess.fx.checkBanner";
 const KEY_CAPTURED_SORT: &str = "chess.ui.capturedSort";
 const KEY_THREAT_MODE: &str = "chess.fx.threatMode";
 const KEY_THREAT_HOVER: &str = "chess.fx.threatHover";
+const KEY_LAST_MOVE: &str = "chess.fx.lastMove";
 
 /// Which "threat highlight" overlay to draw on the board. Off by
 /// historical default (this feature is new); the picker UI defaults
@@ -105,6 +110,13 @@ pub struct Prefs {
     /// currently defending. Orthogonal to `fx_threat_mode` — they
     /// stack visually if both are active.
     pub fx_threat_hover: RwSignal<bool>,
+    /// "Highlight latest move" overlay: rings the from/to squares
+    /// of the most recent move so the user can see what the
+    /// opponent just played without scrutinising the board diff.
+    /// Default ON — only ever rings two squares at a time, very low
+    /// visual cost. Reads `view.last_move` (engine-projected;
+    /// `EndChain` filtered out).
+    pub fx_last_move: RwSignal<bool>,
 }
 
 impl Prefs {
@@ -117,6 +129,7 @@ impl Prefs {
         let captured_sort = create_rw_signal(read_captured_sort());
         let fx_threat_mode = create_rw_signal(read_threat_mode());
         let fx_threat_hover = create_rw_signal(read_bool(KEY_THREAT_HOVER, false));
+        let fx_last_move = create_rw_signal(read_bool(KEY_LAST_MOVE, true));
 
         // Persist on change. The closures only run inside the browser, so
         // calling `localStorage` on every flip is safe and cheap.
@@ -140,8 +153,19 @@ impl Prefs {
             let v = fx_threat_hover.get();
             write_bool(KEY_THREAT_HOVER, v);
         });
+        create_effect(move |_| {
+            let v = fx_last_move.get();
+            write_bool(KEY_LAST_MOVE, v);
+        });
 
-        Self { fx_confetti, fx_check_banner, captured_sort, fx_threat_mode, fx_threat_hover }
+        Self {
+            fx_confetti,
+            fx_check_banner,
+            captured_sort,
+            fx_threat_mode,
+            fx_threat_hover,
+            fx_last_move,
+        }
     }
 }
 

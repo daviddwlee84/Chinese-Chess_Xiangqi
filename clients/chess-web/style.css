@@ -590,6 +590,33 @@ body {
     stroke-dasharray: 3 3;
     opacity: 0.7;
 }
+/* "Highlight latest move" overlay (Display setting). Soft sky-blue
+ * tint behind the from/to squares of the most recent move so the
+ * user sees at a glance what the opponent just played. Color picked
+ * to be distinct from existing highlights:
+ *   - selection / chain-lock   → orange / amber
+ *   - move-target / move-dot   → green
+ *   - threat / threat-hover    → red / soft red
+ *   - debug-from / debug-to    → yellow / blue (deeper)
+ *   - last-move-from / -to     → light steel-blue (this rule)
+ *
+ * Drawn UNDER the piece glyph so the piece itself sits cleanly on
+ * top of the highlight (the marker mounts in the `overlay-layer`
+ * SVG group, between palace lines and pieces — see board.rs). The
+ * destination ring is slightly stronger than the origin so direction
+ * is readable without an explicit arrow. */
+.last-move-from {
+    fill: rgba(80, 140, 200, 0.16);
+    stroke: rgba(80, 140, 200, 0.45);
+    stroke-width: 1.5;
+    pointer-events: none;
+}
+.last-move-to {
+    fill: rgba(80, 140, 200, 0.30);
+    stroke: rgba(80, 140, 200, 0.65);
+    stroke-width: 2;
+    pointer-events: none;
+}
 /* Floating toast — overlays the board top-center so its mount/unmount
  * doesn't reflow the flex column and snap the SVG to a different size. */
 .chain-banner {

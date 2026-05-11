@@ -54,6 +54,7 @@ fn DisplaySettings() -> impl IntoView {
     let fx_check_banner = prefs.fx_check_banner;
     let fx_threat_mode = prefs.fx_threat_mode;
     let fx_threat_hover = prefs.fx_threat_hover;
+    let fx_last_move = prefs.fx_last_move;
     // The `<select>` reports value-strings; we map back to ThreatMode
     // via `ThreatMode::from_str` (unknown → recommended NetLoss
     // default — keeps the UI graceful if a future option is added).
@@ -130,6 +131,19 @@ fn DisplaySettings() -> impl IntoView {
                         on:change=move |ev| fx_threat_hover.set(event_target_checked(&ev))
                     />
                     <span>"Hover preview — show what an opponent could capture if my hovered/selected piece doesn't move"</span>
+                </label>
+                // "Highlight latest move" — rings the from/to of the
+                // most recent move so the user sees what the opponent
+                // just played without having to scrutinise the board
+                // diff. Default ON: only ever rings two squares at a
+                // time so it's low-noise even when always on.
+                <label>
+                    <input
+                        type="checkbox"
+                        prop:checked=move || fx_last_move.get()
+                        on:change=move |ev| fx_last_move.set(event_target_checked(&ev))
+                    />
+                    <span>"標注最近一手 / Highlight latest move"</span>
                 </label>
             </div>
         </details>
