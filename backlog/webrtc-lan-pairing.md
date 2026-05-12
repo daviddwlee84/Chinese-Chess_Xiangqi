@@ -347,7 +347,52 @@ the byte count so we can verify QR fits before committing.
 > to drop the "look for the AP isolation toggle" advice for Xiaomi
 > users; the realistic mitigation is "use a phone hotspot or flash
 > OpenWRT".
+
+> **2026-05-12 spike fifth-finding (corrected diagnosis — AP isolation
+> is NOT the cause)**: deeper investigation with `tcpdump -i en0 -n udp
+> port 5353` and `dns-sd -B` proved the Xiaomi AX9000 router DOES bridge
+> mDNS multicast across LAN devices fine. Captured live mDNS traffic on
+> Mac from other devices: `_miio._udp.local.` from a Mi IoT device
+> (192.168.31.63 lumi-acpartner-v2 air-conditioner companion),
+> `_airplay._tcp.local.` + `_raop._tcp.local.` TXT records from a
+> 192.168.31.188 iPad Pro AirPlay receiver, IPv6 mDNS on `ff02::fb` too.
+> All three SSIDs (different per-band names) bridge to one `br-lan`.
+> AirPlay handshake (which IS mDNS-driven service discovery + UDP P2P)
+> works between the same Mac and iPad pair that fail at WebRTC.
 >
+> So the failure mode is **narrower** than "router blocks mDNS" — it's
+> something specific to WebRTC's `<uuid>.local` registration /
+> resolution path. Best current hypotheses (none verified):
+>
+> - WebRTC mDNS hostnames are dynamically registered per
+>   ICE-gathering pass; possible timing race between SDP send and
+>   responder advertisement
+> - AWDL interference on Apple devices (`awdl0` virtual interface);
+>   Apple↔Apple `<uuid>.local` queries may prefer AWDL which doesn't
+>   bridge through the router the same way as `en0`
+> - Mi router's `miotrelay` (畅快连) daemon is ON and bridges Mi IoT
+>   discovery; possibly rewrites or filters non-Mi `<uuid>.local`
+>   traffic in ways that confuse browsers (no SSH access to the router
+>   means we can't inspect what it actually does)
+>
+> Practical implications:
+>
+> - **The mitigation menu in the pitfall doc still applies as-is**
+>   (iPhone hotspot works → use it; STUN-with-CN-friendly-list as
+>   fallback; Approach C signalling helper for hostile networks).
+> - **Don't recommend "flash OpenWRT" to users** — until we identify
+>   the actual narrow cause, that may not even fix it.
+> - The Phase 0 gate decision still holds: build Phases 3-5 with
+>   iPhone hotspot as the documented fallback, reserve Approach C
+>   (LAN signalling endpoint) for users on networks where WebRTC
+>   mDNS resolution is broken.
+> - Future investigation could try: (a) installing OpenWRT on a
+>   spare Xiaomi to A/B-test mDNS bridging; (b) packet-capturing
+>   mDNS during a WebRTC handshake to see whether the queries are
+>   sent at all and whether the responder ever advertises the
+>   `<uuid>.local`; (c) testing on Linux↔Linux to take Apple's AWDL
+>   out of the picture.
+
 > **Phase 0 gate decision**: spike succeeds on the technical merits
 > (Tests 1 + 4 prove the LAN-only WebRTC pipe + mDNS works perfectly
 > when the network cooperates, ~660-790 byte SDP fits QR v25
