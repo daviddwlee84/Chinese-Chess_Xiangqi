@@ -79,4 +79,5 @@ impl Session {
 }
 // SECTION: submodules
 
+pub mod webrtc;
 pub mod ws;
