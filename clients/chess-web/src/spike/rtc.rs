@@ -22,7 +22,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     MessageEvent, RtcConfiguration, RtcDataChannel, RtcDataChannelEvent, RtcDataChannelInit,
     RtcDataChannelState, RtcIceGatheringState, RtcPeerConnection, RtcPeerConnectionIceEvent,
-    RtcSdpType, RtcSessionDescriptionInit,
+    RtcSdpType, RtcSessionDescriptionInit, RtcSignalingState,
 };
 // SECTION: PeerSession struct
 
@@ -47,6 +47,7 @@ pub struct PeerSession {
     pub gather_done_ms: WriteSignal<Option<f64>>,
     pub channel_opened_ms: WriteSignal<Option<f64>>,
     pub ice_state: WriteSignal<String>,
+    pub signaling_state: WriteSignal<String>,
     /// Wasm-bindgen closures we need to keep alive for the connection's
     /// lifetime. Drop the `PeerSession` and they all get freed.
     _keepalive: Vec<Closure<dyn FnMut(JsValue)>>,
@@ -67,22 +68,22 @@ pub enum RtcConn {
 }
 // SECTION: open_host
 
+/// Bag of `WriteSignal`s the page hands to `open_host` / `open_joiner` so
+/// the RTC plumbing can update the diag panel reactively. Bundled into a
+/// struct because there are six of them — too many positional args.
+#[derive(Clone, Copy)]
+pub struct OpenSetters {
+    pub state: WriteSignal<RtcConn>,
+    pub messages: WriteSignal<Vec<String>>,
+    pub gather_done_ms: WriteSignal<Option<f64>>,
+    pub channel_opened_ms: WriteSignal<Option<f64>>,
+    pub ice_state: WriteSignal<String>,
+    pub signaling_state: WriteSignal<String>,
+}
+
 /// Host side: create the PeerConnection + DataChannel, generate the
 /// offer, wait for ICE gathering to complete, return the full SDP blob.
-///
-/// `_label` is the DataChannel label — anything stable; the joiner sees
-/// the same name. We default to `"chess-spike"`.
-///
-/// `state_setter` / `messages_setter` etc. are the page's writable
-/// signals; the closures hold them and update reactively as RTC
-/// callbacks fire.
-pub async fn open_host(
-    state_setter: WriteSignal<RtcConn>,
-    messages_setter: WriteSignal<Vec<String>>,
-    gather_done_setter: WriteSignal<Option<f64>>,
-    channel_opened_setter: WriteSignal<Option<f64>>,
-    ice_state_setter: WriteSignal<String>,
-) -> Result<(PeerSession, String), JsValue> {
+pub async fn open_host(setters: OpenSetters) -> Result<(PeerSession, String), JsValue> {
     let now = perf_now();
     let pc = new_peer_connection_no_servers()?;
     let dc_init = {
@@ -97,27 +98,38 @@ pub async fn open_host(
     let dc_holder: Rc<RefCell<Option<RtcDataChannel>>> = Rc::new(RefCell::new(Some(dc.clone())));
     let mut keepalive: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
 
-    install_dc_handlers(&dc, messages_setter, channel_opened_setter, state_setter, &mut keepalive);
-    install_ice_state_logging(&pc, ice_state_setter, &mut keepalive);
+    install_dc_handlers(
+        &dc,
+        setters.messages,
+        setters.channel_opened_ms,
+        setters.state,
+        &mut keepalive,
+    );
+    install_state_logging(&pc, setters.ice_state, setters.signaling_state, &mut keepalive);
 
-    state_setter.set(RtcConn::Gathering);
+    setters.state.set(RtcConn::Gathering);
     let offer = JsFuture::from(pc.create_offer()).await?;
     let offer_desc: RtcSessionDescriptionInit = offer.unchecked_into();
     JsFuture::from(pc.set_local_description(&offer_desc)).await?;
     wait_for_ice_complete(&pc, &mut keepalive).await;
-    gather_done_setter.set(Some(perf_now() - now));
-    state_setter.set(RtcConn::Ready);
+    setters.gather_done_ms.set(Some(perf_now() - now));
+    setters.state.set(RtcConn::Ready);
+    // Push initial state into the diag panel so the user sees the right
+    // values even if no event fires before the first render tick.
+    setters.signaling_state.set(format!("{:?}", pc.signaling_state()));
+    setters.ice_state.set(format!("{:?}", pc.ice_connection_state()));
 
     let sdp = local_description_sdp(&pc).unwrap_or_default();
     let session = PeerSession {
         pc,
         dc: dc_holder,
-        state: state_setter,
-        messages: messages_setter,
+        state: setters.state,
+        messages: setters.messages,
         gather_started_ms: now,
-        gather_done_ms: gather_done_setter,
-        channel_opened_ms: channel_opened_setter,
-        ice_state: ice_state_setter,
+        gather_done_ms: setters.gather_done_ms,
+        channel_opened_ms: setters.channel_opened_ms,
+        ice_state: setters.ice_state,
+        signaling_state: setters.signaling_state,
         _keepalive: keepalive,
     };
     Ok((session, encode_sdp("offer", &sdp)))
@@ -131,11 +143,7 @@ pub async fn open_host(
 /// channel via `pc.ondatachannel`.
 pub async fn open_joiner(
     offer_blob: &str,
-    state_setter: WriteSignal<RtcConn>,
-    messages_setter: WriteSignal<Vec<String>>,
-    gather_done_setter: WriteSignal<Option<f64>>,
-    channel_opened_setter: WriteSignal<Option<f64>>,
-    ice_state_setter: WriteSignal<String>,
+    setters: OpenSetters,
 ) -> Result<(PeerSession, String), JsValue> {
     let now = perf_now();
     let pc = new_peer_connection_no_servers()?;
@@ -146,9 +154,9 @@ pub async fn open_joiner(
     // DataChannel arrives.
     {
         let dc_holder = dc_holder.clone();
-        let messages_setter = messages_setter;
-        let channel_opened_setter = channel_opened_setter;
-        let state_setter = state_setter;
+        let messages_setter = setters.messages;
+        let channel_opened_setter = setters.channel_opened_ms;
+        let state_setter = setters.state;
         let mut handlers_buf: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
         let cb = Closure::wrap(Box::new(move |ev: JsValue| {
             let ev: RtcDataChannelEvent = ev.unchecked_into();
@@ -165,9 +173,9 @@ pub async fn open_joiner(
         pc.set_ondatachannel(Some(cb.as_ref().unchecked_ref()));
         keepalive.push(cb);
     }
-    install_ice_state_logging(&pc, ice_state_setter, &mut keepalive);
+    install_state_logging(&pc, setters.ice_state, setters.signaling_state, &mut keepalive);
 
-    state_setter.set(RtcConn::Gathering);
+    setters.state.set(RtcConn::Gathering);
     let offer_sdp = decode_offer(offer_blob)?;
     let offer_desc = RtcSessionDescriptionInit::new(RtcSdpType::Offer);
     offer_desc.set_sdp(&offer_sdp);
@@ -176,19 +184,22 @@ pub async fn open_joiner(
     let answer_desc: RtcSessionDescriptionInit = answer.unchecked_into();
     JsFuture::from(pc.set_local_description(&answer_desc)).await?;
     wait_for_ice_complete(&pc, &mut keepalive).await;
-    gather_done_setter.set(Some(perf_now() - now));
-    state_setter.set(RtcConn::Ready);
+    setters.gather_done_ms.set(Some(perf_now() - now));
+    setters.state.set(RtcConn::Ready);
+    setters.signaling_state.set(format!("{:?}", pc.signaling_state()));
+    setters.ice_state.set(format!("{:?}", pc.ice_connection_state()));
 
     let sdp = local_description_sdp(&pc).unwrap_or_default();
     let session = PeerSession {
         pc,
         dc: dc_holder,
-        state: state_setter,
-        messages: messages_setter,
+        state: setters.state,
+        messages: setters.messages,
         gather_started_ms: now,
-        gather_done_ms: gather_done_setter,
-        channel_opened_ms: channel_opened_setter,
-        ice_state: ice_state_setter,
+        gather_done_ms: setters.gather_done_ms,
+        channel_opened_ms: setters.channel_opened_ms,
+        ice_state: setters.ice_state,
+        signaling_state: setters.signaling_state,
         _keepalive: keepalive,
     };
     Ok((session, encode_sdp("answer", &sdp)))
@@ -196,7 +207,21 @@ pub async fn open_joiner(
 // SECTION: accept_answer
 
 /// Host calls this with the joiner's answer SDP to complete the handshake.
+///
+/// Pre-flights `signalingState` so we surface "page was backgrounded" /
+/// "you tapped Start hosting twice" before throwing the inscrutable
+/// browser error. Real chrome message in that case:
+/// `InvalidStateError: Failed to set remote answer sdp: Called in wrong state: stable`.
 pub async fn accept_answer(pc: &RtcPeerConnection, answer_blob: &str) -> Result<(), JsValue> {
+    let signaling = pc.signaling_state();
+    if signaling != RtcSignalingState::HaveLocalOffer {
+        return Err(JsValue::from_str(&format!(
+            "PeerConnection signaling state is `{signaling:?}` (expected `HaveLocalOffer`). \
+             Common causes: (1) you tapped Start hosting more than once \u{2014} only the latest PC keeps the offer; \
+             (2) iOS Safari paused the page (AirDrop / share sheet / app switch) and reset the RTC session. \
+             Tap Reset, then redo the handshake without leaving the host page."
+        )));
+    }
     let answer_sdp = decode_answer(answer_blob)?;
     let answer_desc = RtcSessionDescriptionInit::new(RtcSdpType::Answer);
     answer_desc.set_sdp(&answer_sdp);
@@ -376,11 +401,22 @@ fn install_dc_handlers(
     }
 }
 
-/// Mirror `iceConnectionState` into the diagnostic panel so the user can
-/// see e.g. `checking → connected → completed` (or `failed`) in real time.
-fn install_ice_state_logging(
+/// Mirror the four RTC state machines into the diagnostic panel:
+///
+/// - `iceConnectionState` — the legacy "is the peer reachable?" view
+/// - `signalingState` — what stage of offer/answer we're in
+///   (`stable` ↔ `have-local-offer` ↔ `stable` after answer)
+/// - `iceGatheringState` — `new` → `gathering` → `complete`
+///
+/// The fourth (`connectionState` aka the unified peer-connection state)
+/// is sampled in [`PeerSession::connection_state_str`] on demand because
+/// `onconnectionstatechange` isn't always fired the same way across
+/// browsers (Safari was late to it). The page polls it after each user
+/// action instead.
+fn install_state_logging(
     pc: &RtcPeerConnection,
     ice_state: WriteSignal<String>,
+    signaling_state: WriteSignal<String>,
     keepalive: &mut Vec<Closure<dyn FnMut(JsValue)>>,
 ) {
     {
@@ -392,8 +428,17 @@ fn install_ice_state_logging(
         pc.set_oniceconnectionstatechange(Some(cb.as_ref().unchecked_ref()));
         keepalive.push(cb);
     }
+    {
+        let pc_inner = pc.clone();
+        let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+            let s = format!("{:?}", pc_inner.signaling_state());
+            signaling_state.set(s);
+        }) as Box<dyn FnMut(JsValue)>);
+        pc.set_onsignalingstatechange(Some(cb.as_ref().unchecked_ref()));
+        keepalive.push(cb);
+    }
     // Optional: log each ICE candidate as it's gathered (useful for
-    // confirming `.local` / mDNS candidates appear).
+    // confirming `.local` / mDNS candidates appear in the JS console).
     {
         let cb = Closure::wrap(Box::new(move |ev: JsValue| {
             let ev: RtcPeerConnectionIceEvent = ev.unchecked_into();

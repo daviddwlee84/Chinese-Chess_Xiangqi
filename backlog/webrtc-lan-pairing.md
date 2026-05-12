@@ -198,6 +198,52 @@ the byte count so we can verify QR fits before committing.
 > `clients/chess-web/src/spike/rtc.rs::encode_sdp` /
 > `decode_sdp_envelope`.
 
+> **2026-05-12 spike second-run finding (iOS Safari + AirDrop)**: with
+> the JSON envelope fix in place, the second run on iPhone (host) +
+> iPad (joiner) hit a different failure: host
+> `JsValue(InvalidStateError: Failed to set remote answer sdp: Called
+> in wrong state: stable )`. Both devices' `iceConnectionState` was
+> `Failed` even before `accept_answer` ran. Hypothesis: **iOS Safari
+> aggressively pauses / tears down WebRTC sessions when the page is
+> backgrounded**. Tapping "Copy offer" → AirDrop sheet → switching to
+> Notes / iMessage to forward → returning to Safari covers a 30+
+> second window in which iOS unilaterally closes the PeerConnection
+> (signalling state silently rolls back to `stable`, ICE goes
+> `failed`). This is documented Safari behaviour, not a spike bug.
+>
+> Mitigations applied to the spike (still pending real-world re-test):
+>
+> - `accept_answer` pre-flights `signalingState`; if it's not
+>   `HaveLocalOffer`, surface a clear "iOS paused the page or you
+>   double-tapped Start hosting" error before the browser's cryptic
+>   one fires.
+> - `Start hosting` and `Accept answer` buttons disable after their
+>   first use so accidental double-taps can't churn the PC. Failures
+>   re-enable so retry is one tap away.
+> - Diag panel now shows `signalingState` alongside `iceConnectionState`
+>   so the next failure mode is diagnosable from the screenshot alone.
+> - Each page got a "Reset (reload page)" button to start a fresh PC
+>   without manual reload gymnastics on a phone.
+> - Visible warning at the top of the host page: do not switch apps
+>   between Start hosting and Accept answer.
+>
+> **Recommended next-test order** to isolate the iOS-backgrounding
+> issue from the underlying RTC plumbing:
+>
+> 1. **Two macOS Safari tabs on one MacBook** — open `/spike/lan/host`
+>    in tab A, `/spike/lan/join` in tab B. Copy via in-page Copy
+>    button + paste in the other tab (no app switching, no
+>    backgrounding). If this works, the RTC pipe is fine and the
+>    iPhone failure was iOS backgrounding.
+> 2. **macOS Safari host + iPad Safari joiner over LAN** — host on
+>    Mac (immune to mobile backgrounding), joiner on iPad. Use AirDrop
+>    answer → MacBook. Tests cross-device while keeping the
+>    handshake-sensitive side (host) on a stable platform.
+> 3. **Two iOS devices** — only after (1) and (2) succeed. May require
+>    the PWA to be installed (`Add to Home Screen`) so iOS treats it
+>    as a first-class app rather than a Safari tab. Or fall back to
+>    Approach C (LAN signalling endpoint).
+
 #### How to run the spike on real devices
 
 Prerequisite: every test device must be able to reach the dev page. iOS

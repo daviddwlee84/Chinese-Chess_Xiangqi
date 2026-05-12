@@ -11,7 +11,9 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
-use super::rtc::{accept_answer, dc_send, open_host, open_joiner, PeerSession, RtcConn};
+use super::rtc::{
+    accept_answer, dc_send, open_host, open_joiner, OpenSetters, PeerSession, RtcConn,
+};
 // SECTION: route component (HostPage)
 
 #[component]
@@ -22,10 +24,16 @@ pub fn HostPage() -> impl IntoView {
     let (gather_done_ms, set_gather_done_ms) = create_signal::<Option<f64>>(None);
     let (channel_opened_ms, set_channel_opened_ms) = create_signal::<Option<f64>>(None);
     let (ice_state, set_ice_state) = create_signal::<String>(String::from("idle"));
+    let (signaling_state, set_signaling_state) = create_signal::<String>(String::from("idle"));
 
     let (offer_blob, set_offer_blob) = create_signal::<String>(String::new());
     let (answer_blob, set_answer_blob) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+    // Lock buttons after their action runs so an accidental double-tap
+    // can't clobber the live PC with a fresh one (the most likely cause
+    // of the "wrong state: stable" error in the first iOS spike run).
+    let (host_started, set_host_started) = create_signal::<bool>(false);
+    let (answer_accepted, set_answer_accepted) = create_signal::<bool>(false);
 
     // The PeerSession lives in an Rc<RefCell<...>> so we can:
     //   1. own it from `start_host` (writes Some after open_host completes),
@@ -33,27 +41,34 @@ pub fn HostPage() -> impl IntoView {
     //   3. read the PeerConnection from the answer-paste handler.
     let session: Rc<RefCell<Option<PeerSession>>> = Rc::new(RefCell::new(None));
 
+    let setters = OpenSetters {
+        state: set_state,
+        messages: set_messages,
+        gather_done_ms: set_gather_done_ms,
+        channel_opened_ms: set_channel_opened_ms,
+        ice_state: set_ice_state,
+        signaling_state: set_signaling_state,
+    };
+
     let session_for_start = session.clone();
     let start_host = move |_| {
+        if host_started.get_untracked() {
+            return;
+        }
+        set_host_started.set(true);
         set_error_msg.set(None);
         set_offer_blob.set(String::new());
         let session = session_for_start.clone();
         spawn_local(async move {
-            match open_host(
-                set_state,
-                set_messages,
-                set_gather_done_ms,
-                set_channel_opened_ms,
-                set_ice_state,
-            )
-            .await
-            {
+            match open_host(setters).await {
                 Ok((s, sdp)) => {
                     set_offer_blob.set(sdp);
                     *session.borrow_mut() = Some(s);
                 }
                 Err(e) => {
                     set_error_msg.set(Some(format!("open_host failed: {e:?}")));
+                    // Allow retry on failure.
+                    set_host_started.set(false);
                 }
             }
         });
@@ -61,6 +76,9 @@ pub fn HostPage() -> impl IntoView {
 
     let session_for_answer = session.clone();
     let accept_answer_click = move |_| {
+        if answer_accepted.get_untracked() {
+            return;
+        }
         set_error_msg.set(None);
         let blob = answer_blob.get();
         if blob.trim().is_empty() {
@@ -68,6 +86,7 @@ pub fn HostPage() -> impl IntoView {
             return;
         }
         let session = session_for_answer.clone();
+        set_answer_accepted.set(true);
         spawn_local(async move {
             // Reach into the cell to grab the PeerConnection. Cloning
             // the PC is cheap (it's a JS object handle).
@@ -76,11 +95,14 @@ pub fn HostPage() -> impl IntoView {
                 Some(pc) => pc,
                 None => {
                     set_error_msg.set(Some("start the host first".into()));
+                    set_answer_accepted.set(false);
                     return;
                 }
             };
             if let Err(e) = accept_answer(&pc, &blob).await {
                 set_error_msg.set(Some(format!("accept_answer failed: {e:?}")));
+                // Allow retry on failure (state probably reset).
+                set_answer_accepted.set(false);
             }
         });
     };
@@ -115,7 +137,21 @@ pub fn HostPage() -> impl IntoView {
                 <code>"backlog/webrtc-lan-pairing.md"</code>
                 ". iceServers = []; mDNS-only ICE."
             </p>
-            <button on:click=start_host>"1. Start hosting"</button>
+            <p class="muted" style="color:#c80;font-size:12px">
+                "iOS hint: do not switch apps after tapping Start hosting. iOS Safari pauses WebRTC sessions \
+                 when the page is backgrounded (the share sheet counts as backgrounded). Use the in-page Copy \
+                 buttons + a side channel that doesn't take over the screen, or run host + joiner as two macOS \
+                 Safari tabs first to confirm the pipe works."
+            </p>
+            <button on:click=start_host disabled=move || host_started.get()>
+                "1. Start hosting"
+            </button>
+            <button on:click=move |_| {
+                let win = web_sys::window().expect("window");
+                let _ = win.location().reload();
+            } style="margin-left:0.5rem">
+                "Reset (reload page)"
+            </button>
             <p>"Offer SDP (send to joiner via AirDrop / Nearby Share / paste):"</p>
             <textarea
                 rows="8"
@@ -139,10 +175,13 @@ pub fn HostPage() -> impl IntoView {
                     set_answer_blob.set(v);
                 }
             />
-            <button on:click=accept_answer_click>"3. Accept answer"</button>
+            <button on:click=accept_answer_click disabled=move || answer_accepted.get()>
+                "3. Accept answer"
+            </button>
             <DiagPanel
                 state=state
                 ice_state=ice_state
+                signaling_state=signaling_state
                 gather_done_ms=gather_done_ms
                 channel_opened_ms=channel_opened_ms
                 offer_size=Signal::derive(move || offer_blob.with(|s| s.len()))
@@ -167,40 +206,48 @@ pub fn JoinPage() -> impl IntoView {
     let (gather_done_ms, set_gather_done_ms) = create_signal::<Option<f64>>(None);
     let (channel_opened_ms, set_channel_opened_ms) = create_signal::<Option<f64>>(None);
     let (ice_state, set_ice_state) = create_signal::<String>(String::from("idle"));
+    let (signaling_state, set_signaling_state) = create_signal::<String>(String::from("idle"));
 
     let (offer_blob, set_offer_blob) = create_signal::<String>(String::new());
     let (answer_blob, set_answer_blob) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+    let (joined, set_joined) = create_signal::<bool>(false);
 
     let session: Rc<RefCell<Option<PeerSession>>> = Rc::new(RefCell::new(None));
 
+    let setters = OpenSetters {
+        state: set_state,
+        messages: set_messages,
+        gather_done_ms: set_gather_done_ms,
+        channel_opened_ms: set_channel_opened_ms,
+        ice_state: set_ice_state,
+        signaling_state: set_signaling_state,
+    };
+
     let session_for_join = session.clone();
     let do_join = move |_| {
+        if joined.get_untracked() {
+            return;
+        }
+        set_joined.set(true);
         set_error_msg.set(None);
         set_answer_blob.set(String::new());
         let blob = offer_blob.get();
         if blob.trim().is_empty() {
             set_error_msg.set(Some("paste host offer first".into()));
+            set_joined.set(false);
             return;
         }
         let session = session_for_join.clone();
         spawn_local(async move {
-            match open_joiner(
-                &blob,
-                set_state,
-                set_messages,
-                set_gather_done_ms,
-                set_channel_opened_ms,
-                set_ice_state,
-            )
-            .await
-            {
+            match open_joiner(&blob, setters).await {
                 Ok((s, sdp)) => {
                     set_answer_blob.set(sdp);
                     *session.borrow_mut() = Some(s);
                 }
                 Err(e) => {
                     set_error_msg.set(Some(format!("open_joiner failed: {e:?}")));
+                    set_joined.set(false);
                 }
             }
         });
@@ -246,7 +293,13 @@ pub fn JoinPage() -> impl IntoView {
                     set_offer_blob.set(v);
                 }
             />
-            <button on:click=do_join>"2. Generate answer"</button>
+            <button on:click=do_join disabled=move || joined.get()>"2. Generate answer"</button>
+            <button on:click=move |_| {
+                let win = web_sys::window().expect("window");
+                let _ = win.location().reload();
+            } style="margin-left:0.5rem">
+                "Reset (reload page)"
+            </button>
             <p>"Answer SDP (send back to host):"</p>
             <textarea
                 rows="8"
@@ -261,6 +314,7 @@ pub fn JoinPage() -> impl IntoView {
             <DiagPanel
                 state=state
                 ice_state=ice_state
+                signaling_state=signaling_state
                 gather_done_ms=gather_done_ms
                 channel_opened_ms=channel_opened_ms
                 offer_size=Signal::derive(move || answer_blob.with(|s| s.len()))
@@ -282,6 +336,7 @@ pub fn JoinPage() -> impl IntoView {
 fn DiagPanel(
     state: ReadSignal<RtcConn>,
     ice_state: ReadSignal<String>,
+    signaling_state: ReadSignal<String>,
     gather_done_ms: ReadSignal<Option<f64>>,
     channel_opened_ms: ReadSignal<Option<f64>>,
     #[prop(into)] offer_size: Signal<usize>,
@@ -290,7 +345,8 @@ fn DiagPanel(
     view! {
         <div class="diag" style="margin-top:1rem;padding:0.75rem;border:1px solid #888;font-family:monospace;font-size:12px">
             <p>"State: " {move || format!("{:?}", state.get())}</p>
-            <p>"ICE state: " {move || ice_state.get()}</p>
+            <p>"Signaling state: " {move || signaling_state.get()}</p>
+            <p>"ICE connection state: " {move || ice_state.get()}</p>
             <p>"ICE gather done at: " {move || gather_done_ms.get().map(|m| format!("{m:.0} ms")).unwrap_or_else(|| "—".into())}</p>
             <p>"DataChannel opened at: " {move || channel_opened_ms.get().map(|m| format!("{m:.0} ms")).unwrap_or_else(|| "—".into())}</p>
             <p>"Local SDP bytes: " {move || offer_size.get()}</p>
