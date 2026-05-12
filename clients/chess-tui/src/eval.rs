@@ -6,6 +6,7 @@
 //! frontends.
 
 use chess_core::piece::Side;
+use chess_core::state::GameStatus;
 
 /// One AI evaluation snapshot taken after a specific ply was played.
 ///
@@ -40,5 +41,35 @@ impl EvalSample {
     #[allow(dead_code)]
     pub fn black_win_pct(&self) -> f32 {
         1.0 - self.red_win_pct
+    }
+
+    /// Definitive end-of-game sample. Mirrors chess-web's
+    /// `EvalSample::final_outcome`: the per-move sample writers in
+    /// `app.rs` (apply_move / ai_reply) bail when the game ends, so
+    /// the last sample they record is from the position **before**
+    /// the game-ending move. For a Red-wins-by-general-capture finish
+    /// that leaves the headline / chart frozen at the AI's pre-loss
+    /// optimism. Pushing one of these on the Ongoing→ended transition
+    /// jumps the panel to the actual outcome (100/0 or 50/50).
+    ///
+    /// `cp_stm_pov` is set to ±MATE-ish (matching `cp_to_win_pct`'s
+    /// early-out band) so a consumer that re-derives `red_win_pct`
+    /// from `cp_stm_pov` agrees with our explicit override.
+    pub fn final_outcome(ply: usize, side_to_move: Side, status: &GameStatus) -> Option<Self> {
+        const TERMINAL_CP: i32 = 30_000;
+        let (cp_stm_pov, red_win_pct) = match status {
+            GameStatus::Ongoing => return None,
+            GameStatus::Drawn { .. } => (0, 0.5),
+            GameStatus::Won { winner, .. } => match (*winner, side_to_move) {
+                (Side::RED, Side::RED) => (TERMINAL_CP, 0.99),
+                (Side::RED, _) => (-TERMINAL_CP, 0.99),
+                (Side::BLACK, Side::BLACK) => (TERMINAL_CP, 0.01),
+                (Side::BLACK, _) => (-TERMINAL_CP, 0.01),
+                // Banqi 3rd colour — see chess-web's mirror; can't be
+                // expressed cleanly on a Red-vs-Black axis.
+                (_, _) => (0, 0.5),
+            },
+        };
+        Some(Self { ply, side_to_move_at_pos: side_to_move, cp_stm_pov, red_win_pct })
     }
 }

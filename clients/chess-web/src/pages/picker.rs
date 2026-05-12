@@ -56,8 +56,8 @@ fn DisplaySettings() -> impl IntoView {
     let fx_threat_hover = prefs.fx_threat_hover;
     let fx_last_move = prefs.fx_last_move;
     // The `<select>` reports value-strings; we map back to ThreatMode
-    // via `ThreatMode::from_str` (unknown → recommended NetLoss
-    // default — keeps the UI graceful if a future option is added).
+    // via `ThreatMode::from_str` (unknown → `Off` default — keeps the
+    // UI graceful if a future option is added).
     let on_mode_change = move |ev: leptos::ev::Event| {
         let s = event_target_value(&ev);
         fx_threat_mode.set(ThreatMode::from_str(&s));
@@ -82,12 +82,15 @@ fn DisplaySettings() -> impl IntoView {
                     />
                     <span>"將軍 / CHECK warning"</span>
                 </label>
-                // Threat highlight mode selector. Default `NetLoss`
-                // ('被捉') — visually clean enough to leave on. The
-                // user-visible labels are bilingual so first-time
-                // viewers can guess the semantic without diving into
-                // docs; the option values are the lowercase camelCase
-                // that `ThreatMode::as_str` writes to localStorage.
+                // Threat highlight mode selector. Default `Off` (the
+                // feature is opt-in per user feedback 2026-05-12 — a
+                // quiet board out-of-the-box, with `NetLoss` ('被捉')
+                // labeled as the recommended option for users who flip
+                // it on). The user-visible labels are bilingual so
+                // first-time viewers can guess the semantic without
+                // diving into docs; the option values are the
+                // lowercase camelCase that `ThreatMode::as_str` writes
+                // to localStorage.
                 <label class="threat-mode-row">
                     <span>"威脅提示 / Threat highlight:"</span>
                     <select

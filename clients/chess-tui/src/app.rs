@@ -1383,10 +1383,20 @@ impl AppState {
     }
 
     fn execute_resign(&mut self) {
+        let evalbar_enabled = self.evalbar_enabled;
         match &mut self.screen {
             Screen::Game(g) => {
                 let winner = g.state.side_to_move.opposite();
                 g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
+                // Final win-rate sample so the headline / chart jump
+                // to the actual outcome (mirrors the apply_move
+                // post-move hook). Without this the panel would stay
+                // frozen at whatever the pre-resign analysis showed —
+                // often misleading since players resign worse-than-
+                // they-look positions all the time.
+                if evalbar_enabled {
+                    Self::record_eval_final(g);
+                }
             }
             Screen::Net(n) => {
                 let _ = n.client.cmd_tx.send(ClientMsg::Resign);
@@ -1999,6 +2009,16 @@ impl AppState {
             // own analysis output, so we skip the extra search there.
             Self::run_pvp_eval(g);
         }
+        // Game-end definitive sample. Mirrors chess-web's
+        // `pages/local.rs` Ongoing→ended effect: the per-move sample
+        // writers above bail when the game ends, so the last recorded
+        // sample is from the *previous* position. Push a 100/0 (or
+        // 50/50 for draws) sample so the headline / chart jump to the
+        // real outcome instead of staying frozen at the AI's pre-loss
+        // optimism. Idempotent via `record_eval_final`'s ply-dedup.
+        if evalbar_enabled && !matches!(g.state.status, GameStatus::Ongoing) {
+            Self::record_eval_final(g);
+        }
     }
 
     /// Side-effect-only analyze used by [`apply_move`] in PvP mode
@@ -2027,6 +2047,28 @@ impl AppState {
         }
         let sample = crate::eval::EvalSample::new(ply, g.state.side_to_move, cp_stm_pov);
         g.eval_samples.push(sample);
+    }
+
+    /// Record (or replace) the definitive end-of-game sample. Unlike
+    /// [`record_eval_sample`][Self::record_eval_sample] this *replaces*
+    /// any existing sample at the same ply — the per-move writer may
+    /// have just landed a pre-final-move sample with the same ply
+    /// count (no-op for AI-played terminal positions, since the AI
+    /// pump bails when status flips, but PvP mode's `run_pvp_eval`
+    /// only bails on the same status check from the caller). Net
+    /// effect: the trend chart's last point and the headline % both
+    /// jump to the actual outcome the moment the banner appears.
+    fn record_eval_final(g: &mut GameView) {
+        let ply = g.state.history.len();
+        let stm = g.state.side_to_move;
+        let Some(sample) = crate::eval::EvalSample::final_outcome(ply, stm, &g.state.status) else {
+            return;
+        };
+        if let Some(idx) = g.eval_samples.iter().position(|s| s.ply == ply) {
+            g.eval_samples[idx] = sample;
+        } else {
+            g.eval_samples.push(sample);
+        }
     }
 
     /// Run the configured engine once and apply its move. Surfaces the

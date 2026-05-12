@@ -778,6 +778,32 @@ fn LocalGame(
     // belonged to the previous position. Writing from inside the pumps
     // pairs each sample with the analysis that produced it.)
 
+    // Game-end definitive sample. Both pumps above bail when
+    // `state.status != Ongoing`, so the last sample they wrote
+    // belongs to the position **before** the game-ending move. For a
+    // Red-wins-by-general-capture finish the AI pump's last sample is
+    // typically the AI's "I'm doing great!" moment from before its
+    // general was captured — leaving the sidebar badge frozen at e.g.
+    // "Red 10 %" even after the VICTORY banner appears (user feedback
+    // 2026-05-12). This effect detects the Ongoing→ended transition
+    // and pushes a definitive sample so the badge / chart jump to
+    // 100/0 (or 50/50 for draws). Cheap: fires at most once per game
+    // (status only ever leaves Ongoing once until New Game / Undo
+    // resets `eval_samples`).
+    if evalbar_enabled {
+        create_effect(move |prev: Option<bool>| {
+            let cur = !matches!(state.with(|s| s.status), GameStatus::Ongoing);
+            if cur && !prev.unwrap_or(false) {
+                let (ply, stm, status) =
+                    state.with_untracked(|s| (s.history.len(), s.side_to_move, s.status));
+                if let Some(sample) = EvalSample::final_outcome(ply, stm, &status) {
+                    push_or_replace_sample(eval_samples, sample);
+                }
+            }
+            cur
+        });
+    }
+
     let prefs = expect_context::<Prefs>();
     let fx_confetti: Signal<bool> = prefs.fx_confetti.into();
     // Local pass-and-play: no `ClientRole`, so the overlay falls back to

@@ -18,6 +18,7 @@
 //! ([`chess_ai::cp_to_win_pct`]) so chess-tui can share the math.
 
 use chess_core::piece::Side;
+use chess_core::state::GameStatus;
 #[cfg(target_arch = "wasm32")]
 use leptos::*;
 
@@ -61,6 +62,50 @@ impl EvalSample {
     /// `red_win_pct` at render time.
     pub fn black_win_pct(&self) -> f32 {
         1.0 - self.red_win_pct
+    }
+
+    /// Definitive end-of-game sample. Bypasses the cp→% logistic
+    /// (which clamps to `[0.01, 0.99]` and would never reach a clean
+    /// 100/0) so the eval bar / badge / chart all jump to the actual
+    /// outcome the moment the game ends.
+    ///
+    /// Why this exists: the per-move sample pumps (AI move pump + hint
+    /// pump in `pages/local.rs`) bail when `state.status != Ongoing`,
+    /// so the last sample they record is from the position **before**
+    /// the game-ending move. For a Red-wins-by-general-capture finish
+    /// the last AI-pump sample is "Red 10 %" (Black just played a
+    /// move it thought was great, before its general got captured),
+    /// which leaves the badge confusingly stuck at ~10 % even after
+    /// Red's victory banner mounts. See user feedback 2026-05-12.
+    ///
+    /// `cp_stm_pov` is set to ±MATE-ish to keep the field consistent
+    /// with the cp→% relationship the chart Y-axis assumes (so an
+    /// `EvalSample` consumer that re-derives `red_win_pct` from
+    /// `cp_stm_pov` doesn't disagree with our explicit override).
+    /// `side_to_move_at_pos` is whoever was on move when the position
+    /// became terminal (i.e. the loser in a `Won` outcome — the side
+    /// that has no legal reply).
+    pub fn final_outcome(ply: usize, side_to_move: Side, status: &GameStatus) -> Option<Self> {
+        // Sentinel cp magnitude — large enough to land in the
+        // `cp_to_win_pct` early-out (≥ MATE - 1000) so re-derivation
+        // matches our explicit `red_win_pct` to two decimals.
+        const TERMINAL_CP: i32 = 30_000;
+        let (cp_stm_pov, red_win_pct) = match status {
+            GameStatus::Ongoing => return None,
+            GameStatus::Drawn { .. } => (0, 0.5),
+            GameStatus::Won { winner, .. } => match (*winner, side_to_move) {
+                (Side::RED, Side::RED) => (TERMINAL_CP, 0.99),
+                (Side::RED, _) => (-TERMINAL_CP, 0.99),
+                (Side::BLACK, Side::BLACK) => (TERMINAL_CP, 0.01),
+                (Side::BLACK, _) => (-TERMINAL_CP, 0.01),
+                // Banqi 3rd colour — treat as "not Red, not Black"
+                // and call it 50/50 since the Red-vs-Black axis can't
+                // express a Green win cleanly. The end-game banner
+                // will still announce the correct winner.
+                (_, _) => (0, 0.5),
+            },
+        };
+        Some(Self { ply, side_to_move_at_pos: side_to_move, cp_stm_pov, red_win_pct })
     }
 }
 
@@ -147,5 +192,62 @@ mod tests {
     fn red_win_pct_mate_for_black_clamps_red_to_1pct() {
         let s = EvalSample::new(42, Side::BLACK, chess_ai::WIN_PCT_K as i32 * 100);
         assert!(s.red_win_pct < 0.05, "Black mating should drop Red %, got {}", s.red_win_pct);
+    }
+
+    /// `final_outcome` returns `None` while the game is still going —
+    /// the per-move pump is the only producer in the Ongoing state and
+    /// we don't want to leak a bogus 50/50 sample if a caller forgets
+    /// the status check.
+    #[test]
+    fn final_outcome_none_when_ongoing() {
+        let s = EvalSample::final_outcome(7, Side::RED, &GameStatus::Ongoing);
+        assert!(s.is_none());
+    }
+
+    /// Red-wins terminal position pins Red to ~99 % regardless of who
+    /// is on move at the terminal node. Pins the user-reported bug
+    /// (2026-05-12): a Red-by-general-capture finish was leaving the
+    /// badge at "Red 10 %" because the last per-move sample was the
+    /// pre-loss AI-evaluation of Black thinking it was winning.
+    #[test]
+    fn final_outcome_red_wins_pins_red_high() {
+        use chess_core::state::WinReason;
+        for stm in [Side::RED, Side::BLACK] {
+            let s = EvalSample::final_outcome(
+                39,
+                stm,
+                &GameStatus::Won { winner: Side::RED, reason: WinReason::GeneralCaptured },
+            )
+            .expect("terminal sample");
+            assert!(
+                s.red_win_pct > 0.95,
+                "Red wins should pin Red high regardless of stm={:?}, got {}",
+                stm,
+                s.red_win_pct,
+            );
+            // Re-deriving from cp must agree with the explicit override
+            // (consumers like the chart Y-axis trust this invariant).
+            let derived = stm_cp_to_red_win_pct(s.cp_stm_pov, s.side_to_move_at_pos);
+            assert!(
+                (derived - s.red_win_pct).abs() < 0.05,
+                "cp-derived {} should match red_win_pct {}",
+                derived,
+                s.red_win_pct,
+            );
+        }
+    }
+
+    /// Draw → 50/50.
+    #[test]
+    fn final_outcome_draw_is_50_50() {
+        use chess_core::state::DrawReason;
+        let s = EvalSample::final_outcome(
+            120,
+            Side::RED,
+            &GameStatus::Drawn { reason: DrawReason::NoProgress },
+        )
+        .expect("terminal sample");
+        assert!((s.red_win_pct - 0.5).abs() < 1e-6);
+        assert_eq!(s.cp_stm_pov, 0);
     }
 }

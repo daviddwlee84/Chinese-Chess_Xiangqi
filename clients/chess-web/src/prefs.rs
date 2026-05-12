@@ -6,8 +6,8 @@
 //!   the side-to-move is in check (xiangqi only).
 //! * `fx_threat_mode` — board-overlay highlight for pieces under threat.
 //!   See `ThreatMode` for the four levels (Off / Attacked / NetLoss /
-//!   MateThreat); default `NetLoss` ('被捉' — visually clean enough to
-//!   leave on without burying the board in red rings).
+//!   MateThreat); default `Off` (feature is opt-in via the picker
+//!   dropdown; the recommended option there is `NetLoss` ('被捉')).
 //! * `fx_threat_hover` — secondary toggle: when a player's own piece is
 //!   hovered/selected, recompute and show what the opponent could
 //!   capture if that piece *didn't move* (a 'what-if I leave this here?'
@@ -18,8 +18,8 @@
 //!   (high-value, low-noise — only ever rings two squares at a time).
 //!
 //! Storage keys are stable so a user toggling once carries the choice
-//! across sessions. Missing values read as the recommended default
-//! (true / `NetLoss` / false / true). We persist `"1"` / `"0"` rather
+//! across sessions. Missing values read as the default
+//! (true / `Off` / false / true). We persist `"1"` / `"0"` rather
 //! than booleans so future debugging via DevTools is obvious.
 //!
 //! All `web_sys` calls are wrapped in `Option`/`Result` chains so a
@@ -39,10 +39,14 @@ const KEY_THREAT_MODE: &str = "chess.fx.threatMode";
 const KEY_THREAT_HOVER: &str = "chess.fx.threatHover";
 const KEY_LAST_MOVE: &str = "chess.fx.lastMove";
 
-/// Which "threat highlight" overlay to draw on the board. Off by
-/// historical default (this feature is new); the picker UI defaults
-/// fresh users to `NetLoss` because that's the one that's visually
-/// clean enough to leave on without burying the board in red rings.
+/// Which "threat highlight" overlay to draw on the board. Default
+/// `Off` — the feature is opt-in. Earlier builds defaulted fresh
+/// users to `NetLoss` ('被捉') on the theory that the visually clean
+/// SEE-filtered overlay was useful enough to leave on; user feedback
+/// (2026-05-12) preferred a quiet board out-of-the-box, with the
+/// picker's selector remaining the discoverability path. The
+/// recommended option in the picker dropdown is still `NetLoss` for
+/// users who flip it on.
 ///
 /// See `crate::components::board::threat_marker` for the SVG render
 /// path and `chess_core::view::ThreatInfo` for the underlying data.
@@ -55,7 +59,8 @@ pub enum ThreatMode {
     /// or doing tactics drills.
     Attacked,
     /// Highlight only pieces whose Static Exchange Evaluation predicts
-    /// material loss (mode B, '被捉'). Recommended default.
+    /// material loss (mode B, '被捉'). Recommended option when the
+    /// user opts in via the picker dropdown.
     NetLoss,
     /// Highlight the opponent piece(s) participating in a
     /// checkmate-in-1 threat (mode C, '叫殺'). Xiangqi only — the
@@ -65,7 +70,7 @@ pub enum ThreatMode {
 
 impl Default for ThreatMode {
     fn default() -> Self {
-        Self::NetLoss
+        Self::Off
     }
 }
 
@@ -82,14 +87,13 @@ impl ThreatMode {
     }
 
     /// Inverse of `as_str`; unknown / legacy values fall back to the
-    /// recommended default (`NetLoss`) so future renames don't break
-    /// stored prefs.
+    /// default (`Off`) so future renames don't break stored prefs.
     pub fn from_str(s: &str) -> Self {
         match s {
-            "off" => ThreatMode::Off,
             "attacked" => ThreatMode::Attacked,
+            "netLoss" => ThreatMode::NetLoss,
             "mateThreat" => ThreatMode::MateThreat,
-            _ => ThreatMode::NetLoss,
+            _ => ThreatMode::Off,
         }
     }
 }
