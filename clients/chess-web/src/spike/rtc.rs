@@ -260,13 +260,29 @@ fn new_peer_connection(mode: IceMode) -> Result<RtcPeerConnection, JsValue> {
     let cfg = RtcConfiguration::new();
     let servers: Array = Array::new();
     if mode == IceMode::WithStun {
-        // Single Google public STUN server. Reachable from most networks
-        // including most home / mobile / corporate. Not used by
-        // production code — production wants pure LAN; this is a spike
-        // diagnostic only.
-        let server = js_sys::Object::new();
-        Reflect::set(&server, &"urls".into(), &"stun:stun.l.google.com:19302".into()).ok();
-        servers.push(&server);
+        // Multi-server STUN list. Browsers race them in parallel and use
+        // whichever responds first. We pick a mix so the spike works in
+        // mainland China too:
+        //
+        //   - stun.miwifi.com — Xiaomi's own STUN; reachable from CN.
+        //   - stun.qq.com — Tencent's; reachable from CN.
+        //   - stun.cloudflare.com — global CDN; usually reachable.
+        //   - stun.l.google.com — global default; BLOCKED IN CN by GFW
+        //     (this is what the spike's first STUN test got stuck on,
+        //     until we added the timeout in `wait_for_ice_complete`).
+        //
+        // None of these is used in production (production wants pure
+        // LAN). This is a spike diagnostic only.
+        for url in [
+            "stun:stun.miwifi.com:3478",
+            "stun:stun.qq.com:3478",
+            "stun:stun.cloudflare.com:3478",
+            "stun:stun.l.google.com:19302",
+        ] {
+            let server = js_sys::Object::new();
+            Reflect::set(&server, &"urls".into(), &url.into()).ok();
+            servers.push(&server);
+        }
     }
     Reflect::set(&cfg, &"iceServers".into(), &servers).ok();
     RtcPeerConnection::new_with_configuration(&cfg)
@@ -362,9 +378,24 @@ pub fn decode_answer(blob: &str) -> Result<String, JsValue> {
     Ok(sdp)
 }
 
-/// Block until `pc.iceGatheringState == "complete"`. Browsers gather ICE
-/// asynchronously; for trickle-less SDP exchange (i.e. the QR/text path
-/// the spike is testing) we MUST wait.
+/// Maximum time we'll wait for `iceGatheringState == "complete"` before
+/// giving up and returning whatever candidates have arrived. This caps
+/// the failure mode where one of the configured STUN servers is
+/// unreachable (e.g. `stun.l.google.com` from mainland China — blocked
+/// by the GFW), which otherwise hangs the whole `open_host` /
+/// `open_joiner` flow indefinitely.
+///
+/// 5 seconds is generous: pure-LAN gathering completes in 100-200 ms,
+/// healthy STUN gathering in <1s. If we hit the timeout we still
+/// produce a valid SDP — there will just be fewer candidates than
+/// "ideal".
+const ICE_GATHER_TIMEOUT_MS: i32 = 5000;
+
+/// Block until `pc.iceGatheringState == "complete"`, OR
+/// [`ICE_GATHER_TIMEOUT_MS`] elapses (whichever comes first). Browsers
+/// gather ICE asynchronously; for trickle-less SDP exchange (i.e. the
+/// QR/text path the spike is testing) we MUST wait — but we cap the
+/// wait so a dead STUN server doesn't trap the user forever.
 async fn wait_for_ice_complete(
     pc: &RtcPeerConnection,
     keepalive: &mut Vec<Closure<dyn FnMut(JsValue)>>,
@@ -374,10 +405,10 @@ async fn wait_for_ice_complete(
     }
     let promise = js_sys::Promise::new(&mut |resolve, _reject| {
         let pc_inner = pc.clone();
-        let resolve = resolve;
+        let resolve_for_state = resolve.clone();
         let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
             if pc_inner.ice_gathering_state() == RtcIceGatheringState::Complete {
-                let _ = resolve.call0(&JsValue::NULL);
+                let _ = resolve_for_state.call0(&JsValue::NULL);
             }
         }) as Box<dyn FnMut(JsValue)>);
         pc.set_onicegatheringstatechange(Some(cb.as_ref().unchecked_ref()));
@@ -385,6 +416,26 @@ async fn wait_for_ice_complete(
         // The vec is moved into the PeerSession so it lives until the
         // session is dropped.
         keepalive.push(cb);
+
+        // Hard-cap the wait. setTimeout fires once and resolves the
+        // outer promise too — Promise resolution is idempotent, so a
+        // late `complete` event just no-ops.
+        if let Some(win) = web_sys::window() {
+            let resolve_for_timeout = resolve.clone();
+            let pc_for_timeout = pc.clone();
+            let timeout_cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+                web_sys::console::warn_2(
+                    &"[spike] ICE gather timeout — proceeding with whatever candidates we have. Final state:".into(),
+                    &format!("{:?}", pc_for_timeout.ice_gathering_state()).into(),
+                );
+                let _ = resolve_for_timeout.call0(&JsValue::NULL);
+            }) as Box<dyn FnMut(JsValue)>);
+            let _ = win.set_timeout_with_callback_and_timeout_and_arguments_0(
+                timeout_cb.as_ref().unchecked_ref(),
+                ICE_GATHER_TIMEOUT_MS,
+            );
+            keepalive.push(timeout_cb);
+        }
     });
     let _ = JsFuture::from(promise).await;
 }

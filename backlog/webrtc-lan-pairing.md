@@ -306,6 +306,69 @@ the byte count so we can verify QR fits before committing.
 > (signalling endpoint that helps both peers learn each other's IPs
 > without relying on mDNS).
 
+> **2026-05-12 spike fourth-run findings (root cause confirmed)**:
+>
+> Test 4 — **MacBook + iPad both joined to iPhone personal hotspot,
+> LanOnly mode**: ✅ `State: Connected, ICE state: Connected, gather
+> done at 169 ms, DataChannel opened at 17078 ms (the 17s is the
+> user copy/paste round-trip, not actual ICE checking time)`. With
+> hotspot, browsers gathered TWO mDNS candidates per peer (one per
+> network interface) instead of just one, and the connection opened
+> as soon as the answer was accepted. SDP grew slightly to 788 bytes
+> with the extra candidate — still well within QR v25 alphanumeric
+> capacity for Phase 5.
+>
+> Test 5 — **Same iPhone hotspot but with "Use Google STUN" enabled**:
+> ❌ Stuck at `State: Gathering`, no SDP ever generated.
+> `wait_for_ice_complete` hung indefinitely because
+> `stun.l.google.com` is unreachable from mainland China (GFW). Two
+> follow-up fixes:
+>
+> 1. **Add `ICE_GATHER_TIMEOUT_MS = 5000` cap** to
+>    `wait_for_ice_complete` — if a configured STUN server is
+>    unreachable, give up after 5 seconds and produce SDP with
+>    whatever candidates have arrived. No more permanent hangs.
+> 2. **Replace single Google STUN with a multi-server list** that
+>    includes CN-reachable servers as the first entries:
+>    `stun.miwifi.com:3478` (Xiaomi), `stun.qq.com:3478` (Tencent),
+>    `stun.cloudflare.com:3478` (Cloudflare), with Google STUN as
+>    the last fallback. Browsers race them and use whichever responds
+>    first.
+>
+> Test 6 — **Mi WiFi router AP-isolation toggle hunt**: ❌ no toggle
+> found. Inspected 高级設置 (QoS / DDNS / 端口转发 / VPN / 其他) and
+> 常用設置 (Wi-Fi / 上网 / 安全中心 / 局域网 / 系统状态) — none
+> exposes an AP isolation / Client Isolation / Wireless Isolation
+> control. Xiaomi MiWiFi consumer firmware (1.0.168) appears to block
+> peer-to-peer multicast bridging unconditionally without a user-facing
+> override. The hotspot test (Test 4) confirms this empirically —
+> identical devices, only the network changed, and LAN P2P went from
+> failing to working. Updated `pitfalls/webrtc-mdns-lan-ap-isolation.md`
+> to drop the "look for the AP isolation toggle" advice for Xiaomi
+> users; the realistic mitigation is "use a phone hotspot or flash
+> OpenWRT".
+>
+> **Phase 0 gate decision**: spike succeeds on the technical merits
+> (Tests 1 + 4 prove the LAN-only WebRTC pipe + mDNS works perfectly
+> when the network cooperates, ~660-790 byte SDP fits QR v25
+> comfortably, iOS Safari ↔ macOS Safari interop works once the router
+> isn't sabotaging multicast). **But ~1 hostile-router data point is
+> enough to make Approach B alone uncomfortable for production** —
+> we'd be telling Chinese users with Xiaomi routers (a large fraction
+> of the target audience) that the feature works "except on your
+> network, with no fix available". Recommendation for Phase 3+:
+>
+> - Build the WebRTC transport (Phases 3-5) as planned, with iPhone
+>   hotspot as the documented "if it doesn't work, try this" remedy.
+> - **Reserve Approach C (chess-net `/signal/<token>` LAN signalling
+>   endpoint) as a P3 follow-up** that activates when the
+>   DataChannel-open timer fires without progress, transparently
+>   falling back to a self-hosted relay. The `room` module from
+>   Phase 1 is already transport-agnostic, so the same `Room::apply`
+>   loop drives whichever transport completes the handshake first.
+> - Skip Approach D (mic permission for raw IPs) entirely — UX cost
+>   too high.
+
 #### How to run the spike on real devices
 
 Prerequisite: every test device must be able to reach the dev page. iOS
