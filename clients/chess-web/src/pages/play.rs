@@ -9,6 +9,7 @@ use chess_core::view::{PlayerView, VisibleCell};
 use chess_net::protocol::{ChatLine, ClientMsg, ServerMsg};
 use leptos::*;
 use leptos_router::{use_params_map, use_query_map};
+use std::rc::Rc;
 
 use crate::components::board::{Board, ThreatOverlay};
 use crate::components::captured::CapturedStrip;
@@ -26,7 +27,7 @@ use crate::state::{
     end_chain_move, find_move, hover_threat_squares, reconstruct_xiangqi_state_for_analysis,
     truncate_front, ClientRole,
 };
-use crate::ws::{connect, ConnState, WsHandle};
+use crate::transport::{self, ConnState, Transport};
 
 const CHAT_HISTORY_CAP: usize = 50;
 
@@ -109,7 +110,10 @@ fn PlayConnected(
     // hints_requested → `?hints=1` on the WS URL so the server can
     // (try to) sanction this room.
     let url = room_url(&ws_base, &room, password.as_deref(), watch_only, hints_requested);
-    let (handle, incoming, conn) = connect(url);
+    let session = transport::ws::connect(url);
+    let handle = session.handle.clone();
+    let incoming = session.incoming;
+    let conn = session.state;
 
     let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
     let (role, set_role) = create_signal::<Option<ClientRole>>(None);
@@ -390,7 +394,7 @@ fn ConnPlaceholder(room: String, conn: ReadSignal<ConnState>) -> impl IntoView {
 fn BoardWrapper(
     view_signal: ReadSignal<Option<PlayerView>>,
     role: ReadSignal<Option<ClientRole>>,
-    handle: WsHandle,
+    handle: Rc<dyn Transport>,
     /// Optional debug PV chain to highlight on the board (no-op in
     /// non-debug mode). Always-empty signal in normal play.
     #[prop(into)]
@@ -556,7 +560,7 @@ fn OnlineSidebar(
     view_signal: ReadSignal<Option<PlayerView>>,
     rules: ReadSignal<Option<RuleSet>>,
     conn: ReadSignal<ConnState>,
-    handle: WsHandle,
+    handle: Rc<dyn Transport>,
     ws_base: WsBase,
     /// Reactive predicate: when true, mounts the "🧠 Show / Hide AI
     /// hint" toggle button. Net-mode-specific because the gating depends

@@ -8,7 +8,7 @@ use crate::config::{
     WS_QUERY_KEY,
 };
 use crate::routes::{app_href, WsBaseError};
-use crate::ws::{connect, ConnState};
+use crate::transport::{self, ConnState};
 
 #[component]
 pub fn LobbyPage() -> impl IntoView {
@@ -38,7 +38,9 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
     // setting wins (server-side first-write-wins, like password).
     let (allow_hints, set_allow_hints) = create_signal::<bool>(false);
 
-    let (handle, incoming, conn) = connect(lobby_url(&ws_base));
+    let session = transport::ws::connect(lobby_url(&ws_base));
+    let incoming = session.incoming;
+    let conn = session.state;
 
     // Fan ServerMsg::Rooms into the rooms signal.
     create_effect(move |_| {
@@ -47,7 +49,7 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
         }
     });
 
-    let refresh_handle = handle.clone();
+    let refresh_handle = session.handle.clone();
     let refresh = move |_| {
         refresh_handle.send(ClientMsg::ListRooms);
     };

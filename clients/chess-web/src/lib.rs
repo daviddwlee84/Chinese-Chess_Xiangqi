@@ -24,7 +24,7 @@ mod pages;
 #[cfg(target_arch = "wasm32")]
 mod prefs;
 #[cfg(target_arch = "wasm32")]
-mod ws;
+mod transport;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
