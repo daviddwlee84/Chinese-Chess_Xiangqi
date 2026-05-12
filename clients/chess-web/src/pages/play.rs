@@ -27,7 +27,7 @@ use crate::state::{
     end_chain_move, find_move, hover_threat_squares, reconstruct_xiangqi_state_for_analysis,
     truncate_front, ClientRole,
 };
-use crate::transport::{self, ConnState, Transport};
+use crate::transport::{self, ConnState, Session, Transport};
 
 const CHAT_HISTORY_CAP: usize = 50;
 
@@ -93,7 +93,7 @@ pub fn PlayPage() -> impl IntoView {
 }
 
 #[component]
-fn PlayConnected(
+pub fn PlayConnected(
     ws_base: WsBase,
     room: String,
     password: Option<String>,
@@ -105,12 +105,27 @@ fn PlayConnected(
     /// and we may end up with `hints_allowed=false` — in which case
     /// the panel stays hidden + a toast warns the user.
     hints_requested: bool,
+    /// Pre-constructed `Session`. Provided by `pages::lan` (Phase 5)
+    /// so the host's in-process room or the joiner's WebRTC peer
+    /// reuses the same play UI as chess-net mode. `None` (chess-net
+    /// path) means we open a WebSocket via `transport::ws::connect`
+    /// from the args above.
+    #[prop(optional)]
+    injected_session: Option<Session>,
+    /// Override for the "← Back to lobby" link in the sidebar.
+    /// `None` (chess-net path) defaults to `/lobby?ws=...`. LAN
+    /// pages set this to `/lan/host` so the user lands back at the
+    /// pairing entry point.
+    #[prop(optional)]
+    back_link_override: Option<String>,
 ) -> impl IntoView {
-    // Open the WS once on mount. Spectator opt-in propagates into the URL.
-    // hints_requested → `?hints=1` on the WS URL so the server can
-    // (try to) sanction this room.
-    let url = room_url(&ws_base, &room, password.as_deref(), watch_only, hints_requested);
-    let session = transport::ws::connect(url);
+    // Open the WS once on mount UNLESS the caller injected a Session
+    // (LAN host / joiner path). Spectator opt-in propagates into the
+    // URL; hints_requested → `?hints=1` so the server can sanction.
+    let session = injected_session.unwrap_or_else(|| {
+        let url = room_url(&ws_base, &room, password.as_deref(), watch_only, hints_requested);
+        transport::ws::connect(url)
+    });
     let handle = session.handle.clone();
     let incoming = session.incoming;
     let conn = session.state;
@@ -345,6 +360,7 @@ fn PlayConnected(
                     ws_base=ws_base.clone()
                     show_hint_button=show_hint_button
                     hint_open=hints_open
+                    back_link_override=back_link_override
                 />
                 <ChatPanel
                     role=role.into()
@@ -572,6 +588,10 @@ fn OnlineSidebar(
     /// gate the `<DebugPanel>` mount on the same value. Always
     /// allocated; only consumed when `show_hint_button.get() == true`.
     hint_open: RwSignal<bool>,
+    /// Override for the "← Back" link. `None` defaults to back-to-lobby
+    /// (chess-net mode). LAN host/joiner pages set this to `/lan/host`
+    /// so the link makes sense in the LAN context.
+    back_link_override: Option<String>,
 ) -> impl IntoView {
     let role_label = move || match role.get() {
         Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
@@ -677,7 +697,15 @@ fn OnlineSidebar(
                     }
                 }
             </Show>
-            <a class="back-link" href=back_to_lobby_href(&ws_base) rel="external">"← Back to lobby"</a>
+            {
+                let (href, label) = match back_link_override {
+                    Some(h) => (h, "← Back"),
+                    None => (back_to_lobby_href(&ws_base), "← Back to lobby"),
+                };
+                view! {
+                    <a class="back-link" href=href rel="external">{label}</a>
+                }
+            }
         </aside>
     }
 }

@@ -24,14 +24,11 @@
 //!
 //! ## Dead-code allowance
 //!
-//! The Phase 3 deliverable is the API + plumbing — `connect_as_*`,
-//! `HostHandshake`, `JoinerHandshake`, the SDP envelope, the ICE
-//! helpers. None of it is called from anywhere yet; Phase 4
-//! (`host_room.rs`) and Phase 5 (`/lan/host` and `/lan/join` pages)
-//! are the first consumers. Until then every public item triggers a
-//! "never used" warning. Suppressed module-wide to keep CI clippy
-//! happy; the suppression comes off in Phase 4 when the page code
-//! starts importing this module.
+//! Phase 4 (`host_room.rs`) and Phase 5 (`pages/lan.rs`) consume
+//! the public surface of this module — `connect_as_*`, `OfferBlob`,
+//! `AnswerBlob`, `WebRtcConfig`, `IceMode`. Some helpers (the spike's
+//! `Mock` sink path, future spectator attach, etc.) remain unused;
+//! kept for completeness pending Phase 5 polish.
 #![allow(dead_code)]
 
 // === module skeleton — section bodies filled in via edits below ===

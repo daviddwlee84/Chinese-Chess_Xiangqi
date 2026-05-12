@@ -30,11 +30,10 @@
 //!
 //! ## Dead-code allowance
 //!
-//! Phase 4 ships the API. Phase 5 (`/lan/host` and `/lan/join` pages)
-//! is the first consumer; until then every public item triggers a
-//! "never used" warning. Suppressed module-wide; the suppression
-//! comes off in Phase 5 when the page code starts importing this
-//! module.
+//! Phase 5 (`pages/lan.rs`) consumes `HostRoom::new` +
+//! `attach_remote_player_dc`. Spectator support, the
+//! `add_remote_*` (non-DC) variants used by tests, and the
+//! `room_id` / `summary` accessors are kept for Phase 5 polish.
 #![allow(dead_code)]
 
 // === module skeleton — section bodies filled in via edits below ===

@@ -41,6 +41,7 @@ pub fn Picker() -> impl IntoView {
                 <BanqiCard/>
                 <ThreeKingdomCard/>
                 <OnlineCard/>
+                <LanCard/>
             </div>
             <DisplaySettings/>
         </section>
@@ -727,5 +728,23 @@ fn OnlineCard() -> impl IntoView {
             <h2>"Online"</h2>
             <p>"Browse rooms or create your own."</p>
         </a>
+    }
+}
+
+#[component]
+fn LanCard() -> impl IntoView {
+    view! {
+        <div class="variant-card variant-card--online">
+            <h2>"LAN (WebRTC)"</h2>
+            <p>
+                "Pair two devices on the same WiFi — no chess-net server. "
+                "iPhone hotspot recommended if your home router blocks peer-to-peer."
+            </p>
+            <p style="margin-top:0.5rem">
+                <a href=app_href("/lan/host") rel="external">"Host →"</a>
+                " · "
+                <a href=app_href("/lan/join") rel="external">"Join →"</a>
+            </p>
+        </div>
     }
 }
