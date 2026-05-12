@@ -16,3 +16,7 @@ Thumbs.db
 
 # Insta pending snapshots
 **/*.snap.new
+
+# Local TLS keys + certs (e.g. mkcert for the WebRTC LAN spike).
+# NEVER commit *-key.pem — those are private keys.
+*.pem

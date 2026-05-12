@@ -123,7 +123,10 @@ pub fn HostPage() -> impl IntoView {
                 style="width:100%;font-family:monospace;font-size:12px"
                 prop:value=move || offer_blob.get()
             />
-            <p>"Offer raw bytes: " {move || offer_blob.with(|s| s.len())}</p>
+            <p>
+                "Offer raw bytes: " {move || offer_blob.with(|s| s.len())}
+                <CopyButton text=Signal::derive(move || offer_blob.get()) label="Copy offer"/>
+            </p>
             <p>"2. Paste joiner's answer SDP below, then accept:"</p>
             <textarea
                 rows="8"
@@ -251,7 +254,10 @@ pub fn JoinPage() -> impl IntoView {
                 style="width:100%;font-family:monospace;font-size:12px"
                 prop:value=move || answer_blob.get()
             />
-            <p>"Answer raw bytes: " {move || answer_blob.with(|s| s.len())}</p>
+            <p>
+                "Answer raw bytes: " {move || answer_blob.with(|s| s.len())}
+                <CopyButton text=Signal::derive(move || answer_blob.get()) label="Copy answer"/>
+            </p>
             <DiagPanel
                 state=state
                 ice_state=ice_state
@@ -332,3 +338,37 @@ fn ChatBox(
 // SECTION: helpers — reserved for future spike-only utilities. Kept as
 // a marker so the section list at the top of the file matches the
 // section comments below.
+
+/// "Copy to clipboard" button + status flash. Long-press-select on
+/// mobile textareas is fiddly; this gives the spike a one-tap path.
+#[component]
+fn CopyButton(#[prop(into)] text: Signal<String>, label: &'static str) -> impl IntoView {
+    let (status, set_status) = create_signal::<&'static str>("");
+    let click = move |_| {
+        let blob = text.get();
+        if blob.is_empty() {
+            set_status.set("(nothing to copy)");
+            return;
+        }
+        let win = match web_sys::window() {
+            Some(w) => w,
+            None => return,
+        };
+        let clipboard = win.navigator().clipboard();
+        let promise = clipboard.write_text(&blob);
+        spawn_local(async move {
+            match wasm_bindgen_futures::JsFuture::from(promise).await {
+                Ok(_) => set_status.set("copied ✓"),
+                Err(_) => set_status.set("copy failed (long-press to select)"),
+            }
+        });
+    };
+    view! {
+        <span style="margin-left:0.5rem">
+            <button on:click=click>{label}</button>
+            <span style="margin-left:0.5rem;font-size:12px;color:#393">
+                {move || status.get()}
+            </span>
+        </span>
+    }
+}

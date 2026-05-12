@@ -43,6 +43,7 @@ web-sys       = { version = "0.3", features = [
     "RtcIceConnectionState", "RtcIceGatheringState",
     "MessageEvent",
     "HtmlTextAreaElement", "HtmlInputElement",
+    "Clipboard",
 ] }
 js-sys        = "0.3"
 gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }

@@ -186,6 +186,18 @@ delivery channel is whatever the user has handy — AirDrop, Nearby Share,
 SMS, or copy-paste over a regular browser tab. The diag panel reports
 the byte count so we can verify QR fits before committing.
 
+> **2026-05-12 spike-build fix**: first run failed with
+> `JsValue(SyntaxError: Invalid SDP line.)` on the joiner side. Root
+> cause: SDP per RFC 4566 requires CRLF line endings; pasting the raw
+> SDP through clipboard / AirDrop / IM apps strips the `\r`. Fixed by
+> wrapping `(type, sdp)` in a JSON envelope so transport-side
+> normalisation can't break the format, and normalising back to CRLF
+> on `set_remote_description`. Each readonly textarea also gained a
+> "Copy" button (uses `navigator.clipboard.writeText`) since
+> long-press-select on a phone textarea is fiddly. See
+> `clients/chess-web/src/spike/rtc.rs::encode_sdp` /
+> `decode_sdp_envelope`.
+
 #### How to run the spike on real devices
 
 Prerequisite: every test device must be able to reach the dev page. iOS

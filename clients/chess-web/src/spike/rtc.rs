@@ -120,7 +120,7 @@ pub async fn open_host(
         ice_state: ice_state_setter,
         _keepalive: keepalive,
     };
-    Ok((session, encode_sdp(&sdp)))
+    Ok((session, encode_sdp("offer", &sdp)))
 }
 // SECTION: open_joiner
 
@@ -168,7 +168,7 @@ pub async fn open_joiner(
     install_ice_state_logging(&pc, ice_state_setter, &mut keepalive);
 
     state_setter.set(RtcConn::Gathering);
-    let offer_sdp = decode_sdp(offer_blob)?;
+    let offer_sdp = decode_offer(offer_blob)?;
     let offer_desc = RtcSessionDescriptionInit::new(RtcSdpType::Offer);
     offer_desc.set_sdp(&offer_sdp);
     JsFuture::from(pc.set_remote_description(&offer_desc)).await?;
@@ -191,13 +191,13 @@ pub async fn open_joiner(
         ice_state: ice_state_setter,
         _keepalive: keepalive,
     };
-    Ok((session, encode_sdp(&sdp)))
+    Ok((session, encode_sdp("answer", &sdp)))
 }
 // SECTION: accept_answer
 
 /// Host calls this with the joiner's answer SDP to complete the handshake.
 pub async fn accept_answer(pc: &RtcPeerConnection, answer_blob: &str) -> Result<(), JsValue> {
-    let answer_sdp = decode_sdp(answer_blob)?;
+    let answer_sdp = decode_answer(answer_blob)?;
     let answer_desc = RtcSessionDescriptionInit::new(RtcSdpType::Answer);
     answer_desc.set_sdp(&answer_sdp);
     JsFuture::from(pc.set_remote_description(&answer_desc)).await?;
@@ -223,16 +223,90 @@ fn local_description_sdp(pc: &RtcPeerConnection) -> Option<String> {
     pc.local_description().map(|d| d.sdp())
 }
 
-/// SDP blobs are textareas in the spike — no compression, just verbatim
-/// SDP text. We keep `encode`/`decode` as fns so Phase 5 can swap in
-/// deflate+base64 without churning callers. (For the spike, we ALSO
-/// want to see the raw text in DevTools to count bytes.)
-pub fn encode_sdp(sdp: &str) -> String {
-    sdp.to_string()
+/// Wrap `(type, sdp)` in a JSON envelope so the textarea contents survive
+/// copy-paste through AirDrop / clipboard / IM apps that helpfully
+/// "normalise" line endings (SDP per RFC 4566 demands CRLF; many
+/// transports strip the CR).
+///
+/// Pretty-printed with 2-space indent so it eyeballs the same as the
+/// SDP itself in the spike textareas — line count + size are easy to
+/// compare against pure-SDP transmission.
+pub fn encode_sdp(kind: &str, sdp: &str) -> String {
+    // serde_json would pull a dep just for this; hand-format. The two
+    // string fields can be embedded with simple escaping (backslash +
+    // quote + control chars) which `escape_json_string` covers.
+    format!("{{\n  \"type\": \"{}\",\n  \"sdp\": \"{}\"\n}}", kind, escape_json_string(sdp))
 }
 
-fn decode_sdp(blob: &str) -> Result<String, JsValue> {
-    Ok(blob.trim().to_string())
+/// Inverse of [`encode_sdp`]. Returns `(type, sdp)`. Accepts both raw
+/// SDP (back-compat with the first spike build) — if the blob doesn't
+/// look like JSON, treat it as a bare SDP string and infer the type
+/// from `m=` heuristics; here we just default to whatever the caller
+/// expects (`open_joiner` knows it has an offer in hand).
+fn decode_sdp_envelope(blob: &str) -> Result<(String, String), JsValue> {
+    let trimmed = blob.trim();
+    if trimmed.starts_with('{') {
+        let parsed = js_sys::JSON::parse(trimmed)
+            .map_err(|e| JsValue::from_str(&format!("SDP envelope is not valid JSON: {e:?}")))?;
+        let type_v = Reflect::get(&parsed, &"type".into()).ok();
+        let sdp_v = Reflect::get(&parsed, &"sdp".into()).ok();
+        let kind = type_v.and_then(|v| v.as_string()).unwrap_or_default();
+        let sdp = sdp_v.and_then(|v| v.as_string()).unwrap_or_default();
+        if kind.is_empty() || sdp.is_empty() {
+            return Err(JsValue::from_str("SDP envelope JSON missing `type` or `sdp` field"));
+        }
+        // Browsers accept LF-only SDP in practice but normalise anyway —
+        // copy-paste through AirDrop / SMS / IM may strip CR.
+        Ok((kind, normalise_crlf(&sdp)))
+    } else {
+        // Raw SDP — assume the caller knows the type.
+        Err(JsValue::from_str(
+            "SDP must be the JSON envelope produced by the host page (this build dropped raw-SDP support — copy the entire textarea contents)",
+        ))
+    }
+}
+
+fn normalise_crlf(s: &str) -> String {
+    // Drop existing \r so we don't double them, then expand \n → \r\n.
+    let stripped = s.replace('\r', "");
+    stripped.replace('\n', "\r\n")
+}
+
+fn escape_json_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 8);
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// Decode an offer blob — caller asserts `kind == "offer"` because
+/// `open_joiner` is the only consumer.
+pub fn decode_offer(blob: &str) -> Result<String, JsValue> {
+    let (kind, sdp) = decode_sdp_envelope(blob)?;
+    if kind != "offer" {
+        return Err(JsValue::from_str(&format!("expected offer envelope, got `{kind}`")));
+    }
+    Ok(sdp)
+}
+
+/// Decode an answer blob — `accept_answer`'s only consumer.
+pub fn decode_answer(blob: &str) -> Result<String, JsValue> {
+    let (kind, sdp) = decode_sdp_envelope(blob)?;
+    if kind != "answer" {
+        return Err(JsValue::from_str(&format!("expected answer envelope, got `{kind}`")));
+    }
+    Ok(sdp)
 }
 
 /// Block until `pc.iceGatheringState == "complete"`. Browsers gather ICE
