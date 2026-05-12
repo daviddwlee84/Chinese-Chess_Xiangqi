@@ -172,6 +172,63 @@ notes appended to this doc with the measured numbers.
 **Gate**: spike must succeed end-to-end on at least one iOS device + one
 Android device. Failure → reconsider Approach C (signalling endpoint).
 
+#### Spike scaffolding (shipped 2026-05-12)
+
+`clients/chess-web/src/spike/` ships the throwaway plumbing:
+
+- `lan_echo.rs` — `/spike/lan/host` and `/spike/lan/join` route components.
+- `rtc.rs` — `open_host` / `open_joiner` / `accept_answer` wrappers
+  around `web_sys::RtcPeerConnection`. `iceServers: []` hard-coded.
+
+The spike deliberately defers QR encoding (a Phase 5 question) and uses
+**plain textareas with raw SDP** for the offer/answer exchange. The OOB
+delivery channel is whatever the user has handy — AirDrop, Nearby Share,
+SMS, or copy-paste over a regular browser tab. The diag panel reports
+the byte count so we can verify QR fits before committing.
+
+#### How to run the spike on real devices
+
+Prerequisite: every test device must be able to reach the dev page. iOS
+Safari requires WebRTC over a secure context (HTTPS or `localhost`); on
+the LAN that means **either**:
+
+- Serve via `make serve-web-static` from the host laptop, then deploy the
+  static dist to GitHub Pages and visit `https://<user>.github.io/Chinese-Chess_Xiangqi/spike/lan/host`
+  on each device. Slow iteration but no certificate work.
+- **Recommended for fast iteration**: use [`mkcert`](https://github.com/FiloSottile/mkcert)
+  to generate a LAN trust cert and run Trunk with `--tls`:
+  ```
+  mkcert -install
+  cd clients/chess-web
+  mkcert 192.168.x.y                     # your laptop's LAN IP
+  trunk serve --tls-cert ./192.168.x.y.pem --tls-key ./192.168.x.y-key.pem --address 0.0.0.0
+  ```
+  Then `https://192.168.x.y:8080/spike/lan/host` on the host phone,
+  `/spike/lan/join` on the joiner. iOS will warn about the self-signed
+  cert; tap "advanced" → trust manually.
+
+Run order:
+
+1. **Host phone** opens `/spike/lan/host`. Tap "1. Start hosting". The
+   page generates an offer SDP; copy the entire textarea contents.
+2. **Joiner phone** opens `/spike/lan/join`. Paste the host's SDP into
+   the first textarea. Tap "2. Generate answer". The page runs the
+   answer flow and writes the answer SDP into the second textarea.
+3. Copy the answer back to the host phone (AirDrop / Nearby Share /
+   typed). Paste into the host's bottom textarea, tap "3. Accept answer".
+4. Both diag panels should flip to `state: Connected`,
+   `ICE state: "Connected"`. Type messages on either side; they should
+   appear on the other.
+
+What to record in this doc afterwards:
+
+- ICE state progression on each side (`new → checking → connected → completed`?
+  or `new → checking → failed`?).
+- SDP raw byte count from the diag panel — both directions.
+- DataChannel `open` time relative to the offer-generated time.
+- Browser version + iOS / iPadOS / macOS version per device.
+- Any console errors (open Web Inspector via Mac `Develop` menu).
+
 ### Phase 1 — Extract `chess-net::room` (1–2 days, INDEPENDENT REFACTOR)
 
 This is the only phase that touches existing shipped code; it's also

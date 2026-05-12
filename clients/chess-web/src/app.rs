@@ -5,6 +5,7 @@ use crate::components::pwa::{OfflineIndicator, PwaState, PwaUpdateToast};
 use crate::pages::{lobby::LobbyPage, local::LocalPage, picker::Picker, play::PlayPage};
 use crate::prefs::Prefs;
 use crate::routes::base_path;
+use crate::spike::lan_echo::{HostPage as SpikeLanHost, JoinPage as SpikeLanJoin};
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -34,6 +35,11 @@ fn AppShell() -> impl IntoView {
                 <Route path="/local/:variant" view=LocalPage/>
                 <Route path="/lobby" view=LobbyPage/>
                 <Route path="/play/:room" view=PlayPage/>
+                // Phase 0 spike for backlog/webrtc-lan-pairing.md.
+                // Throwaway code — remove (or promote) after Phase 5
+                // ships the production /lan/host + /lan/join pages.
+                <Route path="/spike/lan/host" view=SpikeLanHost/>
+                <Route path="/spike/lan/join" view=SpikeLanJoin/>
                 <Route path="/*any" view=Picker/>
             </Routes>
             <PwaUpdateToast/>

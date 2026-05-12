@@ -31,7 +31,19 @@ leptos_router = { version = "0.6", features = ["csr"] }
 console_error_panic_hook = "0.1.7"
 wasm-bindgen  = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys       = { version = "0.3", features = ["Window", "Location", "Storage", "KeyboardEvent", "Event", "EventTarget", "Navigator", "CustomEvent", "Performance"] }
+web-sys       = { version = "0.3", features = [
+    "Window", "Location", "Storage", "KeyboardEvent", "Event", "EventTarget",
+    "Navigator", "CustomEvent", "Performance",
+    # WebRTC spike — backlog/webrtc-lan-pairing.md Phase 0
+    "RtcPeerConnection", "RtcConfiguration", "RtcSdpType",
+    "RtcSessionDescription", "RtcSessionDescriptionInit",
+    "RtcDataChannel", "RtcDataChannelInit", "RtcDataChannelEvent",
+    "RtcDataChannelState",
+    "RtcPeerConnectionIceEvent", "RtcIceCandidate", "RtcIceCandidateInit",
+    "RtcIceConnectionState", "RtcIceGatheringState",
+    "MessageEvent",
+    "HtmlTextAreaElement", "HtmlInputElement",
+] }
 js-sys        = "0.3"
 gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
 gloo-timers   = { version = "0.3", features = ["futures"] }
