@@ -4,6 +4,8 @@
 **Effort**: M (single PR, ~1k LOC across chess-ai + chess-web + chess-tui)
 **Related**: [`chess-net-evalbar.md`](chess-net-evalbar.md) (P2 net-mode follow-up),
 [`chess-ai-search.md`](chess-ai-search.md) (parent search roadmap),
+[`../docs/ai/win-rate.md`](../docs/ai/win-rate.md) (full reference doc — math, lifecycle, bug history, calibration),
+[`../pitfalls/eval-sample-stale-analysis-race.md`](../pitfalls/eval-sample-stale-analysis-race.md) (post-ship race condition fixed in `fc51f24`),
 TODO.md "chess-ai: cp→win% calibration for xiangqi" (P3 calibration follow-up),
 TODO.md "chess-web PWA: persist replays in IndexedDB / OPFS" (P3 persistence follow-up)
 

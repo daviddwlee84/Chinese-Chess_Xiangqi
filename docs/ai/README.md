@@ -151,9 +151,30 @@ Pikafish) is documented in [`../ai-deep-research-report.md`](../ai-deep-research
 the *implementation* pipeline; the research report covers the *choice
 of approach*.
 
+## Consumer-side helpers
+
+Not engine versions, but cp-side display helpers shipped alongside
+the engine:
+
+- [`win-rate.md`](win-rate.md) — `chess_ai::cp_to_win_pct` (the
+  centipawn → win-probability logistic) + the per-ply `EvalSample`
+  pipeline that drives chess-web's `<EvalBadge>` / `<EvalChart>` and
+  chess-tui's `--evalbar` ASCII chart. Covers the math
+  (`WIN_PCT_K = 400`, two clamp tiers, Red-POV convention),
+  `EvalSample` lifecycle, end-of-game pin, full bug history (4
+  commits, 2026-05-10 → 2026-05-12), test coverage map, and the
+  `cp→win% calibration for xiangqi` follow-up.
+
 ## Pitfalls
 
 - [`pitfalls/leptos-effect-tracking-stale-epoch.md`](../../pitfalls/leptos-effect-tracking-stale-epoch.md)
   — class-of-bug doc for the AI move pump in the web client. Not specific
   to any engine version; lives in pitfalls/ because it's a Leptos
   reactive-runtime issue, not a chess-ai issue.
+- [`pitfalls/eval-sample-stale-analysis-race.md`](../../pitfalls/eval-sample-stale-analysis-race.md)
+  — sibling Leptos-reactive-runtime trap from the win-rate display:
+  a `create_effect` watching `(state, debug_analysis, hint_analysis)`
+  paired stale analyses with new `state.history.len()`, leaving the
+  win-rate stuck at the previous position's eval even at mate-in-1.
+  Fixed by writing samples directly from each pump after analyse
+  completes. See also [`win-rate.md`](win-rate.md) §7.3.

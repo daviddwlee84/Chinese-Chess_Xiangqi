@@ -90,6 +90,7 @@ Pitfalls owned by this folder. Keep alphabetical.
 | Slug | Symptom keywords | Status |
 |---|---|---|
 | [`ai-search-depth-setting-shows-depth-4`](ai-search-depth-setting-shows-depth-4.md) | Search depth (advanced) 10 displays as Depth 4, picker depth setting ignored, AI Debug panel reached_depth 4, NODE_BUDGET 250000, v5 iterative deepening budget bail | fixed (visibility + scaled budget + Custom-radio picker UX) |
+| [`eval-sample-stale-analysis-race`](eval-sample-stale-analysis-race.md) | win-rate display 1%/99% never reached, eval bar stops at ~88% even at mate-in-1, sidebar `紅 % • 黑 %` badge stuck on stale percentage, sample-write reactive effect, `?evalbar=1` wrong cp, `push_or_replace_sample` dedup-by-ply | fixed in `fc51f24` (2026-05-11) |
 | [`ios-safari-svg-click-no-tap`](ios-safari-svg-click-no-tap.md) | iOS Safari taps don't select chess pieces, Chrome on iOS works but Safari doesn't, Copy / Find Selection / Look Up callout on SVG board, `:hover` ghost click, `on:click` on `<rect>` no fire, `on:pointerup` workaround | workaround documented |
 | [`leptos-router-base-trailing-slash`](leptos-router-base-trailing-slash.md) | blank `<main class="app-shell">` at project base URL, GitHub Pages root white screen, Playwright `wait-for-selector` timeout, `<Router base=…>` no match | workaround documented |
 | [`trunk-proxy-route-conflict`](trunk-proxy-route-conflict.md) | trunk panic, `__private__axum_nest_tail_param`, `conflict with previously registered route`, silent tmux pane close | workaround documented |
