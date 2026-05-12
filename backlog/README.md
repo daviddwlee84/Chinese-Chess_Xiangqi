@@ -56,3 +56,4 @@ Add new entries here as you create them. Keep alphabetical.
 | chess-net-evalbar | not-started | chess-net protocol v6 — broadcast win-rate samples |
 | threat-highlight-feature | shipped | Threat highlight (Display setting) |
 | web-wasm-download-progress | deferred | chess-web: real WASM download progress meter |
+| webrtc-lan-pairing | spike-needed | WebRTC LAN pairing — PWA-only LAN multiplayer |

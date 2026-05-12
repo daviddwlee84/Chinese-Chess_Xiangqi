@@ -23,11 +23,29 @@
 //!
 //! Reconnect / mixed-variant rooms / time controls / TLS still deferred —
 //! see `TODO.md`.
+//!
+//! ## Refactor history
+//!
+//! As of 2026-05-11 (Phase 1 of `backlog/webrtc-lan-pairing.md`) all room
+//! state lives in [`crate::room::Room`] — a transport-agnostic state
+//! machine that compiles for `wasm32-unknown-unknown`. This file is now
+//! a thin axum/tokio glue that owns:
+//!
+//! 1. The per-room `Arc<Mutex<RoomEntry>>` table (room + peer routing map).
+//! 2. The lobby-summary projection + push fan-out.
+//! 3. `?password=`/`?role=`/`?hints=` URL parsing.
+//! 4. The `--static-dir` static-file serving.
+//!
+//! Per-message work is just: deserialize → `room.apply(peer, msg)` →
+//! fan out the returned `Vec<Outbound>` via the per-room routing table.
 
-use std::collections::{HashMap, VecDeque};
+// === module skeleton — section bodies filled in via edits below ===
+
+// SECTION: imports
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -39,138 +57,79 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
-use chess_core::moves::Move;
-use chess_core::piece::Side;
 use chess_core::rules::RuleSet;
-use chess_core::state::{GameState, GameStatus, WinReason};
-use chess_core::view::PlayerView;
 use futures_util::stream::StreamExt;
 use futures_util::SinkExt;
 use serde::Deserialize;
 use tokio::sync::{mpsc, Mutex};
 
-use crate::protocol::{
-    variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+use crate::protocol::{ClientMsg, RoomSummary, ServerMsg};
+use crate::room::{
+    parse_hints_param, valid_password, valid_room_id, JoinError, Outbound, PeerId, Room,
+    DEFAULT_MAX_SPECTATORS, DEFAULT_ROOM, MAX_PASSWORD_LEN, MAX_ROOM_ID_LEN,
 };
-
-const DEFAULT_ROOM: &str = "main";
-const MAX_PASSWORD_LEN: usize = 64;
-const MAX_ROOM_ID_LEN: usize = 32;
-const MAX_CHAT_LEN: usize = 256;
-const CHAT_HISTORY_CAP: usize = 50;
-const DEFAULT_MAX_SPECTATORS: usize = 16;
+// SECTION: cache constants (static-serve)
 #[cfg(feature = "static-serve")]
 const IMMUTABLE_ASSET_CACHE: &str = "public, max-age=31536000, immutable";
 #[cfg(feature = "static-serve")]
 const HTML_CACHE: &str = "no-cache";
+// SECTION: app state types
 
-struct RoomState {
-    state: GameState,
-    /// (side, outbound mpsc tx). Empty until first connect; capped at 2.
-    seats: Vec<(Side, mpsc::UnboundedSender<ServerMsg>)>,
-    /// Read-only watchers connected via `?role=spectator`. Capped per
-    /// `AppState::max_spectators`; the cap is enforced in
-    /// `handle_room_socket` before insertion.
-    spectators: Vec<mpsc::UnboundedSender<ServerMsg>>,
-    /// Sides that have requested a rematch since the last reset. Cleared
-    /// every time the game resets; mutual consent triggers reset.
-    rematch: Vec<Side>,
-    /// Friend-list lock. `None` = open. Set by the first joiner from the
-    /// `?password=` query string and never mutated afterwards. **Plain text
-    /// is intentional**: this is a "type the secret to enter the game with
-    /// the right friends" mechanism, not a security boundary. Real auth
-    /// belongs in a follow-up alongside TLS.
-    password: Option<String>,
-    /// AI-hint sanction. `false` = clients must NOT mount the AI debug /
-    /// hint panel against this room. Set by the first joiner from the
-    /// `?hints=1` query string and never mutated afterwards (same
-    /// pattern as `password`). Closes the previous client-only
-    /// `?debug=1` cheat hole — net mode is now opt-in BEFORE the game
-    /// so opponents can't be surprised. Local (offline) mode bypasses
-    /// the server entirely so the GitHub Pages build still has hints
-    /// + debug working freely.
-    hints_allowed: bool,
-    /// In-memory ring buffer of recent chat lines. Capped at
-    /// `CHAT_HISTORY_CAP`; oldest line drops when a new one arrives at
-    /// capacity. Sent verbatim to every new joiner via `ChatHistory`.
-    chat: VecDeque<ChatLine>,
+/// Per-connection outbound channel. The handler hands one of these to the
+/// per-room peer map; the `Room::apply` fan-out delivers `ServerMsg`s into
+/// it; a per-connection write task drains it onto the WebSocket sink.
+type PeerSender = mpsc::UnboundedSender<ServerMsg>;
+
+/// One row in the per-room peer routing table.
+struct RoomEntry {
+    room: Room,
+    peers: HashMap<PeerId, PeerSender>,
 }
 
-impl RoomState {
-    fn new(rules: RuleSet, password: Option<String>, hints_allowed: bool) -> Self {
-        Self {
-            state: GameState::new(rules),
-            seats: Vec::with_capacity(2),
-            spectators: Vec::new(),
-            rematch: Vec::with_capacity(2),
-            password,
-            hints_allowed,
-            chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
-        }
+impl RoomEntry {
+    fn new(room: Room) -> Self {
+        Self { room, peers: HashMap::new() }
     }
 
-    fn next_seat(&self) -> Option<Side> {
-        match self.seats.len() {
-            0 => Some(Side::RED),
-            1 => {
-                let taken = self.seats[0].0;
-                Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
+    /// Deliver an `Outbound` list to the matching peer senders. Drops any
+    /// outbound whose target peer has already disconnected — its sender
+    /// is gone from the map.
+    fn fanout(&self, out: Vec<Outbound>) {
+        for ob in out {
+            if let Some(tx) = self.peers.get(&ob.peer) {
+                let _ = tx.send(ob.msg);
             }
-            _ => None,
         }
-    }
-
-    fn summary(&self, id: &str) -> RoomSummary {
-        let status = match self.state.status {
-            GameStatus::Won { .. } | GameStatus::Drawn { .. } => RoomStatus::Finished,
-            GameStatus::Ongoing => {
-                if self.seats.len() >= 2 {
-                    RoomStatus::Playing
-                } else {
-                    RoomStatus::Lobby
-                }
-            }
-        };
-        RoomSummary {
-            id: id.to_string(),
-            variant: variant_label(&self.state.rules).to_string(),
-            seats: self.seats.len() as u8,
-            spectators: self.spectators.len() as u16,
-            has_password: self.password.is_some(),
-            status,
-            hints_allowed: self.hints_allowed,
-        }
-    }
-
-    fn chat_history(&self) -> Vec<ChatLine> {
-        self.chat.iter().cloned().collect()
     }
 }
 
-type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomState>>>>>;
+type RoomMap = Arc<Mutex<HashMap<String, Arc<Mutex<RoomEntry>>>>>;
 type SummaryMap = Arc<Mutex<HashMap<String, RoomSummary>>>;
 type LobbySubs = Arc<Mutex<Vec<mpsc::UnboundedSender<ServerMsg>>>>;
 
-/// Server-wide state shared across every connection. The three top-level
-/// locks are independent and acquired in a strict order whenever multiple
-/// are needed: `rooms` → `summaries` → `lobby_subs`. Per-room inner locks
-/// (`Arc<Mutex<RoomState>>`) live separately and are never held across an
-/// outer-map lock acquisition.
+/// Server-wide state shared across every connection. Lock acquisition order
+/// when multiple maps are touched: `rooms` → `summaries` → `lobby_subs`.
+/// Per-room inner locks (`Arc<Mutex<RoomEntry>>`) live separately and are
+/// never held across an outer-map lock acquisition.
 pub struct AppState {
     rooms: RoomMap,
     /// Lobby-visible projection of every live room. Updated by
-    /// [`refresh_summary`] / [`drop_summary`] after every room mutation, so
+    /// `refresh_summary` / `drop_summary` after every room mutation, so
     /// `notify_lobby` can build a `Rooms` push without touching any inner
-    /// `RoomState` lock.
+    /// `Room` lock.
     summaries: SummaryMap,
     /// Outbound senders for every connected lobby socket.
     lobby_subs: LobbySubs,
     /// Variant for every auto-created room. Mixed-variant servers are a
     /// separate TODO (`chess-net: mixed-variant rooms`).
     default_rules: RuleSet,
-    /// Per-room cap on `?role=spectator` connections. The 17th spectator (at
-    /// the default cap of 16) gets `Error{"room watch capacity reached"}`.
+    /// Per-room cap on `?role=spectator` connections. The 17th spectator
+    /// (at the default cap of 16) gets `Error{"room watch capacity reached"}`.
     max_spectators: usize,
+    /// Monotonic counter for `PeerId` allocation. Only the value's
+    /// uniqueness within a single room matters; using one global counter
+    /// keeps the implementation trivial.
+    next_peer_id: AtomicU64,
 }
 
 impl AppState {
@@ -181,9 +140,15 @@ impl AppState {
             lobby_subs: Arc::new(Mutex::new(Vec::new())),
             default_rules,
             max_spectators,
+            next_peer_id: AtomicU64::new(1),
         })
     }
+
+    fn alloc_peer(&self) -> PeerId {
+        PeerId(self.next_peer_id.fetch_add(1, Ordering::Relaxed))
+    }
 }
+// SECTION: query types
 
 #[derive(Debug, Deserialize)]
 struct AuthQuery {
@@ -195,17 +160,25 @@ struct AuthQuery {
     #[serde(default)]
     role: Option<String>,
     /// Opt-in AI hint sanction. `Some("1")` / `Some("true")` from the
-    /// **first joiner** sets `RoomState.hints_allowed = true` for the
-    /// room's lifetime; subsequent joiners' values are ignored. v4
-    /// clients never send this, so existing rooms stay hint-free.
-    /// See `protocol::PROTOCOL_VERSION` v4→v5 doc.
+    /// **first joiner** sets `Room.hints_allowed = true` for the room's
+    /// lifetime; subsequent joiners' values are ignored.
     #[serde(default)]
     hints: Option<String>,
 }
 
-fn parse_hints_param(raw: Option<&str>) -> bool {
-    matches!(raw, Some(v) if matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "on" | "yes"))
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum JoinRole {
+    Player,
+    Spectator,
 }
+
+fn parse_role(raw: Option<&str>) -> JoinRole {
+    match raw {
+        Some(s) if s.eq_ignore_ascii_case("spectator") => JoinRole::Spectator,
+        _ => JoinRole::Player,
+    }
+}
+// SECTION: serve options + run/serve entry points
 
 /// Server options. `rules` is required; `static_dir` is opt-in and only
 /// honored when the `static-serve` feature is enabled.
@@ -304,6 +277,7 @@ pub async fn serve_with(listener: tokio::net::TcpListener, opts: ServeOpts) -> R
     axum::serve(listener, app).await.context("axum::serve")?;
     Ok(())
 }
+// SECTION: static-serve cache headers
 
 #[cfg(feature = "static-serve")]
 async fn static_cache_headers(req: axum::extract::Request, next: Next) -> axum::response::Response {
@@ -341,16 +315,7 @@ fn is_hashed_asset_path(path: &str) -> bool {
     (file_name.ends_with(".css") || file_name.ends_with(".js") || file_name.ends_with(".wasm"))
         && file_name.contains('-')
 }
-
-fn valid_room_id(id: &str) -> bool {
-    !id.is_empty()
-        && id.len() <= MAX_ROOM_ID_LEN
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-}
-
-fn valid_password(pw: &str) -> bool {
-    !pw.is_empty() && pw.len() <= MAX_PASSWORD_LEN && pw.chars().all(|c| !c.is_control())
-}
+// SECTION: room socket upgrade
 
 async fn upgrade_default(
     State(app): State<Arc<AppState>>,
@@ -378,32 +343,13 @@ async fn upgrade_room(
     })
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum JoinRole {
-    Player,
-    Spectator,
-}
-
-fn parse_role(raw: Option<&str>) -> JoinRole {
-    match raw {
-        Some(s) if s.eq_ignore_ascii_case("spectator") => JoinRole::Spectator,
-        _ => JoinRole::Player,
-    }
-}
-
 async fn upgrade_lobby(
     State(app): State<Arc<AppState>>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_lobby_socket(socket, app))
 }
-
-async fn rooms_snapshot_json(State(app): State<Arc<AppState>>) -> Json<Vec<RoomSummary>> {
-    let summaries = app.summaries.lock().await;
-    let mut rooms: Vec<RoomSummary> = summaries.values().cloned().collect();
-    rooms.sort_by(|a, b| a.id.cmp(&b.id));
-    Json(rooms)
-}
+// SECTION: room socket handler
 
 async fn handle_room_socket(
     socket: WebSocket,
@@ -416,6 +362,7 @@ async fn handle_room_socket(
     let (mut sender, mut receiver) = socket.split();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
 
+    // === Pre-flight validation ===
     if !valid_room_id(&room_id) {
         let _ = send_close_with(
             &mut sender,
@@ -443,10 +390,12 @@ async fn handle_room_socket(
         }
     }
 
-    // Get-or-create the room. Spectators don't auto-create — joining as a
-    // spectator into a non-existent room would be a confusing UX (you'd see
-    // an empty board with no players). Players still create on demand.
-    let room = {
+    // === Get-or-create the room ===
+    //
+    // Spectators don't auto-create — joining as a spectator into a
+    // non-existent room would be a confusing UX (you'd see an empty board
+    // with no players). Players still create on demand.
+    let room_entry = {
         let mut rooms = app.rooms.lock().await;
         if role == JoinRole::Spectator && !rooms.contains_key(&room_id) {
             drop(rooms);
@@ -460,21 +409,22 @@ async fn handle_room_socket(
         rooms
             .entry(room_id.clone())
             .or_insert_with(|| {
-                Arc::new(Mutex::new(RoomState::new(
+                Arc::new(Mutex::new(RoomEntry::new(Room::new(
                     app.default_rules.clone(),
                     password_param.clone(),
                     hints_param,
-                )))
+                ))))
             })
             .clone()
     };
 
-    // Validate password (applies to both seats and spectators — locked rooms
-    // are locked for everyone).
+    // === Password gate ===
+    //
+    // Locked rooms are locked for everyone (seats and spectators).
     {
-        let g = room.lock().await;
-        if g.password != password_param {
-            drop(g);
+        let entry = room_entry.lock().await;
+        if entry.room.password() != password_param.as_deref() {
+            drop(entry);
             let _ =
                 send_close_with(&mut sender, ServerMsg::Error { message: "bad password".into() })
                     .await;
@@ -482,85 +432,73 @@ async fn handle_room_socket(
         }
     }
 
-    let connection: Connection = match role {
-        JoinRole::Player => {
-            let mut g = room.lock().await;
-            match g.next_seat() {
-                Some(s) => {
-                    let view = PlayerView::project(&g.state, s);
-                    let hello = ServerMsg::Hello {
-                        protocol: PROTOCOL_VERSION,
-                        observer: s,
-                        rules: g.state.rules.clone(),
-                        view,
-                        hints_allowed: g.hints_allowed,
-                    };
-                    if out_tx.send(hello).is_err() {
-                        return;
-                    }
-                    if out_tx.send(ServerMsg::ChatHistory { lines: g.chat_history() }).is_err() {
-                        return;
-                    }
-                    g.seats.push((s, out_tx.clone()));
-                    eprintln!("[server][{}] seated {:?} ({}/2)", room_id, s, g.seats.len());
-                    let summary = g.summary(&room_id);
-                    drop(g);
-                    refresh_summary(&app, &room_id, summary).await;
-                    Connection::Player(s)
+    // === Seat the peer ===
+    let peer = app.alloc_peer();
+    let summary_after_join = {
+        let mut entry = room_entry.lock().await;
+        // Insert sender FIRST so any outbound the room emits during join
+        // (Hello / ChatHistory) is deliverable.
+        entry.peers.insert(peer, out_tx.clone());
+        // The two role branches return different shapes — `join_player`
+        // also reports the assigned `Side` for the eprintln. Handle each
+        // branch separately and reduce both into `Result<Vec<Outbound>, JoinError>`.
+        let join_result: Result<Vec<Outbound>, JoinError> = match role {
+            JoinRole::Player => match entry.room.join_player(peer) {
+                Ok((side, out)) => {
+                    eprintln!(
+                        "[server][{}] seated {:?} ({}/2) as peer {}",
+                        room_id,
+                        side,
+                        entry.room.seat_count(),
+                        peer.0
+                    );
+                    Ok(out)
                 }
-                None => {
-                    drop(g);
-                    let _ = send_close_with(
-                        &mut sender,
-                        ServerMsg::Error { message: "room full".into() },
-                    )
-                    .await;
-                    return;
+                Err(e) => Err(e),
+            },
+            JoinRole::Spectator => {
+                let cap = app.max_spectators;
+                match entry.room.join_spectator(peer, cap) {
+                    Ok(out) => {
+                        eprintln!(
+                            "[server][{}] spectator joined as peer {} ({}/{})",
+                            room_id,
+                            peer.0,
+                            entry.room.spectator_count(),
+                            cap
+                        );
+                        Ok(out)
+                    }
+                    Err(e) => Err(e),
                 }
             }
-        }
-        JoinRole::Spectator => {
-            let mut g = room.lock().await;
-            if g.spectators.len() >= app.max_spectators {
-                drop(g);
-                let _ = send_close_with(
-                    &mut sender,
-                    ServerMsg::Error { message: "room watch capacity reached".into() },
-                )
-                .await;
+        };
+        match join_result {
+            Ok(outbound) => {
+                entry.fanout(outbound);
+                Some(entry.room.summary(&room_id))
+            }
+            Err(err) => {
+                // Roll back the peer insert; never seated.
+                entry.peers.remove(&peer);
+                let msg = match err {
+                    JoinError::RoomFull => "room full",
+                    JoinError::SpectatorCapReached => "room watch capacity reached",
+                };
+                drop(entry);
+                let _ =
+                    send_close_with(&mut sender, ServerMsg::Error { message: msg.into() }).await;
                 return;
             }
-            // Spectators see the board from RED's POV — `PlayerView::project`
-            // is leak-safe so banqi hidden tiles stay opaque. Three-kingdom
-            // would need a neutral projection later (out of scope).
-            let view = PlayerView::project(&g.state, Side::RED);
-            let welcome = ServerMsg::Spectating {
-                protocol: PROTOCOL_VERSION,
-                rules: g.state.rules.clone(),
-                view,
-                hints_allowed: g.hints_allowed,
-            };
-            if out_tx.send(welcome).is_err() {
-                return;
-            }
-            if out_tx.send(ServerMsg::ChatHistory { lines: g.chat_history() }).is_err() {
-                return;
-            }
-            g.spectators.push(out_tx.clone());
-            eprintln!(
-                "[server][{}] spectator joined ({}/{})",
-                room_id,
-                g.spectators.len(),
-                app.max_spectators
-            );
-            let summary = g.summary(&room_id);
-            drop(g);
-            refresh_summary(&app, &room_id, summary).await;
-            Connection::Spectator
         }
     };
+    if let Some(summary) = summary_after_join {
+        refresh_summary(&app, &room_id, summary).await;
+    }
 
-    // Write task: drain mpsc → ws sink. Exits naturally when all senders drop.
+    // === Write task: drain mpsc → ws sink ===
+    //
+    // Exits naturally when all senders drop.
     let write_task = tokio::spawn(async move {
         while let Some(msg) = out_rx.recv().await {
             let json = match serde_json::to_string(&msg) {
@@ -577,13 +515,12 @@ async fn handle_room_socket(
         let _ = sender.close().await;
     });
 
-    // Read loop. Both seat and spectator share this — process_client_msg
-    // gates on `connection` for Move/Resign/Rematch/Chat permissions.
+    // === Read loop ===
     while let Some(frame) = receiver.next().await {
         let frame = match frame {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("[server][warn][{}] ws read error ({:?}): {e}", room_id, connection);
+                eprintln!("[server][warn][{}] ws read error (peer {}): {e}", room_id, peer.0);
                 break;
             }
         };
@@ -600,41 +537,28 @@ async fn handle_room_socket(
                 continue;
             }
         };
-        let room = match get_room(&app, &room_id).await {
+        let entry_arc = match get_room(&app, &room_id).await {
             Some(r) => r,
             None => break,
         };
         let summary_after = {
-            let mut g = room.lock().await;
-            process_client_msg(&mut g, connection, &out_tx, msg, &room_id);
-            g.summary(&room_id)
+            let mut entry = entry_arc.lock().await;
+            let outbound = entry.room.apply(peer, msg);
+            entry.fanout(outbound);
+            entry.room.summary(&room_id)
         };
         refresh_summary(&app, &room_id, summary_after).await;
     }
 
-    // Disconnect: remove seat or spectator slot, notify peer if a player
-    // dropped during a live game, GC empty rooms except "main".
-    eprintln!("[server][{}] {:?} disconnected", room_id, connection);
-    if let Some(room) = get_room(&app, &room_id).await {
+    // === Disconnect cleanup ===
+    eprintln!("[server][{}] peer {} disconnected", room_id, peer.0);
+    if let Some(entry_arc) = get_room(&app, &room_id).await {
         let (summary_after, room_now_empty) = {
-            let mut g = room.lock().await;
-            match connection {
-                Connection::Player(seat) => {
-                    g.seats.retain(|(s, _)| *s != seat);
-                    g.rematch.retain(|s| *s != seat);
-                    if matches!(g.state.status, GameStatus::Ongoing) && !g.seats.is_empty() {
-                        for (_, tx) in &g.seats {
-                            let _ = tx
-                                .send(ServerMsg::Error { message: "opponent disconnected".into() });
-                        }
-                    }
-                }
-                Connection::Spectator => {
-                    g.spectators.retain(|tx| !tx.same_channel(&out_tx));
-                }
-            }
-            let empty = g.seats.is_empty() && g.spectators.is_empty();
-            (g.summary(&room_id), empty)
+            let mut entry = entry_arc.lock().await;
+            let outbound = entry.room.leave(peer);
+            entry.fanout(outbound);
+            entry.peers.remove(&peer);
+            (entry.room.summary(&room_id), entry.room.is_empty())
         };
         if room_now_empty && room_id != DEFAULT_ROOM {
             let mut rooms = app.rooms.lock().await;
@@ -649,12 +573,7 @@ async fn handle_room_socket(
     drop(out_tx);
     let _ = write_task.await;
 }
-
-#[derive(Copy, Clone, Debug)]
-enum Connection {
-    Player(Side),
-    Spectator,
-}
+// SECTION: lobby socket handler
 
 async fn handle_lobby_socket(socket: WebSocket, app: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
@@ -728,8 +647,9 @@ async fn handle_lobby_socket(socket: WebSocket, app: Arc<AppState>) {
     drop(out_tx);
     let _ = write_task.await;
 }
+// SECTION: lobby summary helpers
 
-async fn get_room(app: &AppState, room_id: &str) -> Option<Arc<Mutex<RoomState>>> {
+async fn get_room(app: &AppState, room_id: &str) -> Option<Arc<Mutex<RoomEntry>>> {
     let rooms = app.rooms.lock().await;
     rooms.get(room_id).cloned()
 }
@@ -768,6 +688,15 @@ async fn notify_lobby(app: &AppState) {
         let _ = tx.send(msg.clone());
     }
 }
+// SECTION: rooms snapshot json
+
+async fn rooms_snapshot_json(State(app): State<Arc<AppState>>) -> Json<Vec<RoomSummary>> {
+    let summaries = app.summaries.lock().await;
+    let mut rooms: Vec<RoomSummary> = summaries.values().cloned().collect();
+    rooms.sort_by(|a, b| a.id.cmp(&b.id));
+    Json(rooms)
+}
+// SECTION: send_close helper
 
 async fn send_close_with(
     sender: &mut futures_util::stream::SplitSink<WebSocket, Message>,
@@ -776,216 +705,4 @@ async fn send_close_with(
     let json = serde_json::to_string(&msg).unwrap_or_default();
     sender.send(Message::Text(json)).await?;
     sender.close().await
-}
-
-fn process_client_msg(
-    g: &mut RoomState,
-    connection: Connection,
-    self_tx: &mpsc::UnboundedSender<ServerMsg>,
-    msg: ClientMsg,
-    room_id: &str,
-) {
-    let seat = match connection {
-        Connection::Player(s) => Some(s),
-        Connection::Spectator => None,
-    };
-    match msg {
-        ClientMsg::Rematch => match seat {
-            Some(s) => process_rematch(g, s, room_id),
-            None => {
-                let _ = self_tx.send(ServerMsg::Error {
-                    message: "spectators cannot request a rematch".into(),
-                });
-            }
-        },
-        ClientMsg::Move { mv } => match seat {
-            Some(s) => {
-                if !matches!(g.state.status, GameStatus::Ongoing) {
-                    send_to(
-                        g,
-                        s,
-                        ServerMsg::Error {
-                            message: "game is over — press 'n' to request a rematch".into(),
-                        },
-                    );
-                    return;
-                }
-                process_move(g, s, mv, room_id);
-            }
-            None => {
-                let _ = self_tx.send(ServerMsg::Error { message: "spectators cannot move".into() });
-            }
-        },
-        ClientMsg::Resign => match seat {
-            Some(s) => {
-                if !matches!(g.state.status, GameStatus::Ongoing) {
-                    send_to(g, s, ServerMsg::Error { message: "game is over".into() });
-                    return;
-                }
-                let winner = if s == Side::RED { Side::BLACK } else { Side::RED };
-                g.state.status = GameStatus::Won { winner, reason: WinReason::Resignation };
-                broadcast_update(g);
-            }
-            None => {
-                let _ =
-                    self_tx.send(ServerMsg::Error { message: "spectators cannot resign".into() });
-            }
-        },
-        ClientMsg::ListRooms => {
-            let _ = self_tx.send(ServerMsg::Error {
-                message: "ListRooms is a lobby-only message; subscribe via /lobby".into(),
-            });
-        }
-        ClientMsg::Chat { text } => match seat {
-            Some(s) => process_chat(g, s, text, self_tx, room_id),
-            None => {
-                let _ = self_tx.send(ServerMsg::Error { message: "spectators cannot chat".into() });
-            }
-        },
-    }
-}
-
-fn process_chat(
-    g: &mut RoomState,
-    from: Side,
-    raw: String,
-    self_tx: &mpsc::UnboundedSender<ServerMsg>,
-    room_id: &str,
-) {
-    let cleaned: String = raw
-        .chars()
-        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
-        .map(|c| if c == '\n' || c == '\t' { ' ' } else { c })
-        .collect();
-    let trimmed = cleaned.trim();
-    if trimmed.is_empty() {
-        let _ = self_tx.send(ServerMsg::Error { message: "chat message is empty".into() });
-        return;
-    }
-    let mut text: String = trimmed.chars().take(MAX_CHAT_LEN).collect();
-    text.shrink_to_fit();
-    let line = ChatLine { from, text, ts_ms: now_ms() };
-    if g.chat.len() >= CHAT_HISTORY_CAP {
-        g.chat.pop_front();
-    }
-    g.chat.push_back(line.clone());
-    eprintln!("[server][{}] chat {:?}: {}", room_id, from, line.text);
-    broadcast_to_all(g, &ServerMsg::Chat { line });
-}
-
-fn now_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
-}
-
-fn process_rematch(g: &mut RoomState, seat: Side, room_id: &str) {
-    if matches!(g.state.status, GameStatus::Ongoing) {
-        send_to(
-            g,
-            seat,
-            ServerMsg::Error {
-                message: "Game still in progress — finish or resign first.".into()
-            },
-        );
-        return;
-    }
-    if g.seats.len() < 2 {
-        send_to(
-            g,
-            seat,
-            ServerMsg::Error { message: "No opponent connected — can't start a rematch.".into() },
-        );
-        return;
-    }
-    if !g.rematch.contains(&seat) {
-        g.rematch.push(seat);
-    }
-    let want_seats: Vec<Side> = g.seats.iter().map(|(s, _)| *s).collect();
-    let all_ready = want_seats.iter().all(|s| g.rematch.contains(s));
-    if all_ready {
-        let rules = g.state.rules.clone();
-        g.state = GameState::new(rules);
-        g.rematch.clear();
-        eprintln!("[server][{}] rematch — fresh game", room_id);
-        for (side, tx) in &g.seats {
-            let view = PlayerView::project(&g.state, *side);
-            let _ = tx.send(ServerMsg::Hello {
-                protocol: PROTOCOL_VERSION,
-                observer: *side,
-                rules: g.state.rules.clone(),
-                view,
-                hints_allowed: g.hints_allowed,
-            });
-        }
-        if !g.spectators.is_empty() {
-            let view = PlayerView::project(&g.state, Side::RED);
-            for tx in &g.spectators {
-                let _ = tx.send(ServerMsg::Spectating {
-                    protocol: PROTOCOL_VERSION,
-                    rules: g.state.rules.clone(),
-                    view: view.clone(),
-                    hints_allowed: g.hints_allowed,
-                });
-            }
-        }
-    } else {
-        for (s, tx) in &g.seats {
-            let msg = if *s == seat {
-                ServerMsg::Error { message: "Rematch requested. Waiting for opponent…".into() }
-            } else {
-                ServerMsg::Error {
-                    message: "Opponent wants a rematch. Press 'n' to accept.".into(),
-                }
-            };
-            let _ = tx.send(msg);
-        }
-    }
-}
-
-fn process_move(g: &mut RoomState, seat: Side, mv: Move, room_id: &str) {
-    if g.state.side_to_move != seat {
-        send_to(g, seat, ServerMsg::Error { message: "not your turn".into() });
-        return;
-    }
-    match g.state.make_move(&mv) {
-        Ok(()) => {
-            g.state.refresh_status();
-            eprintln!("[server][{}] {:?} -> {:?}", room_id, seat, mv);
-            broadcast_update(g);
-        }
-        Err(e) => {
-            send_to(g, seat, ServerMsg::Error { message: format!("illegal move: {e}") });
-        }
-    }
-}
-
-fn send_to(g: &RoomState, seat: Side, msg: ServerMsg) {
-    if let Some((_, tx)) = g.seats.iter().find(|(s, _)| *s == seat) {
-        let _ = tx.send(msg);
-    }
-}
-
-fn broadcast_update(g: &RoomState) {
-    for (side, tx) in &g.seats {
-        let view = PlayerView::project(&g.state, *side);
-        let _ = tx.send(ServerMsg::Update { view });
-    }
-    if !g.spectators.is_empty() {
-        let view = PlayerView::project(&g.state, Side::RED);
-        for tx in &g.spectators {
-            let _ = tx.send(ServerMsg::Update { view: view.clone() });
-        }
-    }
-}
-
-/// Fan a single message out to every connection (seats + spectators).
-/// Used for `Chat` where every recipient should see the same payload —
-/// `Update` uses [`broadcast_update`] instead because seats need
-/// per-side projections.
-fn broadcast_to_all(g: &RoomState, msg: &ServerMsg) {
-    for (_, tx) in &g.seats {
-        let _ = tx.send(msg.clone());
-    }
-    for tx in &g.spectators {
-        let _ = tx.send(msg.clone());
-    }
 }
