@@ -244,6 +244,68 @@ the byte count so we can verify QR fits before committing.
 >    as a first-class app rather than a Safari tab. Or fall back to
 >    Approach C (LAN signalling endpoint).
 
+> **2026-05-12 spike third-run findings (RTC plumbing OK, network blocks LAN P2P)**:
+>
+> Test 1 — **Two macOS Safari tabs on one MacBook**: ✅ end-to-end
+> green. SDPs exchanged via JSON envelope, signalingState stable on
+> both, DataChannel opened, echo messages flowed. Confirms the entire
+> RTC pipe (envelope, mDNS-only ICE, host PC + joiner PC, DataChannel
+> handlers) is correctly implemented. Offer / answer raw bytes both
+> ~660 — well within QR v25 alphanumeric capacity for Phase 5.
+>
+> Test 2 — **macOS Safari host + iPad Safari joiner over LAN**:
+> ❌ host `iceConnectionState: Disconnected` after accepting answer.
+> Both signalling states cleanly reach `Stable`, ICE gathering done in
+> ~128 ms with one mDNS `.local` host candidate per side, the SDP
+> exchange itself succeeds — but the ICE pair check never converges.
+>
+> Test 2-1 — **macOS Safari host + iPad Chrome joiner over LAN**:
+> ❌ same failure shape as Test 2 (`Checking → Failed`). The fact
+> that BOTH iPad browsers fail with the *same* symptom while the
+> macOS-only path works rules out browser-engine quirks. Common
+> failure axis: **cross-device LAN with mDNS `.local` candidates**.
+>
+> Most likely root cause: the WiFi router is blocking client-to-client
+> traffic (AP Isolation / Client Isolation / Wireless Isolation). On
+> the test network (subnet `192.168.31.x` — common Xiaomi default)
+> this is shipped enabled by some firmware revisions. With AP
+> isolation on, the iPad cannot resolve the MacBook's
+> `<uuid>.local` mDNS hostname (mDNS multicast UDP/5353 dropped),
+> so no candidate pair can be checked, ICE fails. See
+> [`pitfalls/webrtc-mdns-lan-ap-isolation.md`](../pitfalls/webrtc-mdns-lan-ap-isolation.md)
+> for the full root-cause analysis + mitigation menu.
+>
+> Spike scaffolding gained a "Use Google STUN (diagnostic)" checkbox
+> on both pages so the next test can compare LAN-only vs srflx
+> candidate behaviour. Toggle BOTH sides before tapping Start hosting
+> / Generate answer.
+>
+> **Recommended fourth test (in order):**
+>
+> 4. **MacBook + iPad both connected to the iPhone's hotspot.** The
+>    iPhone's personal hotspot is a guaranteed-clean LAN with no AP
+>    isolation. If both devices land on the iPhone's WiFi and the
+>    `LanOnly` test (no STUN) succeeds, the spike's RTC pipe is
+>    confirmed and the home WiFi router is the only remaining problem.
+> 5. **Same network, but tick "Use Google STUN" on BOTH pages** before
+>    Start hosting. Compares LAN-only vs srflx-augmented behaviour.
+>    If this works on the home WiFi where LAN-only didn't, that's
+>    extra evidence for AP isolation (and it gives us an option C-lite
+>    fallback: ship a STUN-using mode for users on hostile networks,
+>    even though it requires brief internet during pairing).
+> 6. **Disable AP Isolation on the home router** (Xiaomi: WiFi →
+>    Advanced → "AP isolation"). Re-run Test 2 — if it now succeeds,
+>    we've identified + fixed the root cause and can recommend it as
+>    a setup step for users.
+>
+> Net effect on Phase 0 gate: **the underlying WebRTC + mDNS pipe is
+> validated** (Test 1). What remains unproven is whether typical home
+> WiFi routers will let it work end-to-end. If the answer is "no for a
+> meaningful fraction of users", we'll need to either tell users to
+> reconfigure their routers (poor UX) or fall back to Approach C
+> (signalling endpoint that helps both peers learn each other's IPs
+> without relying on mDNS).
+
 #### How to run the spike on real devices
 
 Prerequisite: every test device must be able to reach the dev page. iOS

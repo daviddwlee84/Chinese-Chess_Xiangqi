@@ -94,6 +94,7 @@ Pitfalls owned by this folder. Keep alphabetical.
 | [`leptos-router-base-trailing-slash`](leptos-router-base-trailing-slash.md) | blank `<main class="app-shell">` at project base URL, GitHub Pages root white screen, Playwright `wait-for-selector` timeout, `<Router base=…>` no match | workaround documented |
 | [`trunk-proxy-route-conflict`](trunk-proxy-route-conflict.md) | trunk panic, `__private__axum_nest_tail_param`, `conflict with previously registered route`, silent tmux pane close | workaround documented |
 | [`wasm-getrandom-unresolved-imp`](wasm-getrandom-unresolved-imp.md) | `unresolved module imp`, getrandom, wasm32-unknown-unknown, E0433 | workaround documented |
+| [`webrtc-mdns-lan-ap-isolation`](webrtc-mdns-lan-ap-isolation.md) | iceConnectionState Checking → Failed / Disconnected, WebRTC DataChannel never opens, two browsers on same WiFi can't connect, mDNS `.local` candidate not resolvable, signalingState Stable but no data flow, AP isolation, client isolation, guest WiFi blocking p2p, Xiaomi 192.168.31.x router | workaround documented |
 
 ## Cross-referenced pitfalls (still in their original homes)
 

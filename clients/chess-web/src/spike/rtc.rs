@@ -83,9 +83,12 @@ pub struct OpenSetters {
 
 /// Host side: create the PeerConnection + DataChannel, generate the
 /// offer, wait for ICE gathering to complete, return the full SDP blob.
-pub async fn open_host(setters: OpenSetters) -> Result<(PeerSession, String), JsValue> {
+pub async fn open_host(
+    setters: OpenSetters,
+    ice_mode: IceMode,
+) -> Result<(PeerSession, String), JsValue> {
     let now = perf_now();
-    let pc = new_peer_connection_no_servers()?;
+    let pc = new_peer_connection(ice_mode)?;
     let dc_init = {
         let init = RtcDataChannelInit::new();
         // reliable + ordered — the chess-net wire shape assumes
@@ -144,9 +147,10 @@ pub async fn open_host(setters: OpenSetters) -> Result<(PeerSession, String), Js
 pub async fn open_joiner(
     offer_blob: &str,
     setters: OpenSetters,
+    ice_mode: IceMode,
 ) -> Result<(PeerSession, String), JsValue> {
     let now = perf_now();
-    let pc = new_peer_connection_no_servers()?;
+    let pc = new_peer_connection(ice_mode)?;
     let dc_holder: Rc<RefCell<Option<RtcDataChannel>>> = Rc::new(RefCell::new(None));
     let mut keepalive: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
 
@@ -234,13 +238,37 @@ fn perf_now() -> f64 {
     web_sys::window().and_then(|w| w.performance()).map(|p| p.now()).unwrap_or(0.0)
 }
 
-/// `RtcPeerConnection` with `iceServers: []` — pure mDNS / .local
-/// candidates, no STUN, no TURN. This is the "LAN only" mode the spike
-/// is here to validate.
-fn new_peer_connection_no_servers() -> Result<RtcPeerConnection, JsValue> {
+/// `RtcPeerConnection` configuration.
+///
+/// `LanOnly` (default for the spike) sets `iceServers: []` — pure mDNS /
+/// `.local` candidates, no STUN, no TURN. This is the "no external
+/// dependency" mode the spike is here to validate.
+///
+/// `WithStun` adds a Google public STUN server. With STUN the browser
+/// also publishes server-reflexive (`srflx`) candidates with the public
+/// IP. Useful as a triage tool when the LAN is blocking peer-to-peer
+/// `.local` resolution (router AP isolation, guest WiFi, etc.) — if
+/// the connection succeeds with STUN but fails without, the router is
+/// the culprit.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum IceMode {
+    LanOnly,
+    WithStun,
+}
+
+fn new_peer_connection(mode: IceMode) -> Result<RtcPeerConnection, JsValue> {
     let cfg = RtcConfiguration::new();
-    let empty: Array = Array::new();
-    Reflect::set(&cfg, &"iceServers".into(), &empty).ok();
+    let servers: Array = Array::new();
+    if mode == IceMode::WithStun {
+        // Single Google public STUN server. Reachable from most networks
+        // including most home / mobile / corporate. Not used by
+        // production code — production wants pure LAN; this is a spike
+        // diagnostic only.
+        let server = js_sys::Object::new();
+        Reflect::set(&server, &"urls".into(), &"stun:stun.l.google.com:19302".into()).ok();
+        servers.push(&server);
+    }
+    Reflect::set(&cfg, &"iceServers".into(), &servers).ok();
     RtcPeerConnection::new_with_configuration(&cfg)
 }
 

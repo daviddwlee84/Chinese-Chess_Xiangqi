@@ -12,7 +12,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
 use super::rtc::{
-    accept_answer, dc_send, open_host, open_joiner, OpenSetters, PeerSession, RtcConn,
+    accept_answer, dc_send, open_host, open_joiner, IceMode, OpenSetters, PeerSession, RtcConn,
 };
 // SECTION: route component (HostPage)
 
@@ -34,6 +34,11 @@ pub fn HostPage() -> impl IntoView {
     // of the "wrong state: stable" error in the first iOS spike run).
     let (host_started, set_host_started) = create_signal::<bool>(false);
     let (answer_accepted, set_answer_accepted) = create_signal::<bool>(false);
+    // Diagnostic toggle: enable Google STUN to publish srflx candidates
+    // in addition to mDNS .local. If LAN-only fails but STUN works, the
+    // router (or some LAN segment) is blocking peer-to-peer mDNS / .local
+    // resolution. Defaults to LAN-only; flip BEFORE Start hosting.
+    let (use_stun, set_use_stun) = create_signal::<bool>(false);
 
     // The PeerSession lives in an Rc<RefCell<...>> so we can:
     //   1. own it from `start_host` (writes Some after open_host completes),
@@ -59,8 +64,9 @@ pub fn HostPage() -> impl IntoView {
         set_error_msg.set(None);
         set_offer_blob.set(String::new());
         let session = session_for_start.clone();
+        let mode = if use_stun.get_untracked() { IceMode::WithStun } else { IceMode::LanOnly };
         spawn_local(async move {
-            match open_host(setters).await {
+            match open_host(setters, mode).await {
                 Ok((s, sdp)) => {
                     set_offer_blob.set(sdp);
                     *session.borrow_mut() = Some(s);
@@ -152,6 +158,21 @@ pub fn HostPage() -> impl IntoView {
             } style="margin-left:0.5rem">
                 "Reset (reload page)"
             </button>
+            <label style="margin-left:1rem;font-size:13px">
+                <input
+                    type="checkbox"
+                    prop:checked=move || use_stun.get()
+                    disabled=move || host_started.get()
+                    on:change=move |ev| {
+                        let v = ev.target()
+                            .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                            .map(|el| el.checked())
+                            .unwrap_or(false);
+                        set_use_stun.set(v);
+                    }
+                />
+                " Use Google STUN (diagnostic — adds srflx candidates)"
+            </label>
             <p>"Offer SDP (send to joiner via AirDrop / Nearby Share / paste):"</p>
             <textarea
                 rows="8"
@@ -212,6 +233,8 @@ pub fn JoinPage() -> impl IntoView {
     let (answer_blob, set_answer_blob) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
     let (joined, set_joined) = create_signal::<bool>(false);
+    // See HostPage for STUN toggle rationale.
+    let (use_stun, set_use_stun) = create_signal::<bool>(false);
 
     let session: Rc<RefCell<Option<PeerSession>>> = Rc::new(RefCell::new(None));
 
@@ -239,8 +262,9 @@ pub fn JoinPage() -> impl IntoView {
             return;
         }
         let session = session_for_join.clone();
+        let mode = if use_stun.get_untracked() { IceMode::WithStun } else { IceMode::LanOnly };
         spawn_local(async move {
-            match open_joiner(&blob, setters).await {
+            match open_joiner(&blob, setters, mode).await {
                 Ok((s, sdp)) => {
                     set_answer_blob.set(sdp);
                     *session.borrow_mut() = Some(s);
@@ -300,6 +324,21 @@ pub fn JoinPage() -> impl IntoView {
             } style="margin-left:0.5rem">
                 "Reset (reload page)"
             </button>
+            <label style="margin-left:1rem;font-size:13px">
+                <input
+                    type="checkbox"
+                    prop:checked=move || use_stun.get()
+                    disabled=move || joined.get()
+                    on:change=move |ev| {
+                        let v = ev.target()
+                            .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                            .map(|el| el.checked())
+                            .unwrap_or(false);
+                        set_use_stun.set(v);
+                    }
+                />
+                " Use Google STUN (must match host's setting)"
+            </label>
             <p>"Answer SDP (send back to host):"</p>
             <textarea
                 rows="8"
