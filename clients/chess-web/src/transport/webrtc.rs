@@ -491,6 +491,16 @@ fn install_dc_handlers_for_joiner(
         dc.set_onclose(Some(cb.as_ref().unchecked_ref()));
         cb.forget();
     }
+
+    // Defensive: if the DataChannel is ALREADY open by the time we
+    // set the handlers (fast LAN path — the SCTP handshake can
+    // complete in <1 ms, faster than `ondatachannel` → handler
+    // installation Rust closures), the `onopen` event has already
+    // fired and we'd never see it. Manually flip the state signal
+    // so the page can transition. Browsers don't re-fire `onopen`.
+    if dc.ready_state() == RtcDataChannelState::Open {
+        state.set(ConnState::Open);
+    }
 }
 
 /// Host-side state handlers — flip `state` to `Open`/`Closed` based on
@@ -512,6 +522,12 @@ fn install_dc_state_handlers(dc: &RtcDataChannel, state: WriteSignal<ConnState>)
         }) as Box<dyn FnMut(JsValue)>);
         dc.set_onclose(Some(cb.as_ref().unchecked_ref()));
         cb.forget();
+    }
+    // Defensive (see `install_dc_handlers_for_joiner` for the
+    // rationale): cover the race where the DC opens before the
+    // handler is installed.
+    if dc.ready_state() == RtcDataChannelState::Open {
+        state.set(ConnState::Open);
     }
 }
 

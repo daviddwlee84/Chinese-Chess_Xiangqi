@@ -264,7 +264,37 @@ pub fn LanJoinPage() -> impl IntoView {
     let handshake: Rc<RefCell<Option<JoinerHandshake>>> = Rc::new(RefCell::new(None));
     let (play_session, set_play_session) = create_signal::<Option<Session>>(None);
 
+    // Holder pattern: spawn_local runs without a Leptos owner context,
+    // so a `create_effect` inside it would be GC'd immediately (no
+    // subscriptions retained — `state.set(Open)` would fire but no
+    // effect would react). Solution: define the holder signals and
+    // the effect at component scope (properly owned), and have
+    // spawn_local just `set` the holders. The component-scope effect
+    // re-runs when the holders change AND when the inner state
+    // signal changes.
+    let (joiner_state_holder, set_joiner_state_holder) =
+        create_signal::<Option<ReadSignal<ConnState>>>(None);
+    let session_holder: Rc<RefCell<Option<Session>>> = Rc::new(RefCell::new(None));
+
+    {
+        let session_holder = session_holder.clone();
+        create_effect(move |_| {
+            // Read both signals to register subscriptions:
+            //   * joiner_state_holder fires once when handshake completes.
+            //   * the inner state signal fires when DC opens.
+            if let Some(state_sig) = joiner_state_holder.get() {
+                if state_sig.get() == ConnState::Open {
+                    if let Some(session) = session_holder.borrow().clone() {
+                        set_play_session.set(Some(session));
+                        set_status.set(JoinStatus::Playing);
+                    }
+                }
+            }
+        });
+    }
+
     let handshake_for_gen = handshake.clone();
+    let session_holder_for_gen = session_holder.clone();
     let on_generate: Callback<()> = Callback::new(move |_: ()| {
         if !matches!(status.get_untracked(), JoinStatus::Idle) {
             return;
@@ -280,20 +310,19 @@ pub fn LanJoinPage() -> impl IntoView {
             ice_mode: if use_stun.get_untracked() { IceMode::WithStun } else { IceMode::LanOnly },
         };
         let handshake_slot = handshake_for_gen.clone();
+        let session_holder = session_holder_for_gen.clone();
         spawn_local(async move {
             match connect_as_joiner(cfg, OfferBlob(blob)).await {
                 Ok(jh) => {
                     set_answer_blob.set(jh.answer.0.clone());
                     let state = jh.session.state;
-                    let session_for_play = jh.session.clone();
+                    *session_holder.borrow_mut() = Some(jh.session.clone());
                     *handshake_slot.borrow_mut() = Some(jh);
-                    create_effect(move |_| {
-                        if state.get() == ConnState::Open {
-                            set_play_session.set(Some(session_for_play.clone()));
-                            set_status.set(JoinStatus::Playing);
-                        }
-                    });
                     set_status.set(JoinStatus::WaitingForOpen);
+                    // Triggers the component-scope effect to subscribe
+                    // to the state signal. Once DC opens, that effect
+                    // flips status → Playing.
+                    set_joiner_state_holder.set(Some(state));
                 }
                 Err(e) => {
                     set_error_msg.set(Some(format!("connect_as_joiner failed: {e:?}")));
