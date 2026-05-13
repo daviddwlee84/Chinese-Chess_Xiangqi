@@ -17,7 +17,7 @@
 use std::rc::Rc;
 
 use chess_net::protocol::{ClientMsg, ServerMsg};
-use leptos::ReadSignal;
+use leptos::{ReadSignal, RwSignal};
 // SECTION: ConnState enum
 
 /// Coarse state of a chess-net transport connection. Pages render different
@@ -53,17 +53,29 @@ pub trait Transport {
 // SECTION: Session bundle
 
 /// One open chess-net transport plus the two Leptos signals every page
-/// needs: the latest `ServerMsg` (latched, not a stream), and the coarse
+/// needs: a queue of unprocessed `ServerMsg`s, and the coarse
 /// connection state.
+///
+/// `incoming` is an `RwSignal<Vec<ServerMsg>>` — every sink (WS read
+/// pump, WebRTC DataChannel handler, host-room local sink) PUSHES
+/// onto the vec via `incoming.update(|v| v.push(msg))`. The page
+/// drains via an effect that reads the vec, processes each entry,
+/// then `incoming.set(Vec::new())`. This avoids the latched-signal
+/// trap where multiple synchronous `set(Some(msg))` calls (host-room
+/// emitting `Hello` + `ChatHistory` back-to-back during a fresh
+/// `Room::join_player`) would batch and only the LAST value would
+/// be observed by the effect — silently dropping the `Hello` and
+/// leaving the page stuck on "Awaiting seat assignment".
 ///
 /// Returned by every transport factory (`ws::connect`, future
 /// `webrtc::connect`). Pages destructure / clone its fields freely:
-/// `handle` is `Rc<dyn Transport>` so cloning is cheap; `incoming` and
-/// `state` are Leptos `ReadSignal`s which are `Copy`.
+/// `handle` is `Rc<dyn Transport>` so cloning is cheap; `incoming`
+/// is `RwSignal` which is `Copy`; `state` is `ReadSignal` which is
+/// `Copy`.
 #[derive(Clone)]
 pub struct Session {
     pub handle: Rc<dyn Transport>,
-    pub incoming: ReadSignal<Option<ServerMsg>>,
+    pub incoming: RwSignal<Vec<ServerMsg>>,
     pub state: ReadSignal<ConnState>,
 }
 

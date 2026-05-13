@@ -63,8 +63,13 @@ use {
 /// Where to deliver `ServerMsg`s for a given peer.
 ///
 /// `Local` is the host's own play page — `ServerMsg`s become
-/// values in a Leptos `WriteSignal<Option<ServerMsg>>` that the
-/// page reads via the `Session.incoming` `ReadSignal`.
+/// values in a Leptos `RwSignal<Vec<ServerMsg>>` queue that the
+/// page reads via `Session.incoming` (and drains via `set`). The
+/// queue is critical: a fresh `Room::join_player` synchronously
+/// emits `Hello` + `ChatHistory`; with a latched
+/// `WriteSignal<Option<ServerMsg>>` the second `set` would
+/// silently overwrite the `Hello` (Leptos batches synchronous
+/// sets into one effect firing reading the LAST value).
 ///
 /// `Remote` is a peer connected over WebRTC — `ServerMsg`s are
 /// JSON-serialised and written into a `RtcDataChannel`. The
@@ -72,7 +77,7 @@ use {
 /// `RemoteMock` variant for unit tests since `web_sys` types
 /// aren't reachable on native targets.
 pub enum PeerSink {
-    Local(WriteSignal<Option<ServerMsg>>),
+    Local(RwSignal<Vec<ServerMsg>>),
     #[cfg(target_arch = "wasm32")]
     Remote(RtcDataChannel),
     /// Test-only sink that records every delivered message into a
@@ -84,7 +89,7 @@ pub enum PeerSink {
 impl PeerSink {
     fn deliver(&self, msg: ServerMsg) {
         match self {
-            PeerSink::Local(set) => set.set(Some(msg)),
+            PeerSink::Local(signal) => signal.update(|v| v.push(msg)),
             #[cfg(target_arch = "wasm32")]
             PeerSink::Remote(dc) => {
                 if let Ok(text) = serde_json::to_string(&msg) {
@@ -147,13 +152,15 @@ impl HostRoom {
     ) -> (Rc<Self>, Session) {
         let mut room = Room::new(rules, password, hints_allowed);
         let self_peer = PeerId(1);
-        let (incoming, set_incoming) = create_signal::<Option<ServerMsg>>(None);
+        let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
         let (state, _set_state) = create_signal(ConnState::Open);
 
         // Insert host's sink BEFORE join_player so the Hello +
-        // ChatHistory the room emits land in the host's own signal.
+        // ChatHistory the room emits queue into the host's own
+        // incoming signal — same vec, processed in arrival order
+        // by the play page's draining effect.
         let mut sinks: HashMap<PeerId, PeerSink> = HashMap::new();
-        sinks.insert(self_peer, PeerSink::Local(set_incoming));
+        sinks.insert(self_peer, PeerSink::Local(incoming));
 
         let (_side, outbound) =
             room.join_player(self_peer).expect("fresh room always seats the first joiner");

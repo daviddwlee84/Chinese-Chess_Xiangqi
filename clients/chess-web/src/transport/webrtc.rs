@@ -232,7 +232,9 @@ pub async fn connect_as_joiner(
     let dc_holder: Rc<RefCell<Option<RtcDataChannel>>> = Rc::new(RefCell::new(None));
     let mut keepalive: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
 
-    let (incoming, set_incoming) = create_signal::<Option<ServerMsg>>(None);
+    // `incoming` is a queue (Vec push, page drains). See
+    // `transport::Session` doc.
+    let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
     let (state, set_state) = create_signal(ConnState::Connecting);
 
     // The DataChannel arrives on `ondatachannel` after the host's
@@ -243,7 +245,7 @@ pub async fn connect_as_joiner(
         let cb = Closure::wrap(Box::new(move |ev: JsValue| {
             let ev: RtcDataChannelEvent = ev.unchecked_into();
             let dc = ev.channel();
-            install_dc_handlers_for_joiner(&dc, set_incoming, set_state);
+            install_dc_handlers_for_joiner(&dc, incoming, set_state);
             *dc_holder.borrow_mut() = Some(dc);
         }) as Box<dyn FnMut(JsValue)>);
         pc_rc.set_ondatachannel(Some(cb.as_ref().unchecked_ref()));
@@ -451,7 +453,7 @@ async fn wait_for_ice_complete(
 /// `onopen` flips the state signal to `Open`, `onclose` to `Closed`.
 fn install_dc_handlers_for_joiner(
     dc: &RtcDataChannel,
-    incoming: WriteSignal<Option<ServerMsg>>,
+    incoming: RwSignal<Vec<ServerMsg>>,
     state: WriteSignal<ConnState>,
 ) {
     {
@@ -473,7 +475,7 @@ fn install_dc_handlers_for_joiner(
             let ev: MessageEvent = ev.unchecked_into();
             if let Some(text) = ev.data().as_string() {
                 if let Ok(msg) = serde_json::from_str::<ServerMsg>(&text) {
-                    incoming.set(Some(msg));
+                    incoming.update(|v| v.push(msg));
                 }
             }
         }) as Box<dyn FnMut(JsValue)>);

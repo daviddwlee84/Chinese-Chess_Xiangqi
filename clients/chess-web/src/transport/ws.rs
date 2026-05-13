@@ -40,7 +40,10 @@ impl Transport for WsTransport {
 /// `Session` whose `handle` will succeed at `send(...)` until the
 /// underlying socket closes.
 pub fn connect(url: String) -> Session {
-    let (incoming, set_incoming) = create_signal::<Option<ServerMsg>>(None);
+    // `incoming` is a queue (Vec push, page drains). See
+    // `transport::Session` doc for why we don't use a latched
+    // `Option<ServerMsg>` signal.
+    let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
     let (state, set_state) = create_signal(ConnState::Connecting);
     let (out_tx, mut out_rx) = unbounded::<ClientMsg>();
 
@@ -49,13 +52,13 @@ pub fn connect(url: String) -> Session {
             let (mut tx, mut rx) = ws.split();
             set_state.set(ConnState::Open);
 
-            // Read pump — server frames → signal.
+            // Read pump — server frames → queue.
             wasm_bindgen_futures::spawn_local(async move {
                 while let Some(msg) = rx.next().await {
                     match msg {
                         Ok(Message::Text(t)) => {
                             if let Ok(m) = serde_json::from_str::<ServerMsg>(&t) {
-                                set_incoming.set(Some(m));
+                                incoming.update(|v| v.push(m));
                             }
                         }
                         Ok(Message::Bytes(_)) => {}
