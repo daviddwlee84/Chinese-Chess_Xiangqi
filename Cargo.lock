@@ -390,6 +390,7 @@ dependencies = [
  "chess-core",
  "clap",
  "futures-util",
+ "js-sys",
  "serde",
  "serde_json",
  "tempfile",

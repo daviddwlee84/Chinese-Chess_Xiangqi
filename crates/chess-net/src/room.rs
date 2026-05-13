@@ -19,6 +19,7 @@
 
 // SECTION: imports
 use std::collections::VecDeque;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use chess_core::moves::Move;
@@ -578,11 +579,24 @@ impl Room {
     }
 }
 
-/// `SystemTime`-derived unix milliseconds. Returns 0 on the (impossible)
-/// `SystemTimeError` so chat doesn't panic if a CI runner has a clock
-/// before the unix epoch.
+/// Unix milliseconds source. Native uses `SystemTime`; wasm32 uses
+/// `js_sys::Date::now()` because `SystemTime::now()` panics on wasm
+/// with "time not implemented on this platform" — discovered when
+/// `host_room.rs` started running `Room` in-browser for LAN play and
+/// the first chat message panicked the entire fanout (silently
+/// dropping the chat broadcast). Returns `0` only on the impossible
+/// `SystemTimeError` (CI clock before the unix epoch).
 fn now_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        // `Date::now()` returns f64 millis since unix epoch. Cast to
+        // u64 — within the next ~285,000,000 years this won't overflow.
+        js_sys::Date::now() as u64
+    }
 }
 // SECTION: broadcast helpers
 
