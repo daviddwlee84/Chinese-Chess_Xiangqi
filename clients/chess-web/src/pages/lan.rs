@@ -26,8 +26,8 @@ use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::pages::play::PlayConnected;
 use crate::transport::webrtc::{
-    connect_as_host, connect_as_joiner, AnswerBlob, HostHandshake, IceMode, JoinerHandshake,
-    OfferBlob, WebRtcConfig,
+    connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceMode,
+    JoinerHandshake, OfferBlob, WebRtcConfig,
 };
 use crate::transport::{ConnState, Session};
 // SECTION: LanHostPage component
@@ -112,21 +112,33 @@ pub fn LanHostPage() -> impl IntoView {
                 set_status.set(HostStatus::Idle);
                 return;
             }
-            let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
-            let dc = hh.dc.borrow().clone();
-            match dc {
-                Some(dc) => {
-                    if let Err(e) = room.attach_remote_player_dc(dc) {
-                        set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
-                        set_status.set(HostStatus::Idle);
-                        return;
-                    }
-                }
+            // CRITICAL: `accept_answer` resolves as soon as
+            // `setRemoteDescription` returns — BEFORE the SCTP
+            // handshake completes. If we call `attach_remote_player_dc`
+            // immediately, the `dc.send_with_str(...)` for Hello +
+            // ChatHistory silently fails (DC ready_state is still
+            // "connecting"). Wait for actual DC open first.
+            let dc = match hh.dc.borrow().clone() {
+                Some(d) => d,
                 None => {
                     set_error_msg.set(Some("DataChannel slot is empty".into()));
                     set_status.set(HostStatus::Idle);
                     return;
                 }
+            };
+            if !wait_for_dc_open(&dc, 10_000).await {
+                set_error_msg.set(Some(
+                    "DataChannel did not open within 10 s — pairing failed (network blocked?)"
+                        .into(),
+                ));
+                set_status.set(HostStatus::Idle);
+                return;
+            }
+            let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
+            if let Err(e) = room.attach_remote_player_dc(dc) {
+                set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
+                set_status.set(HostStatus::Idle);
+                return;
             }
             *host_room_slot.borrow_mut() = Some(room);
             set_play_session.set(Some(session));

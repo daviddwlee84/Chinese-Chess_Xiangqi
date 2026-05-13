@@ -310,6 +310,41 @@ pub async fn connect_as_host(cfg: WebRtcConfig) -> Result<HostHandshake, JsValue
     let offer_blob = OfferBlob(encode_sdp("offer", &sdp));
     Ok(HostHandshake { pc, dc: dc_holder, offer: offer_blob, state, _keepalive: keepalive })
 }
+/// Block until `dc.ready_state() == "open"` OR `timeout_ms` elapses.
+/// Returns `true` if the channel opened, `false` on timeout.
+///
+/// Used by the host page after `accept_answer` resolves: that
+/// `await` completes as soon as `setRemoteDescription` returns,
+/// which is BEFORE the SCTP handshake finishes. Calling
+/// `dc.send_with_str(...)` on a still-`Connecting` DataChannel
+/// silently fails (browsers return Err but the chess `PeerSink::Remote`
+/// path discards the result), so the host's `Hello` + `ChatHistory`
+/// fanout to the joiner would be lost. Awaiting this helper before
+/// `HostRoom::attach_remote_player_dc` ensures the fanout reaches
+/// the joiner.
+///
+/// Polls every 50 ms via `setTimeout`. Lower-level alternative would
+/// be a Promise wrapping `dc.set_onopen`, but we already need the
+/// timeout path for hostile-network failure cases, so polling is
+/// simpler than two-channel select.
+pub async fn wait_for_dc_open(dc: &RtcDataChannel, timeout_ms: u32) -> bool {
+    let start = js_sys::Date::now();
+    let deadline = start + timeout_ms as f64;
+    loop {
+        if dc.ready_state() == RtcDataChannelState::Open {
+            return true;
+        }
+        if js_sys::Date::now() > deadline {
+            return false;
+        }
+        let promise = js_sys::Promise::new(&mut |resolve, _reject| {
+            if let Some(win) = web_sys::window() {
+                let _ = win.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 50);
+            }
+        });
+        let _ = JsFuture::from(promise).await;
+    }
+}
 // SECTION: SDP envelope encode/decode
 
 /// Wrap `(type, sdp)` in a JSON envelope so the textarea contents survive
