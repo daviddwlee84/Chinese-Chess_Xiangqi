@@ -7,5 +7,6 @@ pub mod end_overlay;
 pub mod eval_chart;
 pub mod move_history;
 pub mod pwa;
+pub mod qr;
 pub mod sidebar;
 pub mod ws_setup;

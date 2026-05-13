@@ -22,6 +22,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
+use crate::components::qr::QrCodeView;
 use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::pages::play::PlayConnected;
@@ -192,9 +193,14 @@ pub fn LanHostPage() -> impl IntoView {
                     </p>
                     <p>"Status: " {move || format!("{:?}", status.get())}</p>
                     <Show when=move || !offer_blob.with(|s| s.is_empty())>
-                        <p>"Offer SDP — copy + send to the joiner via AirDrop / Messages / etc:"</p>
+                        <p>"Have the joiner scan this QR — or copy the text and AirDrop / Messages it:"</p>
+                        <QrCodeView
+                            payload=Signal::derive(move || offer_blob.get())
+                            label="LAN host offer SDP"
+                        />
+                        <p style="margin-top:0.75rem">"Or copy as text:"</p>
                         <textarea
-                            rows="8"
+                            rows="6"
                             readonly=true
                             style="width:100%;font-family:monospace;font-size:12px"
                             prop:value=move || offer_blob.get()
@@ -214,7 +220,7 @@ pub fn LanHostPage() -> impl IntoView {
                         </p>
                         <p>"2. Paste the joiner's answer SDP below, then accept:"</p>
                         <textarea
-                            rows="8"
+                            rows="6"
                             style="width:100%;font-family:monospace;font-size:12px"
                             on:input=move |ev| {
                                 let v = ev.target()
@@ -397,9 +403,14 @@ pub fn LanJoinPage() -> impl IntoView {
                         "2. Generate answer"
                     </button>
                     <Show when=move || !answer_blob.with(|s| s.is_empty())>
-                        <p>"Answer SDP — copy + send back to the host:"</p>
+                        <p>"Show this QR back to the host — or copy + AirDrop the text:"</p>
+                        <QrCodeView
+                            payload=Signal::derive(move || answer_blob.get())
+                            label="LAN joiner answer SDP"
+                        />
+                        <p style="margin-top:0.75rem">"Or copy as text:"</p>
                         <textarea
-                            rows="8"
+                            rows="6"
                             readonly=true
                             style="width:100%;font-family:monospace;font-size:12px"
                             prop:value=move || answer_blob.get()

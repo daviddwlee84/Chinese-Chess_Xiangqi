@@ -48,6 +48,11 @@ web-sys       = { version = "0.3", features = [
 ] }
 js-sys        = "0.3"
 gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }
+# QR code generation for LAN-pairing offer/answer SDPs (Phase 5.5).
+# Pure Rust; SVG output embedded inline. ~30 KB to the wasm bundle.
+# `default-features = false` skips PNG / image dependencies — we only
+# emit SVG, so we don't need the image stack.
+qrcode        = { version = "0.14", default-features = false, features = ["svg"] }
 gloo-timers   = { version = "0.3", features = ["futures"] }
 futures-util  = { workspace = true }
 futures       = "0.3"
