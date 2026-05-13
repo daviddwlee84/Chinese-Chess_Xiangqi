@@ -49,7 +49,7 @@ use web_sys::{
     RtcSessionDescriptionInit, RtcSignalingState,
 };
 
-use super::{ConnState, Session, Transport};
+use super::{ConnState, Incoming, Session, Transport};
 // SECTION: public types (IceMode, WebRtcConfig, OfferBlob, AnswerBlob)
 
 /// `RtcPeerConnection` ICE configuration.
@@ -232,9 +232,9 @@ pub async fn connect_as_joiner(
     let dc_holder: Rc<RefCell<Option<RtcDataChannel>>> = Rc::new(RefCell::new(None));
     let mut keepalive: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
 
-    // `incoming` is a queue (Vec push, page drains). See
-    // `transport::Session` doc.
-    let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
+    // `incoming` is a queue (push from DC onmessage, page drains via
+    // tick signal). See `transport::Incoming` doc for the rationale.
+    let incoming = Incoming::new();
     let (state, set_state) = create_signal(ConnState::Connecting);
 
     // The DataChannel arrives on `ondatachannel` after the host's
@@ -242,10 +242,11 @@ pub async fn connect_as_joiner(
     // so we don't miss the event.
     {
         let dc_holder = dc_holder.clone();
+        let incoming_for_dc = incoming.clone();
         let cb = Closure::wrap(Box::new(move |ev: JsValue| {
             let ev: RtcDataChannelEvent = ev.unchecked_into();
             let dc = ev.channel();
-            install_dc_handlers_for_joiner(&dc, incoming, set_state);
+            install_dc_handlers_for_joiner(&dc, incoming_for_dc.clone(), set_state);
             *dc_holder.borrow_mut() = Some(dc);
         }) as Box<dyn FnMut(JsValue)>);
         pc_rc.set_ondatachannel(Some(cb.as_ref().unchecked_ref()));
@@ -453,7 +454,7 @@ async fn wait_for_ice_complete(
 /// `onopen` flips the state signal to `Open`, `onclose` to `Closed`.
 fn install_dc_handlers_for_joiner(
     dc: &RtcDataChannel,
-    incoming: RwSignal<Vec<ServerMsg>>,
+    incoming: Incoming,
     state: WriteSignal<ConnState>,
 ) {
     {
@@ -471,11 +472,12 @@ fn install_dc_handlers_for_joiner(
         cb.forget();
     }
     {
+        let incoming_for_msg = incoming.clone();
         let cb = Closure::wrap(Box::new(move |ev: JsValue| {
             let ev: MessageEvent = ev.unchecked_into();
             if let Some(text) = ev.data().as_string() {
                 if let Ok(msg) = serde_json::from_str::<ServerMsg>(&text) {
-                    incoming.update(|v| v.push(msg));
+                    incoming_for_msg.push(msg);
                 }
             }
         }) as Box<dyn FnMut(JsValue)>);

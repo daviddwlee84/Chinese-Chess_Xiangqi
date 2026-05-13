@@ -48,7 +48,7 @@ use chess_net::protocol::{ClientMsg, ServerMsg};
 use chess_net::room::{JoinError, Outbound, PeerId, Room};
 use leptos::*;
 
-use crate::transport::{ConnState, Session, Transport};
+use crate::transport::{ConnState, Incoming, Session, Transport};
 
 #[cfg(target_arch = "wasm32")]
 #[allow(unused_imports)]
@@ -62,14 +62,18 @@ use {
 
 /// Where to deliver `ServerMsg`s for a given peer.
 ///
-/// `Local` is the host's own play page — `ServerMsg`s become
-/// values in a Leptos `RwSignal<Vec<ServerMsg>>` queue that the
-/// page reads via `Session.incoming` (and drains via `set`). The
-/// queue is critical: a fresh `Room::join_player` synchronously
-/// emits `Hello` + `ChatHistory`; with a latched
-/// `WriteSignal<Option<ServerMsg>>` the second `set` would
-/// silently overwrite the `Hello` (Leptos batches synchronous
-/// sets into one effect firing reading the LAST value).
+/// `Local` is the host's own play page — `ServerMsg`s become entries
+/// in a Leptos-tracked `Incoming` queue (a `VecDeque` + tick signal,
+/// see `transport::Incoming`) that the page reads via
+/// `Session.incoming` (and drains via `Incoming::drain`). The queue
+/// design (rather than a latched single-value signal) is critical:
+/// a fresh `Room::join_player` synchronously emits `Hello` +
+/// `ChatHistory`, which on a latched signal would silently overwrite
+/// each other in a single Leptos batch. The queue + monotonic tick
+/// guarantees both messages survive AND that any post-mount push
+/// (e.g. the host's own move's `Update` echo back through the local
+/// sink) is observed — see `transport::Incoming` doc for the race
+/// analysis.
 ///
 /// `Remote` is a peer connected over WebRTC — `ServerMsg`s are
 /// JSON-serialised and written into a `RtcDataChannel`. The
@@ -77,7 +81,7 @@ use {
 /// `RemoteMock` variant for unit tests since `web_sys` types
 /// aren't reachable on native targets.
 pub enum PeerSink {
-    Local(RwSignal<Vec<ServerMsg>>),
+    Local(Incoming),
     #[cfg(target_arch = "wasm32")]
     Remote(RtcDataChannel),
     /// Test-only sink that records every delivered message into a
@@ -89,7 +93,7 @@ pub enum PeerSink {
 impl PeerSink {
     fn deliver(&self, msg: ServerMsg) {
         match self {
-            PeerSink::Local(signal) => signal.update(|v| v.push(msg)),
+            PeerSink::Local(inc) => inc.push(msg),
             #[cfg(target_arch = "wasm32")]
             PeerSink::Remote(dc) => {
                 if let Ok(text) = serde_json::to_string(&msg) {
@@ -152,15 +156,16 @@ impl HostRoom {
     ) -> (Rc<Self>, Session) {
         let mut room = Room::new(rules, password, hints_allowed);
         let self_peer = PeerId(1);
-        let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
+        let incoming = Incoming::new();
         let (state, _set_state) = create_signal(ConnState::Open);
 
         // Insert host's sink BEFORE join_player so the Hello +
         // ChatHistory the room emits queue into the host's own
-        // incoming signal — same vec, processed in arrival order
-        // by the play page's draining effect.
+        // incoming Incoming — same VecDeque, processed in arrival
+        // order by the play page's draining effect (which reads
+        // every pending message via Incoming::drain on each tick).
         let mut sinks: HashMap<PeerId, PeerSink> = HashMap::new();
-        sinks.insert(self_peer, PeerSink::Local(incoming));
+        sinks.insert(self_peer, PeerSink::Local(incoming.clone()));
 
         let (_side, outbound) =
             room.join_player(self_peer).expect("fresh room always seats the first joiner");

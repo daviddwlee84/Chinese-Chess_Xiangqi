@@ -21,7 +21,7 @@ use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use leptos::*;
 
-use super::{ConnState, Session, Transport};
+use super::{ConnState, Incoming, Session, Transport};
 
 /// `Transport` impl backed by a single `gloo-net` WebSocket. Holds only
 /// the outbound mpsc sender; the read pump lives in a `spawn_local` task
@@ -40,10 +40,9 @@ impl Transport for WsTransport {
 /// `Session` whose `handle` will succeed at `send(...)` until the
 /// underlying socket closes.
 pub fn connect(url: String) -> Session {
-    // `incoming` is a queue (Vec push, page drains). See
-    // `transport::Session` doc for why we don't use a latched
-    // `Option<ServerMsg>` signal.
-    let incoming = create_rw_signal::<Vec<ServerMsg>>(Vec::new());
+    // `incoming` is a queue (push from read pump, page drains via
+    // tick signal). See `transport::Incoming` doc for the rationale.
+    let incoming = Incoming::new();
     let (state, set_state) = create_signal(ConnState::Connecting);
     let (out_tx, mut out_rx) = unbounded::<ClientMsg>();
 
@@ -53,12 +52,13 @@ pub fn connect(url: String) -> Session {
             set_state.set(ConnState::Open);
 
             // Read pump — server frames → queue.
+            let incoming_for_read = incoming.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 while let Some(msg) = rx.next().await {
                     match msg {
                         Ok(Message::Text(t)) => {
                             if let Ok(m) = serde_json::from_str::<ServerMsg>(&t) {
-                                incoming.update(|v| v.push(m));
+                                incoming_for_read.push(m);
                             }
                         }
                         Ok(Message::Bytes(_)) => {}

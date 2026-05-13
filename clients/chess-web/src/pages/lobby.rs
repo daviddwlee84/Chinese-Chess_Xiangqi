@@ -43,19 +43,14 @@ fn LobbyConnected(ws_base: WsBase) -> impl IntoView {
     let conn = session.state;
 
     // Fan ServerMsg::Rooms into the rooms signal. Drains the
-    // incoming queue (see `transport::Session` doc for why
-    // incoming is a Vec, not a latched Option).
+    // incoming queue (see `transport::Incoming` doc for why this
+    // is a queue + tick signal rather than a latched signal).
     create_effect(move |_| {
-        let msgs = incoming.get();
-        if msgs.is_empty() {
-            return;
-        }
-        for msg in msgs {
+        incoming.drain(|msg| {
             if let ServerMsg::Rooms { rooms: list } = msg {
                 set_rooms.set(list);
             }
-        }
-        incoming.set(Vec::new());
+        });
     });
 
     let refresh_handle = session.handle.clone();

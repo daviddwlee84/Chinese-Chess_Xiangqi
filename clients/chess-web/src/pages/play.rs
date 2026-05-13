@@ -127,7 +127,7 @@ pub fn PlayConnected(
         transport::ws::connect(url)
     });
     let handle = session.handle.clone();
-    let incoming = session.incoming;
+    let incoming = session.incoming.clone();
     let conn = session.state;
 
     let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
@@ -140,69 +140,60 @@ pub fn PlayConnected(
     let (hints_allowed, set_hints_allowed) = create_signal::<Option<bool>>(None);
 
     create_effect(move |_| {
-        // Drain the queue: read all currently-pending ServerMsgs,
-        // process them in arrival order, then reset the vec to
-        // empty. Critical for the LAN host path, where
-        // `HostRoom::new` synchronously pushes both Hello +
-        // ChatHistory back-to-back — a latched `Option<ServerMsg>`
-        // signal would silently overwrite Hello with ChatHistory
-        // and the page would hang on "Awaiting seat assignment".
-        let msgs = incoming.get();
-        if msgs.is_empty() {
-            return;
-        }
-        for msg in msgs {
-            match msg {
-                ServerMsg::Hello { observer, rules: r, view: v, hints_allowed: h, .. } => {
-                    set_role.set(Some(ClientRole::Player(observer)));
-                    set_rules.set(Some(r));
-                    set_view.set(Some(v));
-                    set_hints_allowed.set(Some(h));
-                    set_toast.set(None);
-                    // If the user asked for hints and the room said
-                    // no, warn visibly. Don't block the game — they
-                    // can still play.
-                    if (debug_enabled || hints_requested) && !h {
-                        set_toast.set(Some(
-                            "Hints not enabled in this room — the panel is hidden for fairness."
-                                .into(),
-                        ));
-                    }
+        // Drain the queue: read all currently-pending ServerMsgs in
+        // arrival order via `Incoming::drain`. The drain reads ALL
+        // pending messages each tick — critical for the LAN host
+        // path, where `HostRoom::new` synchronously pushes both
+        // Hello + ChatHistory back-to-back, AND for any post-mount
+        // push (e.g. host's own move's `Update` echo through the
+        // local sink). The Incoming type guarantees no message gets
+        // dropped (no `set(Vec::new())` race; pure VecDeque +
+        // monotonic tick signal). See `transport::Incoming` doc.
+        incoming.drain(|msg| match msg {
+            ServerMsg::Hello { observer, rules: r, view: v, hints_allowed: h, .. } => {
+                set_role.set(Some(ClientRole::Player(observer)));
+                set_rules.set(Some(r));
+                set_view.set(Some(v));
+                set_hints_allowed.set(Some(h));
+                set_toast.set(None);
+                // If the user asked for hints and the room said no,
+                // warn visibly. Don't block the game — they can
+                // still play.
+                if (debug_enabled || hints_requested) && !h {
+                    set_toast.set(Some(
+                        "Hints not enabled in this room — the panel is hidden for fairness.".into(),
+                    ));
                 }
-                ServerMsg::Spectating { rules: r, view: v, hints_allowed: h, .. } => {
-                    set_role.set(Some(ClientRole::Spectator));
-                    set_rules.set(Some(r));
-                    set_view.set(Some(v));
-                    set_hints_allowed.set(Some(h));
-                    set_toast.set(None);
-                    if (debug_enabled || hints_requested) && !h {
-                        set_toast.set(Some(
-                            "Hints not enabled in this room — the panel is hidden for fairness."
-                                .into(),
-                        ));
-                    }
-                }
-                ServerMsg::Update { view: v } => {
-                    set_view.set(Some(v));
-                }
-                ServerMsg::ChatHistory { lines } => {
-                    set_chat.set(lines);
-                }
-                ServerMsg::Chat { line } => {
-                    set_chat.update(|buf| {
-                        buf.push(line);
-                        truncate_front(buf, CHAT_HISTORY_CAP);
-                    });
-                }
-                ServerMsg::Error { message } => {
-                    set_toast.set(Some(message));
-                }
-                ServerMsg::Rooms { .. } => {}
             }
-        }
-        // Drain so the next batch shows up as a fresh non-empty
-        // vec next tick.
-        incoming.set(Vec::new());
+            ServerMsg::Spectating { rules: r, view: v, hints_allowed: h, .. } => {
+                set_role.set(Some(ClientRole::Spectator));
+                set_rules.set(Some(r));
+                set_view.set(Some(v));
+                set_hints_allowed.set(Some(h));
+                set_toast.set(None);
+                if (debug_enabled || hints_requested) && !h {
+                    set_toast.set(Some(
+                        "Hints not enabled in this room — the panel is hidden for fairness.".into(),
+                    ));
+                }
+            }
+            ServerMsg::Update { view: v } => {
+                set_view.set(Some(v));
+            }
+            ServerMsg::ChatHistory { lines } => {
+                set_chat.set(lines);
+            }
+            ServerMsg::Chat { line } => {
+                set_chat.update(|buf| {
+                    buf.push(line);
+                    truncate_front(buf, CHAT_HISTORY_CAP);
+                });
+            }
+            ServerMsg::Error { message } => {
+                set_toast.set(Some(message));
+            }
+            ServerMsg::Rooms { .. } => {}
+        });
     });
 
     let chat_handle = handle.clone();
