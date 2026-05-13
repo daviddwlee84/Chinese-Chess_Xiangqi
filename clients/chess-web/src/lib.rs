@@ -16,6 +16,8 @@ pub mod time;
 #[cfg(target_arch = "wasm32")]
 mod app;
 #[cfg(target_arch = "wasm32")]
+mod camera;
+#[cfg(target_arch = "wasm32")]
 mod components;
 #[cfg(target_arch = "wasm32")]
 mod config;
