@@ -20,3 +20,6 @@ Thumbs.db
 # Local TLS keys + certs (e.g. mkcert for the WebRTC LAN spike).
 # NEVER commit *-key.pem — those are private keys.
 *.pem
+
+# playwright-cli session artifacts (snapshots, screenshots, traces, etc.)
+.playwright-cli/
