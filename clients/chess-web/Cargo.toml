@@ -48,7 +48,9 @@ web-sys       = { version = "0.3", features = [
     "Clipboard",
     # Camera capture for QR scanning (Phase 5.5).
     "MediaDevices", "MediaDeviceInfo", "MediaDeviceKind",
-    "MediaStream", "MediaStreamConstraints",
+    "MediaStream", "MediaStreamConstraints", "MediaStreamTrack",
+    "HtmlVideoElement", "HtmlCanvasElement",
+    "CanvasRenderingContext2d", "ImageData",
 ] }
 js-sys        = "0.3"
 gloo-net      = { version = "0.6", default-features = false, features = ["websocket"] }

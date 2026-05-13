@@ -22,7 +22,9 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
+use crate::camera::has_camera;
 use crate::components::qr::QrCodeView;
+use crate::components::qr_scanner::QrScanner;
 use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::pages::play::PlayConnected;
@@ -46,6 +48,18 @@ pub fn LanHostPage() -> impl IntoView {
     let (offer_blob, set_offer_blob) = create_signal::<String>(String::new());
     let (answer_input, set_answer_input) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+
+    // QR scanner modal state. `cam_available` is set asynchronously
+    // on mount; default false to keep the Scan-camera button hidden
+    // until detection completes (no flash-of-button-then-disappear
+    // for cameraless devices).
+    let (scanner_open, set_scanner_open) = create_signal::<bool>(false);
+    let (cam_available, set_cam_available) = create_signal::<bool>(false);
+    spawn_local(async move {
+        if has_camera().await {
+            set_cam_available.set(true);
+        }
+    });
 
     // Keep the in-flight HostHandshake alive in the page; closures
     // and accept_answer need a stable reference.
@@ -218,7 +232,14 @@ pub fn LanHostPage() -> impl IntoView {
                                 "Bytes: " {move || offer_blob.with(|s| s.len())}
                             </span>
                         </p>
-                        <p>"2. Paste the joiner's answer SDP below, then accept:"</p>
+                        <p>"2. Get the joiner's answer back. Either scan their QR with the camera, or paste their text below:"</p>
+                        <Show when=move || cam_available.get()>
+                            <p style="margin:0.25rem 0 0.5rem 0">
+                                <button on:click=move |_| set_scanner_open.set(true)>
+                                    "📷 Scan answer QR"
+                                </button>
+                            </p>
+                        </Show>
                         <textarea
                             rows="6"
                             style="width:100%;font-family:monospace;font-size:12px"
@@ -229,6 +250,7 @@ pub fn LanHostPage() -> impl IntoView {
                                     .unwrap_or_default();
                                 set_answer_input.set(v);
                             }
+                            prop:value=move || answer_input.get()
                         />
                         <button
                             on:click=move |_| on_accept.call(())
@@ -237,6 +259,18 @@ pub fn LanHostPage() -> impl IntoView {
                             "3. Accept answer"
                         </button>
                     </Show>
+                    <QrScanner
+                        open=scanner_open
+                        on_decode=Callback::new(move |text: String| {
+                            set_answer_input.set(text);
+                            set_scanner_open.set(false);
+                            // Auto-fire Accept (only if we're in the right state).
+                            if matches!(status.get_untracked(), HostStatus::AwaitingAnswer) {
+                                on_accept.call(());
+                            }
+                        })
+                        on_cancel=Callback::new(move |_| set_scanner_open.set(false))
+                    />
                     {move || error_msg.get().map(|e| view! {
                         <p style="color:#c33;margin-top:1rem">"ERROR: " {e}</p>
                     })}
@@ -276,6 +310,15 @@ pub fn LanJoinPage() -> impl IntoView {
     let (offer_input, set_offer_input) = create_signal::<String>(String::new());
     let (answer_blob, set_answer_blob) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+
+    // QR scanner modal state. See LanHostPage for the same pattern.
+    let (scanner_open, set_scanner_open) = create_signal::<bool>(false);
+    let (cam_available, set_cam_available) = create_signal::<bool>(false);
+    spawn_local(async move {
+        if has_camera().await {
+            set_cam_available.set(true);
+        }
+    });
 
     // Joiner side: store the JoinerHandshake so we can pull its
     // session out once the DC opens.
@@ -384,9 +427,19 @@ pub fn LanJoinPage() -> impl IntoView {
                         </label>
                     </p>
                     <p>"Status: " {move || format!("{:?}", status.get())}</p>
-                    <p>"1. Paste host's offer SDP:"</p>
+                    <p>"1. Get the host's offer. Either scan their QR with the camera, or paste their text below:"</p>
+                    <Show when=move || cam_available.get()>
+                        <p style="margin:0.25rem 0 0.5rem 0">
+                            <button
+                                on:click=move |_| set_scanner_open.set(true)
+                                disabled=move || !matches!(status.get(), JoinStatus::Idle)
+                            >
+                                "📷 Scan offer QR"
+                            </button>
+                        </p>
+                    </Show>
                     <textarea
-                        rows="8"
+                        rows="6"
                         style="width:100%;font-family:monospace;font-size:12px"
                         on:input=move |ev| {
                             let v = ev.target()
@@ -395,6 +448,7 @@ pub fn LanJoinPage() -> impl IntoView {
                                 .unwrap_or_default();
                             set_offer_input.set(v);
                         }
+                        prop:value=move || offer_input.get()
                     />
                     <button
                         on:click=move |_| on_generate.call(())
@@ -402,6 +456,18 @@ pub fn LanJoinPage() -> impl IntoView {
                     >
                         "2. Generate answer"
                     </button>
+                    <QrScanner
+                        open=scanner_open
+                        on_decode=Callback::new(move |text: String| {
+                            set_offer_input.set(text);
+                            set_scanner_open.set(false);
+                            // Auto-fire Generate answer if still idle.
+                            if matches!(status.get_untracked(), JoinStatus::Idle) {
+                                on_generate.call(());
+                            }
+                        })
+                        on_cancel=Callback::new(move |_| set_scanner_open.set(false))
+                    />
                     <Show when=move || !answer_blob.with(|s| s.is_empty())>
                         <p>"Show this QR back to the host — or copy + AirDrop the text:"</p>
                         <QrCodeView
