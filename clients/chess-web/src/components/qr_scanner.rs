@@ -47,7 +47,7 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlVideoElement, MediaStream, Window};
 
-use crate::camera::open_camera_stream;
+use crate::camera::{camera_permission, open_camera_stream, CameraPermission};
 use crate::qr_decode;
 
 // SECTION: component
@@ -112,12 +112,30 @@ pub fn QrScanner(
                     )));
                     return;
                 }
+                // Pre-flight permission check so we can show a
+                // useful "Camera blocked" hint instead of letting
+                // getUserMedia throw a generic NotAllowedError.
+                if camera_permission().await == CameraPermission::Denied {
+                    set_status.set(ScanStatus::PermissionDenied);
+                    return;
+                }
                 let media = match open_camera_stream().await {
                     Ok(m) => m,
                     Err(e) => {
-                        set_status.set(ScanStatus::Error(format!(
-                            "Could not open camera: {e:?}. Paste the text instead."
-                        )));
+                        // Distinguish denied (user clicked Block on
+                        // the prompt) from other errors so the hint
+                        // text is right.
+                        let msg = format!("{e:?}");
+                        if msg.contains("NotAllowed")
+                            || msg.contains("Permission")
+                            || msg.contains("denied")
+                        {
+                            set_status.set(ScanStatus::PermissionDenied);
+                        } else {
+                            set_status.set(ScanStatus::Error(format!(
+                                "Could not open camera: {msg}. Paste the text instead."
+                            )));
+                        }
                         return;
                     }
                 };
@@ -164,19 +182,32 @@ pub fn QrScanner(
 
     let on_cancel_click = move |_| on_cancel.call(());
 
+    // Keyboard support: Escape key cancels the scan. Wire when the
+    // modal mounts; tear down when it closes via the same effect
+    // chain that handles camera teardown.
+    let on_keydown = move |ev: web_sys::KeyboardEvent| {
+        if ev.key() == "Escape" {
+            on_cancel.call(());
+        }
+    };
+
     view! {
         <Show when=move || open.get() fallback=|| view!{ <></> }>
             <div
                 class="qr-scanner-modal"
                 role="dialog"
+                aria-modal="true"
                 aria-label="Scan QR code from the other peer"
+                tabindex="-1"
+                on:keydown=on_keydown
                 style="position:fixed;inset:0;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;padding:1rem"
             >
                 <div style="position:absolute;top:1rem;right:1rem">
                     <button
                         on:click=on_cancel_click
-                        style="background:#222;color:#eee;border:1px solid #555;border-radius:4px;padding:0.5rem 1rem"
-                        aria-label="Cancel scan"
+                        style="background:#222;color:#eee;border:1px solid #555;border-radius:4px;padding:0.5rem 1rem;font-size:16px;min-width:44px;min-height:44px"
+                        aria-label="Cancel scan (Escape)"
+                        title="Cancel scan"
                     >
                         "✕ Cancel"
                     </button>
@@ -203,6 +234,20 @@ pub fn QrScanner(
                         ScanStatus::Decoded(_) => view!{
                             <p style="color:#7ec97e">"✓ Decoded — connecting…"</p>
                         }.into_view(),
+                        ScanStatus::PermissionDenied => view!{
+                            <p style="color:#f88">
+                                "Camera blocked for this site."
+                            </p>
+                            <p style="font-size:14px;color:#ccc;line-height:1.4">
+                                "iOS: Settings → Safari → Camera → Allow."
+                                <br/>
+                                "Android Chrome: tap the address bar's lock icon → Permissions → Camera → Allow."
+                                <br/>
+                                "Desktop: address-bar lock icon → Site settings → Camera."
+                                <br/>
+                                "Or just paste the SDP text instead — it works without the camera."
+                            </p>
+                        }.into_view(),
                         ScanStatus::Error(msg) => view!{
                             <p style="color:#f88">{msg}</p>
                         }.into_view(),
@@ -219,6 +264,10 @@ enum ScanStatus {
     Initializing,
     Scanning,
     Decoded(String),
+    /// Browser denied camera permission — surface a platform-
+    /// specific hint instead of the generic Error message so
+    /// users know exactly which Settings panel to open.
+    PermissionDenied,
     Error(String),
 }
 
