@@ -752,15 +752,33 @@ baked in.
 <a id="future-work"></a>
 ## Future work — what's not yet done
 
-Tracked in `TODO.md` under the `[L] WebRTC LAN pairing — Phase 5.5+6
-polish` entry. The full Phase 5.5 + Phase 6 design is in
-[`backlog/webrtc-lan-pairing.md`](../backlog/webrtc-lan-pairing.md).
+### Phase 5.5 — QR pairing — SHIPPED 2026-05-13
 
-Pain points the v1 (textarea-only) UX has:
+**Now in production**. Both `/lan/host` and `/lan/join` render an
+SVG QR (via the `qrcode` crate) of the SDP envelope alongside the
+existing copy-text textarea. A "📷 Scan camera" button — visible
+only when `camera::has_camera()` returns true — opens a full-screen
+modal that uses `getUserMedia` + `requestAnimationFrame` + jsQR to
+decode the other peer's QR. On success, the textarea auto-fills and
+the next-step action (Generate answer / Accept answer) auto-fires.
 
-- **8+ steps with app-switching to AirDrop / IM**. Major friction.
-- **No camera-based handoff**. QR is the obvious next step.
-- **No pre-paired sessions**. Every game starts with a fresh SDP.
+**Textarea + Copy is preserved as a co-equal alternative** so PCs
+without webcams, denied-permission cases, and async pairing
+(printout, screenshot via IM) all still work. See
+[`backlog/webrtc-lan-pairing-qr.md`](../backlog/webrtc-lan-pairing-qr.md)
+for the full six-commit design.
+
+Verified end-to-end via `scripts/test-lan-pairing.sh` — drives the
+text-paste path through playwright-cli (camera path is real-device
+only since playwright-cli's headless Chrome has no usable webcam).
+
+### Phase 6 — UI polish (still open)
+
+Tracked in `TODO.md` under the `[L] WebRTC LAN pairing — Phase 6
+polish` entry.
+
+Remaining pain points:
+
 - **No spectator UI yet**. The host code path supports up to 4
   spectator DCs but there's no "Add spectator" button on the host
   page (`attach_remote_spectator_dc` exists, just unused from the UI
@@ -772,10 +790,8 @@ Pain points the v1 (textarea-only) UX has:
 - **No `OfflineIndicator` LAN states**. The existing online indicator
   doesn't differentiate "LAN-host-active" / "LAN-peer-connected" /
   "LAN-disconnected".
-
-Phase 5.5 (QR + camera) is the highest-leverage polish — see the
-adjacent planning conversation. Phase 6 polish items are independent
-and can be sprinkled in over time.
+- **No `docs/pwa.md` "LAN play" section** with screenshots + the
+  install prerequisite.
 
 ### Out of scope for v1 (and likely v2)
 

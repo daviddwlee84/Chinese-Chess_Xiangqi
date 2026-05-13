@@ -4,13 +4,15 @@
 
 - **Phase 5 (textarea-only pairing) shipped 2026-05-13** — see
   `docs/lan-multiplayer-webrtc.md` for the recipe + walkthrough.
-- **This doc** plans the next-step UX polish: QR rendering on the
-  show side + camera scanning on the consume side, while keeping
-  the existing textarea path always-available (PCs with no camera,
-  far-apart-but-screen-share users, troubleshooting).
+- **Phase 5.5 SHIPPED 2026-05-13** — six commits (C1-C6) landed
+  end-to-end. QR + camera path works alongside textarea path; `scripts/
+  test-lan-pairing.sh` verifies the textarea path via playwright-cli;
+  camera path verified manually on real devices.
 - Owner: same as Phase 5.
 - Estimated effort: **1.5–2 days** (1 day implementation, 0.5 day
-  cross-device testing).
+  cross-device testing). **Actual: ~3 hours of focused work** —
+  helped by the design doc accurately predicting all six commits
+  upfront.
 
 ## Design
 
