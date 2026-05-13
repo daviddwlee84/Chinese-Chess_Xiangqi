@@ -67,8 +67,9 @@ Status as of 2026-05-07:
 |---|---|
 | Workspace + `chess-core` foundations + xiangqi + banqi | ✅ shipped |
 | `chess-tui` (ratatui, vim + mouse, CJK glyphs) | ✅ shipped |
-| `chess-net` (tokio + ws, server-authoritative, multi-room, spectators, chat) | ✅ shipped (protocol v5) |
+| `chess-net` (tokio + ws, server-authoritative, multi-room, spectators, chat) | ✅ shipped (protocol v6) |
 | `chess-web` (Leptos + WASM consuming PlayerView, local + online) | ✅ shipped |
+| LAN multiplayer over WebRTC (host PWA owns Room state in-WASM, no server at runtime) | ✅ shipped (textareas; QR + spectator UI deferred — see `docs/lan-multiplayer-webrtc.md`) |
 | Banqi house rules — `CHAIN_CAPTURE`, `DARK_CAPTURE`, `DARK_CAPTURE_TRADE`, `CHARIOT_RUSH`, `HORSE_DIAGONAL` | ✅ shipped end-to-end |
 | Banqi `CANNON_FAST_MOVE` | flag accepted; not wired in move-gen — see `TODO.md` |
 | Chains-with-dark-hops (atomic chain through face-down tiles) | deferred — see `TODO.md` |

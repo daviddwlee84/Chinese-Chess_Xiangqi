@@ -156,6 +156,12 @@ which will miss the cache and be fetched fresh.
 disconnection itself; we don't want the SW second-guessing or
 caching `/lobby` Server-Sent updates.
 
+> The PWA install prereq is also what enables LAN multiplayer:
+> once the service worker is registered, the two phones can
+> play 1v1 over WebRTC with NO server in the loop. See
+> [`docs/lan-multiplayer-webrtc.md`](lan-multiplayer-webrtc.md)
+> for the full pattern.
+
 ---
 
 ## Update lifecycle
