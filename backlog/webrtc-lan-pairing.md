@@ -564,6 +564,31 @@ New `clients/chess-web/src/host_room.rs`:
 
 ### Phase 5 — `/lan/host` + `/lan/join` pages with QR (1–2 days)
 
+**Status: shipped 2026-05-13** (commit chain through `d8017fe`).
+End-to-end pairing + move sync verified via `playwright-cli`
+two-tab automation: host opens room → joiner pastes offer →
+generates answer → host pastes + accepts → both flip to play view
+→ host moves cannon h2→h4 → joiner sees `Black 黑 to move` and
+the cannon position update. v1 ships with textareas + Copy
+buttons (no QR yet — QR generation/scan deferred to Phase 5.5).
+
+Three intermediate pitfalls discovered + documented during this
+phase, all in the chess-web/transport boundary:
+
+* `pitfalls/leptos-rwsignal-queue-self-clear-race.md` — drain-then-
+  clear on a Leptos signal queue silently drops concurrent pushes.
+  Fixed by `transport::Incoming` (VecDeque + monotonic tick).
+* `pitfalls/leptos-create-effect-inside-spawn-local-silent-gc.md`
+  — `create_effect` called inside a `spawn_local` future has no
+  Leptos owner; the effect is silently GC'd and never re-runs on
+  signal change. Fixed by holder-pattern at component scope.
+* `pitfalls/webrtc-set-remote-description-resolves-before-dc-open.md`
+  — `accept_answer().await` resolves as soon as
+  `setRemoteDescription` returns, BEFORE the SCTP handshake
+  completes. Calling `dc.send_with_str(Hello)` immediately
+  silently fails. Fixed by `transport::webrtc::wait_for_dc_open`
+  helper that polls `ready_state()` with a 10 s timeout.
+
 Routes added to `clients/chess-web/src/routes.rs`:
 
 - `/lan/host` — variant + rules picker → "Open room" → renders offer
