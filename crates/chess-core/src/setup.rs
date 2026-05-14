@@ -34,6 +34,7 @@ fn build_xiangqi(rules: RuleSet) -> GameState {
         no_progress_plies: 0,
         chain_lock: None,
         position_hash: 0,
+        banqi_first_mover_locked: false,
     };
     state.recompute_position_hash();
     state
@@ -100,6 +101,7 @@ fn build_banqi(rules: RuleSet) -> GameState {
         no_progress_plies: 0,
         chain_lock: None,
         position_hash: 0,
+        banqi_first_mover_locked: false,
     };
     state.recompute_position_hash();
     state
@@ -135,6 +137,7 @@ fn build_three_kingdom_stub(rules: RuleSet) -> GameState {
         no_progress_plies: 0,
         chain_lock: None,
         position_hash: 0,
+        banqi_first_mover_locked: false,
     };
     state.recompute_position_hash();
     state

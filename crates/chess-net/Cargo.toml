@@ -32,6 +32,12 @@ static-serve = ["server", "dep:tower", "dep:tower-http"]
 chess-core   = { path = "../chess-core" }
 serde        = { workspace = true }
 serde_json   = { workspace = true }
+# `HostColor::Random` resolves to a concrete Side using ChaCha8Rng
+# (deterministic when seeded with the room's banqi seed). Native and
+# wasm32 targets both compile this in — chess-core already pins these
+# crates and `getrandom = ["js"]` for wasm.
+rand         = { workspace = true }
+rand_chacha  = { workspace = true }
 anyhow       = { workspace = true, optional = true }
 tokio        = { workspace = true, optional = true }
 axum         = { workspace = true, optional = true }

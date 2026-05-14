@@ -66,6 +66,7 @@ fn general_captured_triggers_won_by_general_captured() {
         no_progress_plies: 0,
         chain_lock: None,
         position_hash: 0,
+        banqi_first_mover_locked: false,
     };
     state.recompute_position_hash();
 

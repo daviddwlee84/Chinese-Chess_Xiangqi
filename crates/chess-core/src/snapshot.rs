@@ -337,6 +337,7 @@ fn parse_pos_text(input: &str) -> Result<GameState, CoreError> {
         no_progress_plies,
         chain_lock: None,
         position_hash: 0,
+        banqi_first_mover_locked: false,
     })
 }
 

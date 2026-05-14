@@ -1674,15 +1674,26 @@ fn draw_sidebar(
     // piece-colour (`current_color`), which diverges from `side_to_move`
     // (the seat) after a banqi first-flip.
     if matches!(view.status, GameStatus::Ongoing) {
-        let stm_color = side_color(view.current_color);
-        lines.push(Line::from(vec![
-            Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
-            Span::raw(" "),
-            Span::styled(
-                glyph::side_name(view.current_color, style),
-                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+        if view.banqi_awaiting_first_flip {
+            let text = match style {
+                glyph::Style::Cjk => "未翻牌 — 任一方皆可先翻",
+                glyph::Style::Ascii => "Awaiting first flip — either side may flip",
+            };
+            lines.push(Line::from(Span::styled(
+                text,
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )));
+        } else {
+            let stm_color = side_color(view.current_color);
+            lines.push(Line::from(vec![
+                Span::styled("Side to move:", TuiStyle::default().fg(Color::DarkGray)),
+                Span::raw(" "),
+                Span::styled(
+                    glyph::side_name(view.current_color, style),
+                    TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+                ),
+            ]));
+        }
 
         if show_check_banner
             && matches!(view.shape, BoardShape::Xiangqi9x10)
@@ -1869,28 +1880,42 @@ fn draw_sidebar_net(
     }
 
     if matches!(view.status, GameStatus::Ongoing) {
-        // "Your turn?" depends on the observer's SEAT (side_to_move) but
-        // the displayed colour is the piece-colour the seat plays
-        // (`current_color`). For banqi the two diverge after the first
-        // flip; for xiangqi they're identical.
-        let stm_color = side_color(view.current_color);
-        let observer_side = n.role.and_then(|r| match r {
-            NetRole::Player(s) => Some(s),
-            NetRole::Spectator => None,
-        });
-        let label = match observer_side {
-            Some(obs) if obs == view.side_to_move => "Your turn:",
-            Some(_) => "Opponent:",
-            None => "To move:",
-        };
-        lines.push(Line::from(vec![
-            Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
-            Span::raw(" "),
-            Span::styled(
-                glyph::side_name(view.current_color, style),
-                TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+        if view.banqi_awaiting_first_flip {
+            // Pre-first-flip banqi: neither seat has a colour yet, so
+            // the standard "Red to move" / "Your turn" copy would be
+            // misleading. Substitute a single neutral line.
+            let text = match style {
+                glyph::Style::Cjk => "未翻牌 — 任一方皆可先翻",
+                glyph::Style::Ascii => "Awaiting first flip — either side may flip",
+            };
+            lines.push(Line::from(Span::styled(
+                text,
+                TuiStyle::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )));
+        } else {
+            // "Your turn?" depends on the observer's SEAT (side_to_move) but
+            // the displayed colour is the piece-colour the seat plays
+            // (`current_color`). For banqi the two diverge after the first
+            // flip; for xiangqi they're identical.
+            let stm_color = side_color(view.current_color);
+            let observer_side = n.role.and_then(|r| match r {
+                NetRole::Player(s) => Some(s),
+                NetRole::Spectator => None,
+            });
+            let label = match observer_side {
+                Some(obs) if obs == view.side_to_move => "Your turn:",
+                Some(_) => "Opponent:",
+                None => "To move:",
+            };
+            lines.push(Line::from(vec![
+                Span::styled(label, TuiStyle::default().fg(Color::DarkGray)),
+                Span::raw(" "),
+                Span::styled(
+                    glyph::side_name(view.current_color, style),
+                    TuiStyle::default().fg(stm_color).add_modifier(Modifier::BOLD),
+                ),
+            ]));
+        }
 
         // Check banner: `view.in_check` is set by the server in v4+ from the
         // observer's POV (or Red's POV for spectators). So Players read it

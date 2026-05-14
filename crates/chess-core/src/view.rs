@@ -126,6 +126,17 @@ pub struct PlayerView {
     /// `serde(default)`.
     #[serde(default)]
     pub last_move: Option<Move>,
+    /// Banqi pre-first-flip sentinel: variant is banqi, no flip has
+    /// happened yet, and the legacy `PREASSIGN_COLORS` house-rule is
+    /// off. When `true`, BOTH observers receive the reveal moves in
+    /// `legal_moves` (the deployment layer authoritatively decides
+    /// whose flip resolves first), and clients should override the
+    /// "Red to move" / "Your turn:" sidebar copy with a neutral
+    /// "awaiting first flip" string. Added without bumping
+    /// `PROTOCOL_VERSION` — older payloads default to `false`
+    /// via `serde(default)`, which is the correct legacy interpretation.
+    #[serde(default)]
+    pub banqi_awaiting_first_flip: bool,
 }
 
 fn default_red_side() -> Side {
@@ -148,7 +159,14 @@ impl PlayerView {
             })
             .collect();
 
-        let legal_moves = if observer == state.side_to_move {
+        let banqi_awaiting_first_flip = state.banqi_awaiting_first_flip();
+        // In banqi pre-first-flip the engine's `side_to_move` is a
+        // sentinel (still RED unless the deployment layer overrode it);
+        // either seat may legally make the first reveal, so both
+        // observers receive the sanitised reveal list. Once
+        // `side_assignment` locks (after the first flip) the standard
+        // seat-of-move gate resumes.
+        let legal_moves = if observer == state.side_to_move || banqi_awaiting_first_flip {
             sanitize_for_observer(state.legal_moves(), observer)
         } else {
             MoveList::new()
@@ -201,6 +219,7 @@ impl PlayerView {
             captured: state.captured_pieces(),
             threats,
             last_move,
+            banqi_awaiting_first_flip,
         }
     }
 }

@@ -688,6 +688,7 @@ body {
 .turn-red { color: var(--red); font-weight: 700; }
 .turn-black { color: var(--fg); font-weight: 700; }
 .turn-green { color: var(--green); font-weight: 700; }
+.turn-awaiting { color: #d4a017; font-weight: 700; font-style: italic; }
 .status { margin: 0; font-weight: 600; }
 .status.ongoing { color: var(--muted); font-weight: 400; }
 .status.won { color: var(--accent); }

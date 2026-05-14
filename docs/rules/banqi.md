@@ -16,6 +16,31 @@
 
 The `chess-core` setup uses a seedable `ChaCha8Rng` so games are reproducible from a `RuleSet::banqi_seed`.
 
+## First-flip & colour assignment
+
+The engine has two modes for **who is allowed to make the very first reveal**:
+
+### Default — either side may flip first
+
+`PlayerView::banqi_awaiting_first_flip = true` until the first `Move::Reveal` applies. In this state:
+
+- The deployment layer (chess-net server or chess-web `HostRoom`) accepts a `Move::Reveal` from **either seat**. The clicking seat is re-pointed via `state.set_active_seat(seat)` before `make_move` runs.
+- The projected `PlayerView::legal_moves` lists all 32 reveals for **both** observers — clients render the board as fully clickable for both players.
+- Sidebars show a neutral "Awaiting first flip — either side may flip" / "未翻牌 — 任一方皆可先翻" message in place of "Red to move".
+
+Once the first flip applies, `banqi_side_assignment(flipper, revealed)` locks `state.side_assignment`. The Taiwan rule applies: the **flipper plays the colour they reveal** (e.g. a player who flips a Black piece controls Black for the rest of the game). The pre-flip sentinel clears and the normal seat-of-move gate resumes.
+
+### `HouseRules::PREASSIGN_COLORS` — legacy mode (host = Red, host flips first)
+
+Setting the bit restores the classic behaviour: seat 0 (the room creator) is RED, seat 1 is BLACK, RED moves first and therefore makes the first reveal. The deployment layer's standard "not your turn" guard rejects any attempted reveal from BLACK before RED has flipped.
+
+`PlayerView::banqi_awaiting_first_flip` is always `false` in this mode — the colour assignment is logically pre-committed at room creation. Choose this mode when you want a faster "agreed handshake" (the host always flips the first piece) or for testing legacy behaviour.
+
+### Round-trip + protocol notes
+
+- `PlayerView.banqi_awaiting_first_flip` ships with `#[serde(default)]` — older payloads decode as `false`, which is the correct legacy interpretation. No `PROTOCOL_VERSION` bump.
+- The engine still enforces the Taiwan flipper-plays-revealed rule; this change only affects **who** may make the first reveal, not **which colour the flipper ends up playing**.
+
 ## Movement
 
 - Face-down pieces cannot move (only flipped). On your turn, `Move::Reveal { at }` flips any face-down tile.

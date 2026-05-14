@@ -164,6 +164,46 @@ struct AuthQuery {
     /// lifetime; subsequent joiners' values are ignored.
     #[serde(default)]
     hints: Option<String>,
+    /// Host-side colour preference (`red` / `black` / `random`). Honored
+    /// only when the first joiner creates the room — subsequent
+    /// joiners' values are ignored.
+    #[serde(default)]
+    host_color: Option<String>,
+    /// Host-side banqi first-flipper preference (`either` / `host` /
+    /// `joiner`). Same room-creation-only semantics as `host_color`.
+    #[serde(default)]
+    first_flipper: Option<String>,
+    /// `Some("1") / "true"` enables `HouseRules::PREASSIGN_COLORS` on
+    /// the room's RuleSet at creation time. Only meaningful for banqi
+    /// rooms; ignored otherwise.
+    #[serde(default)]
+    preassign: Option<String>,
+}
+
+fn parse_host_color(raw: Option<&str>) -> crate::protocol::HostColor {
+    match raw.map(str::trim).unwrap_or("") {
+        s if s.eq_ignore_ascii_case("black") => crate::protocol::HostColor::Black,
+        s if s.eq_ignore_ascii_case("random") => crate::protocol::HostColor::Random,
+        _ => crate::protocol::HostColor::Red,
+    }
+}
+
+fn parse_first_flipper(raw: Option<&str>) -> crate::protocol::FirstFlipper {
+    match raw.map(str::trim).unwrap_or("") {
+        s if s.eq_ignore_ascii_case("host") => crate::protocol::FirstFlipper::Host,
+        s if s.eq_ignore_ascii_case("joiner") => crate::protocol::FirstFlipper::Joiner,
+        _ => crate::protocol::FirstFlipper::Either,
+    }
+}
+
+fn parse_preassign(raw: Option<&str>) -> bool {
+    matches!(
+        raw.map(str::trim).unwrap_or(""),
+        s if s.eq_ignore_ascii_case("1")
+            || s.eq_ignore_ascii_case("true")
+            || s.eq_ignore_ascii_case("on")
+            || s.eq_ignore_ascii_case("yes")
+    )
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -324,8 +364,21 @@ async fn upgrade_default(
 ) -> impl IntoResponse {
     let role = parse_role(q.role.as_deref());
     let hints = parse_hints_param(q.hints.as_deref());
+    let host_color = parse_host_color(q.host_color.as_deref());
+    let first_flipper = parse_first_flipper(q.first_flipper.as_deref());
+    let preassign = parse_preassign(q.preassign.as_deref());
     ws.on_upgrade(move |socket| {
-        handle_room_socket(socket, app, DEFAULT_ROOM.to_string(), q.password, role, hints)
+        handle_room_socket(
+            socket,
+            app,
+            DEFAULT_ROOM.to_string(),
+            q.password,
+            role,
+            hints,
+            host_color,
+            first_flipper,
+            preassign,
+        )
     })
 }
 
@@ -338,8 +391,21 @@ async fn upgrade_room(
     let room_id_clone = room_id.clone();
     let role = parse_role(q.role.as_deref());
     let hints = parse_hints_param(q.hints.as_deref());
+    let host_color = parse_host_color(q.host_color.as_deref());
+    let first_flipper = parse_first_flipper(q.first_flipper.as_deref());
+    let preassign = parse_preassign(q.preassign.as_deref());
     ws.on_upgrade(move |socket| {
-        handle_room_socket(socket, app, room_id_clone, q.password, role, hints)
+        handle_room_socket(
+            socket,
+            app,
+            room_id_clone,
+            q.password,
+            role,
+            hints,
+            host_color,
+            first_flipper,
+            preassign,
+        )
     })
 }
 
@@ -351,6 +417,7 @@ async fn upgrade_lobby(
 }
 // SECTION: room socket handler
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_room_socket(
     socket: WebSocket,
     app: Arc<AppState>,
@@ -358,6 +425,9 @@ async fn handle_room_socket(
     password_param: Option<String>,
     role: JoinRole,
     hints_param: bool,
+    host_color_param: crate::protocol::HostColor,
+    first_flipper_param: crate::protocol::FirstFlipper,
+    preassign_param: bool,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<ServerMsg>();
@@ -409,10 +479,19 @@ async fn handle_room_socket(
         rooms
             .entry(room_id.clone())
             .or_insert_with(|| {
-                Arc::new(Mutex::new(RoomEntry::new(Room::new(
-                    app.default_rules.clone(),
+                // Apply the host's `?preassign=1` (banqi only) on the
+                // room's `RuleSet` before constructing. xiangqi / 3K
+                // ignore the bit because their move-gen never consults it.
+                let mut rules = app.default_rules.clone();
+                if preassign_param {
+                    rules.house |= chess_core::rules::HouseRules::PREASSIGN_COLORS;
+                }
+                Arc::new(Mutex::new(RoomEntry::new(Room::with_config(
+                    rules,
                     password_param.clone(),
                     hints_param,
+                    host_color_param,
+                    first_flipper_param,
                 ))))
             })
             .clone()

@@ -197,8 +197,18 @@ pub fn LanHostPage() -> impl IntoView {
         create_rw_signal(initial_params.house.contains(HouseRules::DARK_CAPTURE_TRADE));
     let rush = create_rw_signal(initial_params.house.contains(HouseRules::CHARIOT_RUSH));
     let horse = create_rw_signal(initial_params.house.contains(HouseRules::HORSE_DIAGONAL));
+    let preassign = create_rw_signal(initial_params.house.contains(HouseRules::PREASSIGN_COLORS));
     let seed_text =
         create_rw_signal(initial_params.seed.map(|s| s.to_string()).unwrap_or_default());
+    // Host-side game-setup preferences (P3). Defaults match the
+    // chess-net `?host_color=red&first_flipper=either` defaults:
+    //   - host_color = Red → host takes the RED seat
+    //   - first_flipper = Either → banqi's "either may flip first"
+    //     default applies; the host can pre-commit by picking Host /
+    //     Joiner.
+    let host_color = create_rw_signal::<chess_net::HostColor>(chess_net::HostColor::default());
+    let first_flipper =
+        create_rw_signal::<chess_net::FirstFlipper>(chess_net::FirstFlipper::default());
 
     // Snapshot of the RuleSet that was passed to HostRoom::new — set
     // once on successful `on_accept`. Drives the post-Idle "Playing:
@@ -229,6 +239,12 @@ pub fn LanHostPage() -> impl IntoView {
         }
         if horse.get_untracked() {
             house.insert(HouseRules::HORSE_DIAGONAL);
+        }
+        // PREASSIGN_COLORS is banqi-only at the engine level (xiangqi
+        // move-gen never consults the bit), but inserting it
+        // unconditionally is harmless — gated to banqi here for clarity.
+        if preassign.get_untracked() && variant.get_untracked() == Variant::Banqi {
+            house.insert(HouseRules::PREASSIGN_COLORS);
         }
         let seed = seed_text.with_untracked(|s| s.trim().parse::<u64>().ok());
         LocalRulesParams { strict: strict.get_untracked(), house, seed, ..Default::default() }
@@ -264,13 +280,24 @@ pub fn LanHostPage() -> impl IntoView {
     // late-arriving srflx candidates that wouldn't be in the half-
     // gathered SDP captured at connect_as_host return time. See
     // HostHandshake::current_offer for the rationale.
+    //
+    // The re-encoded envelope embeds the chosen `RuleSet` + host_color
+    // + first_flipper so the joiner page can render a host-preference
+    // preview before accepting. Pre-`chosen_rules` snapshots fall back
+    // to a config-less envelope (matches v1 behaviour).
     {
         let handshake = handshake.clone();
         create_effect(move |_| {
             if let Some(sig) = ice_diag_holder.get() {
                 let _ = sig.get(); // subscribe to inner changes
                 if let Some(hh) = handshake.borrow().as_ref() {
-                    set_offer_blob.set(hh.current_offer().0);
+                    let rules = chosen_rules.get_untracked();
+                    let blob = hh.current_offer_with_config(
+                        rules.as_ref(),
+                        Some(host_color.get_untracked()),
+                        Some(first_flipper.get_untracked()),
+                    );
+                    set_offer_blob.set(blob.0);
                 }
             }
         });
@@ -300,7 +327,19 @@ pub fn LanHostPage() -> impl IntoView {
         spawn_local(async move {
             match connect_as_host(cfg).await {
                 Ok(hh) => {
-                    set_offer_blob.set(hh.offer.0.clone());
+                    // Embed the host's preferences into the initial
+                    // offer blob too. The diag-driven re-encode below
+                    // refreshes this on every ICE event, but doing it
+                    // up-front means the very first "Copy offer" the
+                    // user clicks already carries the config — no
+                    // race window where a v2 joiner sees a v1 blob.
+                    let rules = chosen_rules.get_untracked();
+                    let blob = hh.current_offer_with_config(
+                        rules.as_ref(),
+                        Some(host_color.get_untracked()),
+                        Some(first_flipper.get_untracked()),
+                    );
+                    set_offer_blob.set(blob.0);
                     set_ice_diag_holder.set(Some(hh.ice_diag));
                     *handshake_slot.borrow_mut() = Some(hh);
                     set_status.set(HostStatus::AwaitingAnswer);
@@ -381,7 +420,13 @@ pub fn LanHostPage() -> impl IntoView {
                 set_status.set(HostStatus::Idle);
                 return;
             }
-            let (room, session) = HostRoom::new(rules, None, /* hints */ false);
+            let (room, session) = HostRoom::with_config(
+                rules,
+                None,
+                /* hints */ false,
+                host_color.get_untracked(),
+                first_flipper.get_untracked(),
+            );
             if let Err(e) = room.attach_remote_player_dc(dc) {
                 set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
                 set_status.set(HostStatus::Idle);
@@ -434,6 +479,35 @@ pub fn LanHostPage() -> impl IntoView {
                             <p class="hint">
                                 "Three-Kingdom 三國暗棋 is 3-player and unsupported on the \
                                  2-peer LAN channel — pick another variant, or use online lobby."
+                            </p>
+                        </fieldset>
+
+                        <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                            <legend>"You play as"</legend>
+                            <div class="preset-row">
+                                <label class="radio-row" style="margin-right:1rem">
+                                    <input type="radio" name="host-color"
+                                        prop:checked=move || host_color.get() == chess_net::HostColor::Red
+                                        on:change=move |_| host_color.set(chess_net::HostColor::Red)/>
+                                    <span>"Red 紅 (default)"</span>
+                                </label>
+                                <label class="radio-row" style="margin-right:1rem">
+                                    <input type="radio" name="host-color"
+                                        prop:checked=move || host_color.get() == chess_net::HostColor::Black
+                                        on:change=move |_| host_color.set(chess_net::HostColor::Black)/>
+                                    <span>"Black 黑"</span>
+                                </label>
+                                <label class="radio-row">
+                                    <input type="radio" name="host-color"
+                                        prop:checked=move || host_color.get() == chess_net::HostColor::Random
+                                        on:change=move |_| host_color.set(chess_net::HostColor::Random)/>
+                                    <span>"Random"</span>
+                                </label>
+                            </div>
+                            <p class="hint">
+                                "Decides which seat the host (you) take. For Xiangqi, Red \
+                                 always moves first. For Banqi the colour is settled by the \
+                                 first flip unless you also enable Pre-assign colours below."
                             </p>
                         </fieldset>
 
@@ -501,6 +575,42 @@ pub fn LanHostPage() -> impl IntoView {
                                     "炮快移 is accepted by the engine but not yet wired into move-gen "
                                     "(see "<code>"TODO.md"</code>")."
                                 </p>
+                            </fieldset>
+                            <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                                <legend>"First flip"</legend>
+                                <label class="check-row" style="margin-bottom:0.5rem">
+                                    <input type="checkbox"
+                                        prop:checked=move || preassign.get()
+                                        on:change=move |ev| preassign.set(event_target_checked(&ev))/>
+                                    <span>
+                                        "Pre-assign colours — you take the colour selected above \
+                                         and Red is forced to flip first (classic banqi pairing). \
+                                         OFF (default) lets either side flip first; the colour you \
+                                         end up playing is decided by the first reveal."
+                                    </span>
+                                </label>
+                                <Show when=move || !preassign.get()>
+                                    <div class="preset-row" style="flex-direction:column;gap:0.25rem;align-items:flex-start">
+                                        <label class="radio-row">
+                                            <input type="radio" name="first-flipper"
+                                                prop:checked=move || first_flipper.get() == chess_net::FirstFlipper::Either
+                                                on:change=move |_| first_flipper.set(chess_net::FirstFlipper::Either)/>
+                                            <span>"Either side may flip first (default)"</span>
+                                        </label>
+                                        <label class="radio-row">
+                                            <input type="radio" name="first-flipper"
+                                                prop:checked=move || first_flipper.get() == chess_net::FirstFlipper::Host
+                                                on:change=move |_| first_flipper.set(chess_net::FirstFlipper::Host)/>
+                                            <span>"Host flips first"</span>
+                                        </label>
+                                        <label class="radio-row">
+                                            <input type="radio" name="first-flipper"
+                                                prop:checked=move || first_flipper.get() == chess_net::FirstFlipper::Joiner
+                                                on:change=move |_| first_flipper.set(chess_net::FirstFlipper::Joiner)/>
+                                            <span>"Joiner flips first"</span>
+                                        </label>
+                                    </div>
+                                </Show>
                             </fieldset>
                             <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
                                 <legend>"Seed (optional)"</legend>
@@ -715,6 +825,53 @@ pub fn LanJoinPage() -> impl IntoView {
         on_cleanup(move || pwa.lan.set(LanIndicator::Idle));
     }
 
+    // Decode the host's preferences from the offer envelope (v2+
+    // envelopes carry an embedded `RuleSet` + `host_color` +
+    // `first_flipper`). Pre-Open this is informational only — the
+    // joiner doesn't choose any of these. Old (v1) envelopes return
+    // `OfferMeta::default()` and the summary panel collapses.
+    let offer_summary = move || -> Option<String> {
+        let blob = offer_input.get();
+        let blob = blob.trim();
+        if blob.is_empty() {
+            return None;
+        }
+        let meta = crate::transport::webrtc::decode_offer_meta(blob);
+        if meta.rules.is_none() && meta.host_color.is_none() && meta.first_flipper.is_none() {
+            return None;
+        }
+        let mut parts = Vec::<String>::new();
+        if let Some(r) = meta.rules.as_ref() {
+            parts.push(format!("Rules: {}", crate::state::describe_rules(r)));
+        }
+        match meta.host_color {
+            Some(chess_net::HostColor::Red) => parts.push("Host plays Red 紅".into()),
+            Some(chess_net::HostColor::Black) => parts
+                .push("Host plays Black 黑 — you'll be Red and (for xiangqi) move first".into()),
+            Some(chess_net::HostColor::Random) => {
+                parts.push("Host's colour: Random (resolved server-side)".into())
+            }
+            None => {}
+        }
+        match meta.first_flipper {
+            Some(chess_net::FirstFlipper::Either) => {
+                parts.push("Banqi first flip: either side may flip".into())
+            }
+            Some(chess_net::FirstFlipper::Host) => {
+                parts.push("Banqi first flip: host flips first".into())
+            }
+            Some(chess_net::FirstFlipper::Joiner) => {
+                parts.push("Banqi first flip: you flip first".into())
+            }
+            None => {}
+        }
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(" · "))
+        }
+    };
+
     // QR scanner modal state. See LanHostPage for the same pattern.
     let (scanner_open, set_scanner_open) = create_signal::<bool>(false);
     let (cam_available, set_cam_available) = create_signal::<bool>(false);
@@ -919,6 +1076,12 @@ pub fn LanJoinPage() -> impl IntoView {
                         }
                         prop:value=move || offer_input.get()
                     />
+                    <Show when=move || offer_summary().is_some()>
+                        <p style="margin:0.5rem 0;padding:0.5rem;background:rgba(212,160,23,0.15);border-left:3px solid #d4a017;font-size:13px">
+                            <b>"Host has chosen: "</b>
+                            {move || offer_summary().unwrap_or_default()}
+                        </p>
+                    </Show>
                     <button
                         on:click=move |_| on_generate.call(())
                         disabled=move || !matches!(status.get(), JoinStatus::Idle)

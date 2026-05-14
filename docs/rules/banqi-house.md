@@ -57,6 +57,16 @@ Adds **diagonal one-step *captures only*** to the horse — the horse may NOT sl
 
 Cannon may move any number of empty squares in a line for non-capturing moves (capture still requires the one-piece jump). Speeds up cannon repositioning without changing capture geometry. *(Currently accepted but not wired into move-gen — see TODO.md.)*
 
+### `PREASSIGN_COLORS` — 預先指定顏色 (bit `1 << 6`)
+
+Restores legacy banqi pairing: seat 0 (room creator / host) is fixed as **Red**, seat 1 (joiner) is fixed as **Black**, and Red is forced to make the first reveal. The deployment layer's standard "not your turn" guard rejects any Black-first reveal attempt.
+
+Default is **off**, in which case banqi defers colour assignment until the first flip — see [`banqi.md` § First-flip & colour assignment](banqi.md#first-flip--colour-assignment). The Taiwan flipper-plays-revealed rule applies in both modes; this flag only controls *who* may make the first reveal.
+
+Engine surface:
+- `GameState::banqi_awaiting_first_flip()` returns `true` iff variant is banqi, no flip has happened yet, and this flag is **off**.
+- `PlayerView::banqi_awaiting_first_flip` projects the same signal to clients (with `#[serde(default)]` for back-compat).
+
 ## Presets
 
 ```rust

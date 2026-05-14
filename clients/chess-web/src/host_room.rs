@@ -154,7 +154,27 @@ impl HostRoom {
         password: Option<String>,
         hints_allowed: bool,
     ) -> (Rc<Self>, Session) {
-        let mut room = Room::new(rules, password, hints_allowed);
+        Self::with_config(
+            rules,
+            password,
+            hints_allowed,
+            chess_net::HostColor::default(),
+            chess_net::FirstFlipper::default(),
+        )
+    }
+
+    /// Like [`HostRoom::new`] but accepts host-side game-setup
+    /// preferences. `host_color` decides which seat the host takes
+    /// (defaults to Red — same as `HostRoom::new`). `first_flipper`
+    /// only affects banqi without `HouseRules::PREASSIGN_COLORS`.
+    pub fn with_config(
+        rules: RuleSet,
+        password: Option<String>,
+        hints_allowed: bool,
+        host_color: chess_net::HostColor,
+        first_flipper: chess_net::FirstFlipper,
+    ) -> (Rc<Self>, Session) {
+        let mut room = Room::with_config(rules, password, hints_allowed, host_color, first_flipper);
         let self_peer = PeerId(1);
         let incoming = Incoming::new();
         let (state, _set_state) = create_signal(ConnState::Open);

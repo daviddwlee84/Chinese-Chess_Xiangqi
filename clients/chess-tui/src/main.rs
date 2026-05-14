@@ -136,8 +136,45 @@ struct Cli {
     #[arg(long)]
     hints: bool,
 
+    /// Host-side colour preference, applied when this client is the
+    /// first joiner of the target room. `red` (default), `black`, or
+    /// `random`. Ignored when joining an already-populated room
+    /// (server's first-write-wins, like password). Translates to
+    /// `?host_color=...` on the WS URL.
+    #[arg(long = "host-color", value_enum)]
+    host_color: Option<HostColorArg>,
+
+    /// Host-side banqi first-flipper preset, applied when this client
+    /// is the first joiner. `either` (default), `host`, or `joiner`.
+    /// No effect for xiangqi or for banqi with `--preassign`. Ignored
+    /// on subsequent joins. Translates to `?first_flipper=...` on
+    /// the WS URL.
+    #[arg(long = "first-flipper", value_enum)]
+    first_flipper: Option<FirstFlipperArg>,
+
+    /// Enable `HouseRules::PREASSIGN_COLORS` on the room's RuleSet
+    /// when creating it (banqi only — for xiangqi the bit is a no-op).
+    /// Restores the classic "Red is forced to flip first" mode. Sent
+    /// as `?preassign=1` on the WS URL.
+    #[arg(long)]
+    preassign: bool,
+
     #[command(subcommand)]
     cmd: Option<Cmd>,
+}
+
+#[derive(Copy, Clone, Debug, clap::ValueEnum)]
+enum HostColorArg {
+    Red,
+    Black,
+    Random,
+}
+
+#[derive(Copy, Clone, Debug, clap::ValueEnum)]
+enum FirstFlipperArg {
+    Either,
+    Host,
+    Joiner,
 }
 
 #[derive(Subcommand, Debug)]
@@ -375,6 +412,28 @@ fn main() -> Result<()> {
             // are silently ignored server-side).
             let sep = if url.contains('?') { '&' } else { '?' };
             url = format!("{url}{sep}hints=1");
+        }
+        if let Some(c) = cli.host_color {
+            let token = match c {
+                HostColorArg::Red => "red",
+                HostColorArg::Black => "black",
+                HostColorArg::Random => "random",
+            };
+            let sep = if url.contains('?') { '&' } else { '?' };
+            url = format!("{url}{sep}host_color={token}");
+        }
+        if let Some(f) = cli.first_flipper {
+            let token = match f {
+                FirstFlipperArg::Either => "either",
+                FirstFlipperArg::Host => "host",
+                FirstFlipperArg::Joiner => "joiner",
+            };
+            let sep = if url.contains('?') { '&' } else { '?' };
+            url = format!("{url}{sep}first_flipper={token}");
+        }
+        if cli.preassign {
+            let sep = if url.contains('?') { '&' } else { '?' };
+            url = format!("{url}{sep}preassign=1");
         }
         AppState::new_net(url, style, use_color)
     } else {

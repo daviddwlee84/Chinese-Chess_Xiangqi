@@ -241,6 +241,21 @@ impl HostHandshake {
         let sdp = self.pc.local_description().map(|d| d.sdp()).unwrap_or_default();
         OfferBlob(encode_sdp("offer", &sdp))
     }
+
+    /// Like [`HostHandshake::current_offer`] but the envelope embeds
+    /// the host's chosen `RuleSet` + `host_color` + `first_flipper`
+    /// so the joiner page can render a "you'll be Red and move first"
+    /// preview before accepting. Old joiner clients ignore the extra
+    /// fields (serde-default on the decode side).
+    pub fn current_offer_with_config(
+        &self,
+        rules: Option<&chess_core::rules::RuleSet>,
+        host_color: Option<chess_net::HostColor>,
+        first_flipper: Option<chess_net::FirstFlipper>,
+    ) -> OfferBlob {
+        let sdp = self.pc.local_description().map(|d| d.sdp()).unwrap_or_default();
+        OfferBlob(encode_sdp_with_config("offer", &sdp, rules, host_color, first_flipper))
+    }
 }
 // SECTION: JoinerHandshake (return value of connect_as_joiner)
 
@@ -429,7 +444,79 @@ pub async fn wait_for_dc_open(dc: &RtcDataChannel, timeout_ms: u32) -> bool {
 /// Pretty-printed with 2-space indent so the contents eyeball the same
 /// as raw SDP — useful while debugging.
 pub fn encode_sdp(kind: &str, sdp: &str) -> String {
-    format!("{{\n  \"type\": \"{}\",\n  \"sdp\": \"{}\"\n}}", kind, escape_json_string(sdp))
+    encode_sdp_with_config(kind, sdp, None, None, None)
+}
+
+/// Same envelope as [`encode_sdp`] but optionally carries the host's
+/// chosen `RuleSet`, `host_color`, and `first_flipper` so the joiner
+/// page can render a "host plays Black; you'll move first" summary
+/// before accepting. All three are optional and serde-defaulted on the
+/// decode side — old envelopes (pre-RoomConfig) still parse cleanly.
+pub fn encode_sdp_with_config(
+    kind: &str,
+    sdp: &str,
+    rules: Option<&chess_core::rules::RuleSet>,
+    host_color: Option<chess_net::HostColor>,
+    first_flipper: Option<chess_net::FirstFlipper>,
+) -> String {
+    let mut extras = String::new();
+    if let Some(r) = rules {
+        if let Ok(s) = serde_json::to_string(r) {
+            extras.push_str(",\n  \"rules\": ");
+            extras.push_str(&s);
+        }
+    }
+    if let Some(h) = host_color {
+        if let Ok(s) = serde_json::to_string(&h) {
+            extras.push_str(",\n  \"host_color\": ");
+            extras.push_str(&s);
+        }
+    }
+    if let Some(f) = first_flipper {
+        if let Ok(s) = serde_json::to_string(&f) {
+            extras.push_str(",\n  \"first_flipper\": ");
+            extras.push_str(&s);
+        }
+    }
+    format!(
+        "{{\n  \"type\": \"{}\",\n  \"sdp\": \"{}\"{}\n}}",
+        kind,
+        escape_json_string(sdp),
+        extras
+    )
+}
+
+/// Optional metadata pulled from a v2 (RoomConfig-enabled) offer
+/// envelope. All fields are `Option` so a v1 envelope decodes
+/// cleanly into `OfferMeta::default()`.
+#[derive(Default, Debug, Clone)]
+pub struct OfferMeta {
+    pub rules: Option<chess_core::rules::RuleSet>,
+    pub host_color: Option<chess_net::HostColor>,
+    pub first_flipper: Option<chess_net::FirstFlipper>,
+}
+
+/// Pull out the optional `RoomConfig` fields from an offer-envelope
+/// JSON blob, ignoring the SDP. Returns `OfferMeta::default()` if the
+/// envelope is v1 or any field is missing / unparseable.
+pub fn decode_offer_meta(blob: &str) -> OfferMeta {
+    let trimmed = blob.trim();
+    if !trimmed.starts_with('{') {
+        return OfferMeta::default();
+    }
+    // Parse via `serde_json::Value` — we don't need the SDP here, just
+    // the optional fields. Failures (malformed JSON, wrong types) yield
+    // the default; the offer itself is still validated by
+    // `decode_sdp_envelope` on the WebRTC accept path.
+    let v: serde_json::Value = match serde_json::from_str(trimmed) {
+        Ok(v) => v,
+        Err(_) => return OfferMeta::default(),
+    };
+    OfferMeta {
+        rules: v.get("rules").and_then(|x| serde_json::from_value(x.clone()).ok()),
+        host_color: v.get("host_color").and_then(|x| serde_json::from_value(x.clone()).ok()),
+        first_flipper: v.get("first_flipper").and_then(|x| serde_json::from_value(x.clone()).ok()),
+    }
 }
 
 fn escape_json_string(s: &str) -> String {

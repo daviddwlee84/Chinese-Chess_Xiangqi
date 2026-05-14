@@ -440,6 +440,7 @@ const HOUSE_TOKENS: &[(HouseRules, &str)] = &[
     (HouseRules::HORSE_DIAGONAL, "horse"),
     (HouseRules::CANNON_FAST_MOVE, "cannon"),
     (HouseRules::DARK_CAPTURE_TRADE, "dark-trade"),
+    (HouseRules::PREASSIGN_COLORS, "preassign"),
 ];
 
 /// Aliases recognised on parse only (older URLs / pre-rename snapshots).

@@ -488,7 +488,11 @@ fn BoardWrapper(
             return;
         }
         let v = view.get();
-        if v.observer != v.side_to_move {
+        // Banqi pre-first-flip: either seat may flip. The server is
+        // still authoritative — relaxing the optimistic UI block lets
+        // the click reach `ClientMsg::Move`, where the server's
+        // relaxed `process_move` guard attributes the flip to us.
+        if v.observer != v.side_to_move && !v.banqi_awaiting_first_flip {
             return;
         }
 
@@ -631,12 +635,22 @@ fn OnlineSidebar(
     /// so the link makes sense in the LAN context.
     back_link_override: Option<String>,
 ) -> impl IntoView {
-    let role_label = move || match role.get() {
-        Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
-        Some(ClientRole::Player(Side::BLACK)) => "You play Black 黑".to_string(),
-        Some(ClientRole::Player(_)) => "You play Green 綠".to_string(),
-        Some(ClientRole::Spectator) => "Spectator — read-only".to_string(),
-        None => "Awaiting seat assignment".to_string(),
+    // Pre-first-flip banqi: neither seat has a piece-colour yet, so
+    // "You play Red 紅" would be misleading. Substitute the awaiting
+    // message until the engine locks the assignment.
+    let awaiting_first_flip =
+        move || view_signal.get().map(|v| v.banqi_awaiting_first_flip).unwrap_or(false);
+    let role_label = move || {
+        if awaiting_first_flip() {
+            return "未翻牌 — 任一方皆可先翻".to_string();
+        }
+        match role.get() {
+            Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
+            Some(ClientRole::Player(Side::BLACK)) => "You play Black 黑".to_string(),
+            Some(ClientRole::Player(_)) => "You play Green 綠".to_string(),
+            Some(ClientRole::Spectator) => "Spectator — read-only".to_string(),
+            None => "Awaiting seat assignment".to_string(),
+        }
     };
     let role_class = move || match role.get() {
         Some(ClientRole::Spectator) => "spectator-badge",
@@ -653,6 +667,7 @@ fn OnlineSidebar(
     };
 
     let turn_label = move || match view_signal.get() {
+        Some(v) if v.banqi_awaiting_first_flip => "Awaiting first flip".to_string(),
         Some(v) => match v.current_color {
             Side::RED => "Red 紅 to move",
             Side::BLACK => "Black 黑 to move",

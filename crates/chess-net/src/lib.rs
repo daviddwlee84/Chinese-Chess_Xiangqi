@@ -32,7 +32,8 @@ pub mod room;
 pub mod server;
 
 pub use protocol::{
-    variant_label, ChatLine, ClientMsg, RoomStatus, RoomSummary, ServerMsg, PROTOCOL_VERSION,
+    variant_label, ChatLine, ClientMsg, FirstFlipper, HostColor, RoomConfig, RoomStatus,
+    RoomSummary, ServerMsg, PROTOCOL_VERSION,
 };
 pub use room::{
     parse_hints_param, valid_password, valid_room_id, JoinError, Outbound, PeerId, Room, SeatRole,

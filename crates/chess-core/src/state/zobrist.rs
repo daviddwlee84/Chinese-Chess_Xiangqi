@@ -227,6 +227,7 @@ mod tests {
             no_progress_plies: 0,
             chain_lock: None,
             position_hash: 0,
+            banqi_first_mover_locked: false,
         };
         let h = compute_position_hash(&state);
         assert_eq!(h, zobrist_side_to_move(Side::BLACK));

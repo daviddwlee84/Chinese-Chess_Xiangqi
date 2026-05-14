@@ -37,6 +37,18 @@ impl TurnOrder {
         self.current = (self.current + 1) % self.seats.len() as u8;
     }
 
+    /// Move the cursor to a specific seat. Returns `None` if the seat is
+    /// not in `seats`. Used by the deployment layer when banqi's
+    /// pre-first-flip lets a non-default seat make the first reveal —
+    /// the chess-net / HostRoom layer calls this with the clicker's
+    /// seat before `GameState::make_move`, so the subsequent
+    /// `turn_order.advance()` lines up correctly.
+    pub fn set_current(&mut self, seat: Side) -> Option<()> {
+        let idx = self.seats.iter().position(|&s| s == seat)?;
+        self.current = idx as u8;
+        Some(())
+    }
+
     /// Advance to the next non-eliminated seat. Used when a faction is wiped
     /// out in 三國暗棋. If all opponents are eliminated this is a no-op.
     pub fn advance_skipping(&mut self, eliminated: &[Side]) {

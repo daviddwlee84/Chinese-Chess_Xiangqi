@@ -81,6 +81,17 @@ pub struct GameState {
     /// hash 0; call [`Self::recompute_position_hash`] to populate it.
     #[serde(default)]
     pub position_hash: u64,
+    /// Banqi-specific: when `true`, the deployment layer has
+    /// pre-committed which seat must make the first reveal (via a
+    /// host-side `first_flipper=host|joiner` preset). The
+    /// `banqi_awaiting_first_flip` sentinel is suppressed even when
+    /// `side_assignment` is still `None`, so `legal_moves` projects
+    /// only to `side_to_move` and the chess-net guard requires the
+    /// locked seat to make the move. Default `false` — banqi rooms
+    /// without an explicit `first_flipper` preset stay in the "either
+    /// seat may flip" mode.
+    #[serde(default)]
+    pub banqi_first_mover_locked: bool,
 }
 
 impl GameState {
@@ -679,6 +690,42 @@ impl GameState {
             Variant::Banqi => Side::RED,
             Variant::ThreeKingdomBanqi => Side(0),
         }
+    }
+
+    /// Make `seat` the active mover. Updates both `turn_order.current`
+    /// and `side_to_move` so the subsequent `make_move` /
+    /// `turn_order.advance()` cycle stays consistent.
+    ///
+    /// Used by the deployment layer (chess-net / HostRoom) when banqi
+    /// is in the pre-first-flip state and either seat may make the
+    /// first reveal — see `banqi_awaiting_first_flip` below. Calling
+    /// this with a seat that isn't in `turn_order.seats` is a no-op
+    /// and returns `Err`.
+    pub fn set_active_seat(&mut self, seat: Side) -> Result<(), CoreError> {
+        self.turn_order
+            .set_current(seat)
+            .ok_or(CoreError::Illegal("seat not in turn_order.seats"))?;
+        self.side_to_move = seat;
+        Ok(())
+    }
+
+    /// Banqi pre-first-flip sentinel: variant is banqi, no flip has
+    /// happened yet (`side_assignment` is `None`), and the legacy
+    /// `PREASSIGN_COLORS` flag is off.
+    ///
+    /// When `true`, the deployment layer (chess-net / HostRoom) should
+    /// allow either seat to submit `Move::Reveal` and is responsible
+    /// for setting `side_to_move = <clicker's seat>` before calling
+    /// `make_move` — the existing `banqi_side_assignment(flipper,
+    /// revealed)` then locks the mapping correctly. Clients use this
+    /// signal to override the "Red to move" sidebar copy with a
+    /// neutral "awaiting first flip" string.
+    #[inline]
+    pub fn banqi_awaiting_first_flip(&self) -> bool {
+        matches!(self.rules.variant, Variant::Banqi)
+            && self.side_assignment.is_none()
+            && !self.rules.house.contains(crate::rules::HouseRules::PREASSIGN_COLORS)
+            && !self.banqi_first_mover_locked
     }
 
     /// The piece-color the active seat actually controls.

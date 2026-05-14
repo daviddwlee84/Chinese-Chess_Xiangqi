@@ -24,6 +24,15 @@ bitflags! {
         /// 暗吃 trade variant — on rank-fail the small attacker dies (is
         /// removed), target stays revealed. Implies DARK_CAPTURE.
         const DARK_CAPTURE_TRADE  = 1 << 5;
+        /// 預先指定顏色 — banqi only. When set, seat ↔ piece-colour is
+        /// fixed at room creation (host = the configured colour, which
+        /// defaults to Red and therefore moves first). When unset
+        /// (default), banqi defers colour assignment until the first
+        /// reveal: either seat may flip the first hidden tile and the
+        /// revealed colour locks the seat→colour mapping per the
+        /// existing Taiwan rule (flipper plays the colour they reveal).
+        /// See `GameState::banqi_awaiting_first_flip` and ADR/banqi docs.
+        const PREASSIGN_COLORS    = 1 << 6;
     }
 }
 

@@ -142,6 +142,13 @@ pub struct Room {
     /// for the room's lifetime (same pattern as `password`). Closes the
     /// previous client-only `?debug=1` cheat hole.
     hints_allowed: bool,
+    /// Host-side game-setup preferences resolved at room-creation time:
+    /// which colour the first joiner takes (`host_seat`) and which seat
+    /// must make the first banqi reveal (`first_flipper`). Captured
+    /// from URL params on the first `join_player` and frozen for the
+    /// room's lifetime; subsequent joiners' params are ignored.
+    host_seat: Side,
+    first_flipper: crate::protocol::FirstFlipper,
     /// In-memory ring buffer of recent chat lines (cap [`CHAT_HISTORY_CAP`]).
     /// Sent verbatim to every new joiner via `ChatHistory`.
     chat: VecDeque<ChatLine>,
@@ -149,20 +156,83 @@ pub struct Room {
 // SECTION: room construction + simple accessors
 
 impl Room {
-    /// Create a fresh room. `password` and `hints_allowed` are set once and
-    /// frozen — the [`Room::join_player`] / [`Room::join_spectator`]
-    /// callers do their own password-equality check before insertion (the
-    /// outer transport already gates on the URL `?password=` param).
+    /// Create a fresh room with default host preferences (host = Red,
+    /// banqi first-flipper = Either). Use [`Room::with_config`] to
+    /// pass host-side game-setup options from URL params.
     pub fn new(rules: RuleSet, password: Option<String>, hints_allowed: bool) -> Self {
+        Self::with_config(
+            rules,
+            password,
+            hints_allowed,
+            crate::protocol::HostColor::default(),
+            crate::protocol::FirstFlipper::default(),
+        )
+    }
+
+    /// Create a fresh room with explicit host-side preferences.
+    ///
+    /// `host_color` (`Random` resolves against the room's banqi seed)
+    /// becomes the seat assigned to the first joiner. `first_flipper`
+    /// only affects banqi when `HouseRules::PREASSIGN_COLORS` is OFF
+    /// — for other (variant, rules) combinations it's a no-op and
+    /// the engine's first-mover convention applies (Red moves first).
+    pub fn with_config(
+        rules: RuleSet,
+        password: Option<String>,
+        hints_allowed: bool,
+        host_color: crate::protocol::HostColor,
+        first_flipper: crate::protocol::FirstFlipper,
+    ) -> Self {
+        let seed = rules.banqi_seed;
+        let host_seat = host_color.resolve(seed);
+        let mut state = GameState::new(rules);
+        // For banqi (no PREASSIGN_COLORS) the engine starts with
+        // `banqi_awaiting_first_flip = true`. If the host asked that a
+        // specific seat flip first, point `side_to_move` at it AND set
+        // `banqi_first_mover_locked` so the engine treats `side_to_move`
+        // as authoritative (only that seat's projected `legal_moves`
+        // is non-empty; the chess-net guard requires the locked seat
+        // for the first reveal). With `Either` we leave the sentinel
+        // intact — both seats see reveals.
+        if state.rules.variant == chess_core::rules::Variant::Banqi
+            && !state.rules.house.contains(chess_core::rules::HouseRules::PREASSIGN_COLORS)
+        {
+            let joiner_seat = match host_seat {
+                s if s == Side::RED => Side::BLACK,
+                _ => Side::RED,
+            };
+            let target = match first_flipper {
+                crate::protocol::FirstFlipper::Either => None,
+                crate::protocol::FirstFlipper::Host => Some(host_seat),
+                crate::protocol::FirstFlipper::Joiner => Some(joiner_seat),
+            };
+            if let Some(s) = target {
+                // `set_active_seat` only fails if `s` isn't in
+                // `turn_order.seats`. For 2-player banqi seats are
+                // `[RED, BLACK]`; both lookups succeed.
+                let _ = state.set_active_seat(s);
+                state.banqi_first_mover_locked = true;
+            }
+        }
         Self {
-            state: GameState::new(rules),
+            state,
             seats: Vec::with_capacity(2),
             spectators: Vec::new(),
             rematch: Vec::with_capacity(2),
             password,
             hints_allowed,
+            host_seat,
+            first_flipper,
             chat: VecDeque::with_capacity(CHAT_HISTORY_CAP),
         }
+    }
+
+    pub fn host_seat(&self) -> Side {
+        self.host_seat
+    }
+
+    pub fn first_flipper(&self) -> crate::protocol::FirstFlipper {
+        self.first_flipper
     }
 
     pub fn password(&self) -> Option<&str> {
@@ -195,9 +265,13 @@ impl Room {
     /// Side that would be assigned to the next [`Room::join_player`] call,
     /// or `None` if the room is full. Useful for transports that want to
     /// preview "joinable as Red?" without mutating.
+    ///
+    /// The first joiner takes `host_seat` (defaults to Red); the second
+    /// takes the opposite. This honours the `?host_color=` URL param
+    /// the room was created with.
     pub fn next_seat(&self) -> Option<Side> {
         match self.seats.len() {
-            0 => Some(Side::RED),
+            0 => Some(self.host_seat),
             1 => {
                 let taken = self.seats[0].0;
                 Some(if taken == Side::RED { Side::BLACK } else { Side::RED })
@@ -433,7 +507,23 @@ impl Room {
 
 impl Room {
     fn process_move(&mut self, seat: Side, mv: Move, from: PeerId, out: &mut Vec<Outbound>) {
-        if self.state.side_to_move != seat {
+        // Banqi pre-first-flip: either seat may submit the first
+        // `Move::Reveal`. The engine's `banqi_side_assignment` reads
+        // `side_to_move` as the flipper, so we attribute the flip to
+        // the actual clicker by re-pointing the turn-order cursor
+        // before `make_move` runs. The legacy mode (HouseRules::
+        // PREASSIGN_COLORS) keeps the standard guard.
+        let is_first_banqi_reveal =
+            matches!(mv, Move::Reveal { .. }) && self.state.banqi_awaiting_first_flip();
+        if is_first_banqi_reveal {
+            if let Err(e) = self.state.set_active_seat(seat) {
+                out.push(Outbound {
+                    peer: from,
+                    msg: ServerMsg::Error { message: format!("internal: {e}") },
+                });
+                return;
+            }
+        } else if self.state.side_to_move != seat {
             out.push(Outbound {
                 peer: from,
                 msg: ServerMsg::Error { message: "not your turn".into() },
@@ -486,8 +576,26 @@ impl Room {
         let want_seats: Vec<Side> = self.seats.iter().map(|(s, _)| *s).collect();
         let all_ready = want_seats.iter().all(|s| self.rematch.contains(s));
         if all_ready {
+            // Preserve the host-side game-setup preferences across the
+            // rematch — same host_seat, same first_flipper. Without
+            // this the rematch would silently fall back to "Red flips
+            // first" if the original room was `?first_flipper=joiner`.
             let rules = self.state.rules.clone();
             self.state = GameState::new(rules);
+            if self.state.rules.variant == chess_core::rules::Variant::Banqi
+                && !self.state.rules.house.contains(chess_core::rules::HouseRules::PREASSIGN_COLORS)
+            {
+                let joiner_seat = if self.host_seat == Side::RED { Side::BLACK } else { Side::RED };
+                let target = match self.first_flipper {
+                    crate::protocol::FirstFlipper::Either => None,
+                    crate::protocol::FirstFlipper::Host => Some(self.host_seat),
+                    crate::protocol::FirstFlipper::Joiner => Some(joiner_seat),
+                };
+                if let Some(s) = target {
+                    let _ = self.state.set_active_seat(s);
+                    self.state.banqi_first_mover_locked = true;
+                }
+            }
             self.rematch.clear();
             // Re-Hello every seated player from their own POV.
             for (side, peer) in &self.seats {

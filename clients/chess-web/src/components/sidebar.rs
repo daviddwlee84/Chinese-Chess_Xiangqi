@@ -60,18 +60,30 @@ pub fn Sidebar(
     // Display the piece-colour to move, not the seat name. After a banqi
     // first-flip the seat (`side_to_move`) and the colour the seat plays
     // (`current_color`) diverge — players think in terms of colour.
+    // Pre-first-flip in banqi (no PREASSIGN_COLORS) there's no colour yet,
+    // so substitute the neutral awaiting-message and a yellow turn-row.
+    let awaiting_first_flip = move || view.with(|v| v.banqi_awaiting_first_flip);
     let turn_text = move || {
         let v = view.get();
-        glyph::side_name(v.current_color, style).to_string()
+        if v.banqi_awaiting_first_flip {
+            "未翻牌 — 任一方皆可先翻".to_string()
+        } else {
+            glyph::side_name(v.current_color, style).to_string()
+        }
     };
     let turn_class = move || {
         let v = view.get();
-        match v.current_color {
-            Side::RED => "turn-red",
-            Side::BLACK => "turn-black",
-            _ => "turn-green",
+        if v.banqi_awaiting_first_flip {
+            "turn-awaiting"
+        } else {
+            match v.current_color {
+                Side::RED => "turn-red",
+                Side::BLACK => "turn-black",
+                _ => "turn-green",
+            }
         }
     };
+    let turn_prefix = move || if awaiting_first_flip() { "" } else { "Turn: " };
 
     let status_view = move || -> View {
         let v = view.get();
@@ -124,7 +136,7 @@ pub fn Sidebar(
                     <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
                 </Show>
                 <div class="turn-row">
-                    <span class="turn-prefix">"Turn: "</span>
+                    <span class="turn-prefix">{turn_prefix}</span>
                     <span class=turn_class>{turn_text}</span>
                 </div>
                 {eval_badge.map(|sig| view! { <EvalBadge sample=sig/> })}

@@ -170,6 +170,93 @@ pub enum RoomStatus {
     Finished,
 }
 
+/// Host's colour preference when creating a room (chess-net WS or
+/// WebRTC `/lan/host`). `Random` resolves to a concrete `Side` at room
+/// creation time — once seats are assigned the resolution is frozen.
+///
+/// Only relevant for xiangqi and banqi with `HouseRules::PREASSIGN_COLORS`.
+/// For default-rules banqi the seat-to-colour mapping is settled by the
+/// first reveal, not by the host preference.
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum HostColor {
+    #[default]
+    Red,
+    Black,
+    Random,
+}
+
+impl HostColor {
+    /// Resolve `Random` against the room's banqi seed (or a fresh
+    /// thread-local source) so the room creator always lands on a
+    /// concrete seat. Same `seed` always returns the same side, so
+    /// chess-net's deterministic-banqi-with-seed paths round-trip
+    /// identically.
+    pub fn resolve(self, seed: Option<u64>) -> Side {
+        match self {
+            HostColor::Red => Side::RED,
+            HostColor::Black => Side::BLACK,
+            HostColor::Random => match seed {
+                Some(s) => {
+                    use rand::{Rng, SeedableRng};
+                    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(s.wrapping_add(0xABCD));
+                    if rng.gen::<bool>() {
+                        Side::RED
+                    } else {
+                        Side::BLACK
+                    }
+                }
+                None => {
+                    use rand::Rng;
+                    if rand::thread_rng().gen::<bool>() {
+                        Side::RED
+                    } else {
+                        Side::BLACK
+                    }
+                }
+            },
+        }
+    }
+}
+
+/// Who is allowed to make the very first reveal in banqi when
+/// `HouseRules::PREASSIGN_COLORS` is **off**. Has no effect for
+/// xiangqi or for banqi with PREASSIGN_COLORS — in those cases the
+/// engine's own first-mover rule (Red moves first) applies.
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FirstFlipper {
+    /// No pre-commitment — `state.banqi_awaiting_first_flip` stays
+    /// `true` until either seat clicks. Deployment layer attributes
+    /// the flip to the actual clicker.
+    #[default]
+    Either,
+    /// Host seat must flip first. Deployment layer initialises
+    /// `side_to_move = host_seat`; standard "not your turn" guard
+    /// applies to the joiner.
+    Host,
+    /// Joiner seat must flip first. Deployment layer initialises
+    /// `side_to_move = joiner_seat`; standard guard applies to the
+    /// host.
+    Joiner,
+}
+
+/// Host-side game-setup preferences communicated through both
+/// deployment paths (chess-net WS URL params on first join; chess-web
+/// WebRTC offer envelope JSON). Once the room is created these are
+/// frozen for its lifetime — subsequent joiners' params are ignored.
+///
+/// Serde-clean with all-`default` fields so adding it to the offer
+/// envelope is forward-compatible (older envelopes deserialise into
+/// the default `RoomConfig` with no host preferences).
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RoomConfig {
+    #[serde(default)]
+    pub host_color: HostColor,
+    #[serde(default)]
+    pub first_flipper: FirstFlipper,
+}
+
 /// Stable variant string for `RoomSummary.variant`. Uses kebab-case so the
 /// JSON looks the same as the chess-tui `--style ascii` / `--style cjk`
 /// arguments and the `--house` token list.
