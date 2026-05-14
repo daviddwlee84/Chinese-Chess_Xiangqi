@@ -45,8 +45,8 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     MessageEvent, RtcConfiguration, RtcDataChannel, RtcDataChannelEvent, RtcDataChannelInit,
-    RtcDataChannelState, RtcIceGatheringState, RtcPeerConnection, RtcSdpType,
-    RtcSessionDescriptionInit, RtcSignalingState,
+    RtcDataChannelState, RtcIceConnectionState, RtcIceGatheringState, RtcPeerConnection,
+    RtcPeerConnectionState, RtcSdpType, RtcSessionDescriptionInit, RtcSignalingState,
 };
 
 use super::{ConnState, Incoming, Session, Transport};
@@ -104,6 +104,39 @@ pub struct OfferBlob(pub String);
 /// Typed wrapper around the joiner's answer SDP blob.
 #[derive(Clone, Debug)]
 pub struct AnswerBlob(pub String);
+
+/// Live diagnostic snapshot of the underlying RTCPeerConnection. Exposed
+/// to the LAN host/join pages so they can show users WHY pairing is
+/// stuck (e.g. "ICE: failed, candidates: 1") instead of just timing out
+/// with no insight. Updated by listeners installed in
+/// `install_ice_diag_handlers` + the gather-state listener inside
+/// `wait_for_ice_complete`.
+///
+/// The cross-device LAN failure documented in
+/// `pitfalls/webrtc-mdns-lan-ap-isolation.md` shows up here as
+/// `ice = Checking` flipping to `Disconnected`/`Failed` while the page
+/// is staring at the 10 s DC-open wait.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct IceDiag {
+    pub ice: RtcIceConnectionState,
+    pub conn: RtcPeerConnectionState,
+    pub gather: RtcIceGatheringState,
+    /// Count of non-null `icecandidate` events fired since handler
+    /// installation. A pure-`.local`-only offer typically lands at 1;
+    /// healthy STUN adds 1–3 srflx candidates on top.
+    pub candidates: u32,
+}
+
+impl IceDiag {
+    pub fn initial(pc: &RtcPeerConnection) -> Self {
+        Self {
+            ice: pc.ice_connection_state(),
+            conn: pc.connection_state(),
+            gather: pc.ice_gathering_state(),
+            candidates: 0,
+        }
+    }
+}
 // SECTION: WebRtcTransport (impl Transport)
 
 /// `Transport` impl backed by a single `RtcDataChannel`. Shared by both
@@ -162,6 +195,11 @@ pub struct HostHandshake {
     /// failure. Phase 4's `host_room.rs` watches this to know when
     /// to emit `Hello` / detect peer disconnect.
     pub state: ReadSignal<ConnState>,
+    /// Live ICE / connection / gathering snapshot. The LAN host page
+    /// shows this as a status badge and reads it when the DC-open
+    /// timeout fires so the error message can name the actual stuck
+    /// state instead of a generic "network blocked?".
+    pub ice_diag: ReadSignal<IceDiag>,
     /// Wasm-bindgen closures kept alive for the connection's
     /// lifetime. Drop the `HostHandshake` and they all get freed.
     _keepalive: Vec<Closure<dyn FnMut(JsValue)>>,
@@ -190,6 +228,19 @@ impl HostHandshake {
         JsFuture::from(self.pc.set_remote_description(&answer_desc)).await?;
         Ok(())
     }
+
+    /// Re-encode `pc.local_description()` as an offer blob right now.
+    ///
+    /// `connect_as_host` returns once `wait_for_ice_complete` resolves,
+    /// but the browser may continue adding ICE candidates in the
+    /// background (especially trickle-srflx if STUN is enabled and the
+    /// initial 5s gather timeout fired). The page's "Copy offer" button
+    /// calls this so the textarea / QR reflect those late arrivals
+    /// instead of the half-gathered snapshot frozen at handshake time.
+    pub fn current_offer(&self) -> OfferBlob {
+        let sdp = self.pc.local_description().map(|d| d.sdp()).unwrap_or_default();
+        OfferBlob(encode_sdp("offer", &sdp))
+    }
 }
 // SECTION: JoinerHandshake (return value of connect_as_joiner)
 
@@ -210,7 +261,19 @@ pub struct JoinerHandshake {
     /// host side (if a future caller wants to e.g. close it
     /// proactively).
     pub pc: Rc<RtcPeerConnection>,
+    /// Same role as [`HostHandshake::ice_diag`] — exposed to the LAN
+    /// join page for diagnostic UI / late-candidate-aware Copy.
+    pub ice_diag: ReadSignal<IceDiag>,
     _keepalive: Vec<Closure<dyn FnMut(JsValue)>>,
+}
+
+impl JoinerHandshake {
+    /// Re-encode `pc.local_description()` as an answer blob right now.
+    /// See [`HostHandshake::current_offer`] for the rationale.
+    pub fn current_answer(&self) -> AnswerBlob {
+        let sdp = self.pc.local_description().map(|d| d.sdp()).unwrap_or_default();
+        AnswerBlob(encode_sdp("answer", &sdp))
+    }
 }
 // SECTION: connect_as_joiner factory
 
@@ -236,6 +299,8 @@ pub async fn connect_as_joiner(
     // tick signal). See `transport::Incoming` doc for the rationale.
     let incoming = Incoming::new();
     let (state, set_state) = create_signal(ConnState::Connecting);
+    let (ice_diag, set_ice_diag) = create_signal(IceDiag::initial(&pc_rc));
+    install_ice_diag_handlers(&pc_rc, set_ice_diag, &mut keepalive);
 
     // The DataChannel arrives on `ondatachannel` after the host's
     // SDP is applied. Wire it up before we set the remote description
@@ -261,14 +326,20 @@ pub async fn connect_as_joiner(
     let answer = JsFuture::from(pc_rc.create_answer()).await?;
     let answer_desc: RtcSessionDescriptionInit = answer.unchecked_into();
     JsFuture::from(pc_rc.set_local_description(&answer_desc)).await?;
-    wait_for_ice_complete(&pc_rc, &mut keepalive).await;
+    wait_for_ice_complete(&pc_rc, set_ice_diag, &mut keepalive).await;
 
     let sdp = pc_rc.local_description().map(|d| d.sdp()).unwrap_or_default();
     let answer_blob = AnswerBlob(encode_sdp("answer", &sdp));
 
     let handle: Rc<dyn Transport> = Rc::new(WebRtcTransport { dc: dc_holder });
     let session = Session { handle, incoming, state };
-    Ok(JoinerHandshake { session, answer: answer_blob, pc: pc_rc, _keepalive: keepalive })
+    Ok(JoinerHandshake {
+        session,
+        answer: answer_blob,
+        pc: pc_rc,
+        ice_diag,
+        _keepalive: keepalive,
+    })
 }
 // SECTION: connect_as_host factory
 
@@ -300,15 +371,24 @@ pub async fn connect_as_host(cfg: WebRtcConfig) -> Result<HostHandshake, JsValue
 
     let (state, set_state) = create_signal(ConnState::Connecting);
     install_dc_state_handlers(&dc, set_state);
+    let (ice_diag, set_ice_diag) = create_signal(IceDiag::initial(&pc));
+    install_ice_diag_handlers(&pc, set_ice_diag, &mut keepalive);
 
     let offer = JsFuture::from(pc.create_offer()).await?;
     let offer_desc: RtcSessionDescriptionInit = offer.unchecked_into();
     JsFuture::from(pc.set_local_description(&offer_desc)).await?;
-    wait_for_ice_complete(&pc, &mut keepalive).await;
+    wait_for_ice_complete(&pc, set_ice_diag, &mut keepalive).await;
 
     let sdp = pc.local_description().map(|d| d.sdp()).unwrap_or_default();
     let offer_blob = OfferBlob(encode_sdp("offer", &sdp));
-    Ok(HostHandshake { pc, dc: dc_holder, offer: offer_blob, state, _keepalive: keepalive })
+    Ok(HostHandshake {
+        pc,
+        dc: dc_holder,
+        offer: offer_blob,
+        state,
+        ice_diag,
+        _keepalive: keepalive,
+    })
 }
 /// Block until `dc.ready_state() == "open"` OR `timeout_ms` elapses.
 /// Returns `true` if the channel opened, `false` on timeout.
@@ -444,18 +524,34 @@ fn new_peer_connection(mode: IceMode) -> Result<RtcPeerConnection, JsValue> {
 
 /// Block until `pc.iceGatheringState == "complete"`, OR
 /// [`ICE_GATHER_TIMEOUT_MS`] elapses (whichever comes first).
+///
+/// Also threads gathering-state changes into the [`IceDiag`] signal so
+/// the LAN host/join page can render "gathering: gathering → complete"
+/// live. Owning this listener here (instead of inside
+/// `install_ice_diag_handlers`) keeps the one-shot promise resolution
+/// glued to the one place that needs it; `set_onicegatheringstatechange`
+/// only takes a single callback so we can't have both jobs install
+/// independent listeners.
 async fn wait_for_ice_complete(
     pc: &RtcPeerConnection,
+    set_diag: WriteSignal<IceDiag>,
     keepalive: &mut Vec<Closure<dyn FnMut(JsValue)>>,
 ) {
     if pc.ice_gathering_state() == RtcIceGatheringState::Complete {
+        set_diag.update(|d| d.gather = RtcIceGatheringState::Complete);
         return;
     }
     let promise = js_sys::Promise::new(&mut |resolve, _reject| {
         let pc_inner = pc.clone();
         let resolve_for_state = resolve.clone();
         let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
-            if pc_inner.ice_gathering_state() == RtcIceGatheringState::Complete {
+            let s = pc_inner.ice_gathering_state();
+            web_sys::console::log_2(
+                &"[webrtc] iceGatheringState =".into(),
+                &format!("{s:?}").into(),
+            );
+            set_diag.update(|d| d.gather = s);
+            if s == RtcIceGatheringState::Complete {
                 let _ = resolve_for_state.call0(&JsValue::NULL);
             }
         }) as Box<dyn FnMut(JsValue)>);
@@ -468,10 +564,12 @@ async fn wait_for_ice_complete(
             let resolve_for_timeout = resolve.clone();
             let pc_for_timeout = pc.clone();
             let timeout_cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+                let s = pc_for_timeout.ice_gathering_state();
                 web_sys::console::warn_2(
                     &"[webrtc] ICE gather timeout — proceeding with whatever candidates we have. Final state:".into(),
-                    &format!("{:?}", pc_for_timeout.ice_gathering_state()).into(),
+                    &format!("{s:?}").into(),
                 );
+                set_diag.update(|d| d.gather = s);
                 let _ = resolve_for_timeout.call0(&JsValue::NULL);
             }) as Box<dyn FnMut(JsValue)>);
             let _ = win.set_timeout_with_callback_and_timeout_and_arguments_0(
@@ -482,6 +580,63 @@ async fn wait_for_ice_complete(
         }
     });
     let _ = JsFuture::from(promise).await;
+}
+
+/// Install reactive bridges for `oniceconnectionstatechange`,
+/// `onconnectionstatechange`, and `onicecandidate` — pushes each event
+/// into the `IceDiag` write signal and `console.log`s the transition.
+///
+/// The `onicegatheringstatechange` listener is NOT installed here —
+/// `wait_for_ice_complete` owns it (only one callback slot per event,
+/// and its promise resolution + diag-update have to share that slot).
+///
+/// Closures are pushed into `keepalive` so they outlive the call;
+/// dropping the Handshake drops them.
+fn install_ice_diag_handlers(
+    pc: &RtcPeerConnection,
+    set_diag: WriteSignal<IceDiag>,
+    keepalive: &mut Vec<Closure<dyn FnMut(JsValue)>>,
+) {
+    {
+        let pc_inner = pc.clone();
+        let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+            let s = pc_inner.ice_connection_state();
+            web_sys::console::log_2(
+                &"[webrtc] iceConnectionState =".into(),
+                &format!("{s:?}").into(),
+            );
+            set_diag.update(|d| d.ice = s);
+        }) as Box<dyn FnMut(JsValue)>);
+        pc.set_oniceconnectionstatechange(Some(cb.as_ref().unchecked_ref()));
+        keepalive.push(cb);
+    }
+    {
+        let pc_inner = pc.clone();
+        let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+            let s = pc_inner.connection_state();
+            web_sys::console::log_2(
+                &"[webrtc] connectionState =".into(),
+                &format!("{s:?}").into(),
+            );
+            set_diag.update(|d| d.conn = s);
+        }) as Box<dyn FnMut(JsValue)>);
+        pc.set_onconnectionstatechange(Some(cb.as_ref().unchecked_ref()));
+        keepalive.push(cb);
+    }
+    {
+        // The event also fires once with a null candidate when
+        // gathering ends — we ignore that branch and count only
+        // real candidates. `RtcPeerConnectionIceEvent.candidate()`
+        // returns Option<RtcIceCandidate>.
+        let cb = Closure::wrap(Box::new(move |ev: JsValue| {
+            let ev: web_sys::RtcPeerConnectionIceEvent = ev.unchecked_into();
+            if ev.candidate().is_some() {
+                set_diag.update(|d| d.candidates = d.candidates.saturating_add(1));
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        pc.set_onicecandidate(Some(cb.as_ref().unchecked_ref()));
+        keepalive.push(cb);
+    }
 }
 // SECTION: DataChannel handler installation
 

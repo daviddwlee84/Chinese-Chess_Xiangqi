@@ -29,10 +29,58 @@ use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::pages::play::PlayConnected;
 use crate::transport::webrtc::{
-    connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceMode,
-    JoinerHandshake, OfferBlob, WebRtcConfig,
+    connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceDiag,
+    IceMode, JoinerHandshake, OfferBlob, WebRtcConfig,
 };
 use crate::transport::{ConnState, Session};
+use web_sys::{RtcIceConnectionState, RtcIceGatheringState, RtcPeerConnectionState};
+
+// SECTION: ICE diag rendering helpers
+
+fn ice_label(s: RtcIceConnectionState) -> &'static str {
+    match s {
+        RtcIceConnectionState::New => "new",
+        RtcIceConnectionState::Checking => "checking",
+        RtcIceConnectionState::Connected => "connected",
+        RtcIceConnectionState::Completed => "completed",
+        RtcIceConnectionState::Failed => "failed",
+        RtcIceConnectionState::Disconnected => "disconnected",
+        RtcIceConnectionState::Closed => "closed",
+        _ => "?",
+    }
+}
+
+fn conn_label(s: RtcPeerConnectionState) -> &'static str {
+    match s {
+        RtcPeerConnectionState::New => "new",
+        RtcPeerConnectionState::Connecting => "connecting",
+        RtcPeerConnectionState::Connected => "connected",
+        RtcPeerConnectionState::Disconnected => "disconnected",
+        RtcPeerConnectionState::Failed => "failed",
+        RtcPeerConnectionState::Closed => "closed",
+        _ => "?",
+    }
+}
+
+fn gather_label(s: RtcIceGatheringState) -> &'static str {
+    match s {
+        RtcIceGatheringState::New => "new",
+        RtcIceGatheringState::Gathering => "gathering",
+        RtcIceGatheringState::Complete => "complete",
+        _ => "?",
+    }
+}
+
+/// Format an [`IceDiag`] snapshot as a single line for the inline badge.
+fn diag_line(d: &IceDiag) -> String {
+    format!(
+        "ICE: {} · connection: {} · gathering: {} · candidates: {}",
+        ice_label(d.ice),
+        conn_label(d.conn),
+        gather_label(d.gather),
+        d.candidates,
+    )
+}
 // SECTION: LanHostPage component
 
 #[component]
@@ -69,6 +117,28 @@ pub fn LanHostPage() -> impl IntoView {
     // both and flip status to `Playing`.
     let host_room: Rc<RefCell<Option<Rc<HostRoom>>>> = Rc::new(RefCell::new(None));
     let (play_session, set_play_session) = create_signal::<Option<Session>>(None);
+    // Holder for the handshake's live ICE diag signal so the inline
+    // status badge can render it reactively. None before Open room
+    // succeeds; Some thereafter.
+    let (ice_diag_holder, set_ice_diag_holder) =
+        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+
+    // Re-snapshot the offer SDP whenever the diag signal fires (every
+    // `oniceicecandidate` / connection / gathering state change). Catches
+    // late-arriving srflx candidates that wouldn't be in the half-
+    // gathered SDP captured at connect_as_host return time. See
+    // HostHandshake::current_offer for the rationale.
+    {
+        let handshake = handshake.clone();
+        create_effect(move |_| {
+            if let Some(sig) = ice_diag_holder.get() {
+                let _ = sig.get(); // subscribe to inner changes
+                if let Some(hh) = handshake.borrow().as_ref() {
+                    set_offer_blob.set(hh.current_offer().0);
+                }
+            }
+        });
+    }
 
     // ── Open room (generate offer) ────────────────────────────
     let handshake_for_open = handshake.clone();
@@ -86,6 +156,7 @@ pub fn LanHostPage() -> impl IntoView {
             match connect_as_host(cfg).await {
                 Ok(hh) => {
                     set_offer_blob.set(hh.offer.0.clone());
+                    set_ice_diag_holder.set(Some(hh.ice_diag));
                     *handshake_slot.borrow_mut() = Some(hh);
                     set_status.set(HostStatus::AwaitingAnswer);
                 }
@@ -141,11 +212,16 @@ pub fn LanHostPage() -> impl IntoView {
                     return;
                 }
             };
+            let ice_diag = hh.ice_diag;
             if !wait_for_dc_open(&dc, 10_000).await {
-                set_error_msg.set(Some(
-                    "DataChannel did not open within 10 s — pairing failed (network blocked?)"
-                        .into(),
-                ));
+                let d = ice_diag.get_untracked();
+                set_error_msg.set(Some(format!(
+                    "DataChannel did not open within 10 s — {}. \
+                     Common fixes: switch both devices to an iPhone/Android \
+                     personal hotspot (this network's WebRTC mDNS resolution may \
+                     be failing), or enable \"Use STUN\".",
+                    diag_line(&d),
+                )));
                 set_status.set(HostStatus::Idle);
                 return;
             }
@@ -206,6 +282,13 @@ pub fn LanHostPage() -> impl IntoView {
                         </label>
                     </p>
                     <p>"Status: " {move || format!("{:?}", status.get())}</p>
+                    <Show when=move || ice_diag_holder.with(|h| h.is_some())>
+                        <p style="font-size:13px;color:#888;margin-top:-0.5rem">
+                            {move || ice_diag_holder.get()
+                                .map(|sig| diag_line(&sig.get()))
+                                .unwrap_or_default()}
+                        </p>
+                    </Show>
                     <Show when=move || !offer_blob.with(|s| s.is_empty())>
                         <p>"Have the joiner scan this QR — or copy the text and AirDrop / Messages it:"</p>
                         <QrCodeView
@@ -324,6 +407,27 @@ pub fn LanJoinPage() -> impl IntoView {
     // session out once the DC opens.
     let handshake: Rc<RefCell<Option<JoinerHandshake>>> = Rc::new(RefCell::new(None));
     let (play_session, set_play_session) = create_signal::<Option<Session>>(None);
+    // Diag-signal holder mirroring the host page. Populated once
+    // `connect_as_joiner` resolves; drives the inline ICE-state badge
+    // until the joiner's `handshake` is dropped (at which point the
+    // PC's event handlers stop firing).
+    let (ice_diag_holder, set_ice_diag_holder) =
+        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+
+    // Re-snapshot the answer SDP on every diag fire (candidates,
+    // connection state, gathering). Mirrors the host page; see
+    // JoinerHandshake::current_answer.
+    {
+        let handshake = handshake.clone();
+        create_effect(move |_| {
+            if let Some(sig) = ice_diag_holder.get() {
+                let _ = sig.get();
+                if let Some(jh) = handshake.borrow().as_ref() {
+                    set_answer_blob.set(jh.current_answer().0);
+                }
+            }
+        });
+    }
 
     // Holder pattern: spawn_local runs without a Leptos owner context,
     // so a `create_effect` inside it would be GC'd immediately (no
@@ -377,6 +481,7 @@ pub fn LanJoinPage() -> impl IntoView {
                 Ok(jh) => {
                     set_answer_blob.set(jh.answer.0.clone());
                     let state = jh.session.state;
+                    set_ice_diag_holder.set(Some(jh.ice_diag));
                     *session_holder.borrow_mut() = Some(jh.session.clone());
                     *handshake_slot.borrow_mut() = Some(jh);
                     set_status.set(JoinStatus::WaitingForOpen);
@@ -427,6 +532,13 @@ pub fn LanJoinPage() -> impl IntoView {
                         </label>
                     </p>
                     <p>"Status: " {move || format!("{:?}", status.get())}</p>
+                    <Show when=move || ice_diag_holder.with(|h| h.is_some())>
+                        <p style="font-size:13px;color:#888;margin-top:-0.5rem">
+                            {move || ice_diag_holder.get()
+                                .map(|sig| diag_line(&sig.get()))
+                                .unwrap_or_default()}
+                        </p>
+                    </Show>
                     <p>"1. Get the host's offer. Either scan their QR with the camera, or paste their text below:"</p>
                     <Show when=move || cam_available.get()>
                         <p style="margin:0.25rem 0 0.5rem 0">
