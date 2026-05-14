@@ -11630,3 +11630,143 @@ Review changes
  5 files changed, 1257 insertions(+), 4 deletions(-)
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:36:03Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:36:03Z)**_
+
+Committing as two separate commits since the chat fix is unrelated to the LAN/VPN work.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:36:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit VPN/STUN UX work
+
+```bash
+git add clients/chess-web/src/net_diag.rs clients/chess-web/src/lib.rs clients/chess-web/src/pages/lan.rs pitfalls/webrtc-mdns-lan-ap-isolation.md .specstory/history/ && git commit -m "$(cat <<'EOF'
+feat(chess-web): VPN-tunnel / CGNAT detection + STUN explainer on /lan/host and /lan/join
+
+User on the live GH Pages deploy hit two new failure modes after the
+prior commit's diagnostics shipped:
+
+1. Even on a personal hotspot the pairing failed because an iPad
+   VPN client was hijacking LAN routing — iOS reports `198.18.0.1`
+   (RFC 2544 Benchmark range) as the host candidate instead of the
+   real WiFi IP, so the Mac can never reach the iPad. Disabling the
+   VPN fixed it in <1 s.
+2. The "Use STUN" checkbox label said "workaround for hostile
+   networks" but didn't explain when STUN actually helps vs. when it
+   silently makes things slower with no benefit.
+
+Changes:
+
+* New native-tested `clients/chess-web/src/net_diag.rs` (7 unit tests):
+  parses `a=candidate:` lines from an SDP and classifies host IPs as
+  `VpnTunnel` (`198.18.0.0/15`), `Cgnat` (`100.64.0.0/10`), or
+  `Plain`. Pure string logic — wasm32 not required.
+* `pages/lan.rs::timeout_hint_for(sdp)` swaps the trailing hint of the
+  10-s DataChannel timeout error based on `classify(...)`:
+  - VpnTunnel → "DISABLE the VPN on both devices..." + the
+    split-tunnel CIDR list users with corporate VPNs need.
+  - Cgnat → points at iPhone/Android hotspot (TURN would be the real
+    fix but we don't ship a TURN server).
+  - Plain → the existing mDNS-failing-router hint.
+* Static `<p class="muted">` blocks below the iOS hint on both host
+  and join pages — one for VPN (always relevant), one for STUN
+  (explains srflx candidates, when to toggle on, when to leave off,
+  why it can't rescue symmetric NAT / CGNAT).
+* `pitfalls/webrtc-mdns-lan-ap-isolation.md` gains a "Sibling failure
+  mode — VPN tunnel" section so future agents reading pitfalls find
+  the iOS 198.18.x.x story without having to re-debug it. Cross-
+  references `net_diag::classify` so the link doesn't rot if the
+  module moves.
+
+Out of scope explicitly noted in the STUN explainer: TURN relay
+support. Users on CGNAT / symmetric NAT should fall back to running
+chess-net and using /lobby instead — that's what the wss:// path is
+for.
+
+Verified: cargo check / clippy / test (93 pass, 7 new in net_diag) /
+wasm32-unknown-unknown build all clean.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -5
+```
+
+```text
+[main 994f39f] feat(chess-web): VPN-tunnel / CGNAT detection + STUN explainer on /lan/host and /lan/join
+ 5 files changed, 1462 insertions(+), 4 deletions(-)
+ create mode 100644 clients/chess-web/src/net_diag.rs
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:36:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit chat input fix
+
+```bash
+git add clients/chess-web/style.css && git commit -m "$(cat <<'EOF'
+fix(chess-web): chat input "Send" button cut off on iPad — set min-width:0 on the flexed input
+
+User screenshot showed the chat textbox running to the panel's right
+edge with "Send" half-clipped (only "Sen" visible).
+
+Root cause: `<input>` defaults to `min-width: auto`, which in a flex
+context refuses to shrink below the placeholder's intrinsic width
+("Say something…" is ~115 px at the panel's font size). When the
+sidebar column is narrow (iPad landscape with the board taking most
+of the viewport), the flex container can't honour both the input's
+auto-min-width AND the Send button's intrinsic width, so the button
+gets pushed past the `.chat-panel`'s `overflow: hidden` clip.
+
+Fix: `min-width: 0` on `.chat-input input` so it shrinks, plus
+`flex-shrink: 0` on the paired `.btn` so Send keeps its full text.
+The placeholder text now clips inside the input on tight widths, but
+the Send affordance is always reachable — that's the right trade.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -5
+```
+
+```text
+[main 35153cb] fix(chess-web): chat input "Send" button cut off on iPad — set min-width:0 on the flexed input
+ 1 file changed, 10 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:36:52Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Show pending commits
+
+`git log --oneline origin/main..HEAD`
+
+```text
+35153cb fix(chess-web): chat input "Send" button cut off on iPad — set min-width:0 on the flexed input
+994f39f feat(chess-web): VPN-tunnel / CGNAT detection + STUN explainer on /lan/host and /lan/join
+5056996 style(chess-web): cargo fmt fixup for ICE diag commit
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:37:13Z)**_
+
+All four follow-ups landed.
+
+**Summary of this session's work:**
+
+- `994f39f` — VPN/CGNAT detection + STUN explainer:
+  - New `net_diag` module parses host candidate IPs from SDP and classifies them (`198.18.0.0/15` = iOS-VPN tunnel, `100.64.0.0/10` = CGNAT). 7 native tests.
+  - `/lan/host` 10-s timeout error now reads e.g. *"VPN tunnel detected (host candidate is in 198.18.0.0/15). DISABLE the VPN on both devices..."* with the split-tunnel CIDR list if you must keep VPN on (192.168/16, 10/8, 172.16/12, 172.20.10.0/28 iOS-hotspot, 224.0.0.0/4 mDNS).
+  - Static "VPN hint" + "STUN hint" `<p class="muted">` blocks on both host and join pages. The STUN explainer covers what STUN does (srflx public-IP candidate), when it helps (mDNS broken / different networks), and when it can't (healthy LAN waste, symmetric NAT / CGNAT need TURN).
+  - `pitfalls/webrtc-mdns-lan-ap-isolation.md` now has a "Sibling failure mode — VPN tunnel" section with the 2026-05-14 finding so future agents don't have to re-debug it.
+
+- `35153cb` — iPad chat input fix:
+  - `<input flex:1>` was inheriting `min-width: auto` and refusing to shrink below the placeholder's intrinsic width, pushing Send past the panel's overflow clip. Added `min-width: 0` on the input + `flex-shrink: 0` on the button.
+
+Branch is now ahead of origin by 3 commits (`5056996`, `994f39f`, `35153cb`). Push when you're ready.

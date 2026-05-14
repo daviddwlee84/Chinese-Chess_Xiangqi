@@ -332,6 +332,11 @@ body {
 }
 .chat-input input {
     flex: 1;
+    /* Without min-width:0 the flex item refuses to shrink below its
+       intrinsic placeholder width on narrow containers (iPad sidebar
+       column), pushing the Send button outside the .chat-panel's
+       overflow:hidden clip area so it renders as half-cut. */
+    min-width: 0;
     background: rgba(244, 210, 163, 0.06);
     color: var(--fg);
     border: 1px solid var(--grid);
@@ -341,6 +346,11 @@ body {
 }
 .chat-input input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .chat-input input:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-input .btn {
+    /* Pair with the input's min-width:0 — keep Send at its intrinsic
+       width even on tight columns instead of letting flex shrink it. */
+    flex-shrink: 0;
+}
 .spectator-badge { color: var(--accent); font-weight: 600; }
 .room-actions {
     display: flex;
