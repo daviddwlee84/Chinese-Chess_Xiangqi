@@ -139,6 +139,32 @@ pub fn PlayConnected(
     // waiting for the welcome.
     let (hints_allowed, set_hints_allowed) = create_signal::<Option<bool>>(None);
 
+    // Phase 6: surface a peer-disconnect toast when the underlying
+    // transport closes mid-game. For chess-net mode the existing
+    // "Disconnected — refresh" board placeholder already covers it;
+    // for LAN mode the host's session.state stays Open (the host's
+    // local sink doesn't drop), so this watcher mainly catches the
+    // joiner side when the host's DC closes.
+    //
+    // The host-side equivalent is in `host_room.rs::drop_peer`,
+    // which pushes a synthetic `ServerMsg::Error` onto the host's
+    // local sink — the existing match-arm above handles that path.
+    {
+        let prev_conn: std::rc::Rc<std::cell::Cell<ConnState>> =
+            std::rc::Rc::new(std::cell::Cell::new(ConnState::Connecting));
+        create_effect(move |_| {
+            let now = conn.get();
+            let was = prev_conn.replace(now);
+            if matches!(was, ConnState::Open) && matches!(now, ConnState::Closed | ConnState::Error)
+            {
+                // Only surface as a toast — the existing fallback
+                // board placeholder will still show "Disconnected"
+                // for the chess-net mode wall.
+                set_toast.set(Some("Peer disconnected — LAN game ended.".into()));
+            }
+        });
+    }
+
     create_effect(move |_| {
         // Drain the queue: read all currently-pending ServerMsgs in
         // arrival order via `Incoming::drain`. The drain reads ALL

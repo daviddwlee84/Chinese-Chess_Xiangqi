@@ -25,6 +25,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
+use crate::beforeunload::use_beforeunload_guard;
 use crate::camera::has_camera;
 use crate::components::qr::QrCodeView;
 use crate::components::qr_scanner::QrScanner;
@@ -134,6 +135,16 @@ pub fn LanHostPage() -> impl IntoView {
     let (offer_blob, set_offer_blob) = create_signal::<String>(String::new());
     let (answer_input, set_answer_input) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+
+    // Phase 6: tab-close protection while a game is in progress.
+    // Closing the host tab kills the LAN room with no recovery, so
+    // ask for confirmation. Modern browsers ignore the message text
+    // and show a generic prompt — we still pass one for older
+    // browser compat.
+    use_beforeunload_guard(
+        Signal::derive(move || matches!(status.get(), HostStatus::Playing)),
+        "Closing this tab will end the LAN room. Continue?",
+    );
 
     // ── Variant + rules form state ─────────────────────────────
     // Mirrors picker.rs::BanqiCard: one bool signal per HouseRules
@@ -661,6 +672,14 @@ pub fn LanJoinPage() -> impl IntoView {
     let (offer_input, set_offer_input) = create_signal::<String>(String::new());
     let (answer_blob, set_answer_blob) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
+
+    // Phase 6: tab-close protection while a game is in progress.
+    // Joiner closing the tab leaves the host with a half-game and
+    // no recovery (peer disconnect ends the room).
+    use_beforeunload_guard(
+        Signal::derive(move || matches!(status.get(), JoinStatus::Playing)),
+        "Closing this tab will end the LAN game. Continue?",
+    );
 
     // QR scanner modal state. See LanHostPage for the same pattern.
     let (scanner_open, set_scanner_open) = create_signal::<bool>(false);

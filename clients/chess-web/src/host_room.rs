@@ -340,10 +340,26 @@ impl HostRoom {
     /// caller is responsible for invoking this from a DataChannel
     /// `onclose` event — production wires it via
     /// `install_remote_dc_handlers`.
+    ///
+    /// In addition to the room-level outbounds, push a synthetic
+    /// `ServerMsg::Error { message: "Player disconnected" }` to the
+    /// host's local sink so the play page's existing toast pump
+    /// surfaces the disconnect. Without this, a peer-DC drop is
+    /// invisible to the host (the room's silent state advance via
+    /// `Room::leave` doesn't change any visible game-state field).
     pub fn drop_peer(&self, peer: PeerId) {
         let outbound = self.room.borrow_mut().leave(peer);
         self.fanout(outbound);
         self.sinks.borrow_mut().remove(&peer);
+        // Notify the host with a generic disconnect toast. We don't
+        // know the peer's display name (chess-net protocol v6 has no
+        // user-facing identity for LAN peers), so the message is
+        // generic. Future Phase 6.5 spectator UI can specialise.
+        if let Some(host_sink) = self.sinks.borrow().get(&self.self_peer) {
+            host_sink.deliver(ServerMsg::Error {
+                message: "Peer disconnected — LAN game ended.".into(),
+            });
+        }
     }
 }
 // SECTION: install_remote_dc_handlers (Weak<HostRoom> closures)

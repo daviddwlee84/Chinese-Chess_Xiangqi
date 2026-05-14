@@ -34,6 +34,8 @@ wasm-bindgen-futures = "0.4"
 web-sys       = { version = "0.3", features = [
     "Window", "Location", "Storage", "KeyboardEvent", "Event", "EventTarget",
     "Navigator", "CustomEvent", "Performance",
+    # `BeforeUnloadEvent` for Phase 6 host-tab-close confirm.
+    "BeforeUnloadEvent",
     # WebRTC spike — backlog/webrtc-lan-pairing.md Phase 0
     "RtcPeerConnection", "RtcConfiguration", "RtcSdpType",
     "RtcSessionDescription", "RtcSessionDescriptionInit",
