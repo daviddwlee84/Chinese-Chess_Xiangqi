@@ -10,12 +10,19 @@
 //! SPA fallback HTML, not the JS file).
 //!
 //! The lazy loader uses an absolute URL built from
-//! `window.location.origin` + `/jsQR.min.js`, which works on:
-//! - Trunk dev server (asset at root).
-//! - Production (chess-net `--static-dir` serving dist at root).
-//! - GitHub Pages with `--public-url /Chinese-Chess_Xiangqi/` (a
-//!   `<base href="...">` tag would also work, but lazy-load avoids
-//!   the leptos_router-vs-base-href conflict).
+//! `window.location.origin` + [`crate::routes::base_path`] +
+//! `/jsQR.min.js`. The base-path piece is baked at build time from
+//! `CHESS_WEB_BASE_PATH` (Trunk's `--public-url` minus the trailing
+//! slash). That covers all three deploy shapes:
+//! - Trunk dev server / chess-net `--static-dir` root: base = `""`,
+//!   URL = `{origin}/jsQR.min.js`.
+//! - GitHub Pages with `--public-url /Chinese-Chess_Xiangqi/`:
+//!   base = `/Chinese-Chess_Xiangqi`, URL =
+//!   `{origin}/Chinese-Chess_Xiangqi/jsQR.min.js`.
+//!
+//! Skipping the base-path piece (just `{origin}/jsQR.min.js` on GH
+//! Pages) 404s — that was the original bug for the iOS scanner error
+//! "JsValue(\"jsQR script load error\")".
 //!
 //! ## Why jsQR (not pure-Rust `rqrr`)
 //!
@@ -105,9 +112,12 @@ pub async fn ensure_loaded() -> Result<(), JsValue> {
 
     // Build absolute URL so the relative-URL-on-SPA-route trap
     // (`/lan/host` resolving `jsQR.min.js` to `/lan/jsQR.min.js` →
-    // SPA fallback HTML) is sidestepped.
+    // SPA fallback HTML) is sidestepped. Include the build-time
+    // base path so the GH Pages subpath deploy lands on the right
+    // asset.
     let origin = win.location().origin().map_err(|_| JsValue::from_str("no origin"))?;
-    let url = format!("{origin}/jsQR.min.js");
+    let base = crate::routes::base_path();
+    let url = format!("{origin}{base}/jsQR.min.js");
 
     let script: HtmlScriptElement =
         doc.create_element("script")?.dyn_into::<HtmlScriptElement>()?;

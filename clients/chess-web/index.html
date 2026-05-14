@@ -55,10 +55,11 @@
     <!-- jsQR (~130 KB minified, ~38 KB gzipped) is loaded LAZILY by
          qr_decode.rs::ensure_loaded() the first time the LAN camera
          scanner mounts. The asset is copied to dist/ via the
-         copy-file directive above; the dynamic loader uses an
-         absolute URL based on window.location.origin so it works
-         regardless of the current SPA route or deployment base
-         path (server vs GitHub Pages /Chinese-Chess_Xiangqi/). -->
+         copy-file directive above; the dynamic loader builds an
+         absolute URL from window.location.origin + the build-time
+         base path (routes::base_path) so it resolves correctly on
+         both server-root deploys and GitHub Pages subpath deploys
+         (e.g. /Chinese-Chess_Xiangqi/). -->
 </head>
 <body>
     <div id="boot-loader" class="boot-loader" role="status" aria-live="polite">
