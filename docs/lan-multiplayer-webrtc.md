@@ -54,6 +54,8 @@ The fit-for-purpose checklist before copying this:
 | Discovery | ⚠️ manual SDP exchange (or QR) | ❌ no auto-discovery without a relay |
 | Reconnect | ❌ host tab close = game over | n/a |
 | Network requirements | ✅ same LAN, mDNS works (most home WiFi) | ❌ AP-isolated networks (some routers, public WiFi) |
+| VPN client active | ❌ even on the SAME LAN — VPN replaces LAN IP with `198.18.x.x` tunnel address | n/a (must disable VPN or split-tunnel LAN ranges) |
+| Carrier-grade NAT | ❌ STUN srflx doesn't hairpin through CGNAT | use `/lobby` (wss) — relay path |
 | Re-pair a saved peer | ❌ every session needs fresh SDP | n/a |
 
 **The killer feature**: zero external dependency at runtime. Once both
@@ -66,14 +68,46 @@ WiFi or a hotspot.
 still requires camera aiming. There's no "saved peer = instant
 reconnect" — WebRTC SDPs are session-specific.
 
-**Same-LAN gotcha**: some routers (verified: Mi AX9000) silently drop
-WebRTC's mDNS `<uuid>.local` resolution while letting general mDNS
-through (Bonjour, AirPlay). See
-[`pitfalls/webrtc-mdns-lan-ap-isolation.md`](../pitfalls/webrtc-mdns-lan-ap-isolation.md).
-The STUN-fallback toggle in the UI papers over this when present, but
-needs reachable STUN servers (which the GFW blocks for
-`stun.l.google.com` — we ship a multi-server list ordered for CN
-reachability).
+**Same-LAN gotchas — three distinct failure modes** (all surface as
+"ICE: checking" forever + DC-open timeout, all need different fixes):
+
+1. **Router silently drops WebRTC mDNS** (verified: Mi AX9000). General
+   mDNS works — AirPlay, Bonjour service discovery — but the
+   per-session `<uuid>.local` hostnames WebRTC generates don't resolve
+   cross-device. STUN srflx can sometimes paper over it. See
+   [`pitfalls/webrtc-mdns-lan-ap-isolation.md`](../pitfalls/webrtc-mdns-lan-ap-isolation.md).
+
+2. **VPN client active on either device** (verified: iPad with
+   Cloudflare WARP / generic iOS VPN). iOS hands WebRTC a synthetic
+   `198.18.0.0/15` host candidate instead of the real LAN IP, so the
+   peer can never reach it. Personal-hotspot fallback doesn't help —
+   if the iPad itself is on a VPN, its own hotspot routes peer traffic
+   through the tunnel. **Fix: disable the VPN on both devices**, or
+   configure split-tunnel to bypass private LANs + `172.20.10.0/28`
+   (iOS hotspot) + `224.0.0.0/4` (mDNS multicast).
+
+3. **CGNAT / symmetric NAT** (verified: some mobile carriers, hotel
+   WiFi). Host candidate lands in `100.64.0.0/10`. Even STUN srflx
+   doesn't help because the carrier NAT doesn't hairpin between two
+   clients on the same exit. **No code-side fix exists** — would need
+   a TURN relay. The UI directs users to fall back to running chess-net
+   and using `/lobby` instead.
+
+The runtime diagnostic surface (added 2026-05-14) lets a user tell
+these apart at a glance — see [Runtime diagnostics](#runtime-diagnostics)
+below. The 10-s `DataChannel did not open` error message now reads the
+host's SDP candidate IPs and swaps in the correct hint via
+`clients/chess-web/src/net_diag.rs::classify`.
+
+**STUN — when to toggle on**: STUN servers tell the browser its own
+public IP and add an `srflx` candidate. Helps when (a) same LAN but
+mDNS fails (case 1 above), or (b) two devices on different healthy
+networks. Doesn't help on (2) VPN or (3) CGNAT. On a healthy same-LAN
+setup it's pure overhead — adds up to 5 s of gather delay. We ship a
+CN-reachable multi-server list (`stun.miwifi.com`, `stun.qq.com`,
+`stun.cloudflare.com`, `stun.l.google.com` last because GFW), and the
+gather timeout caps the wait so a dead server can't hang offer
+generation.
 
 ---
 
@@ -426,9 +460,87 @@ steps in the AGENTS.md pre-push checklist:
 ---
 
 <a id="pitfalls-index"></a>
+<a id="runtime-diagnostics"></a>
+## Runtime diagnostics — telling failure modes apart at a glance
+
+Added 2026-05-14 after the production deploy on GH Pages hit two
+distinct ICE failures in the same week (Xiaomi router mDNS quirk +
+iPad VPN tunnel hijack) and the original error message (`DataChannel
+did not open within 10 s — pairing failed (network blocked?)`) was
+useless for telling them apart.
+
+Two things now live in the LAN page:
+
+### Live ICE / connection / gathering badge
+
+Renders as one line under `Status:` on both `/lan/host` and
+`/lan/join` once a handshake is in flight:
+
+```
+ICE: checking · connection: connecting · gathering: complete · candidates: 1
+```
+
+Driven by a `ReadSignal<IceDiag>` exposed on `HostHandshake` /
+`JoinerHandshake`. The signal updates from listeners installed in
+`install_ice_diag_handlers` (`transport/webrtc.rs`):
+`oniceconnectionstatechange`, `onconnectionstatechange`,
+`onicecandidate`, plus the `onicegatheringstatechange` listener that
+piggybacks on `wait_for_ice_complete`'s gather-done detection (one
+callback slot per event). Each transition is also `console.log`'d so
+DevTools shows the full progression.
+
+How to read the values when pairing is stuck:
+
+| `ICE:` value | What it means |
+|---|---|
+| `new` | Hasn't started checking yet — usually means the remote SDP hasn't been applied. |
+| `checking` | Probing candidate pairs. Sitting here for >5 s = router/VPN blocked the path (cases 1 + 2 above). |
+| `connected` / `completed` | ICE is fine — if DC still doesn't open, look at SCTP / DTLS, not ICE. |
+| `disconnected` | ICE was up but the path broke. WiFi roam, host sleep, etc. |
+| `failed` | All candidate pairs exhausted; nothing reachable. Same diagnosis as `checking`-forever. |
+
+| `candidates:` | What it means |
+|---|---|
+| 0–1 | mDNS-only (`.local`). Toggle STUN ON to widen the net. |
+| 2–4 | Healthy: one mDNS + one or two srflx (STUN). |
+| In SDP: `198.18.x.x` | VPN tunnel — disable VPN. |
+| In SDP: `100.64.x.x` – `100.127.x.x` | CGNAT — STUN won't rescue you; use `/lobby`. |
+
+### Auto-classifying timeout error message
+
+When `wait_for_dc_open(&dc, 10_000)` returns false, the LAN host page
+reads the host's `pc.local_description()` SDP, runs it through
+`net_diag::classify(parse_candidate_addrs(sdp))`, and picks one of
+three trailing hints:
+
+- `NetDiag::VpnTunnel` — "DISABLE the VPN on both devices..." plus
+  the split-tunnel CIDR list (192.168/16, 10/8, 172.16/12, iOS
+  hotspot 172.20.10.0/28, multicast 224.0.0.0/4).
+- `NetDiag::Cgnat` — "iPhone/Android personal hotspot" + note that
+  TURN would be the real fix.
+- `NetDiag::Plain` — the original mDNS-failing-router hint.
+
+`net_diag.rs` is pure-logic + native-tested (7 unit tests covering
+parse + classification + range edges). The classifier checks 198.18.0.0/15
+(VPN tunnel) BEFORE 100.64.0.0/10 (CGNAT) because VPN is the more
+common cause and the fix is "user-side" whereas CGNAT needs an
+escape hatch.
+
+### Why this beats raising the 10-s DC-open timeout
+
+The first instinct on "we time out before connecting" is "make the
+timeout longer". Resist it. On the routers / VPNs we've seen,
+ICE goes to `checking → disconnected / failed` within 1–2 s of the DC
+attempt and never recovers; the 10 s is already 5–10× more than
+needed for the happy path. The fix is "tell the user which layer is
+broken so they can fix it" — surfacing the state is far cheaper than
+chasing a longer-wait band-aid.
+
+---
+
 ## Pitfalls index
 
-Five distinct classes of bug, each with a dedicated `pitfalls/<slug>.md`.
+Six distinct classes of bug, each with a dedicated `pitfalls/<slug>.md`.
 Read these *before* writing similar code — at least the headlines.
 
 ### Network / WebRTC
@@ -437,7 +549,10 @@ Read these *before* writing similar code — at least the headlines.
    — Some routers (verified: Mi AX9000 firmware 1.0.168) silently
    drop WebRTC's `<uuid>.local` mDNS resolution while letting general
    mDNS through. STUN fallback works around it but needs reachable
-   STUN servers.
+   STUN servers. **Same file** now also documents (2026-05-14) the
+   sibling failure mode where iOS / iPadOS VPN clients hand WebRTC a
+   `198.18.0.0/15` tunnel address as the host candidate, breaking
+   LAN discovery even on a clean WiFi or hotspot.
 
 2. **[`webrtc-set-remote-description-resolves-before-dc-open.md`](../pitfalls/webrtc-set-remote-description-resolves-before-dc-open.md)**
    — `accept_answer().await` resolves on SDP application, BEFORE
@@ -795,10 +910,19 @@ Remaining pain points:
 
 ### Out of scope for v1 (and likely v2)
 
-- **Cross-LAN (TURN relay)** — would need a server. The whole point
-  of v1 is "no server at runtime". If demand emerges, the original
-  backlog has Approach C (chess-net `/signal/<token>` endpoint that
-  forwards SDPs without knowing about chess) as a 50-line addition.
+- **Cross-LAN (TURN relay) / signalling broker** — **deliberately not
+  implementing**, even though the original backlog (`backlog/webrtc-lan-pairing.md`
+  Approach C) sketched a chess-net `/signal/<token>` endpoint that
+  could forward SDPs + trickle ICE. The 2026-05-14 production debug
+  surfaced the architectural argument against it: if you're willing
+  to run a server anyway, the existing chess-net `/lobby` (wss://) is
+  **simpler, more reliable, and already shipped**. WebRTC's only
+  value-add is "no server needed for P2P" — once that constraint is
+  relaxed, an extra WebRTC handshake on top of an existing
+  signalling-WS connection is pure complexity with no benefit. The
+  STUN/VPN hint text directs unreachable-network users at `/lobby`
+  instead. (Re-read this before someone proposes "let's just add a
+  signalling endpoint" in a year.)
 - **Three-player mesh for 三國暗棋** — needs full mesh of 3
   PeerConnections OR host-as-relay. Tracked separately; depends on
   the variant itself shipping first
