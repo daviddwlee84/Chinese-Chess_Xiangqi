@@ -627,11 +627,16 @@ body {
     stroke-width: 2;
     pointer-events: none;
 }
-/* Floating toast — overlays the board top-center so its mount/unmount
- * doesn't reflow the flex column and snap the SVG to a different size. */
+/* Floating toast — positioned ABOVE the board pane (negative top) so
+ * its mount/unmount doesn't reflow the flex column or snap the SVG to
+ * a different size, AND it doesn't cover the top row of pieces / tiles.
+ * Previous `top: 0.6rem` placed it inside .board-pane's padding which
+ * overlapped the first board row (banqi top-rank tiles, xiangqi rank 9
+ * pieces). The negative offset floats it in the empty space above the
+ * board card — visible against the dark page background, no overlap. */
 .chain-banner {
     position: absolute;
-    top: 0.6rem;
+    top: -2.4rem;
     left: 50%;
     transform: translateX(-50%);
     z-index: 25;

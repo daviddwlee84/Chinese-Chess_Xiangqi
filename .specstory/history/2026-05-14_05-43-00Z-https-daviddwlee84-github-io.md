@@ -25489,3 +25489,973 @@ Both commits landed:
 - **`77d62ee`** — Play page sidebar (used by both LAN and chess-net) now renders `describe_rules(&r)` instead of just the variant slug. Joiner sees "Banqi · house: chain,rush · seed: 42" instead of "banqi".
 
 Verified end-to-end via playwright: host configured Banqi + Taiwan + seed=42, joiner paired, both peers reached the play page with the banqi 4×8 board (32 hidden tiles, identical shuffle from the deterministic seed) and the same rules summary in their sidebars. Three-kingdom is excluded from the dropdown (3-player, doesn't fit 2-peer pairing). Native test suite: 99 pass, including 6 new `describe_rules` tests. Workspace clippy + fmt clean. Commits unpushed.
+
+---
+
+_**User (2026-05-14 09:54:18Z)**_
+
+目前有小小的UI問題 就是連吃的浮動彈窗會overlap棋盤 至少不要蓋過棋子[Image #10]
+
+_**User (2026-05-14 09:54:18Z)**_
+
+[Image: source: /Users/daviddwlee84/Downloads/IMG_2441.PNG]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:35Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:35Z)**_
+
+Let me find the chain-capture banner code:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate chain-capture banner code
+
+`grep -rn "連吃\|繼續吃\|End chain\|chain-banner\|chain_banner\|EndChain" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/ | head -20`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:106:/// move dots). In banqi 連吃 chain mode the engine adds
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:107:/// `Move::EndChain { at: chain_lock }` to `legal_moves`; that move has
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:120:            Move::EndChain { .. } => None,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:127:/// `Move::EndChain` (e.g. user clicks the locked piece itself to release
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:130:    view.chain_lock.map(|at| Move::EndChain { at })
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:426:        assert!(matches!(end_chain_move(&view), Some(Move::EndChain { at }) if at == s1));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:433:        // `Move::EndChain { at }` (whose `to_square()` returns None
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:436:        // markers on screen. Now EndChain is filtered out here and
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:470:        // Confirm the engine actually emitted EndChain alongside the next-hop capture.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:471:        assert!(view.legal_moves.iter().any(|m| matches!(m, Move::EndChain { .. })));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:474:        // square (where EndChain "lives") as a movement target.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/state.rs:477:        assert!(!targets.contains(&s1), "EndChain's `at` must NOT show up as a target dot");
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/prefs.rs:122:    /// `EndChain` filtered out).
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs:90:    /// square; `EndChain` is filtered out by the engine projection
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs:530:/// engine projection already filters `EndChain` out, so we treat
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs:531:/// "no move" / `EndChain` as a no-op.
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs:540:    // EndChain has no `to_square` and no real board change — bail
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/board.rs:542:    if matches!(m, Move::EndChain { .. }) {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/picker.rs:670:                    <span>"連吃 — chain captures along a line"</span>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:356:    // engine projection already filters `EndChain` so we don't need
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find banner text or class
+
+`grep -rn "繼續吃\|連吃 —\|chain-banner\|chain_banner\|ChainBanner" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/ 2>/dev/null | head -15`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css:632:.chain-banner {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/dist/style-fcef9ece41f493b7.css:632:.chain-banner {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/dist-static/style-573c4e5358c81ed.css:622:.chain-banner {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs:443:                                    <span>"連吃 — chain captures along a line"</span>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:574:            <div class="chain-banner">
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:575:                <span>"連吃 — 繼續吃 or "</span>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:920:                    <div class="chain-banner">
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:921:                        <span>"連吃 — 繼續吃 or "</span>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:928:                    <div class="chain-banner ai-thinking-banner">
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/picker.rs:670:                    <span>"連吃 — chain captures along a line"</span>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:51Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:52Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+625	    fill: rgba(80, 140, 200, 0.30);
+626	    stroke: rgba(80, 140, 200, 0.65);
+627	    stroke-width: 2;
+628	    pointer-events: none;
+629	}
+630	/* Floating toast — overlays the board top-center so its mount/unmount
+631	 * doesn't reflow the flex column and snap the SVG to a different size. */
+632	.chain-banner {
+633	    position: absolute;
+634	    top: 0.6rem;
+635	    left: 50%;
+636	    transform: translateX(-50%);
+637	    z-index: 25;
+638	    padding: 0.4rem 0.8rem;
+639	    background: rgba(245, 166, 35, 0.92);
+640	    border: 1px solid #f5a623;
+641	    border-radius: 0.4rem;
+642	    color: #1a1614;
+643	    display: inline-flex;
+644	    align-items: center;
+645	    gap: 0.5rem;
+646	    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+647	    pointer-events: auto;
+648	    white-space: nowrap;
+649	    font-weight: 600;
+650	}
+651	.ai-thinking-banner {
+652	    background: rgba(212, 165, 92, 0.92);
+653	    border-color: var(--accent);
+654	}
+655	.btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
+656	
+657	/* Hit-test cells. Transparent but clickable.
+658	   pointer-events: all stops iOS Safari from skipping the rect when fill is
+659	   transparent. The :hover rule is gated on hover-capable devices because
+660	   iOS otherwise treats the first tap as a hover (consuming the click). */
+661	.cell-hit {
+662	    fill: transparent;
+663	    cursor: pointer;
+664	    touch-action: manipulation;
+665	    pointer-events: all;
+666	}
+667	@media (hover: hover) and (pointer: fine) {
+668	    .cell-hit:hover { fill: rgba(212, 165, 92, 0.18); }
+669	}
+670	
+671	/* Sidebar. */
+672	.sidebar {
+673	    background: rgba(244, 210, 163, 0.04);
+674	    border: 1px solid var(--grid);
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:54:53Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+560	    });
+561	
+562	    view! {
+563	        <Board
+564	            shape=shape
+565	            observer=obs
+566	            view=view
+567	            selected=effective_selected
+568	            on_click=on_click
+569	            highlighted_pv=highlighted_pv
+570	            threats=threat_overlay
+571	            last_move=last_move_signal
+572	        />
+573	        <Show when=move || chain_active.get() && !is_spectator>
+574	            <div class="chain-banner">
+575	                <span>"連吃 — 繼續吃 or "</span>
+576	                <button class="btn btn-ghost btn-sm" on:click=on_end_chain.clone()>
+577	                    "End chain"
+578	                </button>
+579	            </div>
+580	        </Show>
+581	    }
+582	}
+583	
+584	#[component]
+585	fn OnlineSidebar(
+586	    room: String,
+587	    role: ReadSignal<Option<ClientRole>>,
+588	    view_signal: ReadSignal<Option<PlayerView>>,
+589	    rules: ReadSignal<Option<RuleSet>>,
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:10Z)**_
+
+Let me check the parent containing both the Board and chain-banner, plus the local.rs counterpart:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:12Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+350	                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+351	                        role=role_for_overlay
+352	                        enabled=fx_confetti
+353	                    />
+354	                    <CapturedStrip
+355	                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+356	                    />
+357	                </Show>
+358	                <Show when=move || toast.get().is_some()>
+359	                    <div class="toast" on:click=move |_| set_toast.set(None)>
+360	                        {move || toast.get().unwrap_or_default()}
+361	                    </div>
+362	                </Show>
+363	            </div>
+364	            <div class="right-column">
+365	                <OnlineSidebar
+366	                    room=room_label
+367	                    role=role
+368	                    view_signal=view_signal
+369	                    rules=rules
+370	                    conn=conn
+371	                    handle=handle_for_sidebar
+372	                    ws_base=ws_base.clone()
+373	                    show_hint_button=show_hint_button
+374	                    hint_open=hints_open
+375	                    back_link_override=back_link_override
+376	                />
+377	                <ChatPanel
+378	                    role=role.into()
+379	                    log=chat.into()
+380	                    on_send=on_chat_send
+381	                />
+382	            </div>
+383	            <Show when=move || panel_visible.get()>
+384	                {move || {
+385	                    // Pre-build a fresh xiangqi board for ICCS encoding.
+386	                    // Net mode doesn't have a fixed Board reference; the
+387	                    // debug panel only uses it for `iccs::encode_move`
+388	                    // which only needs board dimensions, not positions.
+389	                    let board = chess_core::board::Board::new(BoardShape::Xiangqi9x10);
+390	                    view! {
+391	                        <DebugPanel
+392	                            analysis=analysis_signal
+393	                            board=board
+394	                            on_hover=on_debug_hover
+395	                            title=panel_title
+396	                            subtitle=panel_subtitle
+397	                        />
+398	                    }
+399	                }}
+400	            </Show>
+401	        </section>
+402	    }
+403	}
+404	
+405	#[component]
+406	fn ConnPlaceholder(room: String, conn: ReadSignal<ConnState>) -> impl IntoView {
+407	    let label = move || match conn.get() {
+408	        ConnState::Connecting => "Connecting…".to_string(),
+409	        ConnState::Open => "Waiting for server greeting…".to_string(),
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:19Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+300	                difficulty: Difficulty::Hard,
+301	                max_depth: None,
+302	                seed: Some(0xDEBA9_u64),
+303	                strategy: Strategy::default(),
+304	                randomness: Some(chess_ai::Randomness::STRICT),
+305	                node_budget: None,
+306	            };
+307	            // Yield a frame so the board re-paints first; keeps the UI
+308	            // snappy even if v5 Hard takes ~300 ms in WASM.
+309	            wasm_bindgen_futures::spawn_local(async move {
+310	                gloo_timers::future::TimeoutFuture::new(40).await;
+311	                // Time the search so the debug panel can show the
+312	                // wall-clock cost — chess-ai itself can't measure on
+313	                // wasm (Instant::now panics) so we patch the result
+314	                // in here. See `crate::time::perf_now_ms` doc.
+315	                let start = crate::time::perf_now_ms();
+316	                let mut analysis = chess_ai::analyze(&state, &opts);
+317	                let elapsed = crate::time::perf_now_ms().saturating_sub(start);
+318	                if let Some(ref mut a) = analysis {
+319	                    a.elapsed_ms = Some(elapsed);
+320	                }
+321	                ai_analysis.set(analysis);
+322	            });
+323	        });
+324	    }
+325	
+326	    let highlighted_pv_signal: Signal<Vec<Move>> = highlighted_pv.into();
+327	    let analysis_signal: Signal<Option<AiAnalysis>> = ai_analysis.into();
+328	    let on_debug_hover: Callback<Vec<Move>> =
+329	        Callback::new(move |pv: Vec<Move>| highlighted_pv.set(pv));
+330	
+331	    view! {
+332	        <section class="game-page">
+333	            <div class="board-pane">
+334	                <Show when=move || hints_allowed.get().unwrap_or(false)>
+335	                    <div class="hints-banner">
+336	                        "🧠 AI hints enabled in this room — visible to both players + spectators."
+337	                    </div>
+338	                </Show>
+339	                <Show
+340	                    when=move || view_signal.get().is_some() && role.get().is_some()
+341	                    fallback=move || view! { <ConnPlaceholder room=room.clone() conn=conn/> }
+342	                >
+343	                    <BoardWrapper
+344	                        view_signal=view_signal
+345	                        role=role
+346	                        handle=handle_for_board.clone()
+347	                        highlighted_pv=highlighted_pv_signal
+348	                    />
+349	                    <EndOverlay
+350	                        view=Signal::derive(move || view_for_overlay.get().expect("guarded by Show"))
+351	                        role=role_for_overlay
+352	                        enabled=fx_confetti
+353	                    />
+354	                    <CapturedStrip
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find board-pane CSS
+
+`grep -n "\.board-pane\|\.game-page\|\.board-wrap\|BoardWrapper\|board-stack" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -10`
+
+```text
+197:.game-page {
+203:.game-page--single { grid-template-columns: 1fr; }
+204:@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+214:    .board-pane {
+221:    .board-pane > svg.board {
+238:.board-pane--mirror {
+248:.board-pane--mirror > svg.board {
+258: * top and bottom of `.board-pane--mirror`, aligned to the right edge.
+368:.board-pane {
+377:/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find BoardWrapper component
+
+`grep -n "BoardWrapper\|fn BoardWrapper" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs | head -5`
+
+```text
+343:                    <BoardWrapper
+422:fn BoardWrapper(
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:55:42Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+365	.back-link:hover { color: var(--accent); }
+366	
+367	/* Board pane + SVG. */
+368	.board-pane {
+369	    position: relative;
+370	    background: var(--board);
+371	    border: 4px solid var(--board-edge);
+372	    border-radius: 0.5rem;
+373	    padding: 0.5rem;
+374	    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+375	}
+376	
+377	/* Captured-pieces strip rendered directly under .board (inside .board-pane).
+378	 * Two stacked rows — Black dead on top (Red's trophies), Red dead below
+379	 * (Black's trophies) — each piece a small disc-icon mirroring board style. */
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:50Z)**_
+
+Let me check if there's any `overflow: hidden` on ancestors that would clip a negatively-positioned banner:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:51Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check for overflow constraints
+
+`grep -n "overflow:" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -10`
+
+```text
+87:    overflow: hidden;
+300:    overflow: hidden;
+338:       overflow:hidden clip area so it renders as half-cut. */
+964:    overflow: hidden;
+1454:.pwa-toast__msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+1565:    overflow: hidden;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:52Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+196	
+197	.game-page {
+198	    display: grid;
+199	    grid-template-columns: minmax(0, 1fr) 280px;
+200	    gap: 1.5rem;
+201	    align-items: start;
+202	}
+203	.game-page--single { grid-template-columns: 1fr; }
+204	@media (max-width: 720px) { .game-page { grid-template-columns: 1fr; } }
+205	
+206	/* Non-mirror viewport fit (desktop / two-column layout). Cap the board
+207	 * pane to the available viewport height (minus `.app-shell`'s 2rem top +
+208	 * 2rem bottom padding) so the page never scrolls. The pane becomes a
+209	 * flex column whose SVG board takes whatever vertical space remains
+210	 * after the captured strip + any optional banners. Mobile / portrait
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:58Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+85	.boot-progress {
+86	    height: 0.55rem;
+87	    overflow: hidden;
+88	    border: 1px solid rgba(212, 165, 92, 0.36);
+89	    border-radius: 999px;
+90	    background: rgba(0, 0, 0, 0.28);
+91	}
+92	.boot-progress span {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:56:58Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+293	.chat-panel {
+294	    background: rgba(244, 210, 163, 0.04);
+295	    border: 1px solid var(--grid);
+296	    border-radius: 0.5rem;
+297	    display: grid;
+298	    grid-template-rows: 1fr auto;
+299	    height: 320px;
+300	    overflow: hidden;
+301	}
+302	.chat-log {
+303	    overflow-y: auto;
+304	    padding: 0.5rem 0.75rem;
+305	    font-size: 0.88rem;
+306	    display: flex;
+307	    flex-direction: column;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:11Z)**_
+
+Let me look at the `ai-thinking-banner` and the BoardWrapper structure to make sure the fix works for both:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:14Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+418	    }
+419	}
+420	
+421	#[component]
+422	fn BoardWrapper(
+423	    view_signal: ReadSignal<Option<PlayerView>>,
+424	    role: ReadSignal<Option<ClientRole>>,
+425	    handle: Rc<dyn Transport>,
+426	    /// Optional debug PV chain to highlight on the board (no-op in
+427	    /// non-debug mode). Always-empty signal in normal play.
+428	    #[prop(into)]
+429	    highlighted_pv: Signal<Vec<Move>>,
+430	) -> impl IntoView {
+431	    let view = Signal::derive(move || view_signal.get().expect("guarded by Show"));
+432	    let resolved_role = role.get_untracked().expect("guarded by Show");
+433	    let obs = resolved_role.observer();
+434	    let shape = view.with_untracked(|v| v.shape);
+435	
+436	    let selected = create_rw_signal::<Option<Square>>(None);
+437	    // Spectators see-only — no click handlers on the board for them.
+438	    let is_spectator = resolved_role.is_spectator();
+439	
+440	    // Clear stale selection when the seat-to-move flips (mirrors the
+441	    // local page) — covers the chain-mode tail and any other path that
+442	    // forgets to reset `selected` on its own.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:14Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+915	                    mirror_black=mirror_signal
+916	                    threats=threat_overlay
+917	                    last_move=last_move_signal
+918	                />
+919	                <Show when=move || chain_active.get()>
+920	                    <div class="chain-banner">
+921	                        <span>"連吃 — 繼續吃 or "</span>
+922	                        <button class="btn btn-ghost btn-sm" on:click=move |_| on_end_chain.call(())>
+923	                            "End chain"
+924	                        </button>
+925	                    </div>
+926	                </Show>
+927	                <Show when=move || ai_thinking.get()>
+928	                    <div class="chain-banner ai-thinking-banner">
+929	                        <span>"⏳ AI thinking…"</span>
+930	                    </div>
+931	                </Show>
+932	                <Show when=move || wip>
+933	                    <div class="wip-overlay">
+934	                        <div class="wip-banner">
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:25Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:26Z)**_
+
+Create a task and apply the CSS fix:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:28Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Move .chain-banner above the board pane (negative top) so it doesn't cover the top row of tiles. Affects /play (LAN + chess-net) and /local pages — both use the same CSS class. Same change also fixes the ai-thinking-banner overlap.
+
+```text
+Task #16 created successfully: Fix chain-banner overlapping board pieces
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:53Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:54Z)**_
+
+Restart the dev server, navigate to a banqi game with chain rule enabled, and inject a banner to verify the position visually:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:58:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Start dev server
+
+`make play-web 2>&1 | tail -5`
+
+```text
+Command running in background with ID: bs44hdllm. Output is being written to: /private/tmp/claude-501/-Volumes-Data-Program-tries-2026-05-06-chinese-chess/8969c930-068d-4f77-b985-c21bca8836ec/tasks/bs44hdllm.output. You will be notified when it completes. To check interim output, use Read on that file path.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:00Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wait for trunk dev server
+
+`until curl -s http://localhost:8080/ | grep -q "<html\|leptos\|trunk"; do sleep 3; done; echo "trunk up"`
+
+```text
+trunk up
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:15Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Open banqi with chain rule
+
+`playwright-cli open "http://localhost:8080/local/banqi?house=chain&seed=42" 2>&1 | tail -3`
+
+```text
+- [Snapshot](.playwright-cli/page-2026-05-14T09-59-15-162Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T09-59-13-715Z.log#L1-L2
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:23Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:23Z)**_
+
+Inject a chain-banner via JS to test positioning without needing to play a real chain capture:
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:27Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inject fake chain-banner via JS
+
+`playwright-cli eval "() => { const wrapper = document.querySelector('.board-pane'); if (!wrapper) return 'no board-pane'; const banner = document.createElement('div'); banner.className = 'chain-banner'; banner.innerHTML = '<span>連吃 — 繼續吃 or </span><button class=\"btn btn-ghost btn-sm\">End chain</button>'; wrapper.appendChild(banner); return 'injected, top: ' + getComputedStyle(banner).top; }" 2>&1 | tail -5`
+
+```text
+"injected, top: -38.4px"
+### Ran Playwright code
+```js
+await page.evaluate('() => { const wrapper = document.querySelector(\'.board-pane\'); if (!wrapper) return \'no board-pane\'; const banner = document.createElement(\'div\'); banner.className = \'chain-banner\'; banner.innerHTML = \'<span>連吃 — 繼續吃 or </span><button class="btn btn-ghost btn-sm">End chain</button>\'; wrapper.appendChild(banner); return \'injected, top: \' + getComputedStyle(banner).top; }');
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:34Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Screenshot the banner position
+
+`playwright-cli screenshot --filename=banner-fixed.png 2>&1 | tail -3`
+
+```text
+  type: 'png'
+});
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Locate screenshot
+
+`find . -name "banner-fixed.png" 2>/dev/null | head -3`
+
+```text
+./banner-fixed.png
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:43Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./banner-fixed.png`
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:49Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:50Z)**_
+
+Banner is now above the board on desktop, no piece overlap. Let me update task status and test mobile viewport (the actual screenshot the user sent):
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:51Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #16 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 09:59:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Resize to iPhone Plus dimensions + screenshot
+
+`playwright-cli resize 414 896 2>&1 | tail -3 && playwright-cli screenshot --filename=banner-mobile.png 2>&1 | tail -3`
+
+```text
+```js
+await page.setViewportSize({ width: 414, height: 896 });
+```
+  type: 'png'
+});
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:00Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./banner-mobile.png`
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:15Z)**_
+
+Let me also check how this looks in scrolled position (matching the user's screenshot which had URL bar at bottom):
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Scroll down to verify banner stays attached to board
+
+`playwright-cli eval "() => { window.scrollTo(0, 100); return 'scrolled, banner top: ' + document.querySelector('.chain-banner').getBoundingClientRect().top; }" 2>&1 | tail -3`
+
+```text
+```js
+await page.evaluate('() => { window.scrollTo(0, 100); return \'scrolled, banner top: \' + document.querySelector(\'.chain-banner\').getBoundingClientRect().top; }');
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:18Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Scrolled screenshot
+
+`playwright-cli screenshot --filename=banner-scrolled.png 2>&1 | tail -3`
+
+```text
+  type: 'png'
+});
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:25Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./banner-scrolled.png`
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:34Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:35Z)**_
+
+Let me check `.app-shell` padding (the outer wrapper) to see if there's safe top space:
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find app-shell CSS
+
+`grep -n "app-shell\|app-shell {" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -5`
+
+```text
+117:.app-shell {
+207: * pane to the available viewport height (minus `.app-shell`'s 2rem top +
+233: * `.app-shell`'s 2rem top + 2rem bottom padding. The captured strips and
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:00:44Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+115	}
+116	
+117	.app-shell {
+118	    width: min(1100px, 100%);
+119	    padding: 2rem 1rem;
+120	}
+121	
+122	.picker h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 0.5rem; }
+123	.subtitle { color: var(--muted); margin: 0 0 2rem; }
+124
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:01:10Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 10:01:11Z)**_
+
+Let me check actual position numbers to validate the layout:
+
+_**Agent (claude-opus-4-7 2026-05-14 10:01:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Measure actual layout positions
+
+`playwright-cli --raw eval "() => { const banner = document.querySelector('.chain-banner'); const pane = document.querySelector('.board-pane'); const bRect = banner.getBoundingClientRect(); const pRect = pane.getBoundingClientRect(); return JSON.stringify({banner_top: bRect.top, banner_bottom: bRect.bottom, banner_height: bRect.height, pane_top: pRect.top, gap: pRect.top - bRect.bottom, viewport_w: window.innerWidth, viewport_h: window.innerHeight}); }" 2>&1 | tail -3`
+
+```text
+"{\"banner_top\":-2.390625,\"banner_bottom\":45.171875,\"banner_height\":47.5625,\"pane_top\":32,\"gap\":-13.171875,\"viewport_w\":414,\"viewport_h\":896}"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:15Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:15Z)**_
+
+The banner sits cleanly above the board now — pieces fully visible, banner content (text + button) fully visible. Let me clean up artifacts and run final checks:
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:19Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clean screenshots + close browser + stop dev server
+
+`rm -f /Volumes/Data/Program/tries/2026-05-06-chinese-chess/banner-fixed.png /Volumes/Data/Program/tries/2026-05-06-chinese-chess/banner-mobile.png /Volumes/Data/Program/tries/2026-05-06-chinese-chess/banner-scrolled.png && playwright-cli close 2>&1 | tail -2 && make stop-web 2>&1 | tail -2`
+
+```text
+Browser 'default' closed
+
+tmux kill-session -t chess-web 2>/dev/null
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:22Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Sanity-check workspace
+
+`cargo fmt --check && echo FMT_OK && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3 && cargo test -p chess-web --lib 2>&1 | tail -3`
+
+```text
+FMT_OK
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.99s
+
+test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:28Z)**_
+
+All clean. Let me commit the CSS fix:
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Survey changes
+
+`git status --short && echo "---" && git diff clients/chess-web/style.css | head -40`
+
+```text
+ M .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md
+ M clients/chess-web/style.css
+---
+diff --git a/clients/chess-web/style.css b/clients/chess-web/style.css
+index d9038ce..7e2c382 100644
+--- a/clients/chess-web/style.css
++++ b/clients/chess-web/style.css
+@@ -627,11 +627,16 @@ body {
+     stroke-width: 2;
+     pointer-events: none;
+ }
+-/* Floating toast — overlays the board top-center so its mount/unmount
+- * doesn't reflow the flex column and snap the SVG to a different size. */
++/* Floating toast — positioned ABOVE the board pane (negative top) so
++ * its mount/unmount doesn't reflow the flex column or snap the SVG to
++ * a different size, AND it doesn't cover the top row of pieces / tiles.
++ * Previous `top: 0.6rem` placed it inside .board-pane's padding which
++ * overlapped the first board row (banqi top-rank tiles, xiangqi rank 9
++ * pieces). The negative offset floats it in the empty space above the
++ * board card — visible against the dark page background, no overlap. */
+ .chain-banner {
+     position: absolute;
+-    top: 0.6rem;
++    top: -2.4rem;
+     left: 50%;
+     transform: translateX(-50%);
+     z-index: 25;
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:42Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit chain-banner CSS fix
+
+```bash
+git add clients/chess-web/style.css .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md && git commit -m "$(cat <<'EOF'
+fix(chess-web): chain-banner no longer covers the top row of board pieces
+
+The 連吃 / End-chain floating toast was anchored at `top: 0.6rem` inside
+.board-pane's padding, which placed it directly over the SVG's top row
+of tiles — reported on iOS Safari (banqi 4×8, banner obscuring the
+first display row of hidden tiles).
+
+Move the banner to `top: -2.4rem` so it floats in the empty space
+ABOVE .board-pane (visible against the dark page background). Keeps
+position: absolute so mount/unmount still doesn't reflow the flex
+column and the SVG board stays at its current size — preserves the
+original reason the toast was made absolute in the first place.
+
+Same fix applies to the .ai-thinking-banner (inherits from
+.chain-banner) on /local/banqi vs-AI mode.
+
+Verified via playwright-cli on desktop (1280×720) and mobile portrait
+(414×896) — banner sits above the board card in dark space, pieces
+fully visible, banner content (text + End chain button) fully visible.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main 0c3d764] fix(chess-web): chain-banner no longer covers the top row of board pieces
+ 2 files changed, 907 insertions(+), 3 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:42Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #16 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:02:50Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm commit landed
+
+`git log --oneline -4`
+
+```text
+0c3d764 fix(chess-web): chain-banner no longer covers the top row of board pieces
+0a97f1a feat(chess-web): play page sidebar shows full rules summary (not just slug)
+4b58fc4 feat(chess-web): variant + rules picker on /lan/host (banqi over WebRTC)
+e6efdf0 fix(chess-web): add "Back to picker" link on /lan/host and /lan/join setup screens
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 10:03:00Z)**_
+
+Fixed in `0c3d764` — changed `.chain-banner { top: 0.6rem }` to `top: -2.4rem` so the toast floats in the empty space ABOVE the board card instead of inside `.board-pane`'s padding. Pieces are now fully visible; the banner content (`連吃 — 繼續吃 or [End chain]`) sits in the dark page background just above the board. Same fix applies to the `.ai-thinking-banner` (inherits the same class) on `/local/banqi` vs-AI mode.
+
+Verified via playwright on desktop (1280×720) and mobile portrait (414×896) — banner above the board, no piece overlap, button still tappable. Three commits unpushed: `4b58fc4`, `0a97f1a`, `0c3d764`.
