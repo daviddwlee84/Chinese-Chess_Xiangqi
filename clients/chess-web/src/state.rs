@@ -5,7 +5,7 @@ use chess_core::board::{Board, BoardShape};
 use chess_core::coord::Square;
 use chess_core::moves::Move;
 use chess_core::piece::{Piece, PieceKind, Side};
-use chess_core::rules::RuleSet;
+use chess_core::rules::{RuleSet, Variant};
 use chess_core::state::{GameState, GameStatus};
 use chess_core::view::{PlayerView, VisibleCell};
 
@@ -35,6 +35,46 @@ impl ClientRole {
             ClientRole::Spectator => Side::RED,
         }
     }
+}
+
+/// Short user-facing label for a `Variant`, e.g. "Xiangqi", "Banqi".
+/// Used by [`describe_rules`] for the "Playing: …" summary line that
+/// both `/lan/host` (after Open room) and the LAN joiner show.
+pub fn variant_label(v: Variant) -> &'static str {
+    match v {
+        Variant::Xiangqi => "Xiangqi",
+        Variant::Banqi => "Banqi",
+        Variant::ThreeKingdomBanqi => "Three-Kingdom Banqi",
+    }
+}
+
+/// One-line summary of a [`RuleSet`] for status displays, e.g.
+/// `"Xiangqi · casual"`, `"Banqi · house: chain,rush · seed: 42"`.
+///
+/// Joins parts with ` · `. Xiangqi always emits casual/strict. Banqi
+/// emits `house: ...` only when flags are set, and `seed: N` only when
+/// a deterministic seed is configured (so `RuleSet::banqi(empty)` →
+/// just `"Banqi"`). Three-kingdom emits only the variant name (the
+/// engine stub doesn't expose any per-game knobs).
+pub fn describe_rules(rules: &RuleSet) -> String {
+    let mut parts: Vec<String> = vec![variant_label(rules.variant).to_string()];
+    match rules.variant {
+        Variant::Xiangqi => {
+            parts.push(
+                (if rules.xiangqi_allow_self_check { "casual" } else { "strict" }).to_string(),
+            );
+        }
+        Variant::Banqi => {
+            if !rules.house.is_empty() {
+                parts.push(format!("house: {}", crate::routes::house_csv(rules.house)));
+            }
+            if let Some(seed) = rules.banqi_seed {
+                parts.push(format!("seed: {seed}"));
+            }
+        }
+        Variant::ThreeKingdomBanqi => {}
+    }
+    parts.join(" · ")
 }
 
 /// Trim a vec from the front so it holds at most `max` entries. Used for
@@ -247,8 +287,51 @@ pub fn hover_threat_squares(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chess_core::rules::RuleSet;
+    use chess_core::rules::{HouseRules, RuleSet, PRESET_TAIWAN};
     use chess_core::state::GameState;
+
+    #[test]
+    fn describe_rules_xiangqi_casual() {
+        assert_eq!(describe_rules(&RuleSet::xiangqi_casual()), "Xiangqi · casual");
+    }
+
+    #[test]
+    fn describe_rules_xiangqi_strict() {
+        assert_eq!(describe_rules(&RuleSet::xiangqi()), "Xiangqi · strict");
+    }
+
+    #[test]
+    fn describe_rules_banqi_with_house_and_seed() {
+        assert_eq!(
+            describe_rules(&RuleSet::banqi_with_seed(PRESET_TAIWAN, 42)),
+            "Banqi · house: chain,rush · seed: 42"
+        );
+    }
+
+    #[test]
+    fn describe_rules_banqi_purist_no_seed() {
+        // No house flags, no seed → just the variant name. Sanity check
+        // that empty flags don't render `house: ` and missing seed
+        // doesn't render `seed: `.
+        assert_eq!(describe_rules(&RuleSet::banqi(HouseRules::empty())), "Banqi");
+    }
+
+    #[test]
+    fn describe_rules_banqi_seed_without_house() {
+        // Deterministic seed but no house flags — seed should still
+        // appear (round-trippable for "share this puzzle" use case).
+        assert_eq!(
+            describe_rules(&RuleSet::banqi_with_seed(HouseRules::empty(), 7)),
+            "Banqi · seed: 7"
+        );
+    }
+
+    #[test]
+    fn describe_rules_three_kingdom_is_variant_only() {
+        // Three-kingdom-banqi has no per-game knobs in the current
+        // stub; the helper just emits the variant name.
+        assert_eq!(describe_rules(&RuleSet::three_kingdom()), "Three-Kingdom Banqi");
+    }
 
     #[test]
     fn find_move_locates_xiangqi_step() {

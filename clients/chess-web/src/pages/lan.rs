@@ -16,8 +16,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use chess_core::rules::RuleSet;
+use chess_core::rules::{
+    HouseRules, RuleSet, Variant, PRESET_AGGRESSIVE, PRESET_PURIST, PRESET_TAIWAN,
+};
 use leptos::*;
+use leptos_router::use_query_map;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
@@ -29,7 +32,10 @@ use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::net_diag::{classify, parse_candidate_addrs, NetDiag};
 use crate::pages::play::PlayConnected;
-use crate::routes::app_href;
+use crate::routes::{
+    app_href, build_rule_set, parse_local_rules, parse_variant_slug, LocalRulesParams,
+};
+use crate::state::describe_rules;
 use crate::transport::webrtc::{
     connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceDiag,
     IceMode, JoinerHandshake, OfferBlob, WebRtcConfig,
@@ -129,6 +135,74 @@ pub fn LanHostPage() -> impl IntoView {
     let (answer_input, set_answer_input) = create_signal::<String>(String::new());
     let (error_msg, set_error_msg) = create_signal::<Option<String>>(None);
 
+    // ── Variant + rules form state ─────────────────────────────
+    // Mirrors picker.rs::BanqiCard: one bool signal per HouseRules
+    // bitflag (rather than one signal holding the whole bitset) so
+    // each checkbox can bind directly to `prop:checked` without a
+    // closure dance. `apply_preset` flips all five at once.
+    //
+    // Initial values come from the URL query string (`?variant=banqi
+    // &house=chain,rush&seed=42`) via the same `parse_local_rules`
+    // parser the picker uses. Lets a future picker "Host on LAN"
+    // button deep-link a fully-configured /lan/host without a fresh
+    // parser; today, hand-typed URLs are the only consumer.
+    let query = use_query_map();
+    let initial_variant = query.with_untracked(|q| {
+        q.get("variant").and_then(|s| parse_variant_slug(s)).unwrap_or(Variant::Xiangqi)
+    });
+    // Three-kingdom is 3-player; not a valid LAN choice — clamp to xiangqi.
+    let initial_variant = match initial_variant {
+        Variant::ThreeKingdomBanqi => Variant::Xiangqi,
+        v => v,
+    };
+    let initial_params: LocalRulesParams =
+        query.with_untracked(|q| parse_local_rules(|k| q.get(k).cloned()));
+
+    let variant = create_rw_signal(initial_variant);
+    let strict = create_rw_signal(initial_params.strict);
+    let chain = create_rw_signal(initial_params.house.contains(HouseRules::CHAIN_CAPTURE));
+    let dark = create_rw_signal(initial_params.house.contains(HouseRules::DARK_CAPTURE));
+    let dark_trade =
+        create_rw_signal(initial_params.house.contains(HouseRules::DARK_CAPTURE_TRADE));
+    let rush = create_rw_signal(initial_params.house.contains(HouseRules::CHARIOT_RUSH));
+    let horse = create_rw_signal(initial_params.house.contains(HouseRules::HORSE_DIAGONAL));
+    let seed_text =
+        create_rw_signal(initial_params.seed.map(|s| s.to_string()).unwrap_or_default());
+
+    // Snapshot of the RuleSet that was passed to HostRoom::new — set
+    // once on successful `on_accept`. Drives the post-Idle "Playing:
+    // …" status line that replaces the form once pairing starts.
+    let (chosen_rules, set_chosen_rules) = create_signal::<Option<RuleSet>>(None);
+
+    let apply_preset = move |preset: HouseRules| {
+        chain.set(preset.contains(HouseRules::CHAIN_CAPTURE));
+        dark.set(preset.contains(HouseRules::DARK_CAPTURE));
+        dark_trade.set(preset.contains(HouseRules::DARK_CAPTURE_TRADE));
+        rush.set(preset.contains(HouseRules::CHARIOT_RUSH));
+        horse.set(preset.contains(HouseRules::HORSE_DIAGONAL));
+    };
+
+    let build_params = move || -> LocalRulesParams {
+        let mut house = HouseRules::empty();
+        if chain.get_untracked() {
+            house.insert(HouseRules::CHAIN_CAPTURE);
+        }
+        if dark.get_untracked() {
+            house.insert(HouseRules::DARK_CAPTURE);
+        }
+        if dark_trade.get_untracked() {
+            house.insert(HouseRules::DARK_CAPTURE_TRADE);
+        }
+        if rush.get_untracked() {
+            house.insert(HouseRules::CHARIOT_RUSH);
+        }
+        if horse.get_untracked() {
+            house.insert(HouseRules::HORSE_DIAGONAL);
+        }
+        let seed = seed_text.with_untracked(|s| s.trim().parse::<u64>().ok());
+        LocalRulesParams { strict: strict.get_untracked(), house, seed, ..Default::default() }
+    };
+
     // QR scanner modal state. `cam_available` is set asynchronously
     // on mount; default false to keep the Scan-camera button hidden
     // until detection completes (no flash-of-button-then-disappear
@@ -177,6 +251,15 @@ pub fn LanHostPage() -> impl IntoView {
         if !matches!(status.get_untracked(), HostStatus::Idle) {
             return;
         }
+        // Commit the form selection to `chosen_rules` BEFORE status
+        // leaves Idle (which hides the form). Without this, the form
+        // disappears immediately but the "Playing: …" summary line
+        // doesn't appear until on_accept fires — leaving a window
+        // with no visible record of the chosen rules. The actual
+        // `HostRoom::new(…)` call still happens inside `on_accept`
+        // and reads `chosen_rules.get_untracked()` to avoid drift.
+        let rules = build_rule_set(variant.get_untracked(), &build_params());
+        set_chosen_rules.set(Some(rules));
         set_error_msg.set(None);
         set_status.set(HostStatus::Generating);
         let cfg = WebRtcConfig {
@@ -211,6 +294,18 @@ pub fn LanHostPage() -> impl IntoView {
             set_error_msg.set(Some("paste the joiner's answer SDP first".into()));
             return;
         }
+        // Rules were committed in `on_open` (before the form hid).
+        // Recover them here for the actual room construction; this
+        // can't be None unless the open flow short-circuited, in
+        // which case we're not in AwaitingAnswer either.
+        let rules = match chosen_rules.get_untracked() {
+            Some(r) => r,
+            None => {
+                set_error_msg.set(Some("rules not configured — reopen the page".into()));
+                set_status.set(HostStatus::Idle);
+                return;
+            }
+        };
         set_error_msg.set(None);
         set_status.set(HostStatus::AcceptingAnswer);
         let handshake_slot = handshake_for_accept.clone();
@@ -255,7 +350,7 @@ pub fn LanHostPage() -> impl IntoView {
                 set_status.set(HostStatus::Idle);
                 return;
             }
-            let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
+            let (room, session) = HostRoom::new(rules, None, /* hints */ false);
             if let Err(e) = room.attach_remote_player_dc(dc) {
                 set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
                 set_status.set(HostStatus::Idle);
@@ -281,6 +376,128 @@ pub fn LanHostPage() -> impl IntoView {
                 fallback=move || view! {
                     <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
                     <h1>"LAN host (WebRTC)"</h1>
+                    <Show when=move || matches!(status.get(), HostStatus::Idle)>
+                        <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                            <legend>"Game"</legend>
+                            <label class="radio-row">
+                                <span style="margin-right:0.5rem;min-width:5rem">"Variant"</span>
+                                <select
+                                    style="flex:1"
+                                    on:change=move |ev| {
+                                        let s = event_target_value(&ev);
+                                        if let Some(v) = parse_variant_slug(&s) {
+                                            variant.set(v);
+                                        }
+                                    }
+                                >
+                                    <option value="xiangqi"
+                                        prop:selected=move || variant.get() == Variant::Xiangqi>
+                                        "Xiangqi 象棋"
+                                    </option>
+                                    <option value="banqi"
+                                        prop:selected=move || variant.get() == Variant::Banqi>
+                                        "Banqi 暗棋"
+                                    </option>
+                                </select>
+                            </label>
+                            <p class="hint">
+                                "Three-Kingdom 三國暗棋 is 3-player and unsupported on the \
+                                 2-peer LAN channel — pick another variant, or use online lobby."
+                            </p>
+                        </fieldset>
+
+                        <Show when=move || variant.get() == Variant::Xiangqi>
+                            <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                                <legend>"Xiangqi rules"</legend>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || strict.get()
+                                        on:change=move |ev| strict.set(event_target_checked(&ev))/>
+                                    <span>
+                                        "Strict — leaving your general capturable is illegal \
+                                         (standard tournament rule). OFF = casual; the game \
+                                         only ends when the general is actually captured."
+                                    </span>
+                                </label>
+                            </fieldset>
+                        </Show>
+
+                        <Show when=move || variant.get() == Variant::Banqi>
+                            <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                                <legend>"Banqi preset"</legend>
+                                <div class="preset-row">
+                                    <button class="btn btn-ghost" type="button"
+                                        on:click=move |_| apply_preset(PRESET_PURIST)>"Purist"</button>
+                                    <button class="btn btn-ghost" type="button"
+                                        on:click=move |_| apply_preset(PRESET_TAIWAN)>"Taiwan"</button>
+                                    <button class="btn btn-ghost" type="button"
+                                        on:click=move |_| apply_preset(PRESET_AGGRESSIVE)>"Aggressive"</button>
+                                </div>
+                            </fieldset>
+                            <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                                <legend>"Banqi house rules"</legend>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || chain.get()
+                                        on:change=move |ev| chain.set(event_target_checked(&ev))/>
+                                    <span>"連吃 — chain captures along a line"</span>
+                                </label>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || dark.get()
+                                        on:change=move |ev| dark.set(event_target_checked(&ev))/>
+                                    <span>"暗吃 — atomic reveal+capture; on rank-fail your piece stays put (probe)"</span>
+                                </label>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || dark_trade.get()
+                                        on:change=move |ev| dark_trade.set(event_target_checked(&ev))/>
+                                    <span>"暗吃·搏命 — on rank-fail your attacker dies (implies 暗吃)"</span>
+                                </label>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || rush.get()
+                                        on:change=move |ev| rush.set(event_target_checked(&ev))/>
+                                    <span>"車衝 — chariot rays the full board; with a gap, captures any piece"</span>
+                                </label>
+                                <label class="check-row">
+                                    <input type="checkbox"
+                                        prop:checked=move || horse.get()
+                                        on:change=move |ev| horse.set(event_target_checked(&ev))/>
+                                    <span>"馬斜 — horse adds diagonal one-step moves; diagonal captures any piece"</span>
+                                </label>
+                                <p class="hint">
+                                    "炮快移 is accepted by the engine but not yet wired into move-gen "
+                                    "(see "<code>"TODO.md"</code>")."
+                                </p>
+                            </fieldset>
+                            <fieldset class="card-fieldset" style="margin-bottom:0.5rem">
+                                <legend>"Seed (optional)"</legend>
+                                <input
+                                    type="text"
+                                    inputmode="numeric"
+                                    placeholder="leave blank for random"
+                                    class="text-input"
+                                    prop:value=move || seed_text.get()
+                                    on:input=move |ev| seed_text.set(event_target_value(&ev))
+                                />
+                                <p class="hint">
+                                    "Same seed = same shuffle on both devices. Use it for puzzle \
+                                     replays or to make the layout reproducible."
+                                </p>
+                            </fieldset>
+                        </Show>
+                    </Show>
+
+                    <Show when=move || chosen_rules.with(|r| r.is_some())>
+                        <p style="margin:0.5rem 0;font-size:14px">
+                            "Playing: "
+                            <b>{move || chosen_rules.get()
+                                .as_ref()
+                                .map(describe_rules)
+                                .unwrap_or_default()}</b>
+                        </p>
+                    </Show>
                     <p class="muted">
                         "iOS hint: do not switch apps after tapping Open room. iOS Safari pauses \
                          WebRTC when the page is backgrounded. If you must AirDrop the offer, \

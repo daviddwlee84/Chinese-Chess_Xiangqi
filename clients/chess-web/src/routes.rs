@@ -402,7 +402,11 @@ fn parse_house_csv(s: &str) -> HouseRules {
     out
 }
 
-fn house_csv(rules: HouseRules) -> String {
+/// Canonical comma-separated form of a `HouseRules` set, e.g. `"chain,rush"`.
+/// Used by `build_local_query` for URL encoding AND by `state::describe_rules`
+/// for the per-game rules summary line — single source of truth so both
+/// surfaces agree on flag names + ordering.
+pub(crate) fn house_csv(rules: HouseRules) -> String {
     let mut parts: Vec<&'static str> = Vec::new();
     for (flag, tok) in HOUSE_TOKENS {
         if rules.contains(*flag) {
