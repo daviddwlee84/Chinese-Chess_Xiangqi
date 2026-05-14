@@ -120,8 +120,7 @@ pub fn LanHostPage() -> impl IntoView {
     // Holder for the handshake's live ICE diag signal so the inline
     // status badge can render it reactively. None before Open room
     // succeeds; Some thereafter.
-    let (ice_diag_holder, set_ice_diag_holder) =
-        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+    let (ice_diag_holder, set_ice_diag_holder) = create_signal::<Option<ReadSignal<IceDiag>>>(None);
 
     // Re-snapshot the offer SDP whenever the diag signal fires (every
     // `oniceicecandidate` / connection / gathering state change). Catches
@@ -411,8 +410,7 @@ pub fn LanJoinPage() -> impl IntoView {
     // `connect_as_joiner` resolves; drives the inline ICE-state badge
     // until the joiner's `handshake` is dropped (at which point the
     // PC's event handlers stop firing).
-    let (ice_diag_holder, set_ice_diag_holder) =
-        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+    let (ice_diag_holder, set_ice_diag_holder) = create_signal::<Option<ReadSignal<IceDiag>>>(None);
 
     // Re-snapshot the answer SDP on every diag fire (candidates,
     // connection state, gathering). Mirrors the host page; see

@@ -333,13 +333,7 @@ pub async fn connect_as_joiner(
 
     let handle: Rc<dyn Transport> = Rc::new(WebRtcTransport { dc: dc_holder });
     let session = Session { handle, incoming, state };
-    Ok(JoinerHandshake {
-        session,
-        answer: answer_blob,
-        pc: pc_rc,
-        ice_diag,
-        _keepalive: keepalive,
-    })
+    Ok(JoinerHandshake { session, answer: answer_blob, pc: pc_rc, ice_diag, _keepalive: keepalive })
 }
 // SECTION: connect_as_host factory
 
@@ -614,10 +608,7 @@ fn install_ice_diag_handlers(
         let pc_inner = pc.clone();
         let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
             let s = pc_inner.connection_state();
-            web_sys::console::log_2(
-                &"[webrtc] connectionState =".into(),
-                &format!("{s:?}").into(),
-            );
+            web_sys::console::log_2(&"[webrtc] connectionState =".into(), &format!("{s:?}").into());
             set_diag.update(|d| d.conn = s);
         }) as Box<dyn FnMut(JsValue)>);
         pc.set_onconnectionstatechange(Some(cb.as_ref().unchecked_ref()));

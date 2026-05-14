@@ -10287,3 +10287,178 @@ Both commits landed cleanly. Quick summary of what shipped:
 The actual router-level mDNS failure isn't fixable in code (documented in `pitfalls/webrtc-mdns-lan-ap-isolation.md`); next time it bites, the badge will name the exact stuck state and point at the iPhone-hotspot workaround. The chess-net signalling-broker route is still tracked in `backlog/webrtc-lan-pairing.md` if you want a network-agnostic fix later.
 
 Workspace is clean (`cargo check`/`clippy`/`test -p chess-web`/`build --target wasm32-unknown-unknown -p chess-web` all green; 86 chess-web tests pass).
+
+---
+
+_**User (2026-05-14 06:26:06Z)**_
+
+The GitHub Action run failed https://github.com/daviddwlee84/Chinese-Chess_Xiangqi/actions/runs/25845379894
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:12Z)**_
+
+Let me check what failed.
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+View failed run summary
+
+`gh run view 25845379894 --repo daviddwlee84/Chinese-Chess_Xiangqi 2>&1 | head -40`
+
+```text
+X main ci · 25845379894
+Triggered via push about 3 minutes ago
+
+JOBS
+✓ clippy in 24s (ID 75939353576)
+X fmt in 16s (ID 75939353587)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run dtolnay/rust-toolchain@stable
+  X Run cargo fmt --all -- --check
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ wasm-cleanliness in 19s (ID 75939353590)
+✓ test in 1m16s (ID 75939353599)
+
+ANNOTATIONS
+X Process completed with exit code 1.
+fmt: .github#62
+
+
+To see what failed, try: gh run view 25845379894 --log-failed
+View this run on GitHub: https://github.com/daviddwlee84/Chinese-Chess_Xiangqi/actions/runs/25845379894
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:35Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+View fmt failure log
+
+`gh run view 25845379894 --repo daviddwlee84/Chinese-Chess_Xiangqi --log-failed 2>&1 | head -80`
+
+```text
+fmt	Run cargo fmt --all -- --check	﻿2026-05-14T06:23:28.4990191Z ##[group]Run cargo fmt --all -- --check
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.4990551Z ^[[36;1mcargo fmt --all -- --check^[[0m
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5011703Z shell: /usr/bin/bash -e {0}
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5011993Z env:
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5012178Z   CARGO_TERM_COLOR: always
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5012408Z   RUSTFLAGS: -D warnings
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5012634Z   CARGO_HOME: /home/runner/.cargo
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5012877Z   CARGO_INCREMENTAL: 0
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5013106Z ##[endgroup]
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.5571816Z info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.6421109Z info: latest update on 2026-04-16 for version 1.95.0 (59807616e 2026-04-14)
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.6594820Z info: component clippy is up to date
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.6595344Z info: component rustfmt is up to date
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:28.6600184Z info: downloading component rust-std
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4201941Z Diff in /home/runner/work/Chinese-Chess_Xiangqi/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/lan.rs:120:
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4202989Z      // Holder for the handshake's live ICE diag signal so the inline
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4203579Z      // status badge can render it reactively. None before Open room
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4204044Z      // succeeds; Some thereafter.
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4204444Z -    let (ice_diag_holder, set_ice_diag_holder) =
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4210648Z -        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4211526Z +    let (ice_diag_holder, set_ice_diag_holder) = create_signal::<Option<ReadSignal<IceDiag>>>(None);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4212209Z  
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4212680Z      // Re-snapshot the offer SDP whenever the diag signal fires (every
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4213217Z      // `oniceicecandidate` / connection / gathering state change). Catches
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4213821Z Diff in /home/runner/work/Chinese-Chess_Xiangqi/Chinese-Chess_Xiangqi/clients/chess-web/src/pages/lan.rs:411:
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4214412Z      // `connect_as_joiner` resolves; drives the inline ICE-state badge
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4214842Z      // until the joiner's `handshake` is dropped (at which point the
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4215197Z      // PC's event handlers stop firing).
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4215486Z -    let (ice_diag_holder, set_ice_diag_holder) =
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4215840Z -        create_signal::<Option<ReadSignal<IceDiag>>>(None);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4216303Z +    let (ice_diag_holder, set_ice_diag_holder) = create_signal::<Option<ReadSignal<IceDiag>>>(None);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4216722Z  
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4216977Z      // Re-snapshot the answer SDP on every diag fire (candidates,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4217357Z      // connection state, gathering). Mirrors the host page; see
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4732723Z Diff in /home/runner/work/Chinese-Chess_Xiangqi/Chinese-Chess_Xiangqi/clients/chess-web/src/transport/webrtc.rs:333:
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4733387Z  
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4733919Z      let handle: Rc<dyn Transport> = Rc::new(WebRtcTransport { dc: dc_holder });
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4734556Z      let session = Session { handle, incoming, state };
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4735044Z -    Ok(JoinerHandshake {
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4735394Z -        session,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4735691Z -        answer: answer_blob,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4736038Z -        pc: pc_rc,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4736327Z -        ice_diag,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4736685Z -        _keepalive: keepalive,
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4737025Z -    })
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4738146Z +    Ok(JoinerHandshake { session, answer: answer_blob, pc: pc_rc, ice_diag, _keepalive: keepalive })
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4738840Z  }
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4739111Z  // SECTION: connect_as_host factory
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4739485Z  
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4740454Z Diff in /home/runner/work/Chinese-Chess_Xiangqi/Chinese-Chess_Xiangqi/clients/chess-web/src/transport/webrtc.rs:614:
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4741184Z          let pc_inner = pc.clone();
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4741515Z          let cb = Closure::wrap(Box::new(move |_ev: JsValue| {
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4741862Z              let s = pc_inner.connection_state();
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4742437Z -            web_sys::console::log_2(
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4742735Z -                &"[webrtc] connectionState =".into(),
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4743030Z -                &format!("{s:?}").into(),
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4743274Z -            );
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4743636Z +            web_sys::console::log_2(&"[webrtc] connectionState =".into(), &format!("{s:?}").into());
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4744076Z              set_diag.update(|d| d.conn = s);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4744350Z          }) as Box<dyn FnMut(JsValue)>);
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.4744697Z          pc.set_onconnectionstatechange(Some(cb.as_ref().unchecked_ref()));
+fmt	Run cargo fmt --all -- --check	2026-05-14T06:23:30.5916796Z ##[error]Process completed with exit code 1.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:42Z)**_
+
+I forgot to run `cargo fmt` before committing. Let me fix it.
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Run rustfmt and show what changed
+
+`cargo fmt --all 2>&1 | tail -5; git diff --stat`
+
+```text
+ ...05-14_05-43-00Z-https-daviddwlee84-github-io.md | 122 +++++++++++++++++++++
+ clients/chess-web/src/pages/lan.rs                 |   6 +-
+ clients/chess-web/src/transport/webrtc.rs          |  13 +--
+ 3 files changed, 126 insertions(+), 15 deletions(-)
+[This command modified 2 files you've previously read: clients/chess-web/src/pages/lan.rs, clients/chess-web/src/transport/webrtc.rs. Call Read before editing.]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:48Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify fmt clean
+
+`cargo fmt --all -- --check 2>&1 | tail -5`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:56Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:26:57Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clippy after reformat
+
+`cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5`
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s
+```
+</details></tool-use>
