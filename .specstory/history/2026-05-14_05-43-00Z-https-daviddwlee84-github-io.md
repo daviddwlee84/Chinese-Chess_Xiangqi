@@ -24491,3 +24491,1001 @@ clients/chess-web/src/pages/lan.rs
 docs/lan-multiplayer-webrtc.md
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:03Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage commit 1 source changes
+
+`git add clients/chess-web/src/pages/lan.rs clients/chess-web/src/routes.rs clients/chess-web/src/state.rs .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit 1: variant + rules picker on /lan/host
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(chess-web): variant + rules picker on /lan/host (banqi over WebRTC)
+
+Adds a Game / Xiangqi rules / Banqi house rules / Seed form to the LAN
+host setup page, replacing the previously-hardcoded RuleSet::xiangqi().
+Banqi now works end-to-end over the WebRTC channel — the protocol
+envelope already carries the full RuleSet via ServerMsg::Hello, so the
+joiner inherits the host's choice (variant + house flags + deterministic
+seed) automatically. Hidden-tile correctness is handled by the existing
+host-authoritative shuffle in chess-core's build_banqi (seed propagates
+in the Hello message; joiner mirrors via PlayerView projections).
+
+Form mirrors picker.rs::BanqiCard verbatim (same labels, preset row,
+seed input, "炮快移 not yet wired" hint). URL pre-fill via the existing
+routes::parse_local_rules — /lan/host?variant=banqi&house=chain,rush&
+seed=42 deep-links a ready-to-go room, useful for shareable setups and
+a future picker "Host on LAN" button. After Open room the form is
+replaced by a "Playing: …" summary line driven by the new
+state::describe_rules helper (6 unit tests, single source of truth via
+routes::house_csv exposed as pub(crate)).
+
+Three-kingdom-banqi is deliberately excluded from the dropdown — it's
+a 3-player variant and WebRTC pairing here is 2-player only.
+
+Verified locally: workspace check + clippy -D warnings + fmt + 99
+native tests + WASM build, plus playwright-cli smoke (default xiangqi
+"Playing: Xiangqi · casual", Banqi+Taiwan+seed=42 "Playing: Banqi ·
+house: chain,rush · seed: 42", and deep-link pre-fill).
+
+Out of scope (call out for next commits):
+- Joiner-side "Playing: …" display (next commit)
+- Picker "Host on LAN" deep-link entry point
+- In-game rule editing (room locked once opened, matches chess-net)
+- HORSE_DIAGONAL / CANNON_FAST_MOVE move-gen wiring (engine work)
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main 4b58fc4] feat(chess-web): variant + rules picker on /lan/host (banqi over WebRTC)
+ 4 files changed, 12139 insertions(+), 6 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:33Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:34Z)**_
+
+Commit 1 landed as `4b58fc4`. For commit 2, the joiner display is tricky — the `Hello` arrives in `PlayConnected`, not on the join setup screen. Let me check play.rs to see if there's a natural sidebar slot:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:35Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #14 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find where play.rs handles Hello + sidebar
+
+`grep -n "Room ID\|room_id\|Hello\|rules\|RuleSet\|describe\|sidebar\|fn PlayConnected" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs | head -30`
+
+```text
+6:use chess_core::rules::RuleSet;
+96:pub fn PlayConnected(
+115:    /// Override for the "← Back to lobby" link in the sidebar.
+133:    let (rules, set_rules) = create_signal::<Option<RuleSet>>(None);
+138:    // `Some(true|false)` once Hello/Spectating arrives; `None` while
+147:        // Hello + ChatHistory back-to-back, AND for any post-mount
+153:            ServerMsg::Hello { observer, rules: r, view: v, hints_allowed: h, .. } => {
+155:                set_rules.set(Some(r));
+168:            ServerMsg::Spectating { rules: r, view: v, hints_allowed: h, .. } => {
+170:                set_rules.set(Some(r));
+205:    let handle_for_sidebar = handle;
+231:    //   toggle appears in the sidebar. Default hidden so the player
+369:                    rules=rules
+371:                    handle=handle_for_sidebar
+589:    rules: ReadSignal<Option<RuleSet>>,
+595:    /// on the server's `hints_allowed`, which arrives async via Hello.
+620:    let variant_label = move || match rules.get() {
+676:        <aside class="sidebar">
+685:            <div class="sidebar-actions">
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Where Hello is consumed in chess-web
+
+`grep -rn "ServerMsg::Hello\|Hello {" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/ | head -10`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/transport/mod.rs:125:    ///     incoming.drain(|msg| match msg { ServerMsg::Hello { .. } => ... });
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:153:            ServerMsg::Hello { observer, rules: r, view: v, hints_allowed: h, .. } => {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:45Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:46Z)**_
+
+`play.rs` already captures `Hello.rules` and renders a `variant_label` in the sidebar (line 620). Let me look at the sidebar rendering to find a natural place for the full rules summary:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:18:47Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+580	        </Show>
+581	    }
+582	}
+583	
+584	#[component]
+585	fn OnlineSidebar(
+586	    room: String,
+587	    role: ReadSignal<Option<ClientRole>>,
+588	    view_signal: ReadSignal<Option<PlayerView>>,
+589	    rules: ReadSignal<Option<RuleSet>>,
+590	    conn: ReadSignal<ConnState>,
+591	    handle: Rc<dyn Transport>,
+592	    ws_base: WsBase,
+593	    /// Reactive predicate: when true, mounts the "🧠 Show / Hide AI
+594	    /// hint" toggle button. Net-mode-specific because the gating depends
+595	    /// on the server's `hints_allowed`, which arrives async via Hello.
+596	    /// Pass `Signal::derive(|| false)` to disable entirely.
+597	    #[prop(into)]
+598	    show_hint_button: Signal<bool>,
+599	    /// Toggle state for the hint button. Owner is the page so it can
+600	    /// gate the `<DebugPanel>` mount on the same value. Always
+601	    /// allocated; only consumed when `show_hint_button.get() == true`.
+602	    hint_open: RwSignal<bool>,
+603	    /// Override for the "← Back" link. `None` defaults to back-to-lobby
+604	    /// (chess-net mode). LAN host/joiner pages set this to `/lan/host`
+605	    /// so the link makes sense in the LAN context.
+606	    back_link_override: Option<String>,
+607	) -> impl IntoView {
+608	    let role_label = move || match role.get() {
+609	        Some(ClientRole::Player(Side::RED)) => "You play Red 紅".to_string(),
+610	        Some(ClientRole::Player(Side::BLACK)) => "You play Black 黑".to_string(),
+611	        Some(ClientRole::Player(_)) => "You play Green 綠".to_string(),
+612	        Some(ClientRole::Spectator) => "Spectator — read-only".to_string(),
+613	        None => "Awaiting seat assignment".to_string(),
+614	    };
+615	    let role_class = move || match role.get() {
+616	        Some(ClientRole::Spectator) => "spectator-badge",
+617	        _ => "",
+618	    };
+619	
+620	    let variant_label = move || match rules.get() {
+621	        Some(r) => variant_slug(r.variant).to_string(),
+622	        None => "—".to_string(),
+623	    };
+624	
+625	    let turn_label = move || match view_signal.get() {
+626	        Some(v) => match v.current_color {
+627	            Side::RED => "Red 紅 to move",
+628	            Side::BLACK => "Black 黑 to move",
+629	            _ => "Green 綠 to move",
+630	        }
+631	        .to_string(),
+632	        None => "—".to_string(),
+633	    };
+634	
+635	    let game_over = move || {
+636	        matches!(
+637	            view_signal.get().map(|v| v.status),
+638	            Some(GameStatus::Won { .. } | GameStatus::Drawn { .. })
+639	        )
+640	    };
+641	    let is_player = move || role.get().map(|r| r.is_player()).unwrap_or(false);
+642	    let resign_disabled = move || !is_player() || game_over();
+643	    let rematch_disabled = move || !is_player() || !game_over();
+644	
+645	    let conn_label = move || match conn.get() {
+646	        ConnState::Connecting => "Connecting…",
+647	        ConnState::Open => "Connected",
+648	        ConnState::Closed => "Disconnected",
+649	        ConnState::Error => "Error",
+650	    };
+651	
+652	    let resign = {
+653	        let handle = handle.clone();
+654	        move |_| {
+655	            handle.send(ClientMsg::Resign);
+656	        }
+657	    };
+658	    let rematch = {
+659	        let handle = handle.clone();
+660	        move |_| {
+661	            handle.send(ClientMsg::Rematch);
+662	        }
+663	    };
+664	
+665	    let prefs = expect_context::<Prefs>();
+666	    let fx_check_banner = prefs.fx_check_banner;
+667	    let show_check = move || {
+668	        let Some(v) = view_signal.get() else { return false };
+669	        fx_check_banner.get()
+670	            && matches!(v.shape, BoardShape::Xiangqi9x10)
+671	            && v.in_check
+672	            && matches!(v.status, GameStatus::Ongoing)
+673	    };
+674	
+675	    view! {
+676	        <aside class="sidebar">
+677	            <h3 class="variant-label">{format!("Online — room {}", room)}</h3>
+678	            <p class="muted">{variant_label}</p>
+679	            <p class=role_class>{role_label}</p>
+680	            <Show when=show_check>
+681	                <div class="check-badge" role="status">"⚠ 將軍 / CHECK"</div>
+682	            </Show>
+683	            <p>{turn_label}</p>
+684	            <p class="muted">{conn_label}</p>
+685	            <div class="sidebar-actions">
+686	                <button class="btn" on:click=resign disabled=resign_disabled>"Resign"</button>
+687	                <button class="btn" on:click=rematch disabled=rematch_disabled>"Rematch"</button>
+688	            </div>
+689	            <Show when=move || show_hint_button.get()>
+690	                {
+691	                    let label = move || if hint_open.get() {
+692	                        "🧠 Hide AI hint"
+693	                    } else {
+694	                        "🧠 Show AI hint"
+695	                    };
+696	                    let cls = move || if hint_open.get() {
+697	                        "btn btn-hint btn-hint--on"
+698	                    } else {
+699	                        "btn btn-hint"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:01Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:02Z)**_
+
+The sidebar at line 678 already shows just `variant_label` (lowercase slug). Replace it with the full `describe_rules` summary — same single point of display benefits both LAN and chess-net:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:04Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+1	use chess_ai::{AiAnalysis, AiOptions, Difficulty, Strategy};
+2	use chess_core::board::BoardShape;
+3	use chess_core::coord::Square;
+4	use chess_core::moves::Move;
+5	use chess_core::piece::Side;
+6	use chess_core::rules::RuleSet;
+7	use chess_core::state::GameStatus;
+8	use chess_core::view::{PlayerView, VisibleCell};
+9	use chess_net::protocol::{ChatLine, ClientMsg, ServerMsg};
+10	use leptos::*;
+11	use leptos_router::{use_params_map, use_query_map};
+12	use std::rc::Rc;
+13	
+14	use crate::components::board::{Board, ThreatOverlay};
+15	use crate::components::captured::CapturedStrip;
+16	use crate::components::chat_panel::ChatPanel;
+17	use crate::components::debug_panel::DebugPanel;
+18	use crate::components::end_overlay::EndOverlay;
+19	use crate::components::ws_setup::WsSetup;
+20	use crate::config::{
+21	    append_query_pairs, resolve_ws_base, room_url, ws_query_pair, WsBase, WsBaseChoiceError,
+22	    WS_QUERY_KEY,
+23	};
+24	use crate::prefs::{Prefs, ThreatMode};
+25	use crate::routes::{app_href, variant_slug, WsBaseError};
+26	use crate::state::{
+27	    end_chain_move, find_move, hover_threat_squares, reconstruct_xiangqi_state_for_analysis,
+28	    truncate_front, ClientRole,
+29	};
+30	use crate::transport::{self, ConnState, Session, Transport};
+31	
+32	const CHAT_HISTORY_CAP: usize = 50;
+33	
+34	#[component]
+35	pub fn PlayPage() -> impl IntoView {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:09Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:17Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check remaining uses of variant_slug
+
+`grep -n "variant_slug" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:25Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Rebuild WASM after play.rs change
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -10`
+
+```text
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on artifact directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.59s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:40Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:40Z)**_
+
+Confirm everything still compiles and passes lint:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Native checks after commit 2
+
+`cargo fmt --check && echo FMT_OK && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3 && cargo test -p chess-web --lib 2>&1 | tail -3`
+
+```text
+FMT_OK
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.72s
+
+test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:47Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Wasm clippy on my edited files
+
+`cargo clippy -p chess-web --target wasm32-unknown-unknown --all-targets 2>&1 | grep -E "play\.rs|state\.rs|lan\.rs" | head -5`
+
+```text
+(Bash completed with no output)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:19:55Z)**_
+
+Now do the full LAN pairing end-to-end in playwright to verify the joiner's sidebar shows the new rules summary:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Open host page in tab A
+
+`playwright-cli open http://localhost:8080/lan/host 2>&1 | tail -3`
+
+```text
+- [Snapshot](.playwright-cli/page-2026-05-14T08-20-01-646Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-00-657Z.log#L1-L2
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find variant dropdown + Open room refs
+
+`grep -E "combobox.*Variant|button \"1\." .playwright-cli/page-2026-05-14T08-20-01-646Z.yml | head -3`
+
+```text
+          - combobox "Variant" [ref=e18]:
+        - button "1. Open room" [ref=e29]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:14Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Switch to banqi, get new refs
+
+`playwright-cli select e18 banqi 2>&1 | tail -3 && playwright-cli snapshot --filename=banqi-form.yml 2>&1 | tail -3`
+
+```text
+- Console: 1 errors, 1 warnings
+### Snapshot
+- [Snapshot](.playwright-cli/page-2026-05-14T08-20-14-814Z.yml)
+- Console: 1 errors, 1 warnings
+### Snapshot
+- [Snapshot](./banqi-form.yml)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:21Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Get Taiwan + seed + Open room refs
+
+`grep -E "Taiwan|textbox.*random|button \"1\.|leave blank" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/banqi-form.yml | head -5 && rm /Volumes/Data/Program/tries/2026-05-06-chinese-chess/banqi-form.yml`
+
+```text
+        - button "Taiwan" [ref=e40] [cursor=pointer]
+      - textbox "leave blank for random" [ref=e63]
+      - button "1. Open room" [ref=e29]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:29Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Taiwan preset + seed 42 + Open room
+
+`playwright-cli click e40 2>&1 | tail -2 && playwright-cli fill e63 "42" 2>&1 | tail -2 && playwright-cli click e29 2>&1 | tail -3`
+
+```text
+### Snapshot
+- [Snapshot](.playwright-cli/page-2026-05-14T08-20-27-782Z.yml)
+await page.getByRole('textbox', { name: 'leave blank for random' }).fill('42');
+```
+- [Snapshot](.playwright-cli/page-2026-05-14T08-20-29-521Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-00-657Z.log#L3-L4
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:38Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+See offer state on host
+
+`sleep 2 && playwright-cli snapshot --filename=host-after-open.yml 2>&1 | tail -2 && grep -E "textbox.*[a-z]+|Bytes|Status:|Playing" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-after-open.yml | head -10`
+
+```text
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-00-657Z.log#L5
+      - text: "Playing:"
+    - paragraph [ref=e33]: "Status: AwaitingAnswer"
+    - textbox [ref=e75]: "{ \"type\": \"offer\", \"sdp\": \"v=0\\r\\no=- 7913615031196470074 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\r\\nc=IN IP4 0.0.0.0\\r\\na=candidate:343818336 1 udp 2113937151 07ab9e65-f3b5-49e5-9001-208eff913b22.local 51769 typ host generation 0 network-cost 999\\r\\na=ice-ufrag:A47M\\r\\na=ice-pwd:oR27y0Ys/Ym42x5iTA2GRloe\\r\\na=ice-options:trickle\\r\\na=fingerprint:sha-256 7F:63:BB:C1:E7:55:66:D9:7D:70:CB:B5:CB:88:DD:D6:21:23:DF:47:55:DD:5B:6B:18:53:41:4E:86:06:9A:2C\\r\\na=setup:actpass\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n\" }"
+      - generic [ref=e78]: "Bytes: 656"
+    - textbox [ref=e80]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:44Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:45Z)**_
+
+Extract the offer SDP and feed it into a join tab:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:48Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Extract offer SDP
+
+`playwright-cli --raw eval "el => el.value" e75 > /tmp/offer.txt 2>&1; wc -c /tmp/offer.txt`
+
+```text
+     706 /tmp/offer.txt
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:49Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Open join page in new tab
+
+`rm /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-after-open.yml; playwright-cli tab-new http://localhost:8080/lan/join 2>&1 | tail -3`
+
+```text
+- [Snapshot](.playwright-cli/page-2026-05-14T08-20-49-666Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-48-998Z.log#L1-L2
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:20:55Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find join page offer textarea + Generate button
+
+`grep -E "textbox|button \"2\." .playwright-cli/page-2026-05-14T08-20-49-666Z.yml | head -5`
+
+```text
+      - textbox [ref=e23]
+      - button "2. Generate answer" [ref=e24]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Paste offer + click Generate
+
+`OFFER=$(cat /tmp/offer.txt); playwright-cli fill e23 "$OFFER" 2>&1 | tail -3 && playwright-cli click e24 2>&1 | tail -3`
+
+```text
+```js
+await page.getByRole('textbox').fill('"{\\n  \\"type\\": \\"offer\\",\\n  \\"sdp\\": \\"v=0\\\\r\\\\no=- 7913615031196470074 2 IN IP4 127.0.0.1\\\\r\\\\ns=-\\\\r\\\\nt=0 0\\\\r\\\\na=group:BUNDLE 0\\\\r\\\\na=extmap-allow-mixed\\\\r\\\\na=msid-semantic: WMS\\\\r\\\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\\\r\\\\nc=IN IP4 0.0.0.0\\\\r\\\\na=candidate:343818336 1 udp 2113937151 07ab9e65-f3b5-49e5-9001-208eff913b22.local 51769 typ host generation 0 network-cost 999\\\\r\\\\na=ice-ufrag:A47M\\\\r\\\\na=ice-pwd:oR27y0Ys/Ym42x5iTA2GRloe\\\\r\\\\na=ice-options:trickle\\\\r\\\\na=fingerprint:sha-256 7F:63:BB:C1:E7:55:66:D9:7D:70:CB:B5:CB:88:DD:D6:21:23:DF:47:55:DD:5B:6B:18:53:41:4E:86:06:9A:2C\\\\r\\\\na=setup:actpass\\\\r\\\\na=mid:0\\\\r\\\\na=sctp-port:5000\\\\r\\\\na=max-message-size:262144\\\\r\\\\n\\"\\n}"');
+```
+- Console: 1 errors, 1 warnings
+### Snapshot
+- [Snapshot](.playwright-cli/page-2026-05-14T08-21-02-077Z.yml)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:08Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check joiner state after Generate
+
+`sleep 3 && playwright-cli snapshot --filename=joiner-after-gen.yml 2>&1 | tail -2 && grep -E "Bytes|answer|Show this QR|Status|error" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-after-gen.yml | head -10`
+
+```text
+### Snapshot
+- [Snapshot](./joiner-after-gen.yml)
+    - paragraph [ref=e14]: Paste the host's offer SDP, generate an answer, send it back to the host.
+    - paragraph [ref=e21]: "Status: Idle"
+    - button "2. Generate answer" [ref=e24]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect captured offer
+
+`head -c 200 /tmp/offer.txt && echo "..." && tail -c 100 /tmp/offer.txt`
+
+```text
+"{\n  \"type\": \"offer\",\n  \"sdp\": \"v=0\\r\\no=- 7913615031196470074 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=applic...
+\\r\\na=setup:actpass\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n\"\n}"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:34Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:35Z)**_
+
+The offer is JSON-encoded (extra quoting). Decode it and use clipboard for proper paste:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:36Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Decode JSON-wrapped offer
+
+`python3 -c "import json,sys; print(json.loads(sys.stdin.read()), end='')" < /tmp/offer.txt > /tmp/offer_raw.txt && head -c 200 /tmp/offer_raw.txt`
+
+```text
+{
+  "type": "offer",
+  "sdp": "v=0\r\no=- 7913615031196470074 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=application 9 UDP/DTLS/SCTP we
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:45Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Paste clean offer + Generate
+
+`OFFER=$(cat /tmp/offer_raw.txt); playwright-cli fill e23 "$OFFER" 2>&1 | tail -3 && playwright-cli click e24 2>&1 | tail -3`
+
+```text
+```js
+await page.getByRole('textbox').fill('{\n  "type": "offer",\n  "sdp": "v=0\\r\\no=- 7913615031196470074 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\r\\nc=IN IP4 0.0.0.0\\r\\na=candidate:343818336 1 udp 2113937151 07ab9e65-f3b5-49e5-9001-208eff913b22.local 51769 typ host generation 0 network-cost 999\\r\\na=ice-ufrag:A47M\\r\\na=ice-pwd:oR27y0Ys/Ym42x5iTA2GRloe\\r\\na=ice-options:trickle\\r\\na=fingerprint:sha-256 7F:63:BB:C1:E7:55:66:D9:7D:70:CB:B5:CB:88:DD:D6:21:23:DF:47:55:DD:5B:6B:18:53:41:4E:86:06:9A:2C\\r\\na=setup:actpass\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n"\n}');
+```
+- [Snapshot](.playwright-cli/page-2026-05-14T08-21-45-190Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-48-998Z.log#L3-L7
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:21:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Joiner state after Generate
+
+`sleep 3 && playwright-cli snapshot --filename=joiner-with-answer.yml 2>&1 | tail -2 && grep -E "Bytes|Show this QR|Status|Playing|error|textbox" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-with-answer.yml | head -10`
+
+```text
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-48-998Z.log#L8
+    - paragraph [ref=e21]: "Status: WaitingForOpen"
+    - textbox [ref=e23]: "{ \"type\": \"offer\", \"sdp\": \"v=0\\r\\no=- 7913615031196470074 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\r\\nc=IN IP4 0.0.0.0\\r\\na=candidate:343818336 1 udp 2113937151 07ab9e65-f3b5-49e5-9001-208eff913b22.local 51769 typ host generation 0 network-cost 999\\r\\na=ice-ufrag:A47M\\r\\na=ice-pwd:oR27y0Ys/Ym42x5iTA2GRloe\\r\\na=ice-options:trickle\\r\\na=fingerprint:sha-256 7F:63:BB:C1:E7:55:66:D9:7D:70:CB:B5:CB:88:DD:D6:21:23:DF:47:55:DD:5B:6B:18:53:41:4E:86:06:9A:2C\\r\\na=setup:actpass\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n\" }"
+    - paragraph [ref=e29]: "Show this QR back to the host — or copy + AirDrop the text:"
+    - textbox [ref=e36]: "{ \"type\": \"answer\", \"sdp\": \"v=0\\r\\no=- 8021655483544908882 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\r\\nc=IN IP4 0.0.0.0\\r\\na=candidate:2135314805 1 udp 2113937151 02a4f250-718e-4e57-9c22-4f9b000e06bf.local 59709 typ host generation 0 network-cost 999\\r\\na=ice-ufrag:nxMn\\r\\na=ice-pwd:5yUCXN9hXgwK0sWtTz7ju4VV\\r\\na=ice-options:trickle\\r\\na=fingerprint:sha-256 33:94:24:7D:CB:68:AF:66:59:07:95:BA:E2:00:C8:D0:E5:FF:5B:B8:2A:A7:B4:90:52:8A:22:49:23:0E:3A:2D\\r\\na=setup:active\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n\" }"
+      - generic [ref=e39]: "Bytes: 657"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:00Z)**_
+
+Joiner generated answer. Extract it and feed to host's Accept answer:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Capture and decode answer SDP
+
+`playwright-cli --raw eval "el => el.value" e36 | python3 -c "import json,sys; print(json.loads(sys.stdin.read()), end='')" > /tmp/answer_raw.txt && head -c 150 /tmp/answer_raw.txt`
+
+```text
+{
+  "type": "answer",
+  "sdp": "v=0\r\no=- 8021655483544908882 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\na=extmap-allow-mixed\r\na=msi
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:03Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Switch to host tab
+
+`playwright-cli tab-select 0 2>&1 | tail -3`
+
+```text
+- 1: [Chinese Chess 中國象棋](http://localhost:8080/lan/join)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-00-657Z.log#L6-L7
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:09Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:09Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List tabs to identify current
+
+`playwright-cli tab-list 2>&1 | tail -10`
+
+```text
+### Result
+- 0: (current) [Chinese Chess 中國象棋](http://localhost:8080/lan/host)
+- 1: [Chinese Chess 中國象棋](http://localhost:8080/lan/join)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:16Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find Accept answer + textarea refs on host
+
+`playwright-cli snapshot --filename=host-needs-answer.yml 2>&1 | tail -2 && grep -E "textbox \[ref=e80\]|Accept answer|button \"3\.|paste" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-needs-answer.yml | head -5`
+
+```text
+### Snapshot
+- [Snapshot](./host-needs-answer.yml)
+    - paragraph [ref=e79]: "2. Get the joiner's answer back. Either scan their QR with the camera, or paste their text below:"
+    - textbox [ref=e80]
+    - button "3. Accept answer" [ref=e81]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:23Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Paste answer + Accept
+
+`ANSWER=$(cat /tmp/answer_raw.txt); playwright-cli fill e80 "$ANSWER" 2>&1 | tail -3 && playwright-cli click e81 2>&1 | tail -3`
+
+```text
+```js
+await page.getByRole('textbox').nth(1).fill('{\n  "type": "answer",\n  "sdp": "v=0\\r\\no=- 8021655483544908882 2 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\na=group:BUNDLE 0\\r\\na=extmap-allow-mixed\\r\\na=msid-semantic: WMS\\r\\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\\r\\nc=IN IP4 0.0.0.0\\r\\na=candidate:2135314805 1 udp 2113937151 02a4f250-718e-4e57-9c22-4f9b000e06bf.local 59709 typ host generation 0 network-cost 999\\r\\na=ice-ufrag:nxMn\\r\\na=ice-pwd:5yUCXN9hXgwK0sWtTz7ju4VV\\r\\na=ice-options:trickle\\r\\na=fingerprint:sha-256 33:94:24:7D:CB:68:AF:66:59:07:95:BA:E2:00:C8:D0:E5:FF:5B:B8:2A:A7:B4:90:52:8A:22:49:23:0E:3A:2D\\r\\na=setup:active\\r\\na=mid:0\\r\\na=sctp-port:5000\\r\\na=max-message-size:262144\\r\\n"\n}');
+```
+- [Snapshot](.playwright-cli/page-2026-05-14T08-22-23-637Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-00-657Z.log#L8-L9
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:37Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm host sidebar shows full Banqi rules summary
+
+`sleep 6 && playwright-cli snapshot --filename=host-playing.yml 2>&1 | tail -2 && grep -E "Online — room|Banqi|Xiangqi|sidebar|chain,rush|variant-label" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-playing.yml | head -10`
+
+```text
+### Snapshot
+- [Snapshot](./host-playing.yml)
+        - heading "Online — room lan-host" [level=3] [ref=e143]
+        - paragraph [ref=e144]: "Banqi · house: chain,rush · seed: 42"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:42Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:43Z)**_
+
+Host sidebar shows `Banqi · house: chain,rush · seed: 42`. Now check the joiner:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Check joiner sidebar
+
+`playwright-cli tab-select 1 2>&1 | tail -3 && playwright-cli snapshot --filename=joiner-playing.yml 2>&1 | tail -2 && grep -E "Online — room|Banqi|Xiangqi|sidebar|chain,rush|variant-label" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-playing.yml | head -10`
+
+```text
+- 1: (current) [Chinese Chess 中國象棋](http://localhost:8080/lan/join)
+### Events
+- New console entries: .playwright-cli/console-2026-05-14T08-20-48-998Z.log#L9
+### Snapshot
+- [Snapshot](./joiner-playing.yml)
+        - heading "Online — room lan-join" [level=3] [ref=e98]
+        - paragraph [ref=e99]: "Banqi · house: chain,rush · seed: 42"
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:53Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:53Z)**_
+
+Both sides show `Banqi · house: chain,rush · seed: 42`. Let me also confirm the board renders (banqi 4×8 with hidden tiles):
+
+_**Agent (claude-opus-4-7 2026-05-14 08:22:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm board renders
+
+`grep -E "board|sidebar|Captured|graphics-document\|svg|Hidden" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-playing.yml | head -15`
+
+```text
+      - region "Captured pieces" [ref=e84]:
+          - heading "Captured 死亡" [level=4] [ref=e86]
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:00Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Look for board element in joiner snapshot
+
+`grep -E "board|graphics|svg|tile|cell|hidden|move|Red" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-playing.yml | head -10`
+
+```text
+        - paragraph [ref=e101]: Red 紅 to move
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:06Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:06Z)**_
+
+Take a screenshot of the joiner's banqi board to visually confirm:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:08Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Screenshot joiner play page
+
+`playwright-cli screenshot --filename=joiner-banqi.png 2>&1 | tail -3`
+
+```text
+  type: 'png'
+});
+```
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:13Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find screenshot file
+
+`find . -name "joiner-banqi.png" -type f 2>/dev/null | head -3`
+
+```text
+./joiner-banqi.png
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:18Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./joiner-banqi.png`
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:27Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:28Z)**_
+
+Joiner shows banqi 4×8 board with all 32 hidden tiles + `Banqi · house: chain,rush · seed: 42` summary. Pairing works end-to-end. Let me clean up and commit:
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:32Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Clean up test artifacts + close browser + stop dev server
+
+`rm -f /tmp/offer.txt /tmp/offer_raw.txt /tmp/answer_raw.txt /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-banqi.png /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-after-open.yml /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-after-gen.yml /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-with-answer.yml /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-needs-answer.yml /Volumes/Data/Program/tries/2026-05-06-chinese-chess/host-playing.yml /Volumes/Data/Program/tries/2026-05-06-chinese-chess/joiner-playing.yml && playwright-cli close 2>&1 | tail -3 && make stop-web 2>&1 | tail -3`
+
+```text
+Browser 'default' closed
+
+tmux kill-session -t chess-web 2>/dev/null
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #14 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:33Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #15 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Survey commit 2 changes
+
+`git status --short && git diff --stat`
+
+```text
+ M .claude/plans/https-daviddwlee84-github-io-chinese-ch-imperative-sun.md
+ M .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md
+ M clients/chess-web/src/pages/play.rs
+ ...ddwlee84-github-io-chinese-ch-imperative-sun.md | 541 +++++++-----
+ ...05-14_05-43-00Z-https-daviddwlee84-github-io.md | 912 +++++++++++++++++++++
+ clients/chess-web/src/pages/play.rs                |  12 +-
+ 3 files changed, 1272 insertions(+), 193 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit 2: full rules summary in play sidebar
+
+```bash
+git add clients/chess-web/src/pages/play.rs .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md && git commit -m "$(cat <<'EOF'
+feat(chess-web): play page sidebar shows full rules summary (not just slug)
+
+The Online sidebar's variant label was `variant_slug(rules.variant)` —
+just "xiangqi" / "banqi" / "three-kingdom". Replace with the new
+state::describe_rules helper so it renders "Xiangqi · casual",
+"Banqi · house: chain,rush · seed: 42", etc.
+
+Benefits the LAN joiner (previous commit added host-side rule
+selection; this surfaces the chosen rules on both peers' sidebars
+once Hello arrives) AND chess-net joiners (who previously couldn't
+tell from the play page whether the server was running --strict or
+which house flags were on).
+
+Net effect: rules.signal -> describe_rules() -> sidebar. No protocol
+change; the `rules: Option<RuleSet>` signal was already populated by
+the existing ServerMsg::Hello handler at play.rs:153.
+
+Verified end-to-end via playwright-cli LAN handshake (host banqi
+Taiwan + seed=42 → joiner sidebar reads "Banqi · house: chain,rush
+· seed: 42"; xiangqi default regression also passes).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+```text
+[main 77d62ee] feat(chess-web): play page sidebar shows full rules summary (not just slug)
+ 2 files changed, 939 insertions(+), 4 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:23:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm both commits landed
+
+`git log --oneline -3`
+
+```text
+77d62ee feat(chess-web): play page sidebar shows full rules summary (not just slug)
+4b58fc4 feat(chess-web): variant + rules picker on /lan/host (banqi over WebRTC)
+e6efdf0 fix(chess-web): add "Back to picker" link on /lan/host and /lan/join setup screens
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 08:24:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 08:24:16Z)**_
+
+Both commits landed:
+
+- **`4b58fc4`** — `/lan/host` form: variant dropdown (Xiangqi/Banqi), per-variant rule controls (strict toggle for xiangqi; preset row + 5 house-rule checkboxes + seed input for banqi). Form hides on Open room and is replaced by a "Playing: …" summary. Deep-link pre-fill via `?variant=banqi&house=chain,rush&seed=42`. Hidden-tile correctness was free — the existing protocol already carries the full RuleSet (incl. banqi seed) via `ServerMsg::Hello`, so the joiner inherits the shuffle automatically.
+
+- **`77d62ee`** — Play page sidebar (used by both LAN and chess-net) now renders `describe_rules(&r)` instead of just the variant slug. Joiner sees "Banqi · house: chain,rush · seed: 42" instead of "banqi".
+
+Verified end-to-end via playwright: host configured Banqi + Taiwan + seed=42, joiner paired, both peers reached the play page with the banqi 4×8 board (32 hidden tiles, identical shuffle from the deterministic seed) and the same rules summary in their sidebars. Three-kingdom is excluded from the dropdown (3-player, doesn't fit 2-peer pairing). Native test suite: 99 pass, including 6 new `describe_rules` tests. Workspace clippy + fmt clean. Commits unpushed.

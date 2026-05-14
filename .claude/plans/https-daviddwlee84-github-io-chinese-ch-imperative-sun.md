@@ -1,229 +1,392 @@
-# LAN host/join pairing on GitHub Pages — fix jsQR + ICE diagnostics
+# Extend WebRTC LAN mode: banqi support + host-side rule/variant picker
 
 ## Context
 
-Two bugs reported on `https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/lan/host` (LAN WebRTC pairing, Phase 5/5.5):
-
-1. **Copy-text flow reaches "Accept answer" then errors out with**
-   `ERROR: DataChannel did not open within 10 s — pairing failed (network blocked?)`.
-   Offer/answer SDPs both have only `.local` mDNS host candidates; toggling
-   "Use STUN" doesn't help — error persists, and offer generation visibly slows
-   (5 s ICE-gather timeout firing because one of the STUN servers is unreachable).
-
-2. **QR scanner on iOS Safari fails immediately with**
-   `JsValue("jsQR script load error")` — the user can't even open the camera flow.
-
-### Root causes
-
-**Issue 2 (clear code bug, the priority fix).**
-`clients/chess-web/src/qr_decode.rs:109-110` builds the script URL as:
+LAN mode (Phase 5 / 5.5) ships as a working WebRTC pairing flow but is
+**xiangqi-only**, with **no rule customisation** at the host setup screen.
+The variant is hardcoded at exactly one site:
 
 ```rust
-let origin = win.location().origin()?;
-let url = format!("{origin}/jsQR.min.js");
+// clients/chess-web/src/pages/lan.rs:258
+let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
 ```
 
-On the deployed GitHub Pages target the app lives at `https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/...`. `origin` is just `https://daviddwlee84.github.io` (no path), so the constructed URL `{origin}/jsQR.min.js` resolves to a 404 — the asset is actually at `/Chinese-Chess_Xiangqi/jsQR.min.js`. The script `error` event fires and the loader's promise rejects with `"jsQR script load error"`. The doc comment at lines 12–18 explicitly claims this works on GitHub Pages subpaths, but the implementation doesn't actually consume the base path. The PWA service-worker side handles base paths via `__BASE_PATH__` substitution (`scripts/build-pwa.sh`), and the Leptos router consumes `routes::base_path()` (`src/routes.rs:30`); the jsQR loader just never got plumbed through.
+The protocol envelope (`ServerMsg::Hello.rules: RuleSet` in
+`crates/chess-net/src/protocol.rs`) already carries variant + every flag
++ the banqi seed end-to-end — the joiner reads `Hello.rules` and renders
+the host's authoritative state via `PlayerView` projections. No new
+protocol message and no protocol version bump are needed.
 
-**Issue 1 (not directly fixable in code — it's a network/router-level WebRTC quirk).**
-This is the documented pitfall in `pitfalls/webrtc-mdns-lan-ap-isolation.md`: modern browsers obfuscate LAN host candidates as `<uuid>.local` mDNS names, and on certain consumer routers (Xiaomi AX9000 confirmed) WebRTC's per-session dynamic `.local` resolution fails even though general mDNS (AirPlay, Mi IoT) works. STUN srflx fallback also doesn't rescue NAT hairpin on the same network (user's STUN-on test confirms this). The known workaround is iPhone-hotspot pairing (Approach A in the pitfall doc); a proper code fix requires a chess-net signalling endpoint (Approach C, backlog `webrtc-lan-pairing.md`).
+Banqi-specific correctness is already handled by the existing protocol:
+the host shuffles once via `ChaCha8Rng::seed_from_u64(banqi_seed)` in
+`crates/chess-core/src/setup.rs::build_banqi`, then projects per-side
+`PlayerView` (hidden tiles stay opaque per ADR-0004). The joiner never
+reconstructs the board locally; it just renders the projection. So
+adding banqi to LAN requires **zero changes to** `host_room.rs` or
+`transport/webrtc.rs` — only the host's choice of `RuleSet` and a small
+joiner-side display.
 
-What we can do in code: make the failure mode *legible* to the user / future debuggers so they don't have to read pitfall docs to know what's happening — surface the live ICE / connection state in the page, log state transitions to the JS console, include the final state in the timeout error, and re-snapshot the SDP at copy time so late-arriving candidates aren't lost.
+Three-kingdom-banqi is **deliberately excluded** from the LAN dropdown —
+it's a 3-player variant and WebRTC pairing here is 2-player only
+(would need a 3-peer mesh redesign, not scoped).
 
 ### Intended outcome
 
-- iOS users can use the QR scanner camera flow on the GH Pages deploy (issue 2 fully fixed).
-- When LAN pairing fails (issue 1 — networks where mDNS can't resolve), the user sees what went wrong (e.g. "ICE state: disconnected — try iPhone hotspot or enable STUN") instead of a generic "network blocked?", and the offer/answer text/QR always reflect the latest candidates rather than the half-gathered snapshot. Root-cause network fix (signalling broker) is explicitly deferred to a future Phase 5 follow-up.
+Host clicks the variant dropdown on `/lan/host`, picks banqi, optionally
+configures preset / house-rules / seed, and clicks "Open room". Joiner
+scans QR or pastes offer. Both sides see the same variant + rules
+summary and start playing banqi over WebRTC with hidden-tile flips
+working correctly. Existing xiangqi LAN flow is preserved (the default
+`/lan/host` still opens a casual xiangqi room with no extra clicks).
 
 ---
 
-## Commit 1 — Issue 2: jsQR loader respects base path
+## Commit 1 — variant + rules picker on `/lan/host`
 
-**Critical files:**
+**Critical files (modify):**
 
-- `clients/chess-web/src/qr_decode.rs` (lines 98–141, especially 109–110)
-- `clients/chess-web/index.html` (comment lines 55–61 — currently lies that the loader works on GH Pages)
+- `clients/chess-web/src/pages/lan.rs` — `LanHostPage` (lines ~119–270):
+  add form controls before the "Open room" button; read selection on
+  submit; pass to `HostRoom::new(rules, …)` at line 258.
 
-**Change:**
+**Reused helpers (no changes; just call):**
 
-In `qr_decode.rs::ensure_loaded()`, replace:
+- `clients/chess-web/src/routes.rs:378` — `build_rule_set(variant, &LocalRulesParams) -> RuleSet`.
+  Pure function; no URL roundtrip needed. Branches on variant, picks
+  `xiangqi_casual` vs `xiangqi`, and threads `banqi_seed`.
+- `clients/chess-web/src/routes.rs:106` — `LocalRulesParams` struct.
+  Shareable form-state intermediate; 13 fields (most are AI-only and
+  irrelevant to LAN — leave them at `Default::default()`).
+- `clients/chess-web/src/routes.rs:224` — `parse_local_rules(get_fn)`.
+  Used **only** for the optional URL pre-fill polish (see step 5).
 
-```rust
-let origin = win.location().origin().map_err(|_| JsValue::from_str("no origin"))?;
-let url = format!("{origin}/jsQR.min.js");
-```
+### Changes (in order)
 
-with:
+1. **Add signals scoped to `LanHostPage`** (above the existing
+   `on_open`/`on_accept` closures):
 
-```rust
-use crate::routes::base_path;
+   ```rust
+   let variant = create_rw_signal(Variant::Xiangqi);
+   let params  = create_rw_signal(LocalRulesParams::default());
+   ```
 
-let origin = win.location().origin().map_err(|_| JsValue::from_str("no origin"))?;
-let base = base_path();   // "" on server deploy, "/Chinese-Chess_Xiangqi" on GH Pages
-let url = format!("{origin}{base}/jsQR.min.js");
-```
+   The xiangqi default is `xiangqi_casual` (matches `params.strict == false`),
+   which is the same default the picker uses for `/local/xiangqi` per
+   `routes.rs:475-480`. This preserves the current LAN-host behaviour
+   (xiangqi casual room opens with one click).
 
-`base_path()` is the existing helper from `routes.rs:30`, baked at build time from `CHESS_WEB_BASE_PATH` env var (set by `Makefile` line 72's `build-web-static` recipe). It returns `""` for `make build-web` (root deploy) and `/Chinese-Chess_Xiangqi` for `make build-web-static WEB_BASE=Chinese-Chess_Xiangqi`. The string already has its leading `/` normalized away in the empty case, so concatenation works for both.
+2. **Render the form** as a single inline `<section class="lan-rules-form">`
+   above the existing "Open room" button. Do **not** lift `picker.rs::XiangqiCard`
+   or `BanqiCard` — they're 450 + 100 lines of inline JSX with AI options,
+   board preview, side selector, and `build_local_href` URL generation
+   that LAN doesn't need. The Plan agent confirmed there is no extracted
+   `<RulesForm>` component to reuse. Duplicating the *pattern* (signals
+   → `LocalRulesParams` → `build_rule_set`) is the right call here;
+   extracting a shared component for 2 consumers of different shape is
+   premature abstraction. Track `<RulesForm>` extraction in a follow-up
+   if a third consumer appears.
 
-Touch up the inaccurate comment block at the top of `ensure_loaded()` (lines 12–18) and the `index.html` comment at lines 55–61 to describe the actual behavior.
+   Form contents:
+
+   ```rust
+   <section class="lan-rules-form">
+       <label>"Variant"</label>
+       <select on:change=move |ev| {
+           // Update variant signal from select value; reset params on switch
+           // so xiangqi house flags don't leak into banqi and vice versa.
+           let slug = event_target_value(&ev);
+           if let Some(v) = parse_variant_slug(&slug) {
+               variant.set(v);
+               params.set(LocalRulesParams::default());
+           }
+       }>
+           <option value="xiangqi">"Xiangqi (象棋)"</option>
+           <option value="banqi">"Banqi (暗棋)"</option>
+           // three-kingdom intentionally NOT listed; see Context.
+       </select>
+
+       <Show when=move || variant.get() == Variant::Xiangqi>
+           <label>
+               <input type="checkbox"
+                   prop:checked=move || params.get().strict
+                   on:change=move |ev| params.update(|p| p.strict = event_target_checked(&ev))/>
+               "Strict (self-check forbidden)"
+           </label>
+       </Show>
+
+       <Show when=move || variant.get() == Variant::Banqi>
+           // Preset dropdown — Purist / Taiwan / Aggressive / Custom.
+           // On change: set params.house = matching PRESET_* constant.
+           // Custom = whatever the user toggles below.
+           <label>"Preset"</label>
+           <select on:change=move |ev| { /* set params.house from preset */ }>
+               <option value="purist">"Purist (no house rules)"</option>
+               <option value="taiwan">"Taiwan (chain + chariot rush)"</option>
+               <option value="aggressive">"Aggressive (all flags on)"</option>
+               <option value="custom">"Custom…"</option>
+           </select>
+
+           // Six house-rule checkboxes, each bound to a HouseRules bitflag.
+           // Use HOUSE_TOKENS (routes.rs:432) for label ↔ flag mapping.
+           <label><input type="checkbox" .../> "Chain capture (chain)"</label>
+           <label><input type="checkbox" .../> "Dark capture (dark)"</label>
+           <label><input type="checkbox" .../> "Dark capture trade (dark-trade)"</label>
+           <label><input type="checkbox" .../> "Chariot rush (rush)"</label>
+           <label><input type="checkbox" .../> "Horse diagonal (horse) — UI flag, not yet wired"</label>
+           <label><input type="checkbox" .../> "Cannon fast move (cannon) — UI flag, not yet wired"</label>
+
+           // Seed input — numeric, blank = engine picks random.
+           <label>"Seed (optional)"</label>
+           <input type="number" placeholder="random"
+               on:input=move |ev| {
+                   let v = event_target_value(&ev);
+                   params.update(|p| p.seed = v.parse::<u64>().ok());
+               }/>
+       </Show>
+   </section>
+   ```
+
+   Note on the two "not yet wired" flags: per CLAUDE.md, only `CHAIN_CAPTURE`,
+   `DARK_CAPTURE`, `DARK_CAPTURE_TRADE`, `CHARIOT_RUSH` are end-to-end in
+   move-gen; `HORSE_DIAGONAL` and `CANNON_FAST_MOVE` parse but are no-op.
+   Match `picker.rs::BanqiCard` exactly: show them and label them
+   honestly. Don't silently hide — that hides behaviour drift from
+   future users.
+
+3. **Wire the room-open call** (currently line 258 of `lan.rs`):
+
+   ```rust
+   // before:
+   let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, false);
+   // after:
+   let rules = routes::build_rule_set(variant.get_untracked(), &params.get_untracked());
+   let (room, session) = HostRoom::new(rules, None, false);
+   ```
+
+   `get_untracked()` is correct here: the open-room handler reads the
+   form value once at click time and doesn't want to re-fire on later
+   form edits (the room is locked once opened).
+
+4. **Disable the form once the room is open.** After `on_open` succeeds
+   (status moves past `Idle`), hide / `disabled` the variant + rules
+   inputs so the user can't toggle them mid-pairing. Show the chosen
+   rules as a read-only summary line ("Banqi · Taiwan · seed: 42") in
+   the existing status area instead. Reuse the `describe_rules` helper
+   from commit 2 (define it once, call from both pages).
+
+5. **(Optional polish, still commit 1)** Parse query string on page load
+   via `routes::parse_local_rules(...)`:
+
+   ```rust
+   // Wrap in use_query() / web_sys::window().location().search()
+   let initial = parse_local_rules(|k| /* read query param */);
+   params.set(initial);
+   // Plus parse a top-level ?variant= via parse_variant_slug
+   ```
+
+   Gives free deep-linking — `/lan/host?variant=banqi&house=chain,rush&seed=42`
+   pre-fills the form. Sets up a future picker entry ("Host LAN game" button
+   per variant card) as a trivial follow-up.
+
+6. **Add styles** in `clients/chess-web/style.css` — small section, ~10 lines:
+   ```css
+   .lan-rules-form { display: flex; flex-direction: column; gap: 6px;
+                     margin-bottom: 12px; padding: 8px;
+                     border: 1px solid #eee; border-radius: 4px; }
+   .lan-rules-form label { display: flex; align-items: center; gap: 4px; }
+   ```
+   Match the existing form aesthetic in `style.css` (`.chat-input`,
+   `.lan-buttons` etc.).
+
+7. **Unit tests** (native) in `routes.rs::tests` are already comprehensive
+   (line 445–940). No new tests needed for `build_rule_set` / `parse_local_rules`
+   themselves. The new `describe_rules` helper (added in commit 2) is the
+   only new pure function and gets its own ~3 unit tests there.
 
 ---
 
-## Commit 2 — Issue 1: ICE/connection-state diagnostics + re-snapshot SDP on Copy
-
-This is scoped to "make the failure mode visible" — no STUN default change, no signalling-broker work.
+## Commit 2 — joiner sees variant + rules on `/lan/join`
 
 **Critical files:**
 
-- `clients/chess-web/src/transport/webrtc.rs` (install state-change listeners; expose a live `ReadSignal<IceDiag>` on `HostHandshake` / `JoinerHandshake`; widen the per-page SDP exposure to re-read `pc.local_description()` reactively)
-- `clients/chess-web/src/pages/lan.rs` (consume the diag signal in the UI; show inline "ICE: checking → connected" badge; widen the 10-s timeout error to include the final ICE state; re-bind the offer/answer textareas + QR payloads to the live `pc.local_description()` instead of the captured snapshot)
-- `clients/chess-web/Cargo.toml` (no changes expected — `RtcIceConnectionState`, `RtcIceGatheringState`, `RtcPeerConnectionState` are all already in the web-sys features at lines 38–45)
+- `clients/chess-web/src/pages/lan.rs` — `LanJoinPage` (lines ~441–717).
+  Specifically, the `ServerMsg::Hello` handler (the joiner currently
+  ignores `hello.rules`, so the user has no idea what they're about to
+  play until the board renders).
 
-### 2a. Wire ICE / connection / gathering state-change handlers
+**Changes:**
 
-Add to both `connect_as_host()` (around line 302 of `webrtc.rs`, before `create_offer`) and `connect_as_joiner()` (around line 252, after creating the PC):
+1. **Capture `rules` from the `Hello` message** in `LanJoinPage`. After
+   pairing, the data-channel `onmessage` handler dispatches on
+   `ServerMsg`. In the `Hello { rules, view, .. }` arm:
 
-- `pc.set_oniceconnectionstatechange(...)` — `console.log` the new value of `pc.ice_connection_state()`. Update a reactive `WriteSignal<IceDiag>` field.
-- `pc.set_onconnectionstatechange(...)` — same pattern for `pc.connection_state()`.
-- `pc.set_onicegatheringstatechange(...)` — keep the existing wait-for-`complete` closure but ALSO push state changes into the diag signal. (Two listeners on the same event is fine; web-sys's setter replaces, so refactor to a single closure that updates the signal AND resolves the gather-complete promise when state == complete.)
-- Closures pushed into `_keepalive` (the existing pattern at lines 449–482) so they live as long as the handshake.
+   ```rust
+   set_rules_received.set(Some(rules.clone()));
+   // existing handling: store view in board signal, set status…
+   ```
 
-Define a small struct in `webrtc.rs`:
+   Add a `(rules_received, set_rules_received) = create_signal::<Option<RuleSet>>(None)`
+   at the top of `LanJoinPage`.
 
-```rust
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct IceDiag {
-    pub ice: RtcIceConnectionState,
-    pub conn: RtcPeerConnectionState,
-    pub gather: RtcIceGatheringState,
-}
-```
+2. **Display the summary** below the existing Status line:
 
-Add `pub ice_diag: ReadSignal<IceDiag>` to both `HostHandshake` and `JoinerHandshake`. Initialise with the PC's current states at construction time.
+   ```rust
+   <Show when=move || rules_received.get().is_some()>
+       <p>
+           "Playing: " {move || describe_rules(rules_received.get().as_ref().unwrap())}
+       </p>
+   </Show>
+   ```
 
-### 2b. Use the final ICE state in the 10-s timeout error
+3. **Add `describe_rules`** as a pure helper in `clients/chess-web/src/state.rs`
+   (state.rs is native-buildable per `lib.rs:14` — keeps it out of the
+   wasm32-only modules and unit-testable):
 
-In `pages/lan.rs` lines 144–151, change:
+   ```rust
+   pub fn describe_rules(rules: &RuleSet) -> String {
+       let mut parts: Vec<String> = vec![variant_label(rules.variant).to_string()];
+       match rules.variant {
+           Variant::Xiangqi => {
+               parts.push((if rules.xiangqi_allow_self_check { "casual" } else { "strict" }).into());
+           }
+           Variant::Banqi => {
+               if !rules.house.is_empty() {
+                   parts.push(format!("house: {}", house_csv_label(rules.house)));
+               }
+               if let Some(seed) = rules.banqi_seed {
+                   parts.push(format!("seed: {seed}"));
+               }
+           }
+           Variant::ThreeKingdomBanqi => {}
+       }
+       parts.join(" · ")
+   }
 
-```rust
-if !wait_for_dc_open(&dc, 10_000).await {
-    set_error_msg.set(Some(
-        "DataChannel did not open within 10 s — pairing failed (network blocked?)".into(),
-    ));
-    ...
-}
-```
+   fn variant_label(v: Variant) -> &'static str {
+       match v {
+           Variant::Xiangqi => "Xiangqi",
+           Variant::Banqi  => "Banqi",
+           Variant::ThreeKingdomBanqi => "Three-Kingdom Banqi",
+       }
+   }
+   ```
 
-to read the latest `ice_diag` snapshot and produce a message like:
+   `house_csv_label` reuses `routes.rs::house_csv` logic — either expose
+   the existing private helper (`house_csv` at routes.rs:405) as `pub(crate)`
+   and call it, OR copy the 8 lines into state.rs. **Prefer `pub(crate)`**:
+   single source of truth for the canonical comma-separated form
+   ("chain,rush"). Touch the existing function signature only — no
+   behaviour change.
 
-```
-DataChannel did not open within 10 s — ICE state: <ice>, connection: <conn>.
-Common fixes: switch both devices to an iPhone/Android personal hotspot
-(this network's WebRTC mDNS resolution may be failing — see
-docs/pwa.md for the documented Xiaomi-router quirk), or enable "Use STUN".
-```
+4. **Reuse in commit 1's form** — the host also calls `describe_rules`
+   to render the read-only summary line after the room opens (step 4
+   of commit 1). Single helper, two callers.
 
-Keep the message ~3 lines, no rant. The state values matter most for debugging.
+5. **Tests** in `state.rs::tests` (or `tests` mod near the helper):
 
-### 2c. Inline live ICE-state badge on the LAN host/join pages
-
-After the existing status line `<p>"Status: " {move || format!("{:?}", status.get())}</p>` (line 208 of host, line 429 of join), add a second line that displays the current `ice_diag` reactively. Roughly:
-
-```rust
-<Show when=move || handshake_present.get()>
-    <p style="font-size:13px;color:#888">
-        "ICE: " {move || ice_diag.get().ice_label()}
-        " · connection: " {move || ice_diag.get().conn_label()}
-        " · gathering: " {move || ice_diag.get().gather_label()}
-    </p>
-</Show>
-```
-
-Where `*_label()` are small helpers mapping the web-sys enum to short strings ("new", "checking", "connected", "disconnected", "failed", "closed"). This is the load-bearing user-facing change — a user pairing on a flaky network can SEE "ICE: failed" instead of staring at "Status: AcceptingAnswer" for 10 s with no insight.
-
-The `handshake_present` signal is the existing `status.get()` being any state past `Idle`. For host page that's everything after `on_open` succeeds; for joiner that's after `on_generate` succeeds.
-
-### 2d. Re-snapshot SDP on Copy
-
-Currently the offer/answer payload is captured once at `connect_as_*` return time and stored in `offer_blob` / `answer_blob` signals. Background ICE gathering continues; later candidates are silently lost from the user-visible textarea / QR.
-
-Fix: bind the displayed SDP to `pc.local_description()` reactively. The cheapest way:
-
-1. Add a `pub fn current_offer(&self) -> OfferBlob` method on `HostHandshake` that reads the PC's `local_description()` at call time, re-runs `encode_sdp(...)`, and returns a fresh blob. Same `current_answer()` for `JoinerHandshake`.
-2. In `lan.rs`, replace the initial `set_offer_blob.set(hh.offer.0.clone())` capture with a derived signal that calls `handshake.borrow().as_ref()?.current_offer()` and reruns on a tick signal driven by `oniceicecandidate` / `onicegatheringstatechange`.
-3. Simpler alternative: bind a `create_effect` to `ice_diag` (which already fires on gathering state change) and have it re-run `current_offer()` and set `offer_blob`.
-
-The QR code re-renders automatically because `<QrCodeView payload=Signal::derive(move || offer_blob.get())>` is reactive.
-
-Also wire `pc.set_onicecandidate(...)` to update the diag signal on each candidate arrival — this gives the "Copy offer" button its triggers in real time (each new candidate causes the offer text to refresh). Pure UX: the user can wait, watch the byte count tick up, and copy when they're satisfied.
-
-### 2e. Show candidate counts (optional polish)
-
-In the `ice_diag` struct also include `pub candidates: u32`, incremented by the `onicecandidate` handler. Render as `· candidates: N` in the inline badge. Lets the user see "candidates: 1" (only `.local`, mDNS-only) vs "candidates: 3" (got srflx). Trivial to add since we're already wiring `onicecandidate`.
+   - `describe_rules(RuleSet::xiangqi_casual())` → `"Xiangqi · casual"`
+   - `describe_rules(RuleSet::xiangqi())` → `"Xiangqi · strict"`
+   - `describe_rules(RuleSet::banqi_with_seed(PRESET_TAIWAN, 42))` →
+     `"Banqi · house: chain,rush · seed: 42"`
+   - `describe_rules(RuleSet::banqi(HouseRules::empty()))` →
+     `"Banqi"` (no flags, no seed → no extra parts).
 
 ---
 
 ## Verification
 
 ```bash
-# 1. Workspace sanity (issue 2 + 1 should both compile)
+# 1. Workspace sanity (every crate still compiles, no leptos-into-pure-modules leak)
 cargo check --workspace
 
-# 2. Native chess-web pure-logic unit tests (15 of them — covers
-#    routes.rs::base_path used by qr_decode after the change)
+# 2. Native tests — covers routes::build_rule_set + parse_local_rules
+#    (existing 80+ tests) + the new describe_rules helper (3 new tests)
 cargo test -p chess-web
 
 # 3. Clippy clean
 cargo clippy --workspace --all-targets -- -D warnings
 
-# 4. WASM build (the actual GH Pages target)
-make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+# 4. Format clean (CI requires)
+cargo fmt --check
 
-# 5. Confirm jsQR.min.js was actually emitted at the expected path
-ls -l clients/chess-web/dist-static/jsQR.min.js
-test -f clients/chess-web/dist-static/jsQR.min.js && echo "asset present"
+# 5. WASM compile — the actual target
+cargo build --target wasm32-unknown-unknown -p chess-web
 
-# 6. Local PWA-style serve at the GH Pages subpath
-make serve-web-static WEB_BASE=Chinese-Chess_Xiangqi
-# → serves on http://localhost:4173/Chinese-Chess_Xiangqi/
-
-# 7. Use playwright-cli to load the join page (which has the camera
-#    button visible), open the scanner, and confirm the loader fires
-#    a GET to /Chinese-Chess_Xiangqi/jsQR.min.js (not /jsQR.min.js).
-#    Specifically:
-#    - browser_navigate http://localhost:4173/Chinese-Chess_Xiangqi/lan/join
-#    - browser_evaluate to grant camera mock + flip cam_available
-#    - browser_click "📷 Scan offer QR"
-#    - browser_network_requests | grep jsQR.min.js
-#    - assert path contains /Chinese-Chess_Xiangqi/
-#    - assert response is 200 (not 404)
-
-# 8. Diagnostic UX smoke (issue 1) — Trunk dev server is fine here
+# 6. Local xiangqi smoke (regression: ensure existing flow unchanged):
 make play-web
-# Open http://localhost:8080/lan/host in tab A, /lan/join in tab B
-# Tab A: tap Open room → confirm "ICE: …" badge appears under Status,
-#        confirm console.log output for ice/connection state changes,
-#        confirm the byte-count next to Copy offer ticks up as ICE
-#        gathers further candidates.
-# Tab A: tap Accept answer with a deliberately broken SDP → confirm
-#        the 10-s timeout error now includes "ICE state: …"
-#        instead of just "network blocked?".
+# Tab A: http://localhost:8080/lan/host  (default = Xiangqi, no toggles)
+#   → confirm form shows Xiangqi + Strict unchecked
+#   → click "Open room"  → status shows "Playing: Xiangqi · casual"
+# Tab B: http://localhost:8080/lan/join  → paste offer
+#   → confirm joiner sees "Playing: Xiangqi · casual"
+# Make 2-3 moves both sides; confirm board syncs as before.
 
-# 9. Full LAN flow on localhost (clean network, no router) — both tabs
-#    in same browser actually pair successfully via mDNS bypass through
-#    loopback. Acts as regression check that the diagnostics changes
-#    didn't break the happy path.
+# 7. Local banqi smoke (new path):
+make play-web
+# Tab A: /lan/host → variant dropdown → "Banqi (暗棋)"
+#   → preset = Taiwan, seed = 42
+#   → Open room → status: "Playing: Banqi · house: chain,rush · seed: 42"
+# Tab B: /lan/join → paste/scan offer
+#   → confirm joiner status: "Playing: Banqi · house: chain,rush · seed: 42"
+#   → confirm both sides render the SAME 4×8 hidden layout
+#     (since seed=42 forces deterministic shuffle; both sides should
+#      agree on which 32 tiles are face-down where)
+# Flip a tile from each side; confirm the flipped piece appears
+# identically on both ends. Capture, chain capture, verify rules fire.
+
+# 8. Banqi without seed (default random):
+# Tab A: /lan/host → variant = Banqi → preset = Purist (no flags) → no seed
+#   → Open room → status: "Playing: Banqi"  (no "house:" or "seed:" parts)
+# Tab B: → confirm joiner sees same; board layouts agree (host shuffles
+#   once, projection works as for xiangqi)
+
+# 9. Deep-link smoke (commit 1's optional URL pre-fill):
+open http://localhost:8080/lan/host?variant=banqi&house=chain,rush&seed=42
+# Confirm form initialises with: variant dropdown = Banqi, preset = "Custom"
+# (or auto-detect as Taiwan if exact match), checkboxes for chain + rush
+# checked, seed input = 42.
+
+# 10. Form-locking behaviour after open:
+# Tab A: open a room (any variant)  → confirm variant dropdown is
+# disabled (or hidden) and form values can't be changed mid-pairing.
+
+# 11. iOS QR scan + banqi joiner — manual on iPhone if available:
+# After cargo build --target wasm32-unknown-unknown -p chess-web,
+# make build-web-static WEB_BASE=/Chinese-Chess_Xiangqi, deploy.
+# Confirm the banqi LAN flow works through QR scan + camera path
+# (uses existing jsQR loader fixed in earlier commit).
 ```
 
-**Cannot verify locally:** the actual user-reported LAN failure (cross-device mDNS resolution failing on their physical router). That requires their two real devices and isn't reproducible from playwright. The diagnostics changes above are intended exactly so the user can self-diagnose the next time the failure recurs, and so the message points them at the documented workaround (iPhone hotspot).
+**Cannot verify locally:** physical-LAN pairing across two real devices
+for banqi. Same caveat as Phase 5.5 — the in-browser two-tab flow uses
+the WebRTC loopback path which already proved working for xiangqi, so
+adding banqi to the same channel is mechanical (no new transport edges,
+no protocol changes). If the user runs the cross-device test, the only
+new failure mode is "banqi rules misbehave" — same risk as any banqi
+session in `chess-net` today.
 
 ---
 
 ## Out of scope (call out in commit body)
 
-- **STUN default = ON.** User's screenshot confirms STUN srflx doesn't bypass the failure on their network; flipping the default would only slow down offer generation (5 s ICE-gather timeout to wait for an unreachable STUN server) without fixing the connection. Keep default OFF.
-- **chess-net signalling broker (Approach C).** The right long-term fix for users on networks that fail mDNS *and* STUN-hairpin, but a much bigger change (new server endpoint, persistent ICE-candidate trickle channel, new protocol envelope). Already tracked in `backlog/webrtc-lan-pairing.md` as a P3 follow-up.
-- **Trickle ICE in copy-paste mode.** Re-snapshotting on Copy is a partial workaround; true trickle requires bidirectional signalling that the manual-copy model can't provide.
-- **`getUserMedia` exposes real LAN IPs (Approach C in the pitfall doc).** UX nonstarter — asking for mic permission to start a chess game.
-
-If user wants any of these followups, add to `TODO.md` via `scripts/add-todo.sh` after the two commits land.
+- **Picker "Host LAN game" entry point.** A button on each picker
+  variant card linking to `/lan/host?variant=...&house=...&seed=...`.
+  Trivial once commit 1's deep-link parsing lands; track via
+  `scripts/add-todo.sh` if user wants the picker integration.
+- **In-game rule editing.** Once a room opens, rules are locked.
+  Re-opening with different rules requires a new room. Matches
+  chess-net `Room` semantics; rule editing would need a "rematch with
+  new rules" message that doesn't exist in protocol v4 / v5.
+- **Three-kingdom-banqi over WebRTC.** 3-player; doesn't fit 2-peer
+  pairing. Would need a 3-peer mesh topology — separate redesign.
+- **`<RulesForm>` component extraction.** Premature with 2 consumers
+  (picker + LAN host) of differing shape. Re-evaluate when a third
+  consumer appears or when the two drift in a confusing way.
+- **Banqi `?role=spectator` over WebRTC.** Spectator role exists in
+  chess-net protocol but WebRTC currently treats every peer as a
+  player. Adding spectators needs a third peer + projection routing,
+  separate from this work.
+- **House-rule flags `HORSE_DIAGONAL` / `CANNON_FAST_MOVE` wired in
+  move-gen.** UI form will show them (matching picker), but they
+  remain no-op until `rules/banqi.rs::generate` consumes them. Already
+  tracked in `TODO.md` as base-engine work.

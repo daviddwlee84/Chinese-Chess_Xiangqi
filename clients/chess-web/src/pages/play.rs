@@ -22,10 +22,10 @@ use crate::config::{
     WS_QUERY_KEY,
 };
 use crate::prefs::{Prefs, ThreatMode};
-use crate::routes::{app_href, variant_slug, WsBaseError};
+use crate::routes::{app_href, WsBaseError};
 use crate::state::{
-    end_chain_move, find_move, hover_threat_squares, reconstruct_xiangqi_state_for_analysis,
-    truncate_front, ClientRole,
+    describe_rules, end_chain_move, find_move, hover_threat_squares,
+    reconstruct_xiangqi_state_for_analysis, truncate_front, ClientRole,
 };
 use crate::transport::{self, ConnState, Session, Transport};
 
@@ -617,8 +617,12 @@ fn OnlineSidebar(
         _ => "",
     };
 
+    // Full one-line rules summary — variant + xiangqi strict/casual or
+    // banqi house flags + seed. Shows up under the room title so the
+    // joiner / spectator can see what the host configured (LAN) or what
+    // the server was launched with (chess-net) before the first move.
     let variant_label = move || match rules.get() {
-        Some(r) => variant_slug(r.variant).to_string(),
+        Some(r) => describe_rules(&r),
         None => "—".to_string(),
     };
 
