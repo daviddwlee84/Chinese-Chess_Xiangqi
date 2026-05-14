@@ -390,6 +390,60 @@ full-bleed background to demonstrate the safe zone.
 
 ---
 
+## Renaming the app (home-screen label)
+
+The label that shows up under the icon after "Add to Home Screen"
+is **not** a single string — three platforms read three fields,
+and any rename has to touch every spot that platform reads:
+
+| Where it appears                                      | Field                                              | File                                            |
+| ----------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------- |
+| Android / Chrome / Edge — home-screen + app drawer    | `short_name` in the manifest                       | `clients/chess-web/public/manifest.webmanifest.tmpl` |
+| Android / Chrome — install dialog + Play Console copy | `name` in the manifest                             | same file                                       |
+| iOS / iPadOS Safari — "Add to Home Screen"            | `<meta name="apple-mobile-web-app-title">`         | `clients/chess-web/index.html`                  |
+| Desktop window title bar (after install)              | document `<title>`                                 | `clients/chess-web/index.html`                  |
+| Chromium app shortcuts long-press menu                | `shortcuts[].short_name` in the manifest           | `manifest.webmanifest.tmpl`                     |
+
+iOS in particular ignores `short_name` entirely — if you only
+edit the manifest, your iPhone testers will still see the old
+label. Likewise, the manifest `name` is what shows up in the
+Chromium install confirmation dialog ("Install <name>?"), so
+leaving it out of sync produces a visibly different install vs.
+post-install experience.
+
+Already-installed devices keep the *old* label until the user
+removes the icon and re-adds it — the OS treats the home-screen
+shortcut as immutable metadata. The new SW activating does not
+re-prompt for a new label. Tell your testers up-front.
+
+### Recipe
+
+```bash
+# 1. Edit manifest.webmanifest.tmpl — at minimum short_name,
+#    and probably name and shortcuts[].short_name too.
+# 2. Edit index.html — apple-mobile-web-app-title (iOS) and
+#    optionally <title> (desktop standalone window).
+# 3. Rebuild for both targets so you can sanity-check the
+#    rendered manifest in dist/ and dist-static/:
+make build-web
+make build-web-static WEB_BASE=Chinese-Chess_Xiangqi
+grep -E '"(short_)?name"|apple-mobile' \
+  clients/chess-web/dist/manifest.webmanifest \
+  clients/chess-web/dist-static/manifest.webmanifest \
+  clients/chess-web/dist/index.html
+```
+
+The post-build hook re-runs because templates are copied fresh,
+and `APP_VERSION` will bump (the manifest content changed → the
+hash of dist contents changed), which means the
+[update lifecycle](#update-lifecycle) toast will fire on the
+next visit for already-online users — they get the new
+`PwaUpdateToast`, click Reload, and the new manifest is fetched.
+But again, **the home-screen icon label only refreshes on
+re-install**.
+
+---
+
 ## How to clear all caches (debugging stale state)
 
 DevTools approach:
