@@ -29,6 +29,7 @@ use crate::config::WsBase;
 use crate::host_room::HostRoom;
 use crate::net_diag::{classify, parse_candidate_addrs, NetDiag};
 use crate::pages::play::PlayConnected;
+use crate::routes::app_href;
 use crate::transport::webrtc::{
     connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceDiag,
     IceMode, JoinerHandshake, OfferBlob, WebRtcConfig,
@@ -417,7 +418,7 @@ pub fn LanHostPage() -> impl IntoView {
                         debug_enabled=false
                         hints_requested=false
                         injected_session=s
-                        back_link_override="/lan/host".to_string()
+                        back_link_override=app_href("/lan/host")
                     />
                 })}
             </Show>
@@ -689,7 +690,7 @@ pub fn LanJoinPage() -> impl IntoView {
                         debug_enabled=false
                         hints_requested=false
                         injected_session=s
-                        back_link_override="/lan/join".to_string()
+                        back_link_override=app_href("/lan/join")
                     />
                 })}
             </Show>
