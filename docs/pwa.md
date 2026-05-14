@@ -465,6 +465,90 @@ After running, hard reload (Cmd-Shift-R / Ctrl-Shift-R).
 
 ---
 
+## LAN play (no server at runtime)
+
+Once both phones have loaded the PWA over HTTPS at least once
+(so the service worker is cached + camera permission can be
+granted), they can play 1v1 multiplayer with **zero external
+network at runtime**. The full pattern is documented in
+[`lan-multiplayer-webrtc.md`](lan-multiplayer-webrtc.md); this
+section just covers the install-prereq UX since the PWA install
+flow is what unlocks LAN play.
+
+### Why HTTPS install matters for LAN play
+
+Three browser features the LAN flow needs are all gated on a
+**secure context** (the document was originally served over
+HTTPS, OR is `localhost`):
+
+* **`getUserMedia`** for camera-based QR scanning.
+* **`RtcPeerConnection`** for the peer-to-peer DataChannel.
+* **Service worker registration** so the PWA actually works
+  offline-with-WiFi (which is the whole point of LAN play —
+  no internet round-trip needed at runtime).
+
+The recommended user flow:
+
+1. Both phones open the PWA's HTTPS URL once (deployed via
+   GitHub Pages, the chess-net `--static-dir` server, or any
+   HTTPS host with a valid cert). Service worker registers,
+   icons cache, app installs to home screen.
+2. Both phones tap the home-screen icon to launch in standalone
+   PWA mode (still over HTTPS — `cache-first` from the SW makes
+   this work without internet on subsequent launches).
+3. Navigate to `/lan/host` on one phone, `/lan/join` on the
+   other. Pair via QR-scan (camera) OR copy/paste-text. WebRTC
+   DataChannel directly between the phones over the LAN — no
+   chess-net server reached.
+
+### Install prereq surface in the UI
+
+The installer banner (rendered globally in `app.rs`) handles the
+normal "install this PWA" prompt. There's no LAN-specific
+install copy yet — the existing PWA install banner is what
+users see, and the LAN pages (`/lan/host`, `/lan/join`) are
+reachable from the picker on the same machine that just
+installed.
+
+iOS Safari is the awkward case: no `beforeinstallprompt` event,
+so users must Add to Home Screen manually. The `pwa.js` bridge
+detects iOS standalone-mode and suppresses the install banner
+once the user has actually added the home-screen icon. iOS
+camera-permission for QR scanning is per-origin, prompted on
+first scan, and surfaces a "Camera blocked" hint in the LAN
+scanner modal if denied.
+
+### Indicator behavior on LAN pages
+
+The corner `OfflineIndicator` (Phase 6 polish) differentiates:
+
+| State | Color | Label |
+|---|---|---|
+| Off LAN pages, online | green | (label hidden) |
+| Off LAN pages, offline | red | "Offline" |
+| LAN host waiting / joiner waiting | amber pulsing | "LAN host" / "LAN join" |
+| LAN connected (DC open) | blue | "LAN peer" |
+| LAN dropped (peer disconnect) | red | "LAN dropped" |
+
+Reduced-motion users see a non-pulsing waiting state via the
+`prefers-reduced-motion: reduce` media query.
+
+### Service worker + LAN routes
+
+`/lan/host` and `/lan/join` are SPA routes — Trunk's index.html
+is the document, and the SW's navigation-fallback (network-first
+→ cached `index.html`) handles them like any other route. The
+QR scanner library `jsQR.min.js` is precached automatically
+(any `*.js` in `dist/` ends up in the SW's precache list — see
+[`scripts/build-pwa.sh`](../clients/chess-web/scripts/build-pwa.sh)),
+so the camera scanner works offline too.
+
+The chess-net online endpoints (`/ws*`, `/lobby`, `/rooms`,
+`/api/*`) are bypassed by the SW; LAN play needs none of these,
+so an offline LAN session is fully self-contained.
+
+---
+
 ## Future work
 
 Tracked in `TODO.md`:
