@@ -10462,3 +10462,1171 @@ Clippy after reformat
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s
 ```
 </details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:01Z)**_
+
+Clean. Commit the fmt fix.
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:06Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit fmt fixup
+
+```bash
+git add -u && git commit -m "$(cat <<'EOF'
+style(chess-web): cargo fmt fixup for ICE diag commit
+
+CI fmt check caught a few line-break preferences in lan.rs + webrtc.rs
+that I missed locally. No behavioral change — rustfmt prefers wider
+lines than my hand formatting.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" && git log --oneline -5
+```
+
+```text
+[main 5056996] style(chess-web): cargo fmt fixup for ICE diag commit
+ 3 files changed, 179 insertions(+), 15 deletions(-)
+5056996 style(chess-web): cargo fmt fixup for ICE diag commit
+0928f32 feat(chess-web): live ICE diagnostics on /lan/host and /lan/join — surface the real failure mode when pairing times out
+7220e90 fix(chess-web): jsQR loader respects build-time base_path so GH Pages subpath deploys can load the camera scanner
+ce66fc1 feat(chess-web): Phase 5.5 commit 6 — playwright-cli E2E test + docs/TODO updates → Phase 5.5 SHIPPED
+04613be feat(chess-web): Phase 5.5 commit 5 — permission-denied UX + accessibility polish on QR scanner
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:11Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:12Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Confirm what's in the fmt fixup
+
+`git show --stat HEAD | head -10`
+
+```text
+commit 5056996da8aff1ebe3be6c935e80f16f9545577e
+Author: Da-Wei Lee <daviddwlee84@gmail.com>
+Date:   Thu May 14 14:27:06 2026 +0800
+
+    style(chess-web): cargo fmt fixup for ICE diag commit
+    
+    CI fmt check caught a few line-break preferences in lan.rs + webrtc.rs
+    that I missed locally. No behavioral change — rustfmt prefers wider
+    lines than my hand formatting.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:17Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List files in fmt commit
+
+`git show --stat HEAD | tail -10`
+
+```text
+    CI fmt check caught a few line-break preferences in lan.rs + webrtc.rs
+    that I missed locally. No behavioral change — rustfmt prefers wider
+    lines than my hand formatting.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+ ...05-14_05-43-00Z-https-daviddwlee84-github-io.md | 175 +++++++++++++++++++++
+ clients/chess-web/src/pages/lan.rs                 |   6 +-
+ clients/chess-web/src/transport/webrtc.rs          |  13 +-
+ 3 files changed, 179 insertions(+), 15 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:32Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:27:34Z)**_
+
+CI fmt failure fixed. Summary:
+
+- `cargo fmt --all` reformatted some lines I broke too aggressively in `clients/chess-web/src/pages/lan.rs` and `clients/chess-web/src/transport/webrtc.rs` (rustfmt prefers them on single longer lines).
+- New commit `5056996` — style fixup, no behavioral change.
+- Local re-check: `cargo fmt --check` clean, `cargo clippy --workspace --all-targets -- -D warnings` clean.
+
+Branch is ahead of origin by 3 commits (`7220e90`, `0928f32`, `5056996`). Want me to push, or will you push?
+
+---
+
+_**User (2026-05-14 06:56:01Z)**_
+
+[Image #6] 目前QRCode可以正常scan了
+[Image #7] 不過 Use STUN 一樣沒有解決network issue (尚未測試personal hotspot）
+
+_**User (2026-05-14 06:56:01Z)**_
+
+[Image: source: /var/folders/g3/gsbp4bsx1gs51t1805r34ztw0000gn/T/clipboard-2026-05-14-145401-8BF36A61.png]
+
+[Image: source: /var/folders/g3/gsbp4bsx1gs51t1805r34ztw0000gn/T/clipboard-2026-05-14-145507-22EE8082.png]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 06:56:39Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 06:56:55Z)**_
+
+太好了 — QR scanner 完全修好 ✅。
+
+Issue 1 的兩張截圖正是 pitfall 文檔記錄的場景：
+
+**No STUN**: `ICE: checking · gathering: complete · candidates: 1` — 只有 `.local` mDNS 候選，ICE 永遠卡在 checking（peer 解析不到對方的 `<uuid>.local`）。
+
+**With STUN**: `ICE: checking · gathering: gathering · candidates: 2` — 多了 1 個 srflx 候選（看得到 `c=IN IP4 48.210.47.244` 公網 IP），但 ICE 仍然 checking 永遠不過。代表 NAT hairpin 也被路由器擋了 — 兩台 device 透過公網繞回來連自己這個 NAT 也走不通。
+
+這就是 `pitfalls/webrtc-mdns-lan-ap-isolation.md` 第 27-30 行記錄的同一台 Xiaomi AX9000 上實測過的失敗模式。Code 端能做的已經做完了 — diagnostics 確認問題不在 client，是 router 層級的封包路由問題。
+
+**下一步建議**（從 cheap → expensive）：
+
+1. **iPhone / Android personal hotspot**（pitfall Approach A，已驗證在 1 秒內配對成功）— 兩台都連同一個熱點，bypass 家裡 router。15 秒就能驗證。
+2. **如果連 hotspot 都失敗**，那就要進到 `backlog/webrtc-lan-pairing.md` 的 Approach C：加一個 chess-net signalling endpoint 來 broker SDP + 持續 trickle ICE candidates。會需要 server，但保證能跨任何網路。要做的話告訴我。
+3. **路由器可用 OpenWRT/Asus Merlin** — 但 pitfall 文檔提醒「一般 mDNS 在這台 Xiaomi 上其實是 work 的，failure 比『阻擋 multicast』更窄」，所以刷 firmware 不保證解決。
+
+要不要先試 hotspot，回報結果？同時我可以把現在新發現（STUN srflx + NAT hairpin 在這台路由器也失敗）補進 pitfall 文檔，避免下次 agent 再走一遍 STUN-rescue 的彎路。
+
+---
+
+_**User (2026-05-14 07:22:41Z)**_
+
+[Image #8] [Image #9] personal hotspot d 一樣不work
+我在猜 是不是能夠讓它自己broadcast自己被分配到的LAN ip （這部分也可以顯示在螢幕介面上） 現在用的應該不是 Xiaomi 那台router
+(不過理想上是能夠直接P2P連線 不然如果依賴一個第三方server的話應該原本的wss://方案更簡潔？
+
+_**User (2026-05-14 07:22:41Z)**_
+
+[Image: source: /Users/daviddwlee84/Downloads/IMG_8328.PNG]
+
+[Image: source: /Users/daviddwlee84/Downloads/IMG_8329.PNG]
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 07:23:44Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:24:06Z)**_
+
+幾個重要發現：
+
+**1. 你的 iPad 上有 VPN 啟動中** — 看 SDP 裡的 `c=IN IP4 198.18.0.1` 和 candidate `198.18.0.1 typ host`。`198.18.0.0/15` 是 RFC 2544 Benchmark 保留段，iOS 在開 VPN 時會用這個假 IP 當「LAN 位址」配發給 WebRTC。也就是說即使在 hotspot 上，iPad 看到的 LAN 不是真實 WiFi LAN，而是 VPN tunnel — Mac 連不到 `198.18.0.1`，所以 ICE 一樣卡 checking。iOS 狀態列右上的 VPN icon 也印證了。
+
+**第一個建議**：先在 iPad **關掉 VPN**，再到同一個 hotspot 重試。這是 1 秒能測完的。
+
+---
+
+**2. 你「broadcast 自己被分配到的 LAN ip」的想法**
+
+這個方向理論上對，但 **browser 在保護 LAN IP 不被網頁讀取**（fingerprinting 防護），所以 JS / WASM 沒有 API 能直接拿到真實 LAN IP。能讓 browser 透露真實 LAN IP 的方式只有兩個，都不理想：
+
+- `getUserMedia` 拿到 camera/mic 權限 → browser 認為「使用者已經信任這個頁面」，停止 mDNS 混淆。但用「下棋」當理由要 camera 權限，使用者體驗很差（pitfall 文檔 Approach C 已標為 user-hostile）。
+- 使用者自己手動輸入 IP → 完全可行但要使用者懂自己的 LAN IP 在哪。
+
+**顯示在介面上**這部分我倒是可以做：把 SDP 裡的 candidate IPs 解析出來、顯示在 diag badge 旁邊，例如 `candidates: 2 (mDNS×1, srflx 220.196.193.17×1)`。你下次就能直接看到「噢我的 host candidate 是 198.18.0.1（VPN）」而不用對著紅字 SDP 慢慢找。**這個要做嗎？10 行內可以加。**
+
+---
+
+**3. 你問的架構問題：「依賴第三方 server 的話原本 wss:// 不是更簡潔？」**
+
+**完全正確**。WebRTC + 手動 SDP 交換的唯一賣點是「兩台 device 真的能 P2P，不需要 server」。一旦這個前提不成立（router 擋、VPN 劫持、CGNAT），就要 fallback 到 signalling broker，而那個 broker 既然都已經是個 server 了，**根本就讓兩個 client 都直接連那個 server 講 wss 就好**，不用再多走一輪 WebRTC handshake。
+
+所以 backlog 那個 Approach C（chess-net signalling endpoint）**不該做** — 如果你願意跑 chess-net server，使用者直接用 `/lobby` 進房就好，不需要 LAN host/join 那套 SDP 換手。WebRTC 模式的定位應該保持是「真 LAN P2P only」，遇到不行就直接引導去 `/lobby`。
+
+---
+
+**所以我建議的優先順序：**
+
+1. **iPad 關 VPN**，回報 hotspot 是否成功
+2. 如果還是失敗 → 在 LAN host 頁面加個 *「無法配對？改去 [Online lobby](/lobby) 跑伺服器版」* 引導連結，把現實接受了
+3.（optional）我加上 candidate IP 解析顯示，讓 diag badge 變更有資訊量
+
+要哪個？或都做？
+
+---
+
+_**User (2026-05-14 07:27:01Z)**_
+
+1. 關閉VPN後成功了！（可能加到hint中 或是告訴user如果用VPN需要witelist哪些IP-CIDR等等）
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 07:28:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:28:20Z)**_
+
+Confirmed VPN was the culprit. Let me add:
+
+1. A static VPN hint on both LAN pages
+2. Dynamic detection — when timeout fires and host candidate is in `198.18.0.0/15` (VPN tunnel) or `100.64.0.0/10` (CGNAT), show specific guidance instead of generic mDNS hint
+3. Update `pitfalls/webrtc-mdns-lan-ap-isolation.md` so the next debug session knows VPN is a documented failure mode
+
+Plan a quick check of where in `lan.rs` to insert the hint, then ship.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:28:22Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/lan.rs`
+
+```text
+220	                     personal hotspot (this network's WebRTC mDNS resolution may \
+221	                     be failing), or enable \"Use STUN\".",
+222	                    diag_line(&d),
+223	                )));
+224	                set_status.set(HostStatus::Idle);
+225	                return;
+226	            }
+227	            let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
+228	            if let Err(e) = room.attach_remote_player_dc(dc) {
+229	                set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
+230	                set_status.set(HostStatus::Idle);
+231	                return;
+232	            }
+233	            *host_room_slot.borrow_mut() = Some(room);
+234	            set_play_session.set(Some(session));
+235	            set_status.set(HostStatus::Playing);
+236	        });
+237	    });
+238	
+239	    // ── Reset (full page reload) ──────────────────────────────
+240	    let on_reset: Callback<()> = Callback::new(move |_: ()| {
+241	        if let Some(win) = web_sys::window() {
+242	            let _ = win.location().reload();
+243	        }
+244	    });
+245	
+246	    view! {
+247	        <div class="lan-page" style="max-width:720px;margin:1.5rem auto;padding:1rem">
+248	            <Show
+249	                when=move || matches!(status.get(), HostStatus::Playing)
+250	                fallback=move || view! {
+251	                    <h1>"LAN host (WebRTC)"</h1>
+252	                    <p class="muted">
+253	                        "iOS hint: do not switch apps after tapping Open room. iOS Safari pauses \
+254	                         WebRTC when the page is backgrounded. If you must AirDrop the offer, \
+255	                         keep this Safari tab in the foreground (split-view works)."
+256	                    </p>
+257	                    <p>
+258	                        <button
+259	                            on:click=move |_| on_open.call(())
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:28:33Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:28:33Z)**_
+
+Confirmed (2 + 3). Building all three in one commit.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:01Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Write"><details>
+<summary>Tool use: **Write**</summary>
+
+```rs
+//! Tiny pure-string helpers that look at a WebRTC SDP and classify the
+//! host candidates by network range — so the LAN host page can surface
+//! "your VPN is hijacking the LAN" instead of just "network blocked?"
+//! when pairing times out.
+//!
+//! Lives outside `transport/webrtc.rs` so it's native-testable; the
+//! actual `RtcPeerConnection` plumbing is wasm32-only but the SDP it
+//! produces is just a string.
+
+/// Extract the `connection-address` field from every `a=candidate:` line
+/// in `sdp`. SDP `a=candidate` format (RFC 5245 §15):
+///
+/// \```text
+/// a=candidate:<foundation> <component> <transport> <priority>
+///             <connection-address> <port> typ <type> [...]
+/// \```
+///
+/// Field 5 (0-indexed 4 after stripping `a=candidate:`) is the address
+/// we want. mDNS hostnames look like `<uuid>.local`; srflx / relay
+/// have real IPs; host candidates on a VPN may have tunnel addresses.
+pub fn parse_candidate_addrs(sdp: &str) -> Vec<String> {
+    sdp.lines()
+        .filter_map(|line| {
+            let rest = line.trim().strip_prefix("a=candidate:")?;
+            let parts: Vec<&str> = rest.split_whitespace().collect();
+            if parts.len() < 6 {
+                return None;
+            }
+            Some(parts[4].to_string())
+        })
+        .collect()
+}
+
+/// `true` if `ip` is in `198.18.0.0/15` — RFC 2544 benchmark range,
+/// also used by iOS as the fake LAN address when a VPN profile is
+/// active (Cloudflare WARP, NordVPN, etc.). A WebRTC `typ host`
+/// candidate landing in this range almost always means the OS is
+/// routing LAN through a VPN tunnel.
+pub fn is_vpn_tunnel_ip(ip: &str) -> bool {
+    ip_in_prefix(ip, &[198, 18], 15)
+}
+
+/// `true` if `ip` is in `100.64.0.0/10` — RFC 6598 CGNAT range used
+/// by mobile carriers and some ISPs for Carrier-Grade NAT. Direct P2P
+/// often fails on CGNAT because the carrier's outer NAT doesn't
+/// hairpin.
+pub fn is_cgnat_ip(ip: &str) -> bool {
+    let Some((100, rest)) = parse_v4_first(ip) else {
+        return false;
+    };
+    (64..=127).contains(&rest)
+}
+
+/// Classify a parsed SDP's candidate addresses, picking the most-
+/// specific hint we can give the user.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NetDiag {
+    /// Host candidate is in `198.18.0.0/15` — VPN is hijacking LAN.
+    VpnTunnel,
+    /// Host candidate is in `100.64.0.0/10` — ISP is using CGNAT.
+    Cgnat,
+    /// Nothing distinguishing; fall through to the generic hint.
+    Plain,
+}
+
+/// Walk the candidate addresses and return the first specific class
+/// detected, or `Plain` if none. VPN takes precedence over CGNAT
+/// because they suggest different fixes (disable VPN vs. switch
+/// network), and VPN's more common.
+pub fn classify(addrs: &[String]) -> NetDiag {
+    if addrs.iter().any(|a| is_vpn_tunnel_ip(a)) {
+        return NetDiag::VpnTunnel;
+    }
+    if addrs.iter().any(|a| is_cgnat_ip(a)) {
+        return NetDiag::Cgnat;
+    }
+    NetDiag::Plain
+}
+
+// --- private helpers ----------------------------------------------------
+
+fn parse_v4_first(ip: &str) -> Option<(u8, u8)> {
+    let mut parts = ip.split('.');
+    let a = parts.next()?.parse().ok()?;
+    let b = parts.next()?.parse().ok()?;
+    Some((a, b))
+}
+
+/// Match `ip` against an IPv4 prefix expressed as `first_two_octets` +
+/// prefix length in bits. Only used for the 198.18.0.0/15 check today,
+/// where prefix=15 means the first octet matches exactly and the
+/// second octet's high 7 bits match (so 198.18.x.x AND 198.19.x.x
+/// qualify).
+fn ip_in_prefix(ip: &str, first_two: &[u8; 2], prefix_bits: u32) -> bool {
+    let Some((a, b)) = parse_v4_first(ip) else {
+        return false;
+    };
+    if a != first_two[0] {
+        return false;
+    }
+    // /15 means the second octet's high 7 bits must match. Compute the
+    // mask: prefix 15 → 8 bits of first octet + 7 bits of second.
+    let second_bits = prefix_bits.saturating_sub(8);
+    if second_bits == 0 {
+        return true; // /8 — first octet enough
+    }
+    let mask = 0xFFu8 << (8 - second_bits);
+    (b & mask) == (first_two[1] & mask)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_extracts_address_field_from_candidate_line() {
+        let sdp = "v=0\r\n\
+                   a=candidate:1234 1 udp 2113937151 192.168.1.5 51234 typ host\r\n\
+                   a=candidate:5678 1 udp 2113937151 abc-def.local 51235 typ host\r\n";
+        assert_eq!(
+            parse_candidate_addrs(sdp),
+            vec!["192.168.1.5".to_string(), "abc-def.local".to_string()],
+        );
+    }
+
+    #[test]
+    fn parse_ignores_non_candidate_lines_and_short_candidates() {
+        let sdp = "v=0\r\n\
+                   a=group:BUNDLE 0\r\n\
+                   a=candidate:short 1 udp\r\n";
+        assert!(parse_candidate_addrs(sdp).is_empty());
+    }
+
+    #[test]
+    fn vpn_tunnel_detects_198_18_and_198_19() {
+        assert!(is_vpn_tunnel_ip("198.18.0.1"));
+        assert!(is_vpn_tunnel_ip("198.18.255.255"));
+        assert!(is_vpn_tunnel_ip("198.19.0.1"));
+        assert!(is_vpn_tunnel_ip("198.19.255.255"));
+    }
+
+    #[test]
+    fn vpn_tunnel_rejects_neighbours_and_unrelated() {
+        assert!(!is_vpn_tunnel_ip("198.17.0.1"));
+        assert!(!is_vpn_tunnel_ip("198.20.0.1"));
+        assert!(!is_vpn_tunnel_ip("192.168.1.5"));
+        assert!(!is_vpn_tunnel_ip("abc.local"));
+        assert!(!is_vpn_tunnel_ip(""));
+    }
+
+    #[test]
+    fn cgnat_detects_100_64_through_100_127() {
+        assert!(is_cgnat_ip("100.64.0.1"));
+        assert!(is_cgnat_ip("100.127.255.255"));
+    }
+
+    #[test]
+    fn cgnat_rejects_100_63_and_100_128() {
+        assert!(!is_cgnat_ip("100.63.255.255"));
+        assert!(!is_cgnat_ip("100.128.0.1"));
+        assert!(!is_cgnat_ip("100.0.0.1"));
+    }
+
+    #[test]
+    fn classify_picks_vpn_over_cgnat_over_plain() {
+        let vpn_then_cgnat = vec!["198.18.0.1".into(), "100.64.0.1".into()];
+        assert_eq!(classify(&vpn_then_cgnat), NetDiag::VpnTunnel);
+
+        let cgnat_only = vec!["100.64.0.1".into(), "abc.local".into()];
+        assert_eq!(classify(&cgnat_only), NetDiag::Cgnat);
+
+        let normal = vec!["192.168.1.5".into(), "abc.local".into()];
+        assert_eq!(classify(&normal), NetDiag::Plain);
+
+        assert_eq!(classify(&[]), NetDiag::Plain);
+    }
+}
+
+```
+
+```text
+File created successfully at: /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/net_diag.rs (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:10Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/lib.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:18Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:19Z)**_
+
+Now wire `net_diag` into `lan.rs` — both the static hint and the dynamic timeout message.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:20Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/lan.rs`
+
+```text
+200	            // CRITICAL: `accept_answer` resolves as soon as
+201	            // `setRemoteDescription` returns — BEFORE the SCTP
+202	            // handshake completes. If we call `attach_remote_player_dc`
+203	            // immediately, the `dc.send_with_str(...)` for Hello +
+204	            // ChatHistory silently fails (DC ready_state is still
+205	            // "connecting"). Wait for actual DC open first.
+206	            let dc = match hh.dc.borrow().clone() {
+207	                Some(d) => d,
+208	                None => {
+209	                    set_error_msg.set(Some("DataChannel slot is empty".into()));
+210	                    set_status.set(HostStatus::Idle);
+211	                    return;
+212	                }
+213	            };
+214	            let ice_diag = hh.ice_diag;
+215	            if !wait_for_dc_open(&dc, 10_000).await {
+216	                let d = ice_diag.get_untracked();
+217	                set_error_msg.set(Some(format!(
+218	                    "DataChannel did not open within 10 s — {}. \
+219	                     Common fixes: switch both devices to an iPhone/Android \
+220	                     personal hotspot (this network's WebRTC mDNS resolution may \
+221	                     be failing), or enable \"Use STUN\".",
+222	                    diag_line(&d),
+223	                )));
+224	                set_status.set(HostStatus::Idle);
+225	                return;
+226	            }
+227	            let (room, session) = HostRoom::new(RuleSet::xiangqi(), None, /* hints */ false);
+228	            if let Err(e) = room.attach_remote_player_dc(dc) {
+229	                set_error_msg.set(Some(format!("attach joiner failed: {e:?}")));
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:31Z)**_
+
+Will address the iPad chat overflow after finishing the VPN hint commit. Continuing with `lan.rs`:
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:37Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:29:54Z)**_
+
+Add the message-classifier helper near `diag_line`:
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:03Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:14Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:37Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:41Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:46Z)**_
+
+Now add the static VPN hint paragraph below the iOS hint on both pages:
+
+_**Agent (claude-opus-4-7 2026-05-14 07:30:53Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:23Z)**_
+
+Two more things to address. Tracking with tasks.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:23Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskList"><details>
+<summary>Tool use: **TaskList**</summary>
+
+```text
+No tasks found
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:30Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+In progress: net_diag module + static hint + classified timeout message (VPN tunnel / CGNAT / plain).
+
+```text
+Task #7 created successfully: Add VPN hint + dynamic timeout-error classification to /lan/host
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:32Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+User says "我現在也還搞不清楚" about STUN. Add concise explainer: what STUN does (srflx public IP), when it helps (mDNS broken / different networks), when it doesn't (healthy LAN / symmetric NAT / CGNAT).
+
+```text
+Task #8 created successfully: Add STUN explainer paragraph next to the STUN checkbox
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:34Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+Add a section documenting that iOS VPN tunnels masquerade LAN IP as 198.18.x.x and break WebRTC LAN discovery. Cross-reference the new net_diag classifier.
+
+```text
+Task #9 created successfully: Update pitfalls/webrtc-mdns-lan-ap-isolation.md with VPN finding
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:35Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskCreate"><details>
+<summary>Tool use: **TaskCreate**</summary>
+User screenshot shows chat panel on iPad where the input textbox overflows and the "Send" button is half-hidden. Probably a flex/width issue in components/chat_panel.rs CSS.
+
+```text
+Task #10 created successfully: Fix iPad chat input — Send button cut off
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:36Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Task not found
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:31:51Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #7 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:16Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:16Z)**_
+
+Add the STUN explainer below the VPN hint, and mirror the VPN+STUN hints onto the join page.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:26Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:33Z)**_
+
+Now mirror to the join page:
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:33Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/lan.rs`
+
+```text
+498	            if let Some(state_sig) = joiner_state_holder.get() {
+499	                if state_sig.get() == ConnState::Open {
+500	                    if let Some(session) = session_holder.borrow().clone() {
+501	                        set_play_session.set(Some(session));
+502	                        set_status.set(JoinStatus::Playing);
+503	                    }
+504	                }
+505	            }
+506	        });
+507	    }
+508	
+509	    let handshake_for_gen = handshake.clone();
+510	    let session_holder_for_gen = session_holder.clone();
+511	    let on_generate: Callback<()> = Callback::new(move |_: ()| {
+512	        if !matches!(status.get_untracked(), JoinStatus::Idle) {
+513	            return;
+514	        }
+515	        let blob = offer_input.get_untracked();
+516	        if blob.trim().is_empty() {
+517	            set_error_msg.set(Some("paste the host's offer SDP first".into()));
+518	            return;
+519	        }
+520	        set_error_msg.set(None);
+521	        set_status.set(JoinStatus::Generating);
+522	        let cfg = WebRtcConfig {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:39Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find joiner page heading
+
+`grep -n "LAN join (WebRTC)" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs`
+
+```text
+560:                    <h1>"LAN join (WebRTC)"</h1>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:46Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/lan.rs`
+
+```text
+558	                when=move || matches!(status.get(), JoinStatus::Playing)
+559	                fallback=move || view! {
+560	                    <h1>"LAN join (WebRTC)"</h1>
+561	                    <p class="muted">
+562	                        "Paste the host's offer SDP, generate an answer, send it back to the host."
+563	                    </p>
+564	                    <p>
+565	                        <button on:click=move |_| on_reset.call(())>"Reset"</button>
+566	                        <label style="margin-left:1rem;font-size:13px">
+567	                            <input
+568	                                type="checkbox"
+569	                                prop:checked=move || use_stun.get()
+570	                                disabled=move || !matches!(status.get(), JoinStatus::Idle)
+571	                                on:change=move |ev| {
+572	                                    let v = ev.target()
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:32:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:02Z)**_
+
+Compile-check before continuing.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+WASM build
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -10`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.04s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #7 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:21Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #8 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:22Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #9 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:28Z)**_
+
+Now update the pitfall doc with the VPN finding.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:29Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./pitfalls/webrtc-mdns-lan-ap-isolation.md`
+
+```text
+86	   No SSH access means we can't inspect what it actually does.
+87	5. **Double NAT layer** at 192.168.1.1 → 192.168.31.1 shouldn't matter
+88	   (mDNS is link-local) but adds another variable.
+89	
+90	This is the part the spike's data points have NOT yet isolated. The
+91	practical mitigation menu still works whatever the actual cause is.
+92	
+93	## Workarounds
+94	
+95	### A. Switch to a phone hotspot (works immediately, confirmed 2026-05-12)
+96	
+97	If both devices can connect to the *same* iPhone / Android personal
+98	hotspot, that's a guaranteed-clean LAN. Confirmed working with the
+99	chess-web Phase 0 spike (LanOnly mode, no STUN) — DataChannel opens
+100	within 1 second of accepting the answer.
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:33:50Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/pitfalls/webrtc-mdns-lan-ap-isolation.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #9 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:02Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #10 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:08Z)**_
+
+Now the iPad chat overflow fix.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:10Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find chat panel UI
+
+`grep -n "chat\|Send\|Say something" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/chat_panel.rs 2>/dev/null | head -20`
+
+```text
+1://! In-game chat. Shows the per-room ring buffer (≤50 lines, server-capped),
+37:        if input_disabled() { "Spectators can read but not chat" } else { "Say something…" }
+58:        <section class="chat-panel" aria-label="In-game chat">
+59:            <div class="chat-log" node_ref=log_ref>
+62:                    fallback=|| view! { <p class="chat-empty">"No messages yet."</p> }
+71:            <form class="chat-input" on:submit=on_submit>
+80:                <button class="btn btn-primary" type="submit" prop:disabled=input_disabled>"Send"</button>
+100:        <p class="chat-line">
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:17Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/components/chat_panel.rs`
+
+```text
+55	    };
+56	
+57	    view! {
+58	        <section class="chat-panel" aria-label="In-game chat">
+59	            <div class="chat-log" node_ref=log_ref>
+60	                <Show
+61	                    when=move || !log.get().is_empty()
+62	                    fallback=|| view! { <p class="chat-empty">"No messages yet."</p> }
+63	                >
+64	                    <For
+65	                        each=move || log.get()
+66	                        key=|line| (line.from, line.ts_ms, line.text.clone())
+67	                        children=move |line| view! { <ChatLineView line=line/> }
+68	                    />
+69	                </Show>
+70	            </div>
+71	            <form class="chat-input" on:submit=on_submit>
+72	                <input
+73	                    type="text"
+74	                    maxlength="256"
+75	                    autocomplete="off"
+76	                    node_ref=input_ref
+77	                    prop:placeholder=placeholder
+78	                    prop:disabled=input_disabled
+79	                />
+80	                <button class="btn btn-primary" type="submit" prop:disabled=input_disabled>"Send"</button>
+81	            </form>
+82	        </section>
+83	    }
+84	}
+85	
+86	#[component]
+87	fn ChatLineView(line: ChatLine) -> impl IntoView {
+88	    let from_class = match line.from {
+89	        Side::RED => "from from-red",
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find chat CSS
+
+`grep -n "chat-input\|chat-panel\|chat-log" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -20`
+
+```text
+293:.chat-panel {
+302:.chat-log {
+326:.chat-input {
+333:.chat-input input {
+342:.chat-input input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+343:.chat-input input:disabled { opacity: 0.5; cursor: not-allowed; }
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:37Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+285	
+286	/* Right-hand column on the play page stacks the sidebar and chat panel. */
+287	.right-column {
+288	    display: grid;
+289	    gap: 1rem;
+290	    align-content: start;
+291	}
+292	
+293	.chat-panel {
+294	    background: rgba(244, 210, 163, 0.04);
+295	    border: 1px solid var(--grid);
+296	    border-radius: 0.5rem;
+297	    display: grid;
+298	    grid-template-rows: 1fr auto;
+299	    height: 320px;
+300	    overflow: hidden;
+301	}
+302	.chat-log {
+303	    overflow-y: auto;
+304	    padding: 0.5rem 0.75rem;
+305	    font-size: 0.88rem;
+306	    display: flex;
+307	    flex-direction: column;
+308	    gap: 0.1rem;
+309	}
+310	.chat-line {
+311	    margin: 0;
+312	    line-height: 1.35;
+313	    word-wrap: break-word;
+314	}
+315	.chat-line .ts {
+316	    color: var(--muted);
+317	    font-size: 0.78rem;
+318	    margin-right: 0.4rem;
+319	    font-variant-numeric: tabular-nums;
+320	}
+321	.chat-line .from-red { color: var(--red); font-weight: 600; }
+322	.chat-line .from-black { color: var(--fg); font-weight: 600; }
+323	.chat-line .from-green { color: var(--green); font-weight: 600; }
+324	.chat-line .text { color: var(--fg); }
+325	.chat-empty { color: var(--muted); margin: 0.4rem 0; font-size: 0.85rem; }
+326	.chat-input {
+327	    display: flex;
+328	    gap: 0.4rem;
+329	    padding: 0.4rem 0.5rem;
+330	    border-top: 1px solid var(--grid);
+331	    background: rgba(0, 0, 0, 0.18);
+332	}
+333	.chat-input input {
+334	    flex: 1;
+335	    background: rgba(244, 210, 163, 0.06);
+336	    color: var(--fg);
+337	    border: 1px solid var(--grid);
+338	    border-radius: 0.3rem;
+339	    padding: 0.35rem 0.55rem;
+340	    font: inherit;
+341	}
+342	.chat-input input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+343	.chat-input input:disabled { opacity: 0.5; cursor: not-allowed; }
+344	.spectator-badge { color: var(--accent); font-weight: 600; }
+345	.room-actions {
+346	    display: flex;
+347	    gap: 0.35rem;
+348	}
+349
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:58Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:34:59Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find btn CSS rules
+
+`grep -n "^\.btn\b\|^\.btn-primary" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -10`
+
+```text
+176:.btn-ghost {
+183:.btn-ghost:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.08); }
+645:.btn-sm { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
+682:.btn {
+691:.btn:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.16); }
+692:.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+693:.btn-primary {
+699:.btn-primary:hover { background: rgba(178, 34, 34, 0.78); }
+705:.btn-hint {
+713:.btn-hint:hover {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:09Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/style.css`
+
+```text
+680	.muted { color: var(--muted); margin: 0; font-size: 0.9rem; }
+681	.sidebar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+682	.btn {
+683	    background: rgba(244, 210, 163, 0.08);
+684	    color: var(--fg);
+685	    border: 1px solid var(--grid);
+686	    border-radius: 0.4rem;
+687	    padding: 0.4rem 0.8rem;
+688	    cursor: pointer;
+689	    font: inherit;
+690	}
+691	.btn:hover { border-color: var(--accent); background: rgba(244, 210, 163, 0.16); }
+692	.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+693	.btn-primary {
+694	    background: rgba(178, 34, 34, 0.6);
+695	    border-color: var(--red);
+696	    color: #fffbe6;
+697	    font-weight: 600;
+698	}
+699	.btn-primary:hover { background: rgba(178, 34, 34, 0.78); }
+700	
+701	/* AI hint toggle button (sidebar). Distinguishable from generic .btn
+702	   so the user spots the on-demand affordance immediately, but visually
+703	   subordinate to .btn-primary. The "on" state shifts to a muted blue
+704	   matching the .hints-banner net-mode banner. */
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:21Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:22Z)**_
+
+Fix the input + button flex sizing.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:29Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:37Z)**_
+
+Run full verification.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+fmt + check + clippy + test
+
+`cargo fmt --all && cargo check --workspace 2>&1 | tail -5 && cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -5 && cargo test -p chess-web 2>&1 | tail -10`
+
+```text
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.51s
+    Checking chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.52s
+test state::tests::hover_preview_empty_in_opening ... ok
+
+test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests chess_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:53Z)**_
+
+93 tests pass (7 new in net_diag). Mark task 10 done. Now visually verify the iPad chat fix via playwright at iPad viewport.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:54Z)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="TaskUpdate"><details>
+<summary>Tool use: **TaskUpdate**</summary>
+
+```text
+Updated task #10 status
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:35:54Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Review changes
+
+`git status -s; git diff --stat`
+
+```text
+ M .specstory/history/2026-05-14_05-43-00Z-https-daviddwlee84-github-io.md
+ M clients/chess-web/src/lib.rs
+ M clients/chess-web/src/pages/lan.rs
+ M clients/chess-web/style.css
+ M pitfalls/webrtc-mdns-lan-ap-isolation.md
+?? clients/chess-web/src/net_diag.rs
+ ...05-14_05-43-00Z-https-daviddwlee84-github-io.md | 1130 ++++++++++++++++++++
+ clients/chess-web/src/lib.rs                       |    1 +
+ clients/chess-web/src/pages/lan.rs                 |   73 +-
+ clients/chess-web/style.css                        |   10 +
+ pitfalls/webrtc-mdns-lan-ap-isolation.md           |   47 +
+ 5 files changed, 1257 insertions(+), 4 deletions(-)
+```
+</details></tool-use>

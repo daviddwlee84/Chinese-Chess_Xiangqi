@@ -27,6 +27,7 @@ use crate::components::qr::QrCodeView;
 use crate::components::qr_scanner::QrScanner;
 use crate::config::WsBase;
 use crate::host_room::HostRoom;
+use crate::net_diag::{classify, parse_candidate_addrs, NetDiag};
 use crate::pages::play::PlayConnected;
 use crate::transport::webrtc::{
     connect_as_host, connect_as_joiner, wait_for_dc_open, AnswerBlob, HostHandshake, IceDiag,
@@ -80,6 +81,36 @@ fn diag_line(d: &IceDiag) -> String {
         gather_label(d.gather),
         d.candidates,
     )
+}
+
+/// Hint string appended to the 10-s DC-open timeout error, varied by
+/// what we can infer from the host's own SDP candidates. Surfacing
+/// "your VPN is hijacking the LAN" instead of the generic mDNS hint
+/// when the host candidate IP betrays a VPN tunnel saves the user
+/// from blaming the wrong layer.
+fn timeout_hint_for(sdp: &str) -> &'static str {
+    match classify(&parse_candidate_addrs(sdp)) {
+        NetDiag::VpnTunnel => {
+            "VPN tunnel detected (host candidate is in 198.18.0.0/15). \
+             DISABLE the VPN on both devices and retry — VPNs route LAN \
+             traffic through the tunnel and replace your real LAN IP \
+             with a fake address. If the VPN must stay on, configure \
+             split-tunnel to bypass 192.168.0.0/16, 10.0.0.0/8, \
+             172.16.0.0/12, 172.20.10.0/28 (iOS hotspot), and \
+             224.0.0.0/4 (multicast / mDNS)."
+        }
+        NetDiag::Cgnat => {
+            "CGNAT detected (host candidate is in 100.64.0.0/10). \
+             Your ISP / carrier is using Carrier-Grade NAT, which often \
+             blocks direct P2P even with STUN. Try an iPhone/Android \
+             personal hotspot instead."
+        }
+        NetDiag::Plain => {
+            "Common fixes: switch both devices to an iPhone/Android \
+             personal hotspot (this network's WebRTC mDNS resolution \
+             may be failing), or enable \"Use STUN\"."
+        }
+    }
 }
 // SECTION: LanHostPage component
 
@@ -214,12 +245,11 @@ pub fn LanHostPage() -> impl IntoView {
             let ice_diag = hh.ice_diag;
             if !wait_for_dc_open(&dc, 10_000).await {
                 let d = ice_diag.get_untracked();
+                let sdp = hh.pc.local_description().map(|desc| desc.sdp()).unwrap_or_default();
                 set_error_msg.set(Some(format!(
-                    "DataChannel did not open within 10 s — {}. \
-                     Common fixes: switch both devices to an iPhone/Android \
-                     personal hotspot (this network's WebRTC mDNS resolution may \
-                     be failing), or enable \"Use STUN\".",
+                    "DataChannel did not open within 10 s — {}. {}",
                     diag_line(&d),
+                    timeout_hint_for(&sdp),
                 )));
                 set_status.set(HostStatus::Idle);
                 return;
@@ -253,6 +283,26 @@ pub fn LanHostPage() -> impl IntoView {
                         "iOS hint: do not switch apps after tapping Open room. iOS Safari pauses \
                          WebRTC when the page is backgrounded. If you must AirDrop the offer, \
                          keep this Safari tab in the foreground (split-view works)."
+                    </p>
+                    <p class="muted">
+                        "VPN hint: disable any VPN (Cloudflare WARP, NordVPN, etc.) on BOTH \
+                         devices before pairing. VPNs replace the real LAN IP with a tunnel \
+                         address (often 198.18.x.x) and route LAN traffic through the tunnel, \
+                         which breaks WebRTC's direct device discovery. If the VPN must stay on, \
+                         configure split-tunnel to bypass: 192.168.0.0/16 + 10.0.0.0/8 + \
+                         172.16.0.0/12 (private LANs), 172.20.10.0/28 (iOS hotspot), and \
+                         224.0.0.0/4 (multicast / mDNS)."
+                    </p>
+                    <p class="muted">
+                        "STUN hint: enabling \"Use STUN\" asks public servers (Miwifi / Tencent / \
+                         Cloudflare / Google) to tell the browser its own public IP and adds it \
+                         as an extra \"srflx\" candidate. Turn it ON when: (a) same LAN but \
+                         mDNS resolution is broken (some routers), or (b) the two devices are on \
+                         different networks. Leave it OFF on a healthy same-LAN setup — mDNS \
+                         works directly and STUN just adds up to 5 s of gather delay. STUN can't \
+                         rescue symmetric NAT / CGNAT (mobile carriers, hotel WiFi); those would \
+                         need a TURN relay (not shipped — fall back to running chess-net and \
+                         using /lobby instead)."
                     </p>
                     <p>
                         <button
@@ -510,6 +560,21 @@ pub fn LanJoinPage() -> impl IntoView {
                     <h1>"LAN join (WebRTC)"</h1>
                     <p class="muted">
                         "Paste the host's offer SDP, generate an answer, send it back to the host."
+                    </p>
+                    <p class="muted">
+                        "VPN hint: disable any VPN (Cloudflare WARP, NordVPN, etc.) on BOTH \
+                         devices before pairing. VPNs replace the real LAN IP with a tunnel \
+                         address (often 198.18.x.x) and route LAN traffic through the tunnel, \
+                         which breaks WebRTC's direct device discovery. If the VPN must stay on, \
+                         configure split-tunnel to bypass: 192.168.0.0/16 + 10.0.0.0/8 + \
+                         172.16.0.0/12 (private LANs), 172.20.10.0/28 (iOS hotspot), and \
+                         224.0.0.0/4 (multicast / mDNS)."
+                    </p>
+                    <p class="muted">
+                        "STUN hint: \"Use STUN\" adds public-IP \"srflx\" candidates so peers on \
+                         different networks (or behind a router that breaks LAN mDNS) can still \
+                         find each other. Skip it on a healthy same-LAN setup. Must match the \
+                         host's setting. Doesn't help with symmetric NAT / CGNAT."
                     </p>
                     <p>
                         <button on:click=move |_| on_reset.call(())>"Reset"</button>

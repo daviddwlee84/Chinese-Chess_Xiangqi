@@ -8,6 +8,7 @@
 
 pub mod eval;
 pub mod glyph;
+pub mod net_diag;
 pub mod orient;
 pub mod routes;
 pub mod state;

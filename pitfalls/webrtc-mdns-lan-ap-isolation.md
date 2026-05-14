@@ -90,6 +90,53 @@ WebRTC's hostname resolution that could matter:
 This is the part the spike's data points have NOT yet isolated. The
 practical mitigation menu still works whatever the actual cause is.
 
+## Sibling failure mode — VPN tunnel on either device (confirmed 2026-05-14)
+
+A separate but visually identical failure: an active VPN client on
+*either* device — Cloudflare WARP, NordVPN, ExpressVPN, corporate
+ZTNA agents, the iOS / iPadOS "VPN" toggle, etc. — silently masks
+the OS-level LAN routing. iOS specifically allocates an `198.18.0.0/15`
+address (RFC 2544 Benchmark range, treated as a synthetic loopback by
+the VPN extension) and reports *that* to WebRTC as the host candidate
+instead of the real WiFi IP. Same symptom as mDNS resolution failure
+— ICE sits at `checking` and times out — but a different cause:
+
+- **No mDNS issue at all**: even disabling mDNS obfuscation wouldn't
+  help, because the LAN IP the browser would emit is also a VPN
+  tunnel address that the peer cannot reach.
+- **STUN doesn't rescue it**: STUN srflx gets the public IP, but both
+  peers see *the same VPN exit IP*, and the VPN provider's NAT
+  doesn't hairpin between two clients of the same exit.
+- **Personal hotspot doesn't rescue it either**: if the iPad/iPhone
+  is on a VPN, even the device's own hotspot routes peer traffic
+  through the VPN. Confirmed: tested on iPhone hotspot with iPad VPN
+  ON → still failed; turned VPN OFF → succeeded in <1 second.
+
+### How to spot it
+
+Open `/lan/host`, watch the new ICE diag badge under `Status:`. If the
+host candidate IP visible in the offer SDP (or any candidate in the
+joiner's answer) falls in `198.18.0.0/15`, that's iOS's VPN tunnel
+address. `100.64.0.0/10` indicates CGNAT (different fix — needs TURN
+or `/lobby`). `clients/chess-web/src/net_diag.rs::classify` does this
+parsing; the LAN page surfaces the diagnosis automatically in the
+10-s DC-open-timeout error.
+
+### Mitigation
+
+Disable the VPN on **both** devices before pairing. If the VPN must
+stay on (corporate policy etc.), configure split-tunnel so the
+following ranges bypass the tunnel:
+
+- `192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12` — private LANs
+- `172.20.10.0/28` — iOS personal hotspot range
+- `224.0.0.0/4` — IPv4 multicast (covers mDNS)
+- `fe80::/10` + `ff00::/8` — IPv6 link-local + multicast
+
+Not every VPN client exposes split-tunnel; the user-visible hint on
+`/lan/host` and `/lan/join` calls this out so users don't blame the
+chess app for what's actually their VPN.
+
 ## Workarounds
 
 ### A. Switch to a phone hotspot (works immediately, confirmed 2026-05-12)
