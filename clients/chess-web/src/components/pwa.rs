@@ -39,6 +39,34 @@ pub struct PwaState {
     /// window events. `true` is the optimistic default — browsers
     /// only fire `offline` when truly disconnected.
     pub online: RwSignal<bool>,
+    /// LAN-multiplayer status (Phase 6). Set by `pages/lan.rs` on
+    /// host / joiner mount + state transitions; consumed by
+    /// `OfflineIndicator` so the corner badge differentiates
+    /// "internet-online" vs "LAN-host-active" vs "LAN-peer-
+    /// connected" vs the default "no peering". `Idle` is the
+    /// off-LAN-pages default — the indicator falls back to plain
+    /// `online` semantics when `lan == Idle`.
+    pub lan: RwSignal<LanIndicator>,
+}
+
+/// LAN-multiplayer status surfaced through the corner indicator.
+///
+/// State machine drives both styling (color) and label text:
+/// * `Idle` — not on a LAN page; defer to `navigator.onLine`.
+/// * `HostWaiting` — host opened a room, joiner hasn't paired yet.
+/// * `JoinerWaiting` — joiner generated answer, waiting for host
+///   to accept.
+/// * `Connected` — DataChannel handshake complete; play view
+///   active.
+/// * `Disconnected` — peer DC closed mid-game; surfaces the
+///   "LAN game ended" hint until the user navigates away.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LanIndicator {
+    Idle,
+    HostWaiting,
+    JoinerWaiting,
+    Connected,
+    Disconnected,
 }
 
 impl PwaState {
@@ -52,6 +80,7 @@ impl PwaState {
             mobile: create_rw_signal(false),
             update_ready: create_rw_signal(false),
             online: create_rw_signal(true),
+            lan: create_rw_signal(LanIndicator::Idle),
         };
 
         let Some(win) = web_sys::window() else {
@@ -259,33 +288,55 @@ pub fn PwaInstallButton() -> impl IntoView {
     }
 }
 
-/// Tiny dot in the corner. Green when online, dim red when offline.
-/// Tooltip explains that online play needs a connection.
+/// Tiny dot in the corner. Green when online or LAN-connected,
+/// amber when LAN pairing is in progress, dim red when offline,
+/// and a distinct shade when LAN dropped mid-game.
+///
+/// Falls back to plain `navigator.onLine` semantics whenever the
+/// LAN status is `Idle` (the off-LAN-pages default), so the badge
+/// behaviour for chess-net mode is unchanged from pre-Phase-6.
 #[component]
 pub fn OfflineIndicator() -> impl IntoView {
     let pwa = expect_context::<PwaState>();
     let online = pwa.online;
-    let cls = move || {
-        if online.get() {
-            "pwa-online-dot pwa-online-dot--on"
-        } else {
-            "pwa-online-dot pwa-online-dot--off"
+    let lan = pwa.lan;
+
+    let cls = move || match (lan.get(), online.get()) {
+        (LanIndicator::Connected, _) => "pwa-online-dot pwa-online-dot--lan",
+        (LanIndicator::HostWaiting | LanIndicator::JoinerWaiting, _) => {
+            "pwa-online-dot pwa-online-dot--lan-waiting"
         }
+        (LanIndicator::Disconnected, _) => "pwa-online-dot pwa-online-dot--lan-dropped",
+        (LanIndicator::Idle, true) => "pwa-online-dot pwa-online-dot--on",
+        (LanIndicator::Idle, false) => "pwa-online-dot pwa-online-dot--off",
     };
-    let title = move || {
-        if online.get() {
-            "Online — multiplayer available"
-        } else {
-            "Offline — local play still works; lobby/online disabled"
+
+    let title = move || match (lan.get(), online.get()) {
+        (LanIndicator::Connected, _) => "LAN — peer connected. No internet round-trip in use.",
+        (LanIndicator::HostWaiting, _) => {
+            "LAN host — waiting for joiner to scan / paste your offer SDP."
         }
+        (LanIndicator::JoinerWaiting, _) => {
+            "LAN joiner — waiting for host to accept your answer SDP."
+        }
+        (LanIndicator::Disconnected, _) => "LAN — peer disconnected. Refresh to start a new room.",
+        (LanIndicator::Idle, true) => "Online — multiplayer available",
+        (LanIndicator::Idle, false) => "Offline — local play still works; lobby/online disabled",
+    };
+
+    let label = move || match (lan.get(), online.get()) {
+        (LanIndicator::Connected, _) => "LAN peer",
+        (LanIndicator::HostWaiting, _) => "LAN host",
+        (LanIndicator::JoinerWaiting, _) => "LAN join",
+        (LanIndicator::Disconnected, _) => "LAN dropped",
+        (LanIndicator::Idle, true) => "Online",
+        (LanIndicator::Idle, false) => "Offline",
     };
 
     view! {
         <div class=cls title=title aria-live="polite">
             <span class="pwa-online-dot__pip" aria-hidden="true"></span>
-            <span class="pwa-online-dot__label">
-                {move || if online.get() { "Online" } else { "Offline" }}
-            </span>
+            <span class="pwa-online-dot__label">{label}</span>
         </div>
     }
 }

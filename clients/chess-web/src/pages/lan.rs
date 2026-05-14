@@ -27,6 +27,7 @@ use web_sys::HtmlTextAreaElement;
 
 use crate::beforeunload::use_beforeunload_guard;
 use crate::camera::has_camera;
+use crate::components::pwa::{LanIndicator, PwaState};
 use crate::components::qr::QrCodeView;
 use crate::components::qr_scanner::QrScanner;
 use crate::config::WsBase;
@@ -145,6 +146,25 @@ pub fn LanHostPage() -> impl IntoView {
         Signal::derive(move || matches!(status.get(), HostStatus::Playing)),
         "Closing this tab will end the LAN room. Continue?",
     );
+
+    // Phase 6: drive the corner OfflineIndicator's LAN state.
+    // Effect derives `LanIndicator` from `status` so every status
+    // transition automatically updates the indicator without
+    // sprinkling updates at each `set_status.set(...)` call site.
+    // On unmount, reset to Idle so navigating to a non-LAN page
+    // shows the plain online/offline badge again.
+    if let Some(pwa) = use_context::<PwaState>() {
+        create_effect(move |_| {
+            pwa.lan.set(match status.get() {
+                HostStatus::Idle
+                | HostStatus::Generating
+                | HostStatus::AwaitingAnswer
+                | HostStatus::AcceptingAnswer => LanIndicator::HostWaiting,
+                HostStatus::Playing => LanIndicator::Connected,
+            });
+        });
+        on_cleanup(move || pwa.lan.set(LanIndicator::Idle));
+    }
 
     // ── Variant + rules form state ─────────────────────────────
     // Mirrors picker.rs::BanqiCard: one bool signal per HouseRules
@@ -681,6 +701,20 @@ pub fn LanJoinPage() -> impl IntoView {
         "Closing this tab will end the LAN game. Continue?",
     );
 
+    // Phase 6: drive the corner OfflineIndicator's LAN state.
+    // See `LanHostPage` for the rationale.
+    if let Some(pwa) = use_context::<PwaState>() {
+        create_effect(move |_| {
+            pwa.lan.set(match status.get() {
+                JoinStatus::Idle | JoinStatus::Generating | JoinStatus::WaitingForOpen => {
+                    LanIndicator::JoinerWaiting
+                }
+                JoinStatus::Playing => LanIndicator::Connected,
+            });
+        });
+        on_cleanup(move || pwa.lan.set(LanIndicator::Idle));
+    }
+
     // QR scanner modal state. See LanHostPage for the same pattern.
     let (scanner_open, set_scanner_open) = create_signal::<bool>(false);
     let (cam_available, set_cam_available) = create_signal::<bool>(false);
@@ -739,6 +773,27 @@ pub fn LanJoinPage() -> impl IntoView {
                         set_play_session.set(Some(session));
                         set_status.set(JoinStatus::Playing);
                     }
+                }
+            }
+        });
+    }
+
+    // Phase 6: surface peer-disconnect on the corner LAN indicator.
+    // Watches the joiner's inner state signal for an Open → Closed
+    // transition (host's DC closed mid-game). Independent of the
+    // toast in `pages/play.rs::PlayConnected` which surfaces the
+    // user-facing message.
+    if let Some(pwa) = use_context::<PwaState>() {
+        let prev: Rc<std::cell::Cell<ConnState>> =
+            Rc::new(std::cell::Cell::new(ConnState::Connecting));
+        create_effect(move |_| {
+            if let Some(state_sig) = joiner_state_holder.get() {
+                let now = state_sig.get();
+                let was = prev.replace(now);
+                if matches!(was, ConnState::Open)
+                    && matches!(now, ConnState::Closed | ConnState::Error)
+                {
+                    pwa.lan.set(LanIndicator::Disconnected);
                 }
             }
         });

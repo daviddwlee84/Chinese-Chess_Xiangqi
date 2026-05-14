@@ -1510,6 +1510,33 @@ body {
 .pwa-online-dot--on .pwa-online-dot__label { display: none; }
 .pwa-online-dot--off { color: var(--fg); border-color: rgba(178, 34, 34, 0.5); }
 
+/* LAN-multiplayer indicator states (Phase 6). The label always
+ * shows so the user knows which page state they're in (otherwise
+ * the dot is indistinguishable from "Online"). */
+.pwa-online-dot--lan { color: var(--fg); border-color: rgba(96, 165, 250, 0.55); }
+.pwa-online-dot--lan .pwa-online-dot__pip {
+    background: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.22);
+}
+.pwa-online-dot--lan-waiting { color: var(--fg); border-color: rgba(217, 158, 62, 0.55); }
+.pwa-online-dot--lan-waiting .pwa-online-dot__pip {
+    background: #d99e3e;
+    box-shadow: 0 0 0 3px rgba(217, 158, 62, 0.22);
+    animation: pwa-lan-pulse 1.6s ease-in-out infinite;
+}
+.pwa-online-dot--lan-dropped { color: var(--fg); border-color: rgba(178, 34, 34, 0.55); }
+.pwa-online-dot--lan-dropped .pwa-online-dot__pip {
+    background: var(--red);
+    box-shadow: 0 0 0 3px rgba(178, 34, 34, 0.22);
+}
+@keyframes pwa-lan-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pwa-online-dot--lan-waiting .pwa-online-dot__pip { animation: none; }
+}
+
 @media (max-width: 480px) {
     .pwa-banner { flex-direction: column; align-items: stretch; text-align: left; }
     .pwa-banner__actions { justify-content: flex-start; }
