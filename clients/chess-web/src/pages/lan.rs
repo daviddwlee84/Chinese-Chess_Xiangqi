@@ -279,6 +279,7 @@ pub fn LanHostPage() -> impl IntoView {
             <Show
                 when=move || matches!(status.get(), HostStatus::Playing)
                 fallback=move || view! {
+                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
                     <h1>"LAN host (WebRTC)"</h1>
                     <p class="muted">
                         "iOS hint: do not switch apps after tapping Open room. iOS Safari pauses \
@@ -558,6 +559,7 @@ pub fn LanJoinPage() -> impl IntoView {
             <Show
                 when=move || matches!(status.get(), JoinStatus::Playing)
                 fallback=move || view! {
+                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
                     <h1>"LAN join (WebRTC)"</h1>
                     <p class="muted">
                         "Paste the host's offer SDP, generate an answer, send it back to the host."

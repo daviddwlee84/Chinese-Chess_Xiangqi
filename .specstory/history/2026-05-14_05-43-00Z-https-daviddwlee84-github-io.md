@@ -11770,3 +11770,895 @@ All four follow-ups landed.
   - `<input flex:1>` was inheriting `min-width: auto` and refusing to shrink below the placeholder's intrinsic width, pushing Send past the panel's overflow clip. Added `min-width: 0` on the input + `flex-shrink: 0` on the button.
 
 Branch is now ahead of origin by 3 commits (`5056996`, `994f39f`, `35153cb`). Push when you're ready.
+
+---
+
+_**User (2026-05-14 07:41:59Z)**_
+
+效果感覺不錯 可以把takeaway記錄到docs中
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:22Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:22Z)**_
+
+Good idea. Let me first look at the existing docs/ structure to fit the takeaway into the right place.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:24Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+List docs structure
+
+`ls /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/ /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/ 2>/dev/null`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/:
+adr
+ai
+rules
+ai-deep-research-report.md
+architecture.md
+lan-multiplayer-webrtc.md
+notation.md
+pwa.md
+snapshot-format.md
+trunk-leptos-wasm.md
+
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/adr/:
+0001-rust-workspace-layout.md
+0002-square-as-u16.md
+0003-ruleset-as-data-not-trait.md
+0004-player-view-projection.md
+0005-multi-room-lobby.md
+0006-chess-net-spectators-chat.md
+0007-spectator-check-flag.md
+0008-engine-chain-lock.md
+README.md
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:31Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:32Z)**_
+
+There's already `docs/lan-multiplayer-webrtc.md`. Let me read it first.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Inspect existing doc
+
+`wc -l /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md && head -30 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md`
+
+```text
+     830 /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md
+# LAN multiplayer over WebRTC — chess-web takeaway
+
+This is the long-form companion to `backlog/webrtc-lan-pairing.md` and
+`pitfalls/webrtc-*.md` / `pitfalls/leptos-*.md` — the recipe you re-read
+in a year when you want to add LAN multiplayer to ANOTHER game built on
+the same `core / net / web` skeleton.
+
+Architecture decisions, the build flow, every trap we hit, and a step-by-
+step porting checklist for re-using this on a new game. If you only have
+five minutes, read the [TL;DR](#tldr) and [Porting recipe](#porting-recipe).
+
+---
+
+<a id="tldr"></a>
+## TL;DR
+
+- **Two browsers on the same WiFi play a full multiplayer session over
+  `RtcDataChannel` with NO server in the loop at runtime**. One browser
+  acts as the "host" and runs the authoritative game state machine
+  in-WASM; the other is the "joiner" that connects via WebRTC.
+- **Wire protocol is unchanged from the existing chess-net WS path**.
+  The host's in-WASM `Room` is the same code that the native chess-net
+  server runs (`crates/chess-net/src/room.rs`). Pages
+  (`pages/play.rs`, `pages/lobby.rs`) don't know which transport
+  they're talking to — they consume `transport::Session { handle,
+  incoming, state }` regardless.
+- **Pairing is on-device manual SDP exchange** (offer + answer over
+  textareas + Copy buttons; QR generation is the next-step polish, see
+  [Future work](#future-work)).
+- **Five distinct pitfalls were discovered + documented** during Phase
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:41Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Show doc structure
+
+`grep -n "^##\|^###" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md | head -40`
+
+```text
+15:## TL;DR
+43:## When to use this pattern (and when not)
+81:## Architecture in one diagram
+147:## Full handshake — what actually happens
+152:### 1. Host page mount → user taps "Open room"
+192:### 2. Joiner pastes offer → taps "Generate answer"
+218:### 3. Host pastes answer → taps "Accept answer"
+271:### 4. Both pages render the chess board
+299:### 5. Move + chat sync
+337:## File-by-file (what each file owns)
+361:## Testing loop — `playwright-cli` is the secret weapon
+369:### Minimal smoke test (what to run before pushing transport changes)
+399:### What broke and how playwright-cli caught it
+412:### Adding playwright-cli to your dev loop
+429:## Pitfalls index
+434:### Network / WebRTC
+448:### Leptos signal / reactivity
+464:### WASM / stdlib
+473:### Adjacent (not direct fixes, but informative)
+490:## Porting recipe — adding LAN multiplayer to a NEW game
+496:### Prerequisites
+512:### Phase 0 — spike the network reachability (0.5–1 day, GATES EVERYTHING)
+533:### Phase 1 — extract transport-agnostic Room
+552:### Phase 2 — Transport trait + Session shape on the web side
+563:### Phase 3 — WebRTC transport
+586:### Phase 4 — HostRoom (multi-peer routing wrapper)
+606:### Phase 5 — Pages
+628:### Phase 6 — Testing + polish
+645:## What NOT to do (anti-patterns we tried first)
+650:### Don't: latched `WriteSignal<Option<ServerMsg>>` for the incoming queue
+663:### Don't: `RwSignal<Vec<ServerMsg>>` queue with `set(Vec::new())` clear
+679:### Don't: `create_effect` inside a `spawn_local` future
+693:### Don't: send via `dc.send_with_str` immediately after `accept_answer().await`
+710:### Don't: rely on `std::time::SystemTime` in code that compiles for wasm32
+727:### Don't: tie native + wasm32 cargo deps together
+741:### Don't: write `pages/lan.rs` from scratch
+753:## Future work — what's not yet done
+755:### Phase 5.5 — QR pairing — SHIPPED 2026-05-13
+775:### Phase 6 — UI polish (still open)
+796:### Out of scope for v1 (and likely v2)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:42:52Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/lan-multiplayer-webrtc.md`
+
+```text
+429	## Pitfalls index
+430	
+431	Five distinct classes of bug, each with a dedicated `pitfalls/<slug>.md`.
+432	Read these *before* writing similar code — at least the headlines.
+433	
+434	### Network / WebRTC
+435	
+436	1. **[`webrtc-mdns-lan-ap-isolation.md`](../pitfalls/webrtc-mdns-lan-ap-isolation.md)**
+437	   — Some routers (verified: Mi AX9000 firmware 1.0.168) silently
+438	   drop WebRTC's `<uuid>.local` mDNS resolution while letting general
+439	   mDNS through. STUN fallback works around it but needs reachable
+440	   STUN servers.
+441	
+442	2. **[`webrtc-set-remote-description-resolves-before-dc-open.md`](../pitfalls/webrtc-set-remote-description-resolves-before-dc-open.md)**
+443	   — `accept_answer().await` resolves on SDP application, BEFORE
+444	   the SCTP handshake completes. Calling `dc.send_with_str(Hello)`
+445	   immediately silently fails (`Err` is discarded by the sink wrapper).
+446	   Fix: poll `dc.ready_state() == Open` before fanning out.
+447	
+448	### Leptos signal / reactivity
+449	
+450	3. **[`leptos-rwsignal-queue-self-clear-race.md`](../pitfalls/leptos-rwsignal-queue-self-clear-race.md)**
+451	   — A `RwSignal<Vec<T>>` queue with `set(Vec::new())` at end of the
+452	   drain effect has a race: any push between the drain start and the
+453	   clear gets clobbered. Fix: separate the queue (`VecDeque` outside
+454	   reactivity) from the notification (monotonic `u32` tick signal).
+455	   See `transport::Incoming`.
+456	
+457	4. **[`leptos-create-effect-inside-spawn-local-silent-gc.md`](../pitfalls/leptos-create-effect-inside-spawn-local-silent-gc.md)**
+458	   — `create_effect` inside a `spawn_local` future has no Leptos owner.
+459	   The effect is silently GC'd at end of the current microtask;
+460	   subsequent `state.set(...)` calls fire but no subscriber exists.
+461	   Fix: hoist the effect to component scope; use a holder signal that
+462	   the spawn_local future `set`s.
+463	
+464	### WASM / stdlib
+465	
+466	5. **[`wasm32-systemtime-now-panics.md`](../pitfalls/wasm32-systemtime-now-panics.md)**
+467	   — `std::time::SystemTime::now()` panics on `wasm32-unknown-unknown`
+468	   ("time not implemented on this platform"). The panic kills the
+469	   call-handler chain, making the failure mode "an in-browser action
+470	   silently does nothing". Audit any crate that compiles for both
+471	   targets. Fix: cfg-gate to use `js_sys::Date::now()` on wasm32.
+472	
+473	### Adjacent (not direct fixes, but informative)
+474	
+475	- **[`ios-safari-svg-click-no-tap.md`](../pitfalls/ios-safari-svg-click-no-tap.md)**
+476	  — Pre-existing pitfall about iOS Safari's pointer event model.
+477	  Relevant if you wire taps to SVG `<g>` elements directly.
+478	- **[`leptos-effect-tracking-stale-epoch.md`](../pitfalls/leptos-effect-tracking-stale-epoch.md)**
+479	  — Adjacent Leptos reactivity gotcha; same code path style.
+480	- **[`pwa-base-path-and-stale-cache.md`](../pitfalls/pwa-base-path-and-stale-cache.md)**
+481	  — Important when adding new routes (`/lan/host`, `/lan/join`) to
+482	  a PWA — the service worker precache list must include them.
+483	
+484	The first four are the ones you WILL re-trip on if you write a
+485	similar feature without reading them.
+486	
+487	---
+488	
+489	<a id="porting-recipe"></a>
+490	## Porting recipe — adding LAN multiplayer to a NEW game
+491	
+492	Step-by-step checklist for a future you / future agent. Assumes the
+493	target game has the same `core / net / web` workspace shape (pure
+494	state machine + serialisable wire types + Leptos web client).
+495	
+496	### Prerequisites
+497	
+498	- [ ] **Game state machine is already transport-agnostic.** Wire
+499	      messages flow through a function with shape
+500	      `apply(peer, ClientMsg) -> Vec<Outbound { peer, ServerMsg }>`.
+501	      If your game's server-side code is currently entangled with
+502	      tokio/axum, do this extraction FIRST as its own commit.
+503	- [ ] **Wire protocol is wasm-clean.** No dependencies on
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:01Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/lan-multiplayer-webrtc.md`
+
+```text
+796	### Out of scope for v1 (and likely v2)
+797	
+798	- **Cross-LAN (TURN relay)** — would need a server. The whole point
+799	  of v1 is "no server at runtime". If demand emerges, the original
+800	  backlog has Approach C (chess-net `/signal/<token>` endpoint that
+801	  forwards SDPs without knowing about chess) as a 50-line addition.
+802	- **Three-player mesh for 三國暗棋** — needs full mesh of 3
+803	  PeerConnections OR host-as-relay. Tracked separately; depends on
+804	  the variant itself shipping first
+805	  (`backlog/three-kingdoms-banqi.md`).
+806	- **Reconnect after host tab refresh** — RTC peers see a fresh
+807	  PeerConnection on reload, so they'd need to re-pair anyway. Not
+808	  worth the persistence complexity for v1.
+809	- **chess-tui as a WebRTC peer** — no JS runtime in the TUI. Either
+810	  it stays online-only or we ship a tiny native signalling helper.
+811	  Defer.
+812	
+813	---
+814	
+815	## Related
+816	
+817	- [`backlog/webrtc-lan-pairing.md`](../backlog/webrtc-lan-pairing.md)
+818	  — full Phase 0-6 design rationale, alternative approaches
+819	  considered, real-device test logs.
+820	- [`docs/architecture.md`](architecture.md) — workspace shape that
+821	  this feature plugs into.
+822	- [`docs/pwa.md`](pwa.md) — install prereq + service worker (gets a
+823	  "LAN play" section in Phase 6).
+824	- [`pitfalls/README.md`](../pitfalls/README.md) — index of all
+825	  pitfalls; the five LAN-related ones are tagged in the body of this
+826	  doc.
+827	- ADR-0005 (`docs/adr/0005-multi-room-lobby.md`) and ADR-0006
+828	  (`docs/adr/0006-chess-net-spectators-chat.md`) — the chess-net
+829	  protocol decisions that the host-in-WASM Room reuses unchanged.
+830
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:09Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./docs/lan-multiplayer-webrtc.md`
+
+```text
+43	## When to use this pattern (and when not)
+44	
+45	The fit-for-purpose checklist before copying this:
+46	
+47	| Constraint | This pattern fits | This pattern doesn't fit |
+48	|---|---|---|
+49	| Players physically together | ✅ same WiFi / hotspot | ❌ across continents (need TURN relay) |
+50	| Server cost | ✅ zero (no chess-net needed at runtime) | n/a |
+51	| Session length | ✅ minutes to hours (1 chess game) | ❌ multi-day persistence (host tab close = room ends) |
+52	| Player count | ✅ 1v1 + ~4 spectators | ⚠️ 8+ peers needs mesh routing or full server |
+53	| State authority | ✅ one peer is "host" + owns truth | ❌ truly decentralised consensus |
+54	| Discovery | ⚠️ manual SDP exchange (or QR) | ❌ no auto-discovery without a relay |
+55	| Reconnect | ❌ host tab close = game over | n/a |
+56	| Network requirements | ✅ same LAN, mDNS works (most home WiFi) | ❌ AP-isolated networks (some routers, public WiFi) |
+57	| Re-pair a saved peer | ❌ every session needs fresh SDP | n/a |
+58	
+59	**The killer feature**: zero external dependency at runtime. Once both
+60	PWAs are installed (one HTTPS visit each), the game works in
+61	airplane-mode-with-WiFi: train, classroom, park, anywhere with shared
+62	WiFi or a hotspot.
+63	
+64	**The biggest UX cost**: every session starts with an SDP exchange
+65	(~660 bytes JSON). Manual copy-paste is clunky; QR is much better but
+66	still requires camera aiming. There's no "saved peer = instant
+67	reconnect" — WebRTC SDPs are session-specific.
+68	
+69	**Same-LAN gotcha**: some routers (verified: Mi AX9000) silently drop
+70	WebRTC's mDNS `<uuid>.local` resolution while letting general mDNS
+71	through (Bonjour, AirPlay). See
+72	[`pitfalls/webrtc-mdns-lan-ap-isolation.md`](../pitfalls/webrtc-mdns-lan-ap-isolation.md).
+73	The STUN-fallback toggle in the UI papers over this when present, but
+74	needs reachable STUN servers (which the GFW blocks for
+75	`stun.l.google.com` — we ship a multi-server list ordered for CN
+76	reachability).
+77	
+78	---
+79	
+80	<a id="architecture-overview"></a>
+81	## Architecture in one diagram
+82	
+83	```
+84	                       ┌──────────────────────────┐
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:30Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:30Z)**_
+
+Plug the new takeaways into the existing doc as four targeted edits.
+
+**Edit 1**: VPN row in the "When to use" table + an expanded paragraph on the failure modes.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:36Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:43:56Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:04Z)**_
+
+**Edit 2**: New "Runtime diagnostics" section before the pitfalls index.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:30Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:40Z)**_
+
+**Edit 3**: Update the "Out of scope" entry on TURN / signalling broker to reflect the new architectural conclusion.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:48Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:55Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:56Z)**_
+
+Let me sanity-check the doc structure and commit.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:44:56Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify doc structure after edits
+
+`grep -n "^##\|^###" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/docs/lan-multiplayer-webrtc.md | head -30`
+
+```text
+15:## TL;DR
+43:## When to use this pattern (and when not)
+115:## Architecture in one diagram
+181:## Full handshake — what actually happens
+186:### 1. Host page mount → user taps "Open room"
+226:### 2. Joiner pastes offer → taps "Generate answer"
+252:### 3. Host pastes answer → taps "Accept answer"
+305:### 4. Both pages render the chess board
+333:### 5. Move + chat sync
+371:## File-by-file (what each file owns)
+395:## Testing loop — `playwright-cli` is the secret weapon
+403:### Minimal smoke test (what to run before pushing transport changes)
+433:### What broke and how playwright-cli caught it
+446:### Adding playwright-cli to your dev loop
+464:## Runtime diagnostics — telling failure modes apart at a glance
+474:### Live ICE / connection / gathering badge
+509:### Auto-classifying timeout error message
+529:### Why this beats raising the 10-s DC-open timeout
+541:## Pitfalls index
+546:### Network / WebRTC
+563:### Leptos signal / reactivity
+579:### WASM / stdlib
+588:### Adjacent (not direct fixes, but informative)
+605:## Porting recipe — adding LAN multiplayer to a NEW game
+611:### Prerequisites
+627:### Phase 0 — spike the network reachability (0.5–1 day, GATES EVERYTHING)
+648:### Phase 1 — extract transport-agnostic Room
+667:### Phase 2 — Transport trait + Session shape on the web side
+678:### Phase 3 — WebRTC transport
+701:### Phase 4 — HostRoom (multi-peer routing wrapper)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:45:05Z)**_
+
+Good — new "Runtime diagnostics" section slots cleanly between the testing-loop section and the pitfalls index. Commit.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:45:05Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Stage and review
+
+`git add docs/lan-multiplayer-webrtc.md && git diff --cached --stat HEAD`
+
+```text
+ docs/lan-multiplayer-webrtc.md | 152 +++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 138 insertions(+), 14 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:45:34Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit docs update
+
+```bash
+git commit -m "$(cat <<'EOF'
+docs(lan-multiplayer-webrtc): record VPN + STUN + diagnostic takeaways from 2026-05-14 production debug
+
+The original doc covered the mDNS-router-quirk failure mode and the
+five Phase-3-5 pitfalls but predated the live-deploy debug session
+that surfaced two more things worth writing down before they leave
+the brain:
+
+1. **VPN tunnel hijack is a distinct failure mode** from router mDNS
+   blocking — same visible symptom (ICE: checking forever) but the
+   fix is "disable VPN" / split-tunnel, not "switch network". An
+   iPad with any VPN client active reports a `198.18.0.0/15` synthetic
+   address as the host candidate; personal-hotspot fallback doesn't
+   rescue it because the iPad's own hotspot also routes through the
+   tunnel.
+
+2. **CGNAT is the third distinct mode** — STUN srflx doesn't hairpin,
+   needs TURN, which we don't ship. Surface "use `/lobby` instead"
+   as the recovery path.
+
+3. **The right response to "we time out" is diagnostics, not longer
+   timeouts** — the runtime IceDiag badge + auto-classifying error
+   message let the user (or future agent) tell the three failure
+   modes apart at a glance, while raising the 10 s wait would just
+   delay the same opaque failure.
+
+4. **Approach C (chess-net signalling broker) is no longer "if demand
+   emerges"** — actively deferred. The architectural argument: if you
+   need a server anyway, `/lobby` (wss://) is simpler than wrapping
+   a second WebRTC handshake on top. Recorded so a future "let's
+   just add /signal" proposal can be rejected by reference.
+
+Edits:
+* "When to use this pattern" table gains explicit VPN + CGNAT rows.
+* "Same-LAN gotcha" expands into three numbered failure modes with
+  distinct fix paths, plus a STUN-explainer paragraph (when to
+  toggle on, when it's pure overhead).
+* New "Runtime diagnostics" section between "Testing loop" and
+  "Pitfalls index" — documents the IceDiag badge, the candidate-IP
+  ranges that map to specific failure modes, and the
+  `net_diag::classify` flow.
+* Pitfalls #1 entry notes the VPN sibling failure now lives in the
+  same `webrtc-mdns-lan-ap-isolation.md` file.
+* "Out of scope" entry on TURN / signalling broker rewritten from
+  "if demand emerges" → "deliberately not implementing because
+  `/lobby` exists".
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3 && git log --oneline origin/main..HEAD
+```
+
+```text
+[main 0cb8433] docs(lan-multiplayer-webrtc): record VPN + STUN + diagnostic takeaways from 2026-05-14 production debug
+ 1 file changed, 138 insertions(+), 14 deletions(-)
+0cb8433 docs(lan-multiplayer-webrtc): record VPN + STUN + diagnostic takeaways from 2026-05-14 production debug
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:45:43Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:45:44Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Compare HEAD vs origin
+
+`git log --oneline origin/main..HEAD --all 2>&1 | head -10; echo "---"; git rev-parse origin/main HEAD`
+
+```text
+0cb8433 docs(lan-multiplayer-webrtc): record VPN + STUN + diagnostic takeaways from 2026-05-14 production debug
+---
+d7eea4ebccb2e8a4283911171f5500ac7cd3545f
+0cb84330f73e71b5b429627f8324f946ec7f1496
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:46:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Fetch + recompare
+
+`git fetch origin main 2>&1 | tail -3; echo "---"; git log --oneline origin/main..HEAD`
+
+```text
+From https://github.com/daviddwlee84/Chinese-Chess_Xiangqi
+ * branch            main       -> FETCH_HEAD
+---
+0cb8433 docs(lan-multiplayer-webrtc): record VPN + STUN + diagnostic takeaways from 2026-05-14 production debug
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:46:14Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:46:21Z)**_
+
+Docs takeaway committed (`0cb8433`). origin/main is at `d7eea4e` so only this one is local — the earlier three I committed have already been pushed (looks like by you between turns).
+
+**Summary of `0cb8433` — what's now in `docs/lan-multiplayer-webrtc.md`:**
+
+- "When to use this pattern" table — added rows for **VPN active on either device** (doesn't fit) and **CGNAT** (use `/lobby` instead).
+- "Same-LAN gotcha" paragraph → expanded into **three numbered failure modes** (router mDNS / VPN tunnel / CGNAT) each with its distinct fix path, plus a STUN-explainer paragraph telling future readers when STUN earns its 5-s gather overhead and when it doesn't.
+- **New "Runtime diagnostics" section** before the pitfalls index — documents the live `IceDiag` badge, what each ICE / candidate value means, the `net_diag::classify` auto-classifying timeout-error flow, and an explicit "why this beats raising the 10 s timeout" rationale so future-you doesn't try the wrong fix.
+- Pitfall #1 entry now notes the VPN sibling-failure section lives in the same `webrtc-mdns-lan-ap-isolation.md`.
+- "Out of scope" — Approach C (chess-net signalling broker) rewritten from "if demand emerges" → **"deliberately not implementing because `/lobby` exists"**, with the architectural argument inline (no point bolting WebRTC on top of an already-running signalling server when the server alone is the simpler full solution). Tagged as "re-read this before someone proposes 'let's just add /signal'".
+
+Push `0cb8433` when ready.
+
+---
+
+_**User (2026-05-14 07:47:42Z)**_
+
+現在 LAN 模式有一個小bug是 按頁面的回到上一頁會跑到 https://daviddwlee84.github.io/lan/host 而非 https://daviddwlee84.github.io/Chinese-Chess_Xiangqi/lan/host
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:00Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:00Z)**_
+
+Quick bug. Let me find all the hardcoded back-link paths.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find back_link callers + app_href usage
+
+`grep -rn "back_link_override\|app_href" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/ 2>/dev/null | grep -v "fn app_href\|test" | head -25`
+
+```text
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:44:    app_href_with_base(base_path(), path)
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:550:        assert_eq!(app_href_with_base("", "/local/xiangqi"), "/local/xiangqi");
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:551:        assert_eq!(app_href_with_base("/", "/local/xiangqi"), "/local/xiangqi");
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:553:            app_href_with_base("/chinese-chess", "/local/xiangqi"),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:556:        assert_eq!(app_href_with_base("chinese-chess", "lobby"), "/chinese-chess/lobby");
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:557:        assert_eq!(app_href_with_base("/chinese-chess/", "/"), "/chinese-chess/");
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/routes.rs:559:            app_href_with_base("/chinese-chess", "/local/banqi?seed=7"),
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/sidebar.rs:19:use crate::routes::app_href;
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/sidebar.rs:161:            <a class="back-link" href=app_href("/") rel="external">"← Back to picker"</a>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/ws_setup.rs:6:use crate::routes::{app_href, normalize_ws_base, WsBaseError};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/ws_setup.rs:33:                        let _ = win.location().set_href(&app_href(&target));
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/components/ws_setup.rs:46:            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:25:use crate::routes::{app_href, variant_slug, WsBaseError};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:120:    back_link_override: Option<String>,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:375:                    back_link_override=back_link_override
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:606:    back_link_override: Option<String>,
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:713:                let (href, label) = match back_link_override {
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/play.rs:726:    app_href(&append_query_pairs("/lobby", ws_query_pair(ws_base)))
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:20:use crate::routes::{app_href, build_rule_set, parse_local_rules, parse_variant_slug, PlayMode};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/local.rs:131:                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs:420:                        back_link_override="/lan/host".to_string()
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs:692:                        back_link_override="/lan/join".to_string()
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs:711:/// (which we override anyway via `back_link_override`). Construct
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lobby.rs:10:use crate::routes::{app_href, WsBaseError};
+/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lobby.rs:111:            <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:16Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:17Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/play.rs`
+
+```text
+705	                            on:click=move |_| hint_open.update(|b| *b = !*b)
+706	                        >
+707	                            {label}
+708	                        </button>
+709	                    }
+710	                }
+711	            </Show>
+712	            {
+713	                let (href, label) = match back_link_override {
+714	                    Some(h) => (h, "← Back"),
+715	                    None => (back_to_lobby_href(&ws_base), "← Back to lobby"),
+716	                };
+717	                view! {
+718	                    <a class="back-link" href=href rel="external">{label}</a>
+719	                }
+720	            }
+721	        </aside>
+722	    }
+723	}
+724	
+725	fn back_to_lobby_href(ws_base: &WsBase) -> String {
+726	    app_href(&append_query_pairs("/lobby", ws_query_pair(ws_base)))
+727	}
+728	
+729	fn ws_error_label(err: WsBaseChoiceError) -> Option<&'static str> {
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:29Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:30Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find other hardcoded paths in lan.rs
+
+`grep -n '"/' /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs | grep -E "href|back_link|location|set_href" | head -10`
+
+```text
+420:                        back_link_override="/lan/host".to_string()
+692:                        back_link_override="/lan/join".to_string()
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:37Z)**_
+
+Only the two `back_link_override` calls. Fix them by routing through `app_href`.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:39Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:48Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:48:58Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:11Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Fmt + WASM build
+
+`cargo fmt --all && cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.01s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:26Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit fix
+
+```bash
+git add clients/chess-web/src/pages/lan.rs && git commit -m "$(cat <<'EOF'
+fix(chess-web): LAN back-link respects base_path so GH Pages subpath deploys don't drop "/Chinese-Chess_Xiangqi"
+
+`pages/lan.rs` passed raw `"/lan/host"` / `"/lan/join"` strings as
+`back_link_override` to `PlayConnected`. The component uses the
+override verbatim as the `<a href>` value (`pages/play.rs:713`),
+unlike the default-lobby path which routes through `app_href(...)`
+to pick up the deploy's base path. On GH Pages that meant the back
+link rendered as `https://daviddwlee84.github.io/lan/host` — missing
+the `/Chinese-Chess_Xiangqi/` prefix, 404-redirecting to a root
+GH Pages page.
+
+Fix: route both LAN back-links through `routes::app_href`, matching
+the convention every other `<a>` callsite in chess-web uses
+(`sidebar.rs`, `local.rs`, `lobby.rs`, etc.). Server-root deploys
+unaffected (`app_href` is a no-op when `base_path()` is empty).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3
+```
+
+```text
+[main ea289aa] fix(chess-web): LAN back-link respects base_path so GH Pages subpath deploys don't drop "/Chinese-Chess_Xiangqi"
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:37Z)**_
+
+Fixed in `ea289aa` — both LAN back-links now route through `routes::app_href("/lan/host" | "/lan/join")` so the `/Chinese-Chess_Xiangqi/` prefix gets baked in on the GH Pages build. Server-root deploys are unaffected (empty base path, `app_href` is a no-op).
+
+Two commits unpushed now: `0cb8433` (docs takeaway) + `ea289aa` (this back-link fix).
+
+---
+
+_**User (2026-05-14 07:49:42Z)**_
+
+lan/host & join 也缺返回鍵
+
+---
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:53Z)**_
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:54Z)**_
+
+Add the standard "← Back to picker" link on both LAN pages.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:49:56Z)**_
+
+<tool-use data-tool-type="read" data-tool-name="Read"><details>
+<summary>Tool use: **Read**</summary>
+ `./clients/chess-web/src/pages/local.rs`
+
+```text
+125	            <LocalGame variant=variant rules=rules wip=wip ai=ai insight=insight mirror=mirror/>
+126	        }
+127	        .into_view(),
+128	        Err(msg) => view! {
+129	            <section class="game-page game-page--single">
+130	                <div>
+131	                    <a href=app_href("/") rel="external" class="back-link">"← Back to picker"</a>
+132	                    <h2>"Variant unavailable"</h2>
+133	                    <p class="subtitle">{msg}</p>
+134	                </div>
+135	            </section>
+136	        }
+137	        .into_view(),
+138	    }
+139	}
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:02Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Find back-link styling
+
+`grep -n "back-link\|class=\"back-link\"\|back-link\b" /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/style.css | head -5`
+
+```text
+360:.back-link {
+365:.back-link:hover { color: var(--accent); }
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:08Z)**_
+
+Standard back-link styling exists. Add it before the `<h1>` on both LAN pages.
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:12Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:22Z)**_
+
+<tool-use data-tool-type="write" data-tool-name="Edit"><details>
+<summary>Tool use: **Edit**</summary>
+
+```text
+The file /Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web/src/pages/lan.rs has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:33Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Verify build
+
+`cargo build --target wasm32-unknown-unknown -p chess-web 2>&1 | tail -3`
+
+```text
+   Compiling chess-web v0.1.0 (/Volumes/Data/Program/tries/2026-05-06-chinese-chess/clients/chess-web)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.59s
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:46Z)**_
+
+<tool-use data-tool-type="shell" data-tool-name="Bash"><details>
+<summary>Tool use: **Bash**</summary>
+Commit back-link addition
+
+```bash
+git add clients/chess-web/src/pages/lan.rs && git commit -m "$(cat <<'EOF'
+fix(chess-web): add "Back to picker" link on /lan/host and /lan/join setup screens
+
+Before the pairing completes there was no way to leave the LAN host /
+join pages except via the browser back-button or URL edit — every
+other page in the SPA (local, lobby, online play, ws-setup) ships the
+standard `<a class="back-link" href=app_href("/")>"← Back to picker"</a>`
+above the heading.
+
+Same placement + same `rel="external"` (forces leptos_router to do a
+real navigation, so the LAN signalling state and the RtcPeerConnection
+get torn down cleanly instead of leaking).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)" 2>&1 | tail -3
+```
+
+```text
+[main 1e12719] fix(chess-web): add "Back to picker" link on /lan/host and /lan/join setup screens
+ 1 file changed, 2 insertions(+)
+```
+</details></tool-use>
+
+_**Agent (claude-opus-4-7 2026-05-14 07:50:53Z)**_
+
+Added in `1e12719` — both `/lan/host` and `/lan/join` setup screens now show `← Back to picker` above the heading, matching the convention used by local / lobby / play / ws-setup. `rel="external"` forces a real navigation so the in-flight `RtcPeerConnection` + signalling state get torn down cleanly rather than leaking when the user bails out.
+
+Three commits unpushed: `0cb8433` (docs takeaway), `ea289aa` (back-link base-path bug), `1e12719` (missing back-link).
